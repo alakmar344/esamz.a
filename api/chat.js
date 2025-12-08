@@ -58,7 +58,7 @@ Keep responses concise and helpful.
 Always think strategically and consider the deeper implications of questions.`;
 
   // Model rotation - cycle through 3 models to distribute load
-    const models = [
+  const models = [
     'gemma-3-4b-it',      // Model 1: Fast and efficient
   ];
   // Use timestamp to rotate models (changes every ~20 seconds)
@@ -86,6 +86,16 @@ Always think strategically and consider the deeper implications of questions.`;
     
     // Add conversation history if exists
     if (history && Array.isArray(history) && history.length > 0) {
+      // First message - include personality as system context
+      messages.push({
+        role: "user",
+        parts: [{ text: PERSONALITY }]
+      });
+      messages.push({
+        role: "model",
+        parts: [{ text: "Understood. I'll follow these guidelines." }]
+      });
+      
       // Add recent history (last 10 messages to stay within limits)
       const recentHistory = history.slice(-10);
       for (const msg of recentHistory) {
@@ -94,13 +104,13 @@ Always think strategically and consider the deeper implications of questions.`;
           parts: [{ text: msg.content }]
         });
       }
-    } else {
-      // First message - include personality
-      messages.push({
-        role: "user",
-        parts: [{ text: `${PERSONALITY}\n\nUser: ${raw}` }]
-      });
     }
+    
+    // Add current message
+    messages.push({
+      role: "user",
+      parts: [{ text: raw }]
+    });
     
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`,
