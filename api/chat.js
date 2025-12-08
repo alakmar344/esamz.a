@@ -72,7 +72,7 @@ Always think strategically and consider the deeper implications of questions.`;
     console.log('API Key length:', apiKey?.length || 0);
     
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { 
@@ -120,9 +120,9 @@ Always think strategically and consider the deeper implications of questions.`;
       const errorText = await response.text();
       console.error("Gemini API error:", response.status, errorText);
       
-      // Return the actual error for debugging
+      // Return user-friendly error
       return res.status(200).json({
-        reply: `Error ${response.status}: ${errorText.substring(0, 200)}`
+        reply: "I'm having trouble connecting right now. Please try again."
       });
     }
 
@@ -162,13 +162,14 @@ Always think strategically and consider the deeper implications of questions.`;
 
   } catch (err) {
     console.error("Handler error:", err);
-    console.error("Error name:", err.name);
-    console.error("Error message:", err.message);
-    console.error("Error stack:", err.stack);
+    console.error("Error details:", {
+      message: err.message,
+      stack: err.stack
+    });
     
-    // Return the actual error for debugging
+    // Return friendly error to user
     return res.status(200).json({
-      reply: `Debug: ${err.message}`
+      reply: "Something went wrong. Let me know if this keeps happening."
     });
   }
 }
