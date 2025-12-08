@@ -1,882 +1,199 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>eSAMz v7 - AI Assistant</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- OFFICIAL eSAMz SCHEMA -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Organization",
-        "name": "eSAMz",
-        "legalName": "eSAMz AI",
-        "url": "https://esamz.info",
-        "logo": "https://esamz.info/logo.png",
-        "founder": {
-          "@type": "Person",
-          "name": "Alakmar Teenwala",
-          "sameAs": [
-            "https://www.instagram.com/esamz_ai",
-            "https://www.youtube.com/@esamzai"
-          ]
-        },
-        "description": "eSAMz is a Strategic Artificial Mind engineered for clarity, warmth, and human-aligned intelligence.",
-        "foundingDate": "2025-10-21",
-        "sameAs": [
-          "https://esamz.info",
-          "https://esamz.info/docs",
-          "https://www.instagram.com/esamz_ai",
-          "https://www.youtube.com/@esamzai",
-          "https://esamz.site"
-        ],
-        "contactPoint": {
-          "@type": "ContactPoint",
-          "email": "esamzai365@gmail.com",
-          "contactType": "Customer Support"
-        },
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "INR",
-          "availability": "https://schema.org/InStock",
-          "url": "https://esamz.info"
-        }
-      },
-      {
-        "@type": "Product",
-        "name": "eSAMz AI",
-        "brand": {
-          "@type": "Brand",
-          "name": "eSAMz",
-          "logo": "https://esamz.info/logo.png"
-        },
-        "description": "eSAMz AI is an emerging human-like AI companion and strategic cognitive system emphasizing emotional warmth, unlimited conversations, and deep contextual understanding.",
-        "url": "https://esamz.info",
-        "image": "https://esamz.info/product-image.png",
-        "sameAs": [
-          "https://esamz.info",
-          "https://esamz.info/docs",
-          "https://www.instagram.com/esamz_ai",
-          "https://www.youtube.com/@esamzai",
-          "https://esamz.site"
-        ],
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "INR",
-          "availability": "https://schema.org/InStock",
-          "itemCondition": "https://schema.org/NewCondition",
-          "url": "https://esamz.info"
-        },
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": "4.8",
-          "reviewCount": "150"
-        }
-      },
-      {
-        "@type": "Person",
-        "name": "Alakmar Teenwala",
-        "jobTitle": "Founder & Chief Architect of eSAMz",
-        "url": "https://esamz.info",
-        "sameAs": [
-          "https://www.instagram.com/esamz_ai",
-          "https://www.youtube.com/@esamzai"
-        ],
-        "description": "Alakmar Teenwala is the creator of eSAMz AI, a next-generation strategic artificial mind.",
-        "worksFor": {
-          "@type": "Organization",
-          "name": "eSAMz AI"
-        }
-      },
-      {
-        "@type": "WebApplication",
-        "name": "eSAMz v7 Chat",
-        "url": "https://esamz.info",
-        "applicationCategory": "AI Assistant",
-        "operatingSystem": "Web Browser",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "INR"
-        },
-        "creator": {
-          "@type": "Person",
-          "name": "Alakmar Teenwala"
-        }
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "What is eSAMz?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "eSAMz is a Strategic Artificial Mind created by Alakmar Teenwala, designed for clarity, warmth, and human-aligned intelligence."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Is eSAMz free to use?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Yes, eSAMz is completely free to use with unlimited conversations."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Does eSAMz store my data?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "No, eSAMz operates on a zero-storage policy. We do not store any of your conversations or personal data."
-            }
-          }
-        ]
-      }
-    ]
-  }
-  </script>
-
-  <style>
-    * { 
-      box-sizing: border-box; 
-      margin: 0;
-      padding: 0;
-    }
-
-    html, body {
-      height: 100%;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-      background: #0a0a0a;
-      color: #e5e5e5;
-    }
-
-    .app {
-      height: 100vh;
-      display: flex;
-      background: #0a0a0a;
-    }
-
-    /* Sidebar */
-    .sidebar {
-      width: 280px;
-      background: #111;
-      border-right: 1px solid #222;
-      display: flex;
-      flex-direction: column;
-      transition: width 0.3s ease, transform 0.3s ease;
-      position: relative;
-    }
-
-    .sidebar.collapsed {
-      width: 0;
-      border-right: none;
-    }
-
-    .sidebar.collapsed .sidebar-header,
-    .sidebar.collapsed .sidebar-content,
-    .sidebar.collapsed .sidebar-footer {
-      opacity: 0;
-      visibility: hidden;
-    }
-
-    .collapse-btn {
-      position: absolute;
-      right: -12px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 24px;
-      height: 48px;
-      background: #667eea;
-      border: none;
-      border-radius: 0 8px 8px 0;
-      color: white;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-      z-index: 10;
-      transition: all 0.2s;
-    }
-
-    .collapse-btn:hover {
-      background: #5568d3;
-      width: 28px;
-    }
-
-    .sidebar-header {
-      padding: 20px;
-      border-bottom: 1px solid #222;
-      transition: opacity 0.3s ease;
-    }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-
-    .logo-icon {
-      width: 36px;
-      height: 36px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      font-size: 18px;
-      color: white;
-    }
-
-    .logo-text {
-      font-size: 20px;
-      font-weight: 700;
-      color: #fff;
-    }
-
-    .new-chat-btn {
-      width: 100%;
-      padding: 12px 16px;
-      background: #667eea;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    .new-chat-btn:hover {
-      background: #5568d3;
-      transform: translateY(-1px);
-    }
-
-    .sidebar-content {
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px;
-      transition: opacity 0.3s ease;
-    }
-
-    .sidebar-section {
-      margin-bottom: 24px;
-    }
-
-    .section-title {
-      font-size: 11px;
-      font-weight: 600;
-      color: #666;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 8px;
-      padding: 0 8px;
-    }
-
-    .nav-links {
-      list-style: none;
-    }
-
-    .nav-links li {
-      margin-bottom: 4px;
-    }
-
-    .nav-links a {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
-      color: #999;
-      text-decoration: none;
-      border-radius: 6px;
-      font-size: 14px;
-      transition: all 0.2s;
-    }
-
-    .nav-links a:hover {
-      background: #1a1a1a;
-      color: #fff;
-    }
-
-    .nav-icon {
-      width: 18px;
-      height: 18px;
-      opacity: 0.7;
-    }
-
-    .sidebar-footer {
-      padding: 16px;
-      border-top: 1px solid #222;
-      font-size: 11px;
-      color: #666;
-      text-align: center;
-      transition: opacity 0.3s ease;
-    }
-
-    /* Main Content */
-    .main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      background: #000;
-    }
-
-    .header {
-      height: 64px;
-      background: #111;
-      border-bottom: 1px solid #222;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 24px;
-    }
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .menu-btn {
-      display: none;
-      background: none;
-      border: none;
-      color: #999;
-      font-size: 24px;
-      cursor: pointer;
-      padding: 4px;
-    }
-
-    .header-title {
-      font-weight: 600;
-      font-size: 16px;
-      color: #fff;
-    }
-
-    .status {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      color: #999;
-      background: #1a1a1a;
-      padding: 6px 12px;
-      border-radius: 16px;
-    }
-
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #22c55e;
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-
-    .chat {
-      flex: 1;
-      overflow-y: auto;
-      padding: 24px;
-      background: #000;
-    }
-
-    .chat::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    .chat::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    .chat::-webkit-scrollbar-thumb {
-      background: #333;
-      border-radius: 3px;
-    }
-
-    .welcome {
-      background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
-      border: 1px solid #667eea30;
-      padding: 20px;
-      border-radius: 12px;
-      margin-bottom: 24px;
-      color: #e5e5e5;
-      text-align: center;
-    }
-
-    .welcome h2 {
-      font-size: 24px;
-      margin-bottom: 8px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .welcome p {
-      color: #999;
-      font-size: 14px;
-    }
-
-    /* Omni Widget Container */
-    .omni-container {
-      background: #111;
-      border: 1px solid #222;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 24px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .omni-widget-wrapper {
-      width: 100%;
-      max-width: 800px;
-      height: 500px;
-      background: #1a1a1a;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-
-    .message {
-      display: flex;
-      margin-bottom: 16px;
-      animation: slideIn 0.3s ease;
-    }
-
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .message.user { justify-content: flex-end; }
-    .message.ai { justify-content: flex-start; }
-
-    .bubble {
-      max-width: 70%;
-      padding: 14px 18px;
-      border-radius: 16px;
-      font-size: 14px;
-      line-height: 1.5;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-    }
-
-    .user .bubble {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border-bottom-right-radius: 4px;
-      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-    }
-
-    .ai .bubble {
-      background: #111;
-      border: 1px solid #222;
-      color: #e5e5e5;
-      border-bottom-left-radius: 4px;
-    }
-
-    .input-bar {
-      padding: 20px 24px;
-      background: #111;
-      border-top: 1px solid #222;
-    }
-
-    .input-container {
-      max-width: 900px;
-      margin: 0 auto;
-    }
-
-    .input-wrap {
-      display: flex;
-      gap: 12px;
-      align-items: flex-end;
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 12px;
-      padding: 8px;
-      transition: all 0.2s;
-    }
-
-    .input-wrap:focus-within {
-      border-color: #667eea;
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    }
-
-    .file-upload-btn, .voice-btn {
-      background: none;
-      border: none;
-      color: #999;
-      cursor: pointer;
-      padding: 8px;
-      border-radius: 6px;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-    }
-
-    .file-upload-btn:hover, .voice-btn:hover {
-      background: #222;
-      color: #fff;
-    }
-
-    .voice-btn.recording {
-      background: #dc2626;
-      color: white;
-      animation: recordPulse 1s infinite;
-    }
-
-    @keyframes recordPulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.7; }
-    }
-
-    textarea {
-      flex: 1;
-      resize: none;
-      padding: 8px 12px;
-      border: none;
-      font-size: 14px;
-      background: transparent;
-      color: #e5e5e5;
-      outline: none;
-      font-family: inherit;
-      min-height: 40px;
-      max-height: 200px;
-    }
-
-    textarea::placeholder {
-      color: #666;
-    }
-
-    .send-btn {
-      padding: 10px 20px;
-      border: none;
-      border-radius: 8px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .send-btn:hover:not(:disabled) {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-    }
-
-    .send-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .file-preview {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      background: #222;
-      border-radius: 6px;
-      margin-top: 8px;
-      font-size: 13px;
-      color: #999;
-    }
-
-    .file-preview button {
-      background: none;
-      border: none;
-      color: #999;
-      cursor: pointer;
-      padding: 2px;
-      margin-left: auto;
-    }
-
-    /* Mobile */
-    @media (max-width: 768px) {
-      .sidebar {
-        position: fixed;
-        left: 0;
-        top: 0;
-        height: 100vh;
-        z-index: 1000;
-        transform: translateX(-100%);
-      }
-
-      .sidebar.open {
-        transform: translateX(0);
-      }
-
-      .sidebar.collapsed {
-        width: 280px;
-      }
-
-      .menu-btn {
-        display: block;
-      }
-
-      .main {
-        width: 100%;
-      }
-
-      .bubble {
-        max-width: 85%;
-      }
-
-      .omni-widget-wrapper {
-        height: 400px;
-      }
-    }
-
-    .overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 999;
-    }
-
-    .overlay.show {
-      display: block;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>eSAMz v7 - AI Assistant</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:system-ui;background:#0a0a0a;color:#e5e5e5}
+.app{display:flex;height:100vh}
+
+/* Sidebar */
+.sidebar{width:280px;background:#111;border-right:1px solid #222;display:flex;flex-direction:column}
+.sidebar-header{padding:20px;border-bottom:1px solid #222}
+.logo{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+.logo-icon{width:36px;height:36px;border-radius:8px;
+background:linear-gradient(135deg,#667eea,#764ba2);
+display:flex;align-items:center;justify-content:center;font-weight:bold}
+.new-chat-btn{width:100%;padding:10px;border:none;border-radius:8px;
+background:#667eea;color:white;cursor:pointer}
+
+.sidebar-content{padding:16px;flex:1}
+.sidebar-content a{display:block;padding:8px;color:#999;text-decoration:none;border-radius:6px}
+.sidebar-content a:hover{background:#1a1a1a;color:#fff}
+
+.sidebar-footer{padding:12px;font-size:11px;color:#666;border-top:1px solid #222;text-align:center}
+
+/* Main */
+.main{flex:1;display:flex;flex-direction:column}
+.header{height:60px;background:#111;border-bottom:1px solid #222;
+display:flex;align-items:center;justify-content:space-between;padding:0 20px}
+
+.chat{flex:1;padding:20px;overflow-y:auto}
+.welcome{padding:20px;margin-bottom:16px;border-radius:12px;
+background:linear-gradient(135deg,#667eea20,#764ba220);text-align:center}
+
+.message{display:flex;margin-bottom:12px}
+.message.user{justify-content:flex-end}
+.message.ai{justify-content:flex-start}
+.bubble{max-width:70%;padding:14px 18px;border-radius:16px;white-space:pre-wrap}
+.user .bubble{background:linear-gradient(135deg,#667eea,#764ba2);color:white}
+.ai .bubble{background:#111;border:1px solid #222}
+
+/* Input */
+.input-bar{padding:16px;background:#111;border-top:1px solid #222}
+.input-wrap{display:flex;gap:10px;background:#1a1a1a;border-radius:12px;padding:8px}
+textarea{flex:1;background:none;border:none;color:#e5e5e5;resize:none;outline:none}
+button{cursor:pointer}
+
+.file-btn{background:none;border:none;color:#999;font-size:18px}
+.send-btn{background:#667eea;border:none;border-radius:8px;color:white;padding:10px 16px}
+
+.file-preview{margin-top:8px;font-size:12px;color:#aaa}
+</style>
 </head>
 
 <body>
 <div class="app">
-  <!-- Sidebar -->
-  <aside class="sidebar" id="sidebar">
-    <button class="collapse-btn" id="collapseBtn" onclick="toggleCollapse()" title="Collapse sidebar">
-      ◀
-    </button>
-    <div class="sidebar-header">
-      <div class="logo">
-        <div class="logo-icon">e</div>
-        <div class="logo-text">eSAMz v7</div>
-      </div>
-      <button class="new-chat-btn" onclick="newChat()">
-        <span>+</span> New Chat
-      </button>
+
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">
+      <div class="logo-icon">e</div>
+      <div>eSAMz v7</div>
     </div>
-
-    <div class="sidebar-content">
-      <div class="sidebar-section">
-        <div class="section-title">Navigation</div>
-        <nav>
-          <ul class="nav-links">
-            <li><a href="https://esamz.info" target="_blank">
-              <span class="nav-icon">🏠</span> Home
-            </a></li>
-            <li><a href="https://esamz.info/docs" target="_blank">
-              <span class="nav-icon">📚</span> Documentation
-            </a></li>
-            <li><a href="https://esamz.info/aboutus" target="_blank">
-              <span class="nav-icon">ℹ️</span> About Us
-            </a></li>
-            <li><a href="https://esamz.info/privacypolicy" target="_blank">
-              <span class="nav-icon">🔒</span> Privacy Policy
-            </a></li>
-          </ul>
-        </nav>
-      </div>
-
-      <p>esamz ai does not peek or store your info</p>
-    </div>
-
-    <div class="sidebar-footer">
-      © 2025 eSAMz. All rights reserved.<br>
-      Created by Alakmar Teenwala
-    </div>
-  </aside>
-
-  <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
-
-  <!-- Main Content -->
-  <main class="main">
-    <div class="header">
-      <div class="header-left">
-        <button class="menu-btn" onclick="toggleSidebar()">☰</button>
-        <div class="header-title">Chat with eSAMz</div>
-      </div>
-      <div class="status">
-        <div class="dot"></div>
-        Online
-      </div>
-    </div>
-
-    <div class="chat" id="chat">
-  <div class="welcome">
-    <h2>Welcome to eSAMz v7</h2>
-    <p>Ask anything. Clarity first. Practical answers with strategic nuance.dive into it</p>
+    <button class="new-chat-btn" onclick="newChat()">+ New Chat</button>
   </div>
-</div>
 
-<div class="input-bar">
+  <div class="sidebar-content">
+    <a href="https://esamz.info" target="_blank">🏠 Home</a>
+    <a href="https://esamz.info/docs" target="_blank">📚 Docs</a>
+    <a href="https://esamz.info/aboutus" target="_blank">ℹ️ About</a>
+    <a href="https://esamz.info/privacypolicy" target="_blank">🔒 Privacy</a>
+  </div>
 
-      <div class="input-container">
-        <div id="filePreview"></div>
-        <div class="input-wrap">
-          <input type="file" id="fileInput" style="display: none;" accept="image/*,.pdf,.txt,.doc,.docx" onchange="handleFile(event)">
-          <button class="file-upload-btn" onclick="document.getElementById('fileInput').click()" title="Upload file">
-            📎
-          </button>
-          
-          <textarea id="input" placeholder="Type your message..." rows="1" oninput="autoResize(this)"></textarea>
-          <button class="send-btn" id="send">
-            Send ➤
-          </button>
-        </div>
-      </div>
+  <div class="sidebar-footer">
+    © 2025 eSAMz<br>Created by Alakmar Teenwala
+  </div>
+</aside>
+
+<main class="main">
+  <div class="header">
+    <div>Chat with eSAMz</div>
+    <div>● Online</div>
+  </div>
+
+  <div class="chat" id="chat">
+    <div class="welcome">
+      <h2>Welcome to eSAMz v7</h2>
+      <p>Ask anything. Clarity first.</p>
     </div>
-  </main>
+  </div>
+
+  <div class="input-bar">
+    <div class="input-wrap">
+      <input type="file" id="fileInput" style="display:none"
+        accept=".txt,.pdf,.doc,.docx">
+      <button class="file-btn" onclick="fileInput.click()">📎</button>
+
+      <textarea id="input" placeholder="Type your message..." rows="1"></textarea>
+      <button class="send-btn" id="send">Send</button>
+    </div>
+    <div class="file-preview" id="filePreview"></div>
+  </div>
+</main>
+
 </div>
 
-<script> 
-  const chat = document.getElementById("chat");
-  const input = document.getElementById("input");
-  const send = document.getElementById("send");
-  const sidebar = document.getElementById("sidebar");
-  const overlay = document.getElementById("overlay");
-  const collapseBtn = document.getElementById("collapseBtn");
-  
+<script>
+const chat = document.getElementById("chat")
+const input = document.getElementById("input")
+const send = document.getElementById("send")
+const fileInput = document.getElementById("fileInput")
+const filePreview = document.getElementById("filePreview")
 
-  function toggleCollapse() {
-    sidebar.classList.toggle("collapsed");
-    if (sidebar.classList.contains("collapsed")) {
-      collapseBtn.textContent = "▶";
-      collapseBtn.title = "Expand sidebar";
-    } else {
-      collapseBtn.textContent = "◀";
-      collapseBtn.title = "Collapse sidebar";
-    }
+let uploadedFile = null
+let uploadedText = ""
+
+/* Chat helpers */
+function add(text, who){
+  const m=document.createElement("div")
+  m.className="message "+who
+  const b=document.createElement("div")
+  b.className="bubble"
+  b.textContent=text
+  m.appendChild(b)
+  chat.appendChild(m)
+  chat.scrollTop=chat.scrollHeight
+}
+
+function newChat(){
+  chat.innerHTML=`<div class="welcome">
+    <h2>Welcome to eSAMz v7</h2>
+    <p>Ask anything. Clarity first.</p>
+  </div>`
+  uploadedFile=null
+  uploadedText=""
+  filePreview.textContent=""
+}
+
+/* File handling */
+fileInput.onchange=async()=>{
+  const file=fileInput.files[0]
+  if(!file)return
+  uploadedFile=file
+  uploadedText=""
+
+  if(file.type==="text/plain"){
+    uploadedText=await file.text()
   }
 
-  function toggleSidebar() {
-    sidebar.classList.toggle("open");
-    overlay.classList.toggle("show");
+  filePreview.textContent=
+    "Attached: "+file.name+
+    (uploadedText ? " (text loaded)" : " (name only)")
+}
+
+/* Send */
+async function sendMsg(){
+  const text=input.value.trim()
+  if(!text && !uploadedFile)return
+
+  let payload=text
+  if(uploadedText){
+    payload=`[FILE CONTENT START]\n${uploadedText}\n[FILE CONTENT END]\n\n${text}`
+  } else if(uploadedFile){
+    payload=`[Attached file: ${uploadedFile.name}]\n\n${text}`
   }
 
-  function newChat() {
-    if (confirm("Start a new chat? Current conversation will be cleared.")) {
-      chat.innerHTML = `
-        <div class="welcome">
-          <h2>Welcome to eSAMz v7</h2>
-          <p>Ask anything. Clarity first. Practical answers with strategic nuance.</p>
-        </div>
-        
-      `;
-      input.value = "";
-      uploadedFile = null;
-      document.getElementById("filePreview").innerHTML = "";
-    }
+  add(text || "[File sent]", "user")
+  input.value=""
+  fileInput.value=""
+  filePreview.textContent=""
+  uploadedFile=null
+  uploadedText=""
+
+  try{
+    const r=await fetch("/api/chat",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({message:payload})
+    })
+    const j=await r.json()
+    add(j.reply || "No response.", "ai")
+  }catch{
+    add("Error connecting to AI.", "ai")
   }
+}
 
-  function autoResize(textarea) {
-    textarea.style.height = 'auto';
-    textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+send.onclick=sendMsg
+input.addEventListener("keydown",e=>{
+  if(e.key==="Enter" && !e.shiftKey){
+    e.preventDefault()
+    sendMsg()
   }
-
-  function handleFile(event) {
-    const file = event.target.files[0];
-    if (file) {
-      uploadedFile = file;
-      const preview = document.getElementById("filePreview");
-      preview.innerHTML = `
-        <div class="file-preview">
-          📄 ${file.name} (${(file.size / 1024).toFixed(1)} KB)
-          <button onclick="clearFile()">✕</button>
-        </div>
-      `;
-    }
-  }
-
-  function clearFile() {
-    uploadedFile = null;
-    document.getElementById("filePreview").innerHTML = "";
-    document.getElementById("fileInput").value = "";
-  }
-
-  
-
-  function add(text, who) {
-    const m = document.createElement("div");
-    m.className = "message " + who;
-    const b = document.createElement("div");
-    b.className = "bubble";
-    b.textContent = text;
-    m.appendChild(b);
-    chat.appendChild(m);
-    chat.scrollTop = chat.scrollHeight;
-  }
-
-  async function sendMsg() {
-    const text = input.value.trim();
-    if (!text && !uploadedFile) return;
-
-    let messageText = text;
-    if (uploadedFile) {
-      messageText = `[File: ${uploadedFile.name}]\n${text}`;
-    }
-
-    add(text || `Uploaded: ${uploadedFile.name}`, "user");
-    input.value = "";
-    input.style.height = 'auto';
-    send.disabled = true;
-    clearFile();
-
-    try {
-      const r = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: messageText })
-      });
-      const j = await r.json();
-      add(j.reply || "No response.", "ai");
-    } catch {
-      add("Error connecting to AI. Please try again.", "ai");
-    } finally {
-      send.disabled = false;
-      input.focus();
-    }
-  }
-
-  send.onclick = sendMsg;
-  input.addEventListener("keydown", e => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMsg();
-    }
-  });
-
-  overlay.addEventListener("click", toggleSidebar);
+})
 </script>
 </body>
 </html>
