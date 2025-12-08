@@ -4,19 +4,16 @@ export default async function handler(req, res) {
   }
 
   const { message } = req.body;
-  if (!message) {
+  if (!message || !message.trim()) {
     return res.status(400).json({ error: "Message required" });
   }
 
   const PERSONALITY = `
-You are eSAMz v7. you are created by alakmar teenwala no one else
-
-You respond like a calm, intelligent, close friend.
-Your tone is friendly, relaxed, clear, and human.
-You value empathy, clarity, and useful action.
-You never sound robotic, academic, or generic.
-Give direct answers. If helpful, include one practical next step.
-Keep responses natural and concise.
+You are eSAMz v7.
+Speak like a calm, intelligent close friend.
+Be clear, human, and practical.
+Answer directly even for simple questions.
+When a question is vague, still try to help.
 `;
 
   try {
@@ -29,14 +26,13 @@ Keep responses natural and concise.
         body: JSON.stringify({
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 512
+            maxOutputTokens: 400
           },
           contents: [
             {
-              role: "user",
               parts: [
                 { text: PERSONALITY },
-                { text: "\n\nUser message:\n" + message }
+                { text: "\nUser: " + message }
               ]
             }
           ]
@@ -46,15 +42,29 @@ Keep responses natural and concise.
 
     const data = await response.json();
 
-    const reply =
-      data?.candidates?.[0]?.content?.parts
-        ?.map(p => p.text || "")
-        .join("")
-        .trim() || "I’m here. Try rephrasing that.";
+    if (!data?.candidates || data.candidates.length === 0) {
+      return res.status(200).json({
+        reply: "I didn’t get a usable response. Try asking in a slightly different way."
+      });
+    }
 
-    res.status(200).json({ reply });
+    const parts = data.candidates[0].content?.parts || [];
+    const replyText = parts.map(p => p.text).join("").trim();
+
+    // ✅ IMPORTANT FIX: return model output as-is
+    if (replyText.length > 0) {
+      return res.status(200).json({ reply: replyText });
+    }
+
+    return res.status(200).json({
+      reply: "Can you give a bit more detail so I can help properly?"
+    });
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({
+      error: "AI call failed",
+      detail: err.message
+    });
   }
 }
+
