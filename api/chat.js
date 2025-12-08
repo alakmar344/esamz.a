@@ -58,12 +58,11 @@ Keep responses concise and helpful.
 Always think strategically and consider the deeper implications of questions.`;
 
   // Model rotation - cycle through 3 models to distribute load
-  const models = [
+    const models = [
     'gemma-3-4b-it',      // Model 1: Fast and efficient
-    'gemma-3-12b-it',     // Model 2: Balanced performance
+    'gemini-2.5-flash-lite', // Model 2: Ultra fast, lightweight
     'gemini-2.5-flash'    // Model 3: Most capable
   ];
-  
   // Use timestamp to rotate models (changes every ~20 seconds)
   const modelIndex = Math.floor(Date.now() / 20000) % models.length;
   const selectedModel = models[modelIndex];
