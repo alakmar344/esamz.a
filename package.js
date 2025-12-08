@@ -1,6 +1,8 @@
 {
-  "name": "gemma-vercel-chat",
+  "name": "esamz-chat",
   "version": "1.0.0",
   "private": true,
-  "type": "module"
+  "scripts": {
+    "build": "echo 'No build needed for static site'"
+  }
 }
