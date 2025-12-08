@@ -57,6 +57,19 @@ If a question is simple, answer simply.
 Keep responses concise and helpful.
 Always think strategically and consider the deeper implications of questions.`;
 
+  // Model rotation - cycle through 3 models to distribute load
+  const models = [
+    'gemma-3-4b-it',      // Model 1: Fast and efficient
+    'gemma-3-12b-it',     // Model 2: Balanced performance
+    'gemini-2.5-flash'    // Model 3: Most capable
+  ];
+  
+  // Use timestamp to rotate models (changes every ~20 seconds)
+  const modelIndex = Math.floor(Date.now() / 20000) % models.length;
+  const selectedModel = models[modelIndex];
+  
+  console.log(`Using model: ${selectedModel}`);
+
   try {
     // Check for API key
     if (!process.env.GEMINI_API_KEY) {
@@ -66,11 +79,11 @@ Always think strategically and consider the deeper implications of questions.`;
       });
     }
 
-    // Call Gemini API with correct endpoint structure
+    // Call Gemini API with selected model
     const apiKey = process.env.GEMINI_API_KEY;
     
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemma-3-4b-it:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { 
