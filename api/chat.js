@@ -116,7 +116,7 @@ Always think strategically and consider the deeper implications of questions.`;
           contents: messages,
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 512,
+            maxOutputTokens: 2048,
             topP: 0.95,
             topK: 40
           },
