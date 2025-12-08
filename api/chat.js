@@ -54,7 +54,7 @@ Always think strategically and consider the deeper implications of questions.`;
 
     // Call Gemini API with correct endpoint structure
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { 
@@ -100,8 +100,12 @@ Always think strategically and consider the deeper implications of questions.`;
     // Handle non-200 responses
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error("Gemini API error:", errorData);
-      throw new Error(`API returned ${response.status}: ${errorData.error?.message || "Unknown error"}`);
+      console.error("Gemini API error:", response.status, errorData);
+      
+      // Return user-friendly error instead of 500
+      return res.status(200).json({
+        reply: "I'm having trouble connecting right now. Please try again."
+      });
     }
 
     const data = await response.json();
@@ -140,9 +144,16 @@ Always think strategically and consider the deeper implications of questions.`;
 
   } catch (err) {
     console.error("Handler error:", err);
-    return res.status(500).json({
-      error: "AI call failed",
-      detail: err.message
+    
+    // Log the full error for debugging
+    console.error("Error details:", {
+      message: err.message,
+      stack: err.stack
+    });
+    
+    // Return friendly error to user
+    return res.status(200).json({
+      reply: "Something went wrong. Let me know if this keeps happening."
     });
   }
 }
