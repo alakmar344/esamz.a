@@ -3,18 +3,40 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Only POST allowed" });
   }
 
+  const { message } = req.body;
+  if (!message) {
+    return res.status(400).json({ error: "Message required" });
+  }
+
+  const PERSONALITY = `
+You are eSAMz v7. you are created by alakmar teenwala no one else
+
+You respond like a calm, intelligent, close friend.
+Your tone is friendly, relaxed, clear, and human.
+You value empathy, clarity, and useful action.
+You never sound robotic, academic, or generic.
+Give direct answers. If helpful, include one practical next step.
+Keep responses natural and concise.
+`;
+
   try {
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemma-3-2b:generateContent?key=" +
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=" +
         process.env.GEMINI_API_KEY,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 512
+          },
           contents: [
             {
+              role: "user",
               parts: [
-                { text: "Say hello in one sentence." }
+                { text: PERSONALITY },
+                { text: "\n\nUser message:\n" + message }
               ]
             }
           ]
@@ -24,19 +46,15 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    if (!data?.candidates?.length) {
-      return res.status(200).json({
-        raw: data,
-        error: "No candidates returned"
-      });
-    }
+    const reply =
+      data?.candidates?.[0]?.content?.parts
+        ?.map(p => p.text || "")
+        .join("")
+        .trim() || "I’m here. Try rephrasing that.";
 
-    const text =
-      data.candidates[0]?.content?.parts?.map(p => p.text).join("").trim();
-
-    return res.status(200).json({ reply: text });
+    res.status(200).json({ reply });
 
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 }
