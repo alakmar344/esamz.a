@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   }
 
   // Validate message input
-  const { message } = req.body;
+  const { message, history } = req.body;
   if (!message || !message.trim()) {
     return res.status(400).json({ error: "Message required" });
   }
@@ -82,6 +82,29 @@ Always think strategically and consider the deeper implications of questions.`;
     // Call Gemini API with selected model
     const apiKey = process.env.GEMINI_API_KEY;
     
+    console.log(`Using model: ${selectedModel}`);
+    
+    // Build conversation messages with history
+    const messages = [];
+    
+    // Add conversation history if exists
+    if (history && Array.isArray(history) && history.length > 0) {
+      // Add recent history (last 10 messages to stay within limits)
+      const recentHistory = history.slice(-10);
+      for (const msg of recentHistory) {
+        messages.push({
+          role: msg.role === "assistant" ? "model" : "user",
+          parts: [{ text: msg.content }]
+        });
+      }
+    } else {
+      // First message - include personality
+      messages.push({
+        role: "user",
+        parts: [{ text: `${PERSONALITY}\n\nUser: ${raw}` }]
+      });
+    }
+    
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`,
       {
@@ -90,14 +113,7 @@ Always think strategically and consider the deeper implications of questions.`;
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [
-                { text: `${PERSONALITY}\n\nUser: ${raw}` }
-              ]
-            }
-          ],
+          contents: messages,
           generationConfig: {
             temperature: 0.7,
             maxOutputTokens: 512,
@@ -129,11 +145,11 @@ Always think strategically and consider the deeper implications of questions.`;
     // Handle non-200 responses
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Gemini API error:", response.status, errorText);
+      console.error(`Model ${selectedModel} failed:`, response.status, errorText);
       
-      // Return user-friendly error
+      // Return user-friendly error with model info
       return res.status(200).json({
-        reply: "I'm having trouble connecting right now. Please try again."
+        reply: `Model error (${selectedModel}). Please try again.`
       });
     }
 
