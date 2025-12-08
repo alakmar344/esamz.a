@@ -56,10 +56,7 @@ When a question is vague, still try to help.
       return res.status(200).json({ reply: replyText });
     }
 
-    return res.status(200).json({
-      reply: "Can you give a bit more detail so I can help properly?"
-    });
-
+   
   } catch (err) {
     return res.status(500).json({
       error: "AI call failed",
