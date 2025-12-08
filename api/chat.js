@@ -72,7 +72,7 @@ Always think strategically and consider the deeper implications of questions.`;
     console.log('API Key length:', apiKey?.length || 0);
     
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { 
@@ -120,9 +120,9 @@ Always think strategically and consider the deeper implications of questions.`;
       const errorText = await response.text();
       console.error("Gemini API error:", response.status, errorText);
       
-      // Return user-friendly error
+      // TEMPORARY: Show error for debugging
       return res.status(200).json({
-        reply: "I'm having trouble connecting right now. Please try again."
+        reply: `API Error ${response.status}: ${errorText.substring(0, 300)}`
       });
     }
 
