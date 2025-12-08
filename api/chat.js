@@ -1,8 +1,10 @@
 export default async function handler(req, res) {
+  // Only allow POST requests
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Only POST allowed" });
   }
 
+  // Validate message input
   const { message } = req.body;
   if (!message || !message.trim()) {
     return res.status(400).json({ error: "Message required" });
@@ -11,89 +13,136 @@ export default async function handler(req, res) {
   const raw = message.trim();
   const text = raw.toLowerCase();
 
-  // ✅ QUESTION DETECTION (KEY FIX)
+  // Question detection
   const questionWords = [
     "what", "why", "how", "when", "where",
     "who", "which", "can", "does", "is",
-    "are", "do", "should", "could"
+    "are", "do", "should", "could", "will"
   ];
-
+  
   const isQuestion =
     text.endsWith("?") ||
     questionWords.some(w => text.startsWith(w + " "));
 
-  // ✅ LOW-SIGNAL DETECTION (NOW SAFE)
+  // Low-signal input detection
   const lowSignal = [
     "ok", "okay", "hmm", "hm", "yes", "yeah",
     "nothing", "its nothing", "it's nothing",
-    "cool", "fine", "alright"
+    "cool", "fine", "alright", "k"
   ];
 
   if (!isQuestion && lowSignal.includes(text)) {
     return res.status(200).json({
-      reply: "Got it. I’m here if you want to ask or explore something."
+      reply: "Got it. I'm here if you want to ask or explore something."
     });
   }
 
-  // ✅ PERSONALITY (LIGHT, WORKS WITH FLASH)
-  const PERSONALITY = `
-You are eSAMz v7.
-You explain things simply and clearly.
+  // Personality system prompt
+  const PERSONALITY = `You are eSAMz v7, a generic AI assistant created by Alakmar Teenwala.
+You were made by Alakmar Teenwala and no one else. Never claim to be made by Google or any other company.
+You explain things simply and clearly with strategic nuance in everything you say.
 You sound human, calm, and friendly.
 If a question is simple, answer simply.
-`;
+Keep responses concise and helpful.
+Always think strategically and consider the deeper implications of questions.`;
 
   try {
+    // Check for API key
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY not configured");
+    }
+
+    // Call Gemini API with correct endpoint structure
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=" +
-        process.env.GEMINI_API_KEY,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify({
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 512
-          },
           contents: [
             {
+              role: "user",
               parts: [
-                { text: PERSONALITY },
-                { text: "\nUser: " + raw }
+                { text: `${PERSONALITY}\n\nUser: ${raw}` }
               ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 512,
+            topP: 0.95,
+            topK: 40
+          },
+          safetySettings: [
+            {
+              category: "HARM_CATEGORY_HARASSMENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_HATE_SPEECH",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
             }
           ]
         })
       }
     );
 
+    // Handle non-200 responses
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("Gemini API error:", errorData);
+      throw new Error(`API returned ${response.status}: ${errorData.error?.message || "Unknown error"}`);
+    }
+
     const data = await response.json();
 
+    // Check for valid response
     if (!data?.candidates?.length) {
+      console.warn("No candidates in response:", data);
       return res.status(200).json({
-        reply: "I’m here. What would you like to understand?"
+        reply: "I'm here. What would you like to understand?"
       });
     }
 
-    const reply =
-      data.candidates[0].content?.parts
-        ?.map(p => p.text || "")
-        .join("")
-        .trim();
+    // Extract reply text
+    const candidate = data.candidates[0];
+    
+    // Check if content was blocked
+    if (candidate.finishReason === "SAFETY") {
+      return res.status(200).json({
+        reply: "I can't respond to that, but I'm happy to help with something else."
+      });
+    }
+
+    const reply = candidate.content?.parts
+      ?.map(p => p.text || "")
+      .join("")
+      .trim();
 
     if (reply) {
       return res.status(200).json({ reply });
     }
 
+    // Fallback if no text extracted
     return res.status(200).json({
-      reply: "Tell me a bit more and I’ll explain it clearly."
+      reply: "Tell me a bit more and I'll explain it clearly."
     });
 
   } catch (err) {
+    console.error("Handler error:", err);
     return res.status(500).json({
       error: "AI call failed",
       detail: err.message
     });
   }
 }
-
