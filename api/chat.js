@@ -55,17 +55,13 @@ You explain things simply and clearly with strategic nuance in everything you sa
 You sound human, calm, and friendly.
 If a question is simple, answer simply.
 Keep responses concise and helpful.
-Always think strategically and consider the deeper implications of questions.`;
+Always think strategically and consider the deeper implications of questions.
+Remember the conversation context and refer back to previous messages when relevant.`;
 
-  // Model rotation - cycle through 3 models to distribute load
-  const models = [
-    'gemma-3-4b-it',      // Model 1: Fast and efficient
-  ];
-  // Use timestamp to rotate models (changes every ~20 seconds)
+  // Model rotation
+  const models = ['gemma-3-4b-it'];
   const modelIndex = Math.floor(Date.now() / 20000) % models.length;
   const selectedModel = models[modelIndex];
-  
-  console.log(`Using model: ${selectedModel}`);
 
   try {
     // Check for API key
@@ -76,33 +72,35 @@ Always think strategically and consider the deeper implications of questions.`;
       });
     }
 
-    // Call Gemini API with selected model
     const apiKey = process.env.GEMINI_API_KEY;
-    
-    console.log(`Using model: ${selectedModel}`);
     
     // Build conversation messages with history
     const messages = [];
     
+    // Always start with personality context
+    messages.push({
+      role: "user",
+      parts: [{ text: PERSONALITY }]
+    });
+    messages.push({
+      role: "model",
+      parts: [{ text: "Understood. I am eSAMz v7, created by Alakmar Teenwala. I'll remember our conversation and provide helpful, strategic responses." }]
+    });
+    
     // Add conversation history if exists
     if (history && Array.isArray(history) && history.length > 0) {
-      // First message - include personality as system context
-      messages.push({
-        role: "user",
-        parts: [{ text: PERSONALITY }]
-      });
-      messages.push({
-        role: "model",
-        parts: [{ text: "Understood. I'll follow these guidelines." }]
-      });
+      console.log(`Processing ${history.length} history messages`);
       
-      // Add recent history (last 10 messages to stay within limits)
-      const recentHistory = history.slice(-10);
+      // Add recent history (last 10 exchanges = 20 messages to stay within limits)
+      const recentHistory = history.slice(-20);
+      
       for (const msg of recentHistory) {
-        messages.push({
-          role: msg.role === "assistant" ? "model" : "user",
-          parts: [{ text: msg.content }]
-        });
+        if (msg.content && msg.content.trim()) {
+          messages.push({
+            role: msg.role === "assistant" || msg.role === "model" ? "model" : "user",
+            parts: [{ text: msg.content.trim() }]
+          });
+        }
       }
     }
     
@@ -111,6 +109,8 @@ Always think strategically and consider the deeper implications of questions.`;
       role: "user",
       parts: [{ text: raw }]
     });
+    
+    console.log(`Sending ${messages.length} messages to ${selectedModel}`);
     
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`,
@@ -154,7 +154,6 @@ Always think strategically and consider the deeper implications of questions.`;
       const errorText = await response.text();
       console.error(`Model ${selectedModel} failed:`, response.status, errorText);
       
-      // Return user-friendly error with model info
       return res.status(200).json({
         reply: `Model error (${selectedModel}). Please try again.`
       });
@@ -201,7 +200,6 @@ Always think strategically and consider the deeper implications of questions.`;
       stack: err.stack
     });
     
-    // Return friendly error to user
     return res.status(200).json({
       reply: "Something went wrong. Let me know if this keeps happening."
     });
