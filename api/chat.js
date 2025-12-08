@@ -1,4 +1,15 @@
 export default async function handler(req, res) {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle OPTIONS request
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   // Only allow POST requests
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Only POST allowed" });
@@ -49,7 +60,10 @@ Always think strategically and consider the deeper implications of questions.`;
   try {
     // Check for API key
     if (!process.env.GEMINI_API_KEY) {
-      throw new Error("GEMINI_API_KEY not configured");
+      console.error("GEMINI_API_KEY not configured");
+      return res.status(200).json({
+        reply: "Configuration error. Please contact support."
+      });
     }
 
     // Call Gemini API with correct endpoint structure
