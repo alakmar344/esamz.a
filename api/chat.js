@@ -8,12 +8,28 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Message required" });
   }
 
+  const text = message.trim().toLowerCase();
+
+  // ✅ STEP 1: HANDLE LOW-SIGNAL HUMAN INPUT
+  const lowSignal = [
+    "ok", "okay", "hmm", "hm", "yes", "yeah",
+    "nothing", "its nothing", "it's nothing",
+    "cool", "fine", "alright"
+  ];
+
+  if (lowSignal.includes(text)) {
+    return res.status(200).json({
+      reply: "Got it. If something comes to mind or you want to talk, I’m here."
+    });
+  }
+
+  // ✅ STEP 2: PERSONALITY (LIGHT + COMPATIBLE)
   const PERSONALITY = `
-You are eSAMz v7.
-Speak like a calm, intelligent close friend.
-Be clear, human, and practical.
-Answer directly even for simple questions.
-When a question is vague, still try to help.
+You are eSAMz v7.you are made by alakmar teenwala no one else never say  you are made by google
+Respond like a calm, intelligent close friend.
+Be human, warm, and natural.
+Even if a question is basic or vague, try to help.
+Never block conversation.
 `;
 
   try {
@@ -42,21 +58,23 @@ When a question is vague, still try to help.
 
     const data = await response.json();
 
-    if (!data?.candidates || data.candidates.length === 0) {
+    if (!data?.candidates?.length) {
       return res.status(200).json({
-        reply: "I didn’t get a usable response. Try asking in a slightly different way."
+        reply: "I’m here. What’s on your mind?"
       });
     }
 
     const parts = data.candidates[0].content?.parts || [];
-    const replyText = parts.map(p => p.text).join("").trim();
+    const reply = parts.map(p => p.text || "").join("").trim();
 
-    // ✅ IMPORTANT FIX: return model output as-is
-    if (replyText.length > 0) {
-      return res.status(200).json({ reply: replyText });
+    if (reply.length > 0) {
+      return res.status(200).json({ reply });
     }
 
-   
+    return res.status(200).json({
+      reply: "I’m listening. Take your time."
+    });
+
   } catch (err) {
     return res.status(500).json({
       error: "AI call failed",
@@ -64,4 +82,3 @@ When a question is vague, still try to help.
     });
   }
 }
-
