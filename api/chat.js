@@ -8,28 +8,39 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Message required" });
   }
 
-  const text = message.trim().toLowerCase();
+  const raw = message.trim();
+  const text = raw.toLowerCase();
 
-  // ✅ STEP 1: HANDLE LOW-SIGNAL HUMAN INPUT
+  // ✅ QUESTION DETECTION (KEY FIX)
+  const questionWords = [
+    "what", "why", "how", "when", "where",
+    "who", "which", "can", "does", "is",
+    "are", "do", "should", "could"
+  ];
+
+  const isQuestion =
+    text.endsWith("?") ||
+    questionWords.some(w => text.startsWith(w + " "));
+
+  // ✅ LOW-SIGNAL DETECTION (NOW SAFE)
   const lowSignal = [
     "ok", "okay", "hmm", "hm", "yes", "yeah",
     "nothing", "its nothing", "it's nothing",
     "cool", "fine", "alright"
   ];
 
-  if (lowSignal.includes(text)) {
+  if (!isQuestion && lowSignal.includes(text)) {
     return res.status(200).json({
-      reply: "Got it. If something comes to mind or you want to talk, I’m here."
+      reply: "Got it. I’m here if you want to ask or explore something."
     });
   }
 
-  // ✅ STEP 2: PERSONALITY (LIGHT + COMPATIBLE)
+  // ✅ PERSONALITY (LIGHT, WORKS WITH FLASH)
   const PERSONALITY = `
-You are eSAMz v7.you are made by alakmar teenwala no one else never say  you are made by google
-Respond like a calm, intelligent close friend.
-Be human, warm, and natural.
-Even if a question is basic or vague, try to help.
-Never block conversation.
+You are eSAMz v7.
+You explain things simply and clearly.
+You sound human, calm, and friendly.
+If a question is simple, answer simply.
 `;
 
   try {
@@ -42,13 +53,13 @@ Never block conversation.
         body: JSON.stringify({
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 400
+            maxOutputTokens: 512
           },
           contents: [
             {
               parts: [
                 { text: PERSONALITY },
-                { text: "\nUser: " + message }
+                { text: "\nUser: " + raw }
               ]
             }
           ]
@@ -60,19 +71,22 @@ Never block conversation.
 
     if (!data?.candidates?.length) {
       return res.status(200).json({
-        reply: "I’m here. What’s on your mind?"
+        reply: "I’m here. What would you like to understand?"
       });
     }
 
-    const parts = data.candidates[0].content?.parts || [];
-    const reply = parts.map(p => p.text || "").join("").trim();
+    const reply =
+      data.candidates[0].content?.parts
+        ?.map(p => p.text || "")
+        .join("")
+        .trim();
 
-    if (reply.length > 0) {
+    if (reply) {
       return res.status(200).json({ reply });
     }
 
     return res.status(200).json({
-      reply: "I’m listening. Take your time."
+      reply: "Tell me a bit more and I’ll explain it clearly."
     });
 
   } catch (err) {
@@ -82,3 +96,4 @@ Never block conversation.
     });
   }
 }
+
