@@ -1,4 +1,4 @@
-export default async function handler(req, res) {
+ export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -68,11 +68,9 @@ Always think strategically and consider the deeper implications of questions.`;
 
     // Call Gemini API with correct endpoint structure
     const apiKey = process.env.GEMINI_API_KEY;
-    console.log('API Key exists:', !!apiKey);
-    console.log('API Key length:', apiKey?.length || 0);
     
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { 
@@ -120,9 +118,9 @@ Always think strategically and consider the deeper implications of questions.`;
       const errorText = await response.text();
       console.error("Gemini API error:", response.status, errorText);
       
-      // TEMPORARY: Show error for debugging
+      // Return user-friendly error
       return res.status(200).json({
-        reply: `API Error ${response.status}: ${errorText.substring(0, 300)}`
+        reply: "I'm having trouble connecting right now. Please try again."
       });
     }
 
