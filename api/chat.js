@@ -120,9 +120,9 @@ Always think strategically and consider the deeper implications of questions.`;
       const errorText = await response.text();
       console.error("Gemini API error:", response.status, errorText);
       
-      // Return user-friendly error instead of 500
+      // Return the actual error for debugging
       return res.status(200).json({
-        reply: "I'm having trouble connecting right now. Please try again."
+        reply: `Error ${response.status}: ${errorText.substring(0, 200)}`
       });
     }
 
@@ -162,16 +162,13 @@ Always think strategically and consider the deeper implications of questions.`;
 
   } catch (err) {
     console.error("Handler error:", err);
+    console.error("Error name:", err.name);
+    console.error("Error message:", err.message);
+    console.error("Error stack:", err.stack);
     
-    // Log the full error for debugging
-    console.error("Error details:", {
-      message: err.message,
-      stack: err.stack
-    });
-    
-    // Return friendly error to user
+    // Return the actual error for debugging
     return res.status(200).json({
-      reply: "Something went wrong. Let me know if this keeps happening."
+      reply: `Debug: ${err.message}`
     });
   }
 }
