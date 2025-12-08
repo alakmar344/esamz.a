@@ -116,6 +116,7 @@ const filePreview = document.getElementById("filePreview")
 
 let uploadedFile = null
 let uploadedText = ""
+let conversationHistory = []  // Store conversation history
 
 /* Chat helpers */
 function add(text, who){
@@ -132,11 +133,13 @@ function add(text, who){
 function newChat(){
   chat.innerHTML=`<div class="welcome">
     <h2>Welcome to eSAMz v7</h2>
-    <p>Ask anything.dive into it.</p>
+    <p>Ask anything. Clarity first.</p>
   </div>`
   uploadedFile=null
   uploadedText=""
   filePreview.textContent=""
+  conversationHistory=[]  // Clear history on new chat
+  console.log("Chat history cleared")
 }
 
 /* File handling */
@@ -174,16 +177,38 @@ async function sendMsg(){
   uploadedFile=null
   uploadedText=""
 
+  // Add user message to history
+  conversationHistory.push({
+    role: "user",
+    content: payload
+  })
+
+  console.log(`Sending message with ${conversationHistory.length} history items`)
+
   try{
     const r=await fetch("/api/chat",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({message:payload})
+      body:JSON.stringify({
+        message: payload,
+        history: conversationHistory  // Send history with request
+      })
     })
     const j=await r.json()
-    add(j.reply || "No response.", "ai")
-  }catch{
+    const reply = j.reply || "No response."
+    
+    add(reply, "ai")
+    
+    // Add assistant response to history
+    conversationHistory.push({
+      role: "assistant",
+      content: reply
+    })
+    
+    console.log(`History now has ${conversationHistory.length} items`)
+  }catch(err){
     add("Error connecting to AI.", "ai")
+    console.error("API Error:", err)
   }
 }
 
