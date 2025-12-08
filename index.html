@@ -169,12 +169,51 @@
       border-right: 1px solid #222;
       display: flex;
       flex-direction: column;
-      transition: transform 0.3s ease;
+      transition: width 0.3s ease, transform 0.3s ease;
+      position: relative;
+    }
+
+    .sidebar.collapsed {
+      width: 0;
+      border-right: none;
+    }
+
+    .sidebar.collapsed .sidebar-header,
+    .sidebar.collapsed .sidebar-content,
+    .sidebar.collapsed .sidebar-footer {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .collapse-btn {
+      position: absolute;
+      right: -12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 24px;
+      height: 48px;
+      background: #667eea;
+      border: none;
+      border-radius: 0 8px 8px 0;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      z-index: 10;
+      transition: all 0.2s;
+    }
+
+    .collapse-btn:hover {
+      background: #5568d3;
+      width: 28px;
     }
 
     .sidebar-header {
       padding: 20px;
       border-bottom: 1px solid #222;
+      transition: opacity 0.3s ease;
     }
 
     .logo {
@@ -229,6 +268,7 @@
       flex: 1;
       overflow-y: auto;
       padding: 16px;
+      transition: opacity 0.3s ease;
     }
 
     .sidebar-section {
@@ -282,6 +322,7 @@
       font-size: 11px;
       color: #666;
       text-align: center;
+      transition: opacity 0.3s ease;
     }
 
     /* Main Content */
@@ -560,6 +601,10 @@
         transform: translateX(0);
       }
 
+      .sidebar.collapsed {
+        width: 280px;
+      }
+
       .menu-btn {
         display: block;
       }
@@ -591,6 +636,9 @@
 <div class="app">
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
+    <button class="collapse-btn" id="collapseBtn" onclick="toggleCollapse()" title="Collapse sidebar">
+      ◀
+    </button>
     <div class="sidebar-header">
       <div class="logo">
         <div class="logo-icon">e</div>
@@ -676,7 +724,19 @@
   const send = document.getElementById("send");
   const sidebar = document.getElementById("sidebar");
   const overlay = document.getElementById("overlay");
+  const collapseBtn = document.getElementById("collapseBtn");
   let uploadedFile = null;
+
+  function toggleCollapse() {
+    sidebar.classList.toggle("collapsed");
+    if (sidebar.classList.contains("collapsed")) {
+      collapseBtn.textContent = "▶";
+      collapseBtn.title = "Expand sidebar";
+    } else {
+      collapseBtn.textContent = "◀";
+      collapseBtn.title = "Collapse sidebar";
+    }
+  }
 
   function toggleSidebar() {
     sidebar.classList.toggle("open");
