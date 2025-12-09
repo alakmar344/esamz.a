@@ -4,25 +4,18 @@
 <meta charset="UTF-8">
 <title>eSAMz v7 - AI Assistant</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.2/marked.min.js"></script>
 
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#0a0a0a;color:#e5e5e5}
+html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#0a0a0a;color:#e5e5e5;transition:all 0.3s ease}
 .app{display:flex;height:100vh;position:relative;overflow:hidden}
 
-/* Animated background gradient */
 .app::before{
-  content:'';
-  position:absolute;
-  top:-50%;
-  left:-50%;
-  width:200%;
-  height:200%;
+  content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;
   background:radial-gradient(circle at 20% 50%, rgba(102,126,234,0.08) 0%, transparent 50%),
              radial-gradient(circle at 80% 80%, rgba(118,75,162,0.08) 0%, transparent 50%);
-  animation:gradient 20s ease infinite;
-  pointer-events:none;
-  z-index:0;
+  animation:gradient 20s ease infinite;pointer-events:none;z-index:0;
 }
 
 @keyframes gradient{
@@ -31,475 +24,222 @@ html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Sego
   66%{transform:translate(-5%,10%) rotate(240deg)}
 }
 
-/* Sidebar */
-.sidebar{
-  width:280px;
-  background:rgba(17,17,17,0.8);
-  backdrop-filter:blur(20px);
-  border-right:1px solid rgba(255,255,255,0.06);
-  display:flex;
-  flex-direction:column;
-  position:relative;
-  z-index:10;
-  box-shadow:2px 0 24px rgba(0,0,0,0.4);
-}
+.theme-toggle{position:fixed;top:16px;right:16px;z-index:1000;background:rgba(17,17,17,0.8);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:8px 12px;cursor:pointer;font-size:20px;transition:all 0.3s ease}
+.theme-toggle:hover{transform:scale(1.1);box-shadow:0 4px 16px rgba(102,126,234,0.3)}
 
-.sidebar-header{
-  padding:24px;
-  border-bottom:1px solid rgba(255,255,255,0.06);
-}
+body.light-mode{background:#f5f5f5;color:#1a1a1a}
+body.light-mode .app::before{opacity:0.3}
+body.light-mode .sidebar,body.light-mode .header,body.light-mode .input-bar,body.light-mode .theme-toggle{background:rgba(255,255,255,0.9);border-color:rgba(0,0,0,0.1)}
+body.light-mode .ai .bubble{background:rgba(255,255,255,0.9);border-color:rgba(0,0,0,0.1);color:#1a1a1a}
+body.light-mode .input-wrap{background:rgba(240,240,240,0.8);border-color:rgba(0,0,0,0.1)}
+body.light-mode textarea,body.light-mode .search-input{color:#1a1a1a}
+body.light-mode .sidebar-content a,body.light-mode .action-btn,body.light-mode .header-btn{color:#666}
+body.light-mode .sidebar-content a:hover,body.light-mode .action-btn:hover,body.light-mode .header-btn:hover{color:#1a1a1a}
+body.light-mode .modal-content{background:rgba(255,255,255,0.95);border-color:rgba(0,0,0,0.1)}
 
-.logo{
-  display:flex;
-  gap:12px;
-  align-items:center;
-  margin-bottom:16px;
-  animation:slideDown 0.6s ease;
-}
+.sidebar{width:280px;background:rgba(17,17,17,0.8);backdrop-filter:blur(20px);border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;position:relative;z-index:10;box-shadow:2px 0 24px rgba(0,0,0,0.4);transition:transform 0.3s ease}
+.sidebar.mobile-hidden{transform:translateX(-100%)}
+.mobile-toggle{display:none;position:fixed;top:16px;left:16px;z-index:1000;background:rgba(17,17,17,0.8);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:8px 12px;cursor:pointer;font-size:20px}
 
-@keyframes slideDown{
-  from{opacity:0;transform:translateY(-20px)}
-  to{opacity:1;transform:translateY(0)}
-}
+.sidebar-header{padding:24px;border-bottom:1px solid rgba(255,255,255,0.06)}
+.logo{display:flex;gap:12px;align-items:center;margin-bottom:16px;animation:slideDown 0.6s ease}
+@keyframes slideDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
 
-.logo-icon{
-  width:42px;
-  height:42px;
-  border-radius:12px;
-  background:linear-gradient(135deg,#667eea,#764ba2);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:800;
-  font-size:20px;
-  box-shadow:0 8px 24px rgba(102,126,234,0.3);
-  position:relative;
-  overflow:hidden;
-}
+.logo-icon{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;box-shadow:0 8px 24px rgba(102,126,234,0.3);position:relative;overflow:hidden}
+.logo-icon::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:linear-gradient(45deg,transparent,rgba(255,255,255,0.1),transparent);transform:rotate(45deg);animation:shine 3s infinite}
+@keyframes shine{0%{transform:translateX(-100%) translateY(-100%) rotate(45deg)}100%{transform:translateX(100%) translateY(100%) rotate(45deg)}}
 
-.logo-icon::before{
-  content:'';
-  position:absolute;
-  top:-50%;
-  left:-50%;
-  width:200%;
-  height:200%;
-  background:linear-gradient(45deg,transparent,rgba(255,255,255,0.1),transparent);
-  transform:rotate(45deg);
-  animation:shine 3s infinite;
-}
+.logo div{font-size:18px;font-weight:700;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 
-@keyframes shine{
-  0%{transform:translateX(-100%) translateY(-100%) rotate(45deg)}
-  100%{transform:translateX(100%) translateY(100%) rotate(45deg)}
-}
+.new-chat-btn{width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;cursor:pointer;font-weight:600;font-size:14px;transition:all 0.3s ease;box-shadow:0 4px 16px rgba(102,126,234,0.3);position:relative;overflow:hidden}
+.new-chat-btn::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent);transition:left 0.5s ease}
+.new-chat-btn:hover::before{left:100%}
+.new-chat-btn:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(102,126,234,0.4)}
 
-.logo div{
-  font-size:18px;
-  font-weight:700;
-  background:linear-gradient(135deg,#667eea,#764ba2);
-  -webkit-background-clip:text;
-  -webkit-text-fill-color:transparent;
-  background-clip:text;
-}
+.sidebar-content{padding:16px;flex:1;overflow-y:auto}
+.sidebar-section{margin-bottom:20px}
+.sidebar-section-title{font-size:11px;font-weight:600;text-transform:uppercase;color:#666;padding:8px 14px;letter-spacing:0.5px}
 
-.new-chat-btn{
-  width:100%;
-  padding:14px;
-  border:none;
-  border-radius:12px;
-  background:linear-gradient(135deg,#667eea,#764ba2);
-  color:white;
-  cursor:pointer;
-  font-weight:600;
-  font-size:14px;
-  transition:all 0.3s ease;
-  box-shadow:0 4px 16px rgba(102,126,234,0.3);
-  position:relative;
-  overflow:hidden;
-}
+.sidebar-content a,.chat-history-item{display:flex;align-items:center;padding:12px 14px;color:#999;text-decoration:none;border-radius:10px;transition:all 0.3s ease;margin-bottom:4px;font-size:13px;font-weight:500;position:relative;cursor:pointer}
+.sidebar-content a::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:0;background:linear-gradient(135deg,#667eea,#764ba2);border-radius:0 2px 2px 0;transition:height 0.3s ease}
+.sidebar-content a:hover,.chat-history-item:hover{background:rgba(102,126,234,0.1);color:#fff;transform:translateX(4px)}
+.sidebar-content a:hover::before{height:60%}
 
-.new-chat-btn::before{
-  content:'';
-  position:absolute;
-  top:0;
-  left:-100%;
-  width:100%;
-  height:100%;
-  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent);
-  transition:left 0.5s ease;
-}
+.chat-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chat-date{font-size:10px;color:#666;margin-left:8px}
 
-.new-chat-btn:hover::before{
-  left:100%;
-}
+.sidebar-footer{padding:16px;font-size:11px;color:#666;border-top:1px solid rgba(255,255,255,0.06);text-align:center;line-height:1.6;background:rgba(0,0,0,0.2)}
 
-.new-chat-btn:hover{
-  transform:translateY(-2px);
-  box-shadow:0 6px 24px rgba(102,126,234,0.4);
-}
+.shortcuts-info{padding:12px;background:rgba(102,126,234,0.1);border-radius:8px;font-size:11px;margin:12px;line-height:1.6;color:#999}
+.shortcuts-info kbd{background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;font-family:monospace;font-size:10px;border:1px solid rgba(255,255,255,0.1)}
 
-.new-chat-btn:active{
-  transform:translateY(0);
-}
+.main{flex:1;display:flex;flex-direction:column;position:relative;z-index:1}
 
-.sidebar-content{
-  padding:16px;
-  flex:1;
-  overflow-y:auto;
-}
+.header{height:70px;background:rgba(17,17,17,0.8);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;padding:0 32px;box-shadow:0 2px 16px rgba(0,0,0,0.2)}
+.header>div:first-child{font-size:16px;font-weight:600;display:flex;align-items:center;gap:10px}
 
-.sidebar-content a{
-  display:flex;
-  align-items:center;
-  padding:12px 14px;
-  color:#999;
-  text-decoration:none;
-  border-radius:10px;
-  transition:all 0.3s ease;
-  margin-bottom:4px;
-  font-size:14px;
-  font-weight:500;
-  position:relative;
-}
+.header-actions{display:flex;align-items:center;gap:12px}
+.header-btn{background:rgba(102,126,234,0.1);border:1px solid rgba(102,126,234,0.2);color:#999;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:13px;transition:all 0.3s ease;display:flex;align-items:center;gap:6px}
+.header-btn:hover{background:rgba(102,126,234,0.2);color:#fff;transform:translateY(-2px)}
 
-.sidebar-content a::before{
-  content:'';
-  position:absolute;
-  left:0;
-  top:50%;
-  transform:translateY(-50%);
-  width:3px;
-  height:0;
-  background:linear-gradient(135deg,#667eea,#764ba2);
-  border-radius:0 2px 2px 0;
-  transition:height 0.3s ease;
-}
+.online-status{display:flex;align-items:center;gap:8px;color:#4ade80;font-size:14px;font-weight:500}
+.online-status::before{content:'●';font-size:20px;animation:pulse 2s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
 
-.sidebar-content a:hover{
-  background:rgba(102,126,234,0.1);
-  color:#fff;
-  transform:translateX(4px);
-}
+.chat{flex:1;padding:32px;overflow-y:auto;scroll-behavior:smooth}
+.chat::-webkit-scrollbar{width:8px}
+.chat::-webkit-scrollbar-track{background:transparent}
+.chat::-webkit-scrollbar-thumb{background:rgba(102,126,234,0.3);border-radius:4px}
+.chat::-webkit-scrollbar-thumb:hover{background:rgba(102,126,234,0.5)}
 
-.sidebar-content a:hover::before{
-  height:60%;
-}
+.welcome{padding:48px 32px;margin-bottom:24px;border-radius:20px;background:linear-gradient(135deg,rgba(102,126,234,0.15),rgba(118,75,162,0.15));text-align:center;border:1px solid rgba(102,126,234,0.2);backdrop-filter:blur(10px);animation:fadeIn 0.6s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 
-.sidebar-footer{
-  padding:16px;
-  font-size:11px;
-  color:#666;
-  border-top:1px solid rgba(255,255,255,0.06);
-  text-align:center;
-  line-height:1.6;
-  background:rgba(0,0,0,0.2);
-}
+.welcome h2{font-size:32px;margin-bottom:12px;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:700}
+.welcome p{font-size:16px;color:#999;font-weight:500;margin-bottom:24px}
 
-/* Main */
-.main{
-  flex:1;
-  display:flex;
-  flex-direction:column;
-  position:relative;
-  z-index:1;
-}
+.suggested-prompts{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:20px}
+.prompt-btn{background:rgba(102,126,234,0.1);border:1px solid rgba(102,126,234,0.2);color:#e5e5e5;padding:10px 16px;border-radius:10px;cursor:pointer;font-size:13px;transition:all 0.3s ease}
+.prompt-btn:hover{background:rgba(102,126,234,0.2);transform:translateY(-2px);box-shadow:0 4px 12px rgba(102,126,234,0.2)}
 
-.header{
-  height:70px;
-  background:rgba(17,17,17,0.8);
-  backdrop-filter:blur(20px);
-  border-bottom:1px solid rgba(255,255,255,0.06);
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:0 32px;
-  box-shadow:0 2px 16px rgba(0,0,0,0.2);
-}
-
-.header > div:first-child{
-  font-size:16px;
-  font-weight:600;
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
-
-.header > div:last-child{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  color:#4ade80;
-  font-size:14px;
-  font-weight:500;
-}
-
-.header > div:last-child::before{
-  content:'●';
-  font-size:20px;
-  animation:pulse 2s ease infinite;
-}
-
-@keyframes pulse{
-  0%,100%{opacity:1}
-  50%{opacity:0.4}
-}
-
-.chat{
-  flex:1;
-  padding:32px;
-  overflow-y:auto;
-  scroll-behavior:smooth;
-}
-
-.chat::-webkit-scrollbar{
-  width:8px;
-}
-
-.chat::-webkit-scrollbar-track{
-  background:transparent;
-}
-
-.chat::-webkit-scrollbar-thumb{
-  background:rgba(102,126,234,0.3);
-  border-radius:4px;
-}
-
-.chat::-webkit-scrollbar-thumb:hover{
-  background:rgba(102,126,234,0.5);
-}
-
-.welcome{
-  padding:48px 32px;
-  margin-bottom:24px;
-  border-radius:20px;
-  background:linear-gradient(135deg,rgba(102,126,234,0.15),rgba(118,75,162,0.15));
-  text-align:center;
-  border:1px solid rgba(102,126,234,0.2);
-  backdrop-filter:blur(10px);
-  animation:fadeIn 0.6s ease;
-}
-
-@keyframes fadeIn{
-  from{opacity:0;transform:translateY(20px)}
-  to{opacity:1;transform:translateY(0)}
-}
-
-.welcome h2{
-  font-size:32px;
-  margin-bottom:12px;
-  background:linear-gradient(135deg,#667eea,#764ba2);
-  -webkit-background-clip:text;
-  -webkit-text-fill-color:transparent;
-  background-clip:text;
-  font-weight:700;
-}
-
-.welcome p{
-  font-size:16px;
-  color:#999;
-  font-weight:500;
-}
-
-.message{
-  display:flex;
-  margin-bottom:20px;
-  animation:slideUp 0.4s ease;
-}
-
-@keyframes slideUp{
-  from{opacity:0;transform:translateY(10px)}
-  to{opacity:1;transform:translateY(0)}
-}
+.message{display:flex;margin-bottom:20px;animation:slideUp 0.4s ease;position:relative}
+@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
 .message.user{justify-content:flex-end}
 .message.ai{justify-content:flex-start}
 
-.bubble{
-  max-width:70%;
-  padding:16px 20px;
-  border-radius:18px;
-  white-space:pre-wrap;
-  font-size:15px;
-  line-height:1.6;
-  position:relative;
-  box-shadow:0 2px 12px rgba(0,0,0,0.1);
-}
+.message-wrapper{display:flex;flex-direction:column;max-width:70%}
+.message-header{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px;color:#666;padding:0 4px}
+.message-time{font-size:11px}
 
-.user .bubble{
-  background:linear-gradient(135deg,#667eea,#764ba2);
-  color:white;
-  border-bottom-right-radius:4px;
-}
+.bubble{padding:16px 20px;border-radius:18px;font-size:15px;line-height:1.6;position:relative;box-shadow:0 2px 12px rgba(0,0,0,0.1);word-wrap:break-word}
+.user .bubble{background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-bottom-right-radius:4px}
+.ai .bubble{background:rgba(17,17,17,0.8);border:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(10px);border-bottom-left-radius:4px}
 
-.ai .bubble{
-  background:rgba(17,17,17,0.8);
-  border:1px solid rgba(255,255,255,0.08);
-  backdrop-filter:blur(10px);
-  border-bottom-left-radius:4px;
-}
+.bubble pre{background:rgba(0,0,0,0.3);padding:12px;border-radius:8px;overflow-x:auto;margin:8px 0;font-size:13px}
+.bubble code{background:rgba(0,0,0,0.2);padding:2px 6px;border-radius:4px;font-size:13px;font-family:monospace}
+.bubble pre code{background:none;padding:0}
+.bubble ul,.bubble ol{margin:8px 0;padding-left:24px}
+.bubble li{margin:4px 0}
 
-/* Input */
-.input-bar{
-  padding:24px 32px;
-  background:rgba(17,17,17,0.8);
-  backdrop-filter:blur(20px);
-  border-top:1px solid rgba(255,255,255,0.06);
-}
+.message-actions{display:flex;gap:6px;margin-top:8px;opacity:0;transition:opacity 0.3s ease}
+.message:hover .message-actions{opacity:1}
 
-.input-wrap{
-  display:flex;
-  gap:12px;
-  background:rgba(26,26,26,0.8);
-  border-radius:16px;
-  padding:12px 16px;
-  border:1px solid rgba(255,255,255,0.08);
-  transition:all 0.3s ease;
-}
+.action-btn{background:rgba(102,126,234,0.1);border:1px solid rgba(102,126,234,0.2);color:#999;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:11px;transition:all 0.2s ease;display:flex;align-items:center;gap:4px}
+.action-btn:hover{background:rgba(102,126,234,0.2);color:#fff}
 
-.input-wrap:focus-within{
-  border-color:rgba(102,126,234,0.5);
-  box-shadow:0 0 0 3px rgba(102,126,234,0.1);
-}
+.pinned-indicator{position:absolute;top:-8px;right:-8px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px}
 
-textarea{
-  flex:1;
-  background:none;
-  border:none;
-  color:#e5e5e5;
-  resize:none;
-  outline:none;
-  font-size:15px;
-  font-family:inherit;
-  line-height:1.5;
-}
+.typing-indicator{display:flex;gap:4px;padding:16px 20px;background:rgba(17,17,17,0.8);border:1px solid rgba(255,255,255,0.08);border-radius:18px;width:fit-content;animation:slideUp 0.4s ease}
+.typing-dot{width:8px;height:8px;border-radius:50%;background:rgba(102,126,234,0.6);animation:typing 1.4s infinite}
+.typing-dot:nth-child(2){animation-delay:0.2s}
+.typing-dot:nth-child(3){animation-delay:0.4s}
+@keyframes typing{0%,60%,100%{transform:translateY(0);opacity:0.6}30%{transform:translateY(-8px);opacity:1}}
 
-textarea::placeholder{
-  color:#666;
-}
+.input-bar{padding:24px 32px;background:rgba(17,17,17,0.8);backdrop-filter:blur(20px);border-top:1px solid rgba(255,255,255,0.06)}
+
+.file-preview{margin-bottom:12px;display:none;gap:8px;flex-wrap:wrap}
+.file-badge{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(102,126,234,0.15);border:1px solid rgba(102,126,234,0.3);border-radius:10px;color:#e5e5e5;font-size:13px;font-weight:500;animation:slideUp 0.3s ease}
+.file-icon{display:flex;align-items:center;justify-content:center;width:28px;height:28px;background:linear-gradient(135deg,#667eea,#764ba2);border-radius:6px;font-size:11px;font-weight:700;color:white}
+.file-info{display:flex;flex-direction:column;gap:2px}
+.file-name{font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-type{font-size:11px;color:#999}
+.file-remove{background:none;border:none;color:#999;font-size:16px;padding:4px;margin-left:8px;cursor:pointer;border-radius:4px;transition:all 0.2s ease}
+.file-remove:hover{background:rgba(239,68,68,0.2);color:#ef4444}
+
+.input-wrap{display:flex;gap:12px;background:rgba(26,26,26,0.8);border-radius:16px;padding:12px 16px;border:1px solid rgba(255,255,255,0.08);transition:all 0.3s ease;position:relative}
+.input-wrap.drag-over{border-color:rgba(102,126,234,0.8);background:rgba(102,126,234,0.1);box-shadow:0 0 0 3px rgba(102,126,234,0.2)}
+.input-wrap:focus-within{border-color:rgba(102,126,234,0.5);box-shadow:0 0 0 3px rgba(102,126,234,0.1)}
+
+textarea{flex:1;background:none;border:none;color:#e5e5e5;resize:none;outline:none;font-size:15px;font-family:inherit;line-height:1.5;max-height:200px}
+textarea::placeholder{color:#666}
 
 button{cursor:pointer}
+.file-btn,.voice-btn{background:none;border:none;color:#999;font-size:20px;padding:4px 8px;border-radius:8px;transition:all 0.3s ease}
+.file-btn:hover,.voice-btn:hover{background:rgba(102,126,234,0.1);color:#667eea;transform:scale(1.1)}
+.voice-btn.recording{color:#ef4444;animation:pulse 1s ease infinite}
 
-.file-btn{
-  background:none;
-  border:none;
-  color:#999;
-  font-size:20px;
-  padding:4px 8px;
-  border-radius:8px;
-  transition:all 0.3s ease;
-}
+.send-btn{background:linear-gradient(135deg,#667eea,#764ba2);border:none;border-radius:12px;color:white;padding:10px 24px;font-weight:600;font-size:14px;transition:all 0.3s ease;box-shadow:0 4px 12px rgba(102,126,234,0.3)}
+.send-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(102,126,234,0.4)}
+.send-btn:disabled{opacity:0.5;cursor:not-allowed}
 
-.file-btn:hover{
-  background:rgba(102,126,234,0.1);
-  color:#667eea;
-  transform:scale(1.1);
-}
+.stop-btn{background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 4px 12px rgba(239,68,68,0.3)}
 
-.send-btn{
-  background:linear-gradient(135deg,#667eea,#764ba2);
-  border:none;
-  border-radius:12px;
-  color:white;
-  padding:10px 24px;
-  font-weight:600;
-  font-size:14px;
-  transition:all 0.3s ease;
-  box-shadow:0 4px 12px rgba(102,126,234,0.3);
-}
+.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;z-index:2000;animation:fadeIn 0.3s ease}
+.modal.show{display:flex}
 
-.send-btn:hover{
-  transform:translateY(-2px);
-  box-shadow:0 6px 20px rgba(102,126,234,0.4);
-}
+.modal-content{background:rgba(17,17,17,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:32px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;animation:slideUp 0.3s ease;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.modal-header h3{font-size:20px;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.modal-close{background:none;border:none;color:#999;font-size:24px;cursor:pointer;transition:color 0.3s ease}
+.modal-close:hover{color:#fff}
 
-.send-btn:active{
-  transform:translateY(0);
-}
+.search-input{width:100%;padding:12px 16px;background:rgba(26,26,26,0.8);border:1px solid rgba(255,255,255,0.08);border-radius:12px;color:#e5e5e5;font-size:14px;outline:none;margin-bottom:16px}
+.search-input:focus{border-color:rgba(102,126,234,0.5);box-shadow:0 0 0 3px rgba(102,126,234,0.1)}
 
-.file-preview{
-  margin-bottom:12px;
-  font-size:13px;
-  display:none;
-}
+.search-results{max-height:400px;overflow-y:auto}
+.search-result-item{padding:12px;background:rgba(26,26,26,0.5);border-radius:10px;margin-bottom:8px;cursor:pointer;transition:all 0.3s ease}
+.search-result-item:hover{background:rgba(102,126,234,0.1);transform:translateX(4px)}
+.search-result-preview{font-size:13px;color:#999;margin-top:4px}
 
-.file-badge{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  padding:10px 14px;
-  background:rgba(102,126,234,0.15);
-  border:1px solid rgba(102,126,234,0.3);
-  border-radius:10px;
-  color:#e5e5e5;
-  font-size:13px;
-  font-weight:500;
-  animation:slideUp 0.3s ease;
-}
+.drag-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(102,126,234,0.2);backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;z-index:1500;border:3px dashed rgba(102,126,234,0.8)}
+.drag-overlay.show{display:flex}
+.drag-overlay-content{text-align:center;color:#fff}
+.drag-overlay-content div:first-child{font-size:64px;margin-bottom:16px}
+.drag-overlay-content div:last-child{font-size:24px;font-weight:600}
 
-.file-icon{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  width:28px;
-  height:28px;
-  background:linear-gradient(135deg,#667eea,#764ba2);
-  border-radius:6px;
-  font-size:11px;
-  font-weight:700;
-  color:white;
-}
-
-.file-info{
-  display:flex;
-  flex-direction:column;
-  gap:2px;
-}
-
-.file-name{
-  font-weight:600;
-  max-width:200px;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-
-.file-type{
-  font-size:11px;
-  color:#999;
-}
-
-.file-remove{
-  background:none;
-  border:none;
-  color:#999;
-  font-size:16px;
-  padding:4px;
-  margin-left:8px;
-  cursor:pointer;
-  border-radius:4px;
-  transition:all 0.2s ease;
-}
-
-.file-remove:hover{
-  background:rgba(239,68,68,0.2);
-  color:#ef4444;
-}
-
-/* Mobile responsive */
 @media(max-width:768px){
-  .sidebar{width:240px}
+  .sidebar{position:fixed;z-index:100;height:100vh}
+  .mobile-toggle{display:block}
+  .theme-toggle{right:70px}
   .chat{padding:20px}
   .input-bar{padding:16px}
-  .bubble{max-width:85%}
+  .message-wrapper{max-width:85%}
+  .header{padding:0 16px}
+  .header-actions .header-btn{padding:6px 10px;font-size:12px}
 }
 </style>
 </head>
 
 <body>
+<div class="theme-toggle" onclick="toggleTheme()" title="Toggle theme (Ctrl+T)">🌓</div>
+<div class="mobile-toggle" onclick="toggleSidebar()">☰</div>
+
+<div class="drag-overlay" id="dragOverlay">
+  <div class="drag-overlay-content">
+    <div>📁</div>
+    <div>Drop files here</div>
+  </div>
+</div>
+
+<div class="modal" id="searchModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Search Conversations</h3>
+      <button class="modal-close" onclick="closeSearchModal()">×</button>
+    </div>
+    <input type="text" class="search-input" id="searchInput" placeholder="Search messages...">
+    <div class="search-results" id="searchResults"></div>
+  </div>
+</div>
+
+<div class="modal" id="exportModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Export Chat</h3>
+      <button class="modal-close" onclick="closeExportModal()">×</button>
+    </div>
+    <p style="color:#999;margin-bottom:20px">Choose export format:</p>
+    <div style="display:flex;gap:12px">
+      <button class="header-btn" onclick="exportChat('txt')" style="flex:1">📄 Text File</button>
+      <button class="header-btn" onclick="exportChat('json')" style="flex:1">📋 JSON</button>
+    </div>
+  </div>
+</div>
+
 <div class="app">
 
-<aside class="sidebar">
+<aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <div class="logo">
       <div class="logo-icon">e</div>
@@ -509,10 +249,26 @@ button{cursor:pointer}
   </div>
 
   <div class="sidebar-content">
-    <a href="https://esamz.info" target="_blank">🏠 Home</a>
-    <a href="https://esamz.info/docs" target="_blank">📚 Docs</a>
-    <a href="https://esamz.info/aboutus" target="_blank">ℹ️ About</a>
-    <a href="https://esamz.info/privacypolicy" target="_blank">🔒 Privacy</a>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Recent Chats</div>
+      <div id="chatHistory"></div>
+    </div>
+    
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Navigation</div>
+      <a href="https://esamz.info" target="_blank">🏠 Home</a>
+      <a href="https://esamz.info/docs" target="_blank">📚 Docs</a>
+      <a href="https://esamz.info/aboutus" target="_blank">ℹ️ About</a>
+      <a href="https://esamz.info/privacypolicy" target="_blank">🔒 Privacy</a>
+    </div>
+    
+    <div class="shortcuts-info">
+      <strong>Keyboard Shortcuts</strong><br>
+      <kbd>Ctrl</kbd>+<kbd>K</kbd> New Chat<br>
+      <kbd>Ctrl</kbd>+<kbd>F</kbd> Search<br>
+      <kbd>Ctrl</kbd>+<kbd>T</kbd> Theme<br>
+      <kbd>Ctrl</kbd>+<kbd>E</kbd> Export
+    </div>
   </div>
 
   <div class="sidebar-footer">
@@ -523,24 +279,33 @@ button{cursor:pointer}
 <main class="main">
   <div class="header">
     <div>Chat with eSAMz</div>
-    <div>Online</div>
+    <div class="header-actions">
+      <button class="header-btn" onclick="openSearchModal()" title="Search (Ctrl+F)">🔍 Search</button>
+      <button class="header-btn" onclick="openExportModal()" title="Export (Ctrl+E)">📥 Export</button>
+      <div class="online-status">Online</div>
+    </div>
   </div>
 
   <div class="chat" id="chat">
-    <div class="welcome">
+    <div class="welcome" id="welcomeBlock">
       <h2>Welcome to eSAMz v7</h2>
       <p>Dive into intelligent conversations.</p>
+      <div class="suggested-prompts">
+        <button class="prompt-btn" onclick="useSuggestedPrompt('Explain quantum computing in simple terms')">⚛️ Quantum Computing</button>
+        <button class="prompt-btn" onclick="useSuggestedPrompt('Write a creative story about AI')">✍️ Creative Writing</button>
+        <button class="prompt-btn" onclick="useSuggestedPrompt('Help me debug my code')">🐛 Debug Code</button>
+        <button class="prompt-btn" onclick="useSuggestedPrompt('Summarize recent AI developments')">📰 AI News</button>
+      </div>
     </div>
   </div>
 
   <div class="input-bar">
     <div class="file-preview" id="filePreview"></div>
-    <div class="input-wrap">
-      <input type="file" id="fileInput" style="display:none"
-        accept=".txt,.pdf,.doc,.docx">
-      <button class="file-btn" onclick="fileInput.click()">📎</button>
-
-      <textarea id="input" placeholder="Type your message..." rows="1"></textarea>
+    <div class="input-wrap" id="inputWrap">
+      <input type="file" id="fileInput" style="display:none" accept=".txt,.pdf,.doc,.docx,.png,.jpg,.jpeg" multiple>
+      <button class="file-btn" onclick="fileInput.click()" title="Attach files">📎</button>
+      <button class="voice-btn" id="voiceBtn" onclick="toggleVoice()" title="Voice input">🎤</button>
+      <textarea id="input" placeholder="Type your message... (Shift+Enter for new line)" rows="1"></textarea>
       <button class="send-btn" id="send">Send</button>
     </div>
   </div>
@@ -549,139 +314,721 @@ button{cursor:pointer}
 </div>
 
 <script>
+// ====== GLOBALS ======
 const chat = document.getElementById("chat")
 const input = document.getElementById("input")
 const send = document.getElementById("send")
 const fileInput = document.getElementById("fileInput")
 const filePreview = document.getElementById("filePreview")
+const voiceBtn = document.getElementById("voiceBtn")
+const inputWrap = document.getElementById("inputWrap")
+const dragOverlay = document.getElementById("dragOverlay")
+const chatHistoryEl = document.getElementById("chatHistory")
+const searchModal = document.getElementById("searchModal")
+const exportModal = document.getElementById("exportModal")
+const searchInput = document.getElementById("searchInput")
+const searchResults = document.getElementById("searchResults")
+const welcomeBlock = document.getElementById("welcomeBlock")
 
-let uploadedFile = null
-let uploadedText = ""
-let conversationHistory = []  // Store conversation history
+let uploadedFiles = []
+let isGenerating = false
+let recognition = null
+let allMessages = []          // {id, sessionId, who, text, timestamp, pinned}
+let chatSessions = []         // {id, title, createdAt}
+let currentSessionId = Date.now()
+let generationTimeout = null
+let typingElement = null
 
-/* Chat helpers */
-function add(text, who){
-  const m=document.createElement("div")
-  m.className="message "+who
-  const b=document.createElement("div")
-  b.className="bubble"
-  b.textContent=text
-  m.appendChild(b)
-  chat.appendChild(m)
-  chat.scrollTop=chat.scrollHeight
+const STORAGE_KEY = "esamz_v7_storage"
+
+// Configure marked for markdown rendering
+if (window.marked) {
+  marked.setOptions({
+    breaks: true,
+    gfm: true
+  })
 }
 
+// ====== INIT ======
+function init(){
+  loadTheme()
+  loadStorage()
+  setupVoiceRecognition()
+  setupKeyboardShortcuts()
+  setupDragDrop()
+  setupInputHandlers()
+  renderChatHistory()
+  renderSessionMessages(currentSessionId)
+  autoResizeTextarea()
+}
+
+document.addEventListener("DOMContentLoaded", init)
+
+// ====== THEME ======
+function toggleTheme(){
+  document.body.classList.toggle('light-mode')
+  localStorage.setItem('theme', document.body.classList.contains('light-mode') ? 'light' : 'dark')
+}
+
+function loadTheme(){
+  if(localStorage.getItem('theme') === 'light'){
+    document.body.classList.add('light-mode')
+  }
+}
+
+// ====== SIDEBAR ======
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('mobile-hidden')
+}
+
+// ====== STORAGE (sessions + messages) ======
+function saveStorage(){
+  const data = {
+    sessions: chatSessions,
+    messages: allMessages,
+    currentSessionId
+  }
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+  } catch(e){
+    console.warn("Storage save failed", e)
+  }
+}
+
+function loadStorage(){
+  const raw = localStorage.getItem(STORAGE_KEY)
+  if(!raw){
+    // first time
+    const id = currentSessionId
+    chatSessions = [{
+      id,
+      title: "New chat",
+      createdAt: new Date().toISOString()
+    }]
+    allMessages = []
+    currentSessionId = id
+    return
+  }
+  try{
+    const data = JSON.parse(raw)
+    chatSessions = data.sessions || []
+    allMessages = data.messages || []
+    currentSessionId = data.currentSessionId || (chatSessions[0]?.id || Date.now())
+  }catch(e){
+    console.warn("Storage load failed", e)
+    chatSessions = [{
+      id: currentSessionId,
+      title: "New chat",
+      createdAt: new Date().toISOString()
+    }]
+    allMessages = []
+  }
+}
+
+// ====== CHAT SESSION MANAGEMENT ======
 function newChat(){
-  chat.innerHTML=`<div class="welcome">
-    <h2>Welcome to eSAMz v7</h2>
-    <p>Dive into intelligent conversations.</p>
-  </div>`
-  uploadedFile=null
-  uploadedText=""
-  filePreview.style.display='none'
-  filePreview.innerHTML=""
-  conversationHistory=[]  // Clear history on new chat
-  console.log("Chat history cleared")
+  currentSessionId = Date.now()
+  chatSessions.unshift({
+    id: currentSessionId,
+    title: "New chat",
+    createdAt: new Date().toISOString()
+  })
+  clearChatUI()
+  renderChatHistory()
+  saveStorage()
 }
 
-/* File handling */
-fileInput.onchange=async()=>{
-  const file=fileInput.files[0]
-  if(!file)return
-  uploadedFile=file
-  uploadedText=""
+function clearChatUI(){
+  chat.innerHTML = ""
+  if(welcomeBlock){
+    chat.appendChild(welcomeBlock)
+  }
+}
 
-  if(file.type==="text/plain"){
-    uploadedText=await file.text()
+function renderChatHistory(){
+  chatHistoryEl.innerHTML = ""
+  if(chatSessions.length === 0) return
+  chatSessions.forEach(session => {
+    const el = document.createElement("div")
+    el.className = "chat-history-item"
+    if(session.id === currentSessionId){
+      el.style.background = "rgba(102,126,234,0.12)"
+      el.style.color = "#fff"
+    }
+    const title = document.createElement("div")
+    title.className = "chat-title"
+    title.textContent = session.title || "Untitled chat"
+
+    const date = document.createElement("div")
+    date.className = "chat-date"
+    const d = new Date(session.createdAt)
+    date.textContent = d.toLocaleDateString(undefined,{month:'short',day:'numeric'})
+
+    el.appendChild(title)
+    el.appendChild(date)
+    el.addEventListener("click", () => {
+      currentSessionId = session.id
+      renderChatHistory()
+      renderSessionMessages(currentSessionId)
+      saveStorage()
+    })
+    chatHistoryEl.appendChild(el)
+  })
+}
+
+function renderSessionMessages(sessionId){
+  clearChatUI()
+  const messages = allMessages.filter(m => m.sessionId === sessionId)
+  if(messages.length === 0 && welcomeBlock){
+    if(!chat.contains(welcomeBlock)) chat.appendChild(welcomeBlock)
+    return
+  }
+  if(welcomeBlock && chat.contains(welcomeBlock)){
+    chat.removeChild(welcomeBlock)
+  }
+  messages.forEach(msg => {
+    add(msg.text, msg.who, new Date(msg.timestamp), msg.id, msg.pinned, false)
+  })
+  chat.scrollTop = chat.scrollHeight
+}
+
+// ====== MESSAGE RENDERING ======
+function formatTime(ts){
+  try{
+    const d = ts instanceof Date ? ts : new Date(ts)
+    return d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})
+  }catch{
+    return ""
+  }
+}
+
+/**
+ * Add message to UI and optionally to storage
+ * @param {string} text 
+ * @param {'user'|'ai'} who 
+ * @param {Date} timestamp 
+ * @param {string} existingId - if provided we reuse id, else create new
+ * @param {boolean} pinned 
+ * @param {boolean} addToStorage - true when adding new messages
+ */
+function add(text, who, timestamp = new Date(), existingId = null, pinned = false, addToStorage = true){
+  if(welcomeBlock && chat.contains(welcomeBlock)){
+    chat.removeChild(welcomeBlock)
   }
 
-  // Get file extension
-  const ext = file.name.split('.').pop().toUpperCase()
-  
-  // Display file badge
-  filePreview.style.display='block'
-  filePreview.innerHTML=`
-    <div class="file-badge">
-      <div class="file-icon">${ext}</div>
-      <div class="file-info">
-        <div class="file-name">${file.name}</div>
-        <div class="file-type">${(file.size/1024).toFixed(1)} KB${uploadedText ? ' • Loaded' : ''}</div>
-      </div>
-      <button class="file-remove" onclick="removeFile()">✕</button>
-    </div>
-  `
-}
+  const id = existingId || (Date.now() + "-" + Math.random().toString(16).slice(2))
 
-function removeFile(){
-  uploadedFile=null
-  uploadedText=""
-  fileInput.value=""
-  filePreview.style.display='none'
-  filePreview.innerHTML=""
-}
+  const msgEl = document.createElement("div")
+  msgEl.className = "message " + (who === "user" ? "user" : "ai")
+  msgEl.id = "msg-" + id
 
-/* Send */
-async function sendMsg(){
-  const text=input.value.trim()
-  if(!text && !uploadedFile)return
+  const wrapper = document.createElement("div")
+  wrapper.className = "message-wrapper"
 
-  let payload=text
-  if(uploadedText){
-    payload=`[FILE CONTENT START]\n${uploadedText}\n[FILE CONTENT END]\n\n${text}`
-  } else if(uploadedFile){
-    payload=`[Attached file: ${uploadedFile.name}]\n\n${text}`
+  const header = document.createElement("div")
+  header.className = "message-header"
+  const whoSpan = document.createElement("span")
+  whoSpan.textContent = who === "user" ? "You" : "eSAMz"
+  const timeSpan = document.createElement("span")
+  timeSpan.className = "message-time"
+  timeSpan.textContent = formatTime(timestamp)
+
+  header.appendChild(whoSpan)
+  header.appendChild(timeSpan)
+
+  const bubble = document.createElement("div")
+  bubble.className = "bubble"
+  // markdown for AI, simple text for user
+  if(who === "ai" && window.marked){
+    bubble.innerHTML = marked.parse(text)
+  } else {
+    bubble.textContent = text
   }
 
-  add(text || "[File sent]", "user")
-  input.value=""
-  fileInput.value=""
-  filePreview.style.display='none'
-  filePreview.innerHTML=""
-  uploadedFile=null
-  uploadedText=""
+  if(pinned){
+    const pinIcon = document.createElement("div")
+    pinIcon.className = "pinned-indicator"
+    pinIcon.textContent = "📌"
+    msgEl.appendChild(pinIcon)
+  }
 
-  // Add user message to history
-  conversationHistory.push({
-    role: "user",
-    content: payload
+  const actions = document.createElement("div")
+  actions.className = "message-actions"
+
+  const copyBtn = document.createElement("button")
+  copyBtn.className = "action-btn"
+  copyBtn.innerHTML = "📋 <span>Copy</span>"
+  copyBtn.addEventListener("click", () => copyMessage(text))
+
+  const pinBtn = document.createElement("button")
+  pinBtn.className = "action-btn"
+  pinBtn.innerHTML = (pinned ? "📌 <span>Unpin</span>" : "📌 <span>Pin</span>")
+  pinBtn.addEventListener("click", () => togglePinMessage(id, msgEl, pinBtn))
+
+  const delBtn = document.createElement("button")
+  delBtn.className = "action-btn"
+  delBtn.innerHTML = "🗑️ <span>Delete</span>"
+  delBtn.addEventListener("click", () => deleteMessage(id, msgEl))
+
+  actions.appendChild(copyBtn)
+  actions.appendChild(pinBtn)
+  actions.appendChild(delBtn)
+
+  wrapper.appendChild(header)
+  wrapper.appendChild(bubble)
+  wrapper.appendChild(actions)
+  msgEl.appendChild(wrapper)
+  chat.appendChild(msgEl)
+  chat.scrollTop = chat.scrollHeight
+
+  if(addToStorage){
+    const msgObj = {
+      id,
+      sessionId: currentSessionId,
+      who,
+      text,
+      timestamp: timestamp.toISOString(),
+      pinned: !!pinned
+    }
+    allMessages.push(msgObj)
+    updateSessionTitleFromFirstUserMessage()
+    saveStorage()
+  }
+}
+
+function updateSessionTitleFromFirstUserMessage(){
+  const sessionMsgs = allMessages.filter(m => m.sessionId === currentSessionId && m.who === "user")
+  if(sessionMsgs.length === 0) return
+  const first = sessionMsgs[0]
+  const text = first.text.replace(/\s+/g," ").trim()
+  if(!text) return
+  const title = text.length > 40 ? text.slice(0,40) + "..." : text
+  const idx = chatSessions.findIndex(s => s.id === currentSessionId)
+  if(idx !== -1){
+    chatSessions[idx].title = title
+    renderChatHistory()
+    saveStorage()
+  }
+}
+
+function copyMessage(text){
+  if(!navigator.clipboard) return
+  navigator.clipboard.writeText(text).catch(()=>{})
+}
+
+function togglePinMessage(id, msgEl, btn){
+  const msg = allMessages.find(m => m.id === id)
+  if(!msg) return
+  msg.pinned = !msg.pinned
+
+  let pinIcon = msgEl.querySelector(".pinned-indicator")
+  if(msg.pinned){
+    if(!pinIcon){
+      pinIcon = document.createElement("div")
+      pinIcon.className = "pinned-indicator"
+      pinIcon.textContent = "📌"
+      msgEl.appendChild(pinIcon)
+    }
+    btn.innerHTML = "📌 <span>Unpin</span>"
+  } else {
+    if(pinIcon) pinIcon.remove()
+    btn.innerHTML = "📌 <span>Pin</span>"
+  }
+  saveStorage()
+}
+
+function deleteMessage(id, msgEl){
+  allMessages = allMessages.filter(m => m.id !== id)
+  msgEl.remove()
+  saveStorage()
+  if(allMessages.filter(m => m.sessionId === currentSessionId).length === 0){
+    clearChatUI()
+  }
+}
+
+// ====== SEND MESSAGE / AI RESPONSE ======
+function setupInputHandlers(){
+  send.addEventListener("click", handleSendClick)
+
+  input.addEventListener("keydown", e => {
+    if(e.key === "Enter" && !e.shiftKey){
+      e.preventDefault()
+      handleSendClick()
+    }
   })
 
-  console.log(`Sending message with ${conversationHistory.length} history items`)
+  fileInput.addEventListener("change", handleFilesSelected)
+}
 
-  try{
-    const r=await fetch("/api/chat",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        message: payload,
-        history: conversationHistory  // Send history with request
-      })
+function handleSendClick(){
+  if(isGenerating){
+    // stop generation
+    stopGeneration()
+    return
+  }
+
+  const text = input.value.trim()
+  if(!text && uploadedFiles.length === 0) return
+
+  const fileNote = uploadedFiles.length
+    ? "\n\n[Attached files: " + uploadedFiles.map(f=>f.name).join(", ") + "]"
+    : ""
+
+  const finalText = text + fileNote
+
+  add(finalText, "user", new Date(), null, false, true)
+
+  // clear input and files
+  input.value = ""
+  autoResizeTextarea()
+  uploadedFiles = []
+  updateFilePreview()
+
+  generateAIResponse(finalText)
+}
+
+// Placeholder AI call (echo). Replace with your real backend
+function generateAIResponse(prompt){
+  isGenerating = true
+  send.textContent = "Stop"
+  send.classList.add("stop-btn")
+
+  typingElement = createTypingIndicator()
+  chat.appendChild(typingElement)
+  chat.scrollTop = chat.scrollHeight
+
+  // Simulated delay
+  const delay = 900 + Math.random()*800
+  generationTimeout = setTimeout(() => {
+    if(!isGenerating) return
+    if(typingElement) typingElement.remove()
+
+    const reply = "You said:\n\n" + prompt + "\n\n(Connect this UI to your backend by editing generateAIResponse.)"
+    add(reply, "ai", new Date(), null, false, true)
+
+    isGenerating = false
+    send.textContent = "Send"
+    send.classList.remove("stop-btn")
+  }, delay)
+}
+
+function stopGeneration(){
+  isGenerating = false
+  if(generationTimeout) clearTimeout(generationTimeout)
+  if(typingElement) typingElement.remove()
+  send.textContent = "Send"
+  send.classList.remove("stop-btn")
+}
+
+function createTypingIndicator(){
+  const msgEl = document.createElement("div")
+  msgEl.className = "message ai"
+  const wrapper = document.createElement("div")
+  wrapper.className = "message-wrapper"
+  const bubble = document.createElement("div")
+  bubble.className = "typing-indicator"
+  bubble.innerHTML = `
+    <div class="typing-dot"></div>
+    <div class="typing-dot"></div>
+    <div class="typing-dot"></div>
+  `
+  wrapper.appendChild(bubble)
+  msgEl.appendChild(wrapper)
+  return msgEl
+}
+
+// ====== FILES ======
+function handleFilesSelected(e){
+  const files = Array.from(e.target.files || [])
+  if(files.length === 0) return
+  uploadedFiles = files
+  updateFilePreview()
+}
+
+function updateFilePreview(){
+  filePreview.innerHTML = ""
+  if(uploadedFiles.length === 0){
+    filePreview.style.display = "none"
+    return
+  }
+  filePreview.style.display = "flex"
+  uploadedFiles.forEach((file, idx) => {
+    const badge = document.createElement("div")
+    badge.className = "file-badge"
+
+    const icon = document.createElement("div")
+    icon.className = "file-icon"
+    icon.textContent = file.name.split(".").pop().toUpperCase().slice(0,4)
+
+    const info = document.createElement("div")
+    info.className = "file-info"
+    const name = document.createElement("div")
+    name.className = "file-name"
+    name.textContent = file.name
+    const type = document.createElement("div")
+    type.className = "file-type"
+    type.textContent = Math.round(file.size/1024) + " KB"
+
+    info.appendChild(name)
+    info.appendChild(type)
+
+    const removeBtn = document.createElement("button")
+    removeBtn.className = "file-remove"
+    removeBtn.innerHTML = "×"
+    removeBtn.addEventListener("click", () => {
+      uploadedFiles.splice(idx,1)
+      updateFilePreview()
     })
-    const j=await r.json()
-    const reply = j.reply || "No response."
-    
-    add(reply, "ai")
-    
-    // Add assistant response to history
-    conversationHistory.push({
-      role: "assistant",
-      content: reply
-    })
-    
-    console.log(`History now has ${conversationHistory.length} items`)
-  }catch(err){
-    add("Error connecting to AI.", "ai")
-    console.error("API Error:", err)
+
+    badge.appendChild(icon)
+    badge.appendChild(info)
+    badge.appendChild(removeBtn)
+    filePreview.appendChild(badge)
+  })
+}
+
+// Drag and drop
+function setupDragDrop(){
+  let dragCounter = 0
+
+  document.addEventListener("dragenter", e => {
+    e.preventDefault()
+    dragCounter++
+    dragOverlay.classList.add("show")
+    inputWrap.classList.add("drag-over")
+  })
+
+  document.addEventListener("dragleave", e => {
+    e.preventDefault()
+    dragCounter--
+    if(dragCounter <= 0){
+      dragOverlay.classList.remove("show")
+      inputWrap.classList.remove("drag-over")
+      dragCounter = 0
+    }
+  })
+
+  document.addEventListener("dragover", e => {
+    e.preventDefault()
+  })
+
+  document.addEventListener("drop", e => {
+    e.preventDefault()
+    dragCounter = 0
+    dragOverlay.classList.remove("show")
+    inputWrap.classList.remove("drag-over")
+
+    const files = Array.from(e.dataTransfer.files || [])
+    if(files.length === 0) return
+    uploadedFiles = files
+    updateFilePreview()
+  })
+}
+
+// ====== VOICE ======
+function setupVoiceRecognition(){
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+  if(!SpeechRecognition){
+    voiceBtn.title = "Voice not supported in this browser"
+    voiceBtn.style.opacity = "0.5"
+    voiceBtn.disabled = true
+    return
+  }
+
+  recognition = new SpeechRecognition()
+  recognition.lang = "en-US"
+  recognition.interimResults = true
+  recognition.continuous = false
+
+  let finalTranscript = ""
+
+  recognition.onstart = () => {
+    voiceBtn.classList.add("recording")
+  }
+
+  recognition.onend = () => {
+    voiceBtn.classList.remove("recording")
+  }
+
+  recognition.onerror = () => {
+    voiceBtn.classList.remove("recording")
+  }
+
+  recognition.onresult = (event) => {
+    finalTranscript = ""
+    for(let i=0;i<event.results.length;i++){
+      const res = event.results[i]
+      if(res.isFinal){
+        finalTranscript += res[0].transcript
+      }
+    }
+    if(finalTranscript){
+      input.value = (input.value ? input.value + " " : "") + finalTranscript.trim()
+      autoResizeTextarea()
+    }
   }
 }
 
-send.onclick=sendMsg
-input.addEventListener("keydown",e=>{
-  if(e.key==="Enter" && !e.shiftKey){
-    e.preventDefault()
-    sendMsg()
+function toggleVoice(){
+  if(!recognition) return
+  if(voiceBtn.classList.contains("recording")){
+    recognition.stop()
+  }else{
+    recognition.start()
   }
-})
+}
+
+// ====== TEXTAREA AUTO SIZE ======
+function autoResizeTextarea(){
+  const el = input
+  if(!el) return
+  el.style.height = "auto"
+  el.style.height = Math.min(el.scrollHeight, 200) + "px"
+}
+input.addEventListener("input", autoResizeTextarea)
+
+// ====== KEYBOARD SHORTCUTS ======
+function setupKeyboardShortcuts(){
+  document.addEventListener('keydown', e => {
+    if(e.ctrlKey && e.key.toLowerCase() === 'k'){
+      e.preventDefault()
+      newChat()
+    }
+    if(e.ctrlKey && e.key.toLowerCase() === 'f'){
+      e.preventDefault()
+      openSearchModal()
+    }
+    if(e.ctrlKey && e.key.toLowerCase() === 't'){
+      e.preventDefault()
+      toggleTheme()
+    }
+    if(e.ctrlKey && e.key.toLowerCase() === 'e'){
+      e.preventDefault()
+      openExportModal()
+    }
+  })
+}
+
+// ====== SEARCH ======
+function openSearchModal(){
+  searchModal.classList.add("show")
+  searchInput.value = ""
+  searchResults.innerHTML = ""
+  setTimeout(() => searchInput.focus(), 50)
+}
+
+function closeSearchModal(){
+  searchModal.classList.remove("show")
+}
+
+searchInput.addEventListener("input", handleSearchInput)
+
+function handleSearchInput(){
+  const q = searchInput.value.trim().toLowerCase()
+  searchResults.innerHTML = ""
+  if(!q) return
+  const matches = allMessages.filter(m => m.text.toLowerCase().includes(q))
+  if(matches.length === 0){
+    const empty = document.createElement("div")
+    empty.style.color = "#777"
+    empty.style.fontSize = "13px"
+    empty.textContent = "No results."
+    searchResults.appendChild(empty)
+    return
+  }
+  matches.slice(0,100).forEach(m => {
+    const item = document.createElement("div")
+    item.className = "search-result-item"
+
+    const title = document.createElement("div")
+    const session = chatSessions.find(s => s.id === m.sessionId)
+    title.textContent = (m.who === "user" ? "You · " : "eSAMz · ") +
+      (session?.title || "Chat") +
+      " · " + formatTime(m.timestamp)
+
+    const preview = document.createElement("div")
+    preview.className = "search-result-preview"
+    const idx = m.text.toLowerCase().indexOf(q)
+    let snippet = m.text
+    if(idx !== -1){
+      const start = Math.max(0, idx - 40)
+      snippet = (start > 0 ? "..." : "") +
+        m.text.slice(start, idx + q.length + 40) +
+        (idx + q.length + 40 < m.text.length ? "..." : "")
+    }
+    preview.textContent = snippet
+
+    item.appendChild(title)
+    item.appendChild(preview)
+
+    item.addEventListener("click", () => {
+      currentSessionId = m.sessionId
+      renderChatHistory()
+      renderSessionMessages(currentSessionId)
+      highlightMessage(m.id)
+      closeSearchModal()
+    })
+
+    searchResults.appendChild(item)
+  })
+}
+
+function highlightMessage(id){
+  const el = document.getElementById("msg-" + id)
+  if(!el) return
+  el.scrollIntoView({behavior:"smooth",block:"center"})
+  el.style.boxShadow = "0 0 0 2px rgba(102,126,234,0.8)"
+  setTimeout(() => {
+    el.style.boxShadow = ""
+  }, 1500)
+}
+
+// ====== EXPORT ======
+function openExportModal(){
+  exportModal.classList.add("show")
+}
+
+function closeExportModal(){
+  exportModal.classList.remove("show")
+}
+
+function exportChat(format){
+  const msgs = allMessages.filter(m => m.sessionId === currentSessionId)
+  if(msgs.length === 0) return
+
+  if(format === "txt"){
+    let content = ""
+    msgs.forEach(m => {
+      content += `[${formatTime(m.timestamp)}] ${m.who === "user" ? "You" : "eSAMz"}:\n${m.text}\n\n`
+    })
+    const blob = new Blob([content], {type:"text/plain;charset=utf-8"})
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "esamz_chat.txt"
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  } else if(format === "json"){
+    const blob = new Blob([JSON.stringify(msgs,null,2)], {type:"application/json;charset=utf-8"})
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "esamz_chat.json"
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+}
+
+// ====== SUGGESTED PROMPTS ======
+function useSuggestedPrompt(text){
+  input.value = text
+  autoResizeTextarea()
+  input.focus()
+}
 </script>
 </body>
 </html>
