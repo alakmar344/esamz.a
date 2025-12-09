@@ -629,6 +629,40 @@ button{cursor:pointer}
   .input-bar{padding:16px}
   .bubble{max-width:85%}
 }
+ /* ===== ADDITIONS: AI TOOLS ===== */
+.ai-tools{
+  display:flex;
+  gap:10px;
+  margin-top:10px;
+  opacity:0.6;
+  font-size:13px;
+}
+.ai-tools button{
+  background:none;
+  border:none;
+  color:#aaa;
+  cursor:pointer;
+}
+.ai-tools button:hover{color:#fff}
+
+/* ===== CODE CANVAS ===== */
+.code-canvas{
+  background:#0f0f0f;
+  border-top:1px solid rgba(255,255,255,0.06);
+  padding:16px;
+  display:none;
+}
+.code-canvas textarea{
+  width:100%;
+  height:200px;
+  background:#000;
+  color:#0f0;
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:8px;
+  padding:12px;
+  font-family:monospace;
+  font-size:14px;
+}
 </style>
 </head>
 
@@ -680,6 +714,9 @@ button{cursor:pointer}
       <button class="send-btn" id="send">Send</button>
     </div>
   </div>
+ <div class="code-canvas" id="codeCanvas">
+  <textarea placeholder="Paste or write code here..."></textarea>
+</div>
 </main>
 
 </div>
@@ -818,6 +855,47 @@ input.addEventListener("keydown",e=>{
     sendMsg()
   }
 })
+ /* ===== AI EXTRAS ===== */
+function attachTools(bubble, text){
+  const tools=document.createElement("div")
+  tools.className="ai-tools"
+
+  const copy=document.createElement("button")
+  copy.textContent="📋 Copy"
+  copy.onclick=()=>navigator.clipboard.writeText(text)
+
+  const like=document.createElement("button")
+  like.textContent="👍"
+  like.onclick=()=>console.log("Liked")
+
+  const dislike=document.createElement("button")
+  dislike.textContent="👎"
+  dislike.onclick=()=>console.log("Disliked")
+
+  const canvasBtn=document.createElement("button")
+  canvasBtn.textContent="🧾 Canvas"
+  canvasBtn.onclick=()=>{
+    const c=document.getElementById("codeCanvas")
+    c.style.display = c.style.display==="block"?"none":"block"
+  }
+
+  tools.append(copy,like,dislike,canvasBtn)
+  bubble.appendChild(tools)
+}
+ function add(text, who){
+  const m=document.createElement("div")
+  m.className="message "+who
+  const b=document.createElement("div")
+  b.className="bubble"
+  b.textContent=text
+
+  if(who==="ai") attachTools(b, text)
+
+  m.appendChild(b)
+  chat.appendChild(m)
+  chat.scrollTop=chat.scrollHeight
+}
+
 </script>
 </body>
 </html>    
