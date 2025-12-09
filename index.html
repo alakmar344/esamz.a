@@ -418,13 +418,72 @@ button{cursor:pointer}
 }
 
 .file-preview{
-  margin-top:12px;
+  margin-bottom:12px;
   font-size:13px;
-  color:#aaa;
-  padding:8px 12px;
-  background:rgba(102,126,234,0.1);
-  border-radius:8px;
-  border-left:3px solid #667eea;
+  display:none;
+}
+
+.file-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 14px;
+  background:rgba(102,126,234,0.15);
+  border:1px solid rgba(102,126,234,0.3);
+  border-radius:10px;
+  color:#e5e5e5;
+  font-size:13px;
+  font-weight:500;
+  animation:slideUp 0.3s ease;
+}
+
+.file-icon{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:28px;
+  height:28px;
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  border-radius:6px;
+  font-size:11px;
+  font-weight:700;
+  color:white;
+}
+
+.file-info{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+
+.file-name{
+  font-weight:600;
+  max-width:200px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.file-type{
+  font-size:11px;
+  color:#999;
+}
+
+.file-remove{
+  background:none;
+  border:none;
+  color:#999;
+  font-size:16px;
+  padding:4px;
+  margin-left:8px;
+  cursor:pointer;
+  border-radius:4px;
+  transition:all 0.2s ease;
+}
+
+.file-remove:hover{
+  background:rgba(239,68,68,0.2);
+  color:#ef4444;
 }
 
 /* Mobile responsive */
@@ -475,6 +534,7 @@ button{cursor:pointer}
   </div>
 
   <div class="input-bar">
+    <div class="file-preview" id="filePreview"></div>
     <div class="input-wrap">
       <input type="file" id="fileInput" style="display:none"
         accept=".txt,.pdf,.doc,.docx">
@@ -483,7 +543,6 @@ button{cursor:pointer}
       <textarea id="input" placeholder="Type your message..." rows="1"></textarea>
       <button class="send-btn" id="send">Send</button>
     </div>
-    <div class="file-preview" id="filePreview"></div>
   </div>
 </main>
 
@@ -519,7 +578,8 @@ function newChat(){
   </div>`
   uploadedFile=null
   uploadedText=""
-  filePreview.textContent=""
+  filePreview.style.display='none'
+  filePreview.innerHTML=""
   conversationHistory=[]  // Clear history on new chat
   console.log("Chat history cleared")
 }
@@ -535,9 +595,29 @@ fileInput.onchange=async()=>{
     uploadedText=await file.text()
   }
 
-  filePreview.textContent=
-    "Attached: "+file.name+
-    (uploadedText ? " (text loaded)" : " (name only)")
+  // Get file extension
+  const ext = file.name.split('.').pop().toUpperCase()
+  
+  // Display file badge
+  filePreview.style.display='block'
+  filePreview.innerHTML=`
+    <div class="file-badge">
+      <div class="file-icon">${ext}</div>
+      <div class="file-info">
+        <div class="file-name">${file.name}</div>
+        <div class="file-type">${(file.size/1024).toFixed(1)} KB${uploadedText ? ' • Loaded' : ''}</div>
+      </div>
+      <button class="file-remove" onclick="removeFile()">✕</button>
+    </div>
+  `
+}
+
+function removeFile(){
+  uploadedFile=null
+  uploadedText=""
+  fileInput.value=""
+  filePreview.style.display='none'
+  filePreview.innerHTML=""
 }
 
 /* Send */
@@ -555,7 +635,8 @@ async function sendMsg(){
   add(text || "[File sent]", "user")
   input.value=""
   fileInput.value=""
-  filePreview.textContent=""
+  filePreview.style.display='none'
+  filePreview.innerHTML=""
   uploadedFile=null
   uploadedText=""
 
