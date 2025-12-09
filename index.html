@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>eSAMz v7 - AI Assistant</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- OFFICIAL eSAMz SCHEMA -->
+ <!-- OFFICIAL eSAMz SCHEMA -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -142,200 +142,499 @@
   </script>
 
 <style>
-/* --------------------------- */
-/* THEME VARIABLES             */
-/* --------------------------- */
-:root {
-  --bg: #0a0a0a;
-  --text: #e5e5e5;
-  --subtext: #888;
-  --card-bg: rgba(17,17,17,0.8);
-  --bubble-ai: rgba(17,17,17,0.8);
-  --bubble-user-grad1: #667eea;
-  --bubble-user-grad2: #764ba2;
-  --border: rgba(255,255,255,0.06);
-}
-.header {
-    flex-shrink: 0;
-}
-
-.main {
-    min-width: 0 !important;
-}
-
-[data-theme="light"] {
-  --bg: #fafafa;
-  --text: #222;
-  --subtext: #555;
-  --card-bg: rgba(255,255,255,0.8);
-  --bubble-ai: #ffffff;
-  --border: rgba(0,0,0,0.1);
-}
-
-/* --------------------------- */
-/* GLOBAL + ORIGINAL STYLES    */
-/* (Preserved, now using vars) */
-/* --------------------------- */
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{
-  height:100%;
-  font-family:'Inter',sans-serif;
-  background:var(--bg);
-  color:var(--text);
-}
+html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#0a0a0a;color:#e5e5e5}
 .app{display:flex;height:100vh;position:relative;overflow:hidden}
 
+/* Animated background gradient */
 .app::before{
   content:'';
   position:absolute;
-  top:-50%; left:-50%;
-  width:200%; height:200%;
+  top:-50%;
+  left:-50%;
+  width:200%;
+  height:200%;
   background:radial-gradient(circle at 20% 50%, rgba(102,126,234,0.08) 0%, transparent 50%),
              radial-gradient(circle at 80% 80%, rgba(118,75,162,0.08) 0%, transparent 50%);
   animation:gradient 20s ease infinite;
-  pointer-events:none; z-index:0;
+  pointer-events:none;
+  z-index:0;
 }
+
 @keyframes gradient{
   0%,100%{transform:translate(0,0) rotate(0deg)}
   33%{transform:translate(5%,5%) rotate(120deg)}
   66%{transform:translate(-5%,10%) rotate(240deg)}
 }
 
-/* --------------------------- */
-/* SIDEBAR (unchanged)         */
-/* --------------------------- */
+/* Sidebar */
 .sidebar{
-  width:280px; background:var(--card-bg);
+  width:280px;
+  background:rgba(17,17,17,0.8);
   backdrop-filter:blur(20px);
-  border-right:1px solid var(--border);
-  display:flex; flex-direction:column;
-  position:relative; z-index:10;
+  border-right:1px solid rgba(255,255,255,0.06);
+  display:flex;
+  flex-direction:column;
+  position:relative;
+  z-index:10;
   box-shadow:2px 0 24px rgba(0,0,0,0.4);
 }
-.sidebar-header{padding:24px;border-bottom:1px solid var(--border)}
-.logo{display:flex;gap:12px;align-items:center;margin-bottom:16px;animation:slideDown 0.6s ease}
-@keyframes slideDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
-.logo-icon{
-  width:42px;height:42px;border-radius:12px;
-  background:linear-gradient(135deg,#667eea,#764ba2);
-  display:flex;align-items:center;justify-content:center;
-  font-size:20px;font-weight:800;
+
+.sidebar-header{
+  padding:24px;
+  border-bottom:1px solid rgba(255,255,255,0.06);
 }
+
+.logo{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  margin-bottom:16px;
+  animation:slideDown 0.6s ease;
+}
+
+@keyframes slideDown{
+  from{opacity:0;transform:translateY(-20px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+.logo-icon{
+  width:42px;
+  height:42px;
+  border-radius:12px;
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:800;
+  font-size:20px;
+  box-shadow:0 8px 24px rgba(102,126,234,0.3);
+  position:relative;
+  overflow:hidden;
+}
+
+.logo-icon::before{
+  content:'';
+  position:absolute;
+  top:-50%;
+  left:-50%;
+  width:200%;
+  height:200%;
+  background:linear-gradient(45deg,transparent,rgba(255,255,255,0.1),transparent);
+  transform:rotate(45deg);
+  animation:shine 3s infinite;
+}
+
+@keyframes shine{
+  0%{transform:translateX(-100%) translateY(-100%) rotate(45deg)}
+  100%{transform:translateX(100%) translateY(100%) rotate(45deg)}
+}
+
 .logo div{
-  font-size:18px;font-weight:700;
+  font-size:18px;
+  font-weight:700;
   background:linear-gradient(135deg,#667eea,#764ba2);
   -webkit-background-clip:text;
   -webkit-text-fill-color:transparent;
+  background-clip:text;
 }
 
 .new-chat-btn{
-  width:100%;padding:14px;border:none;border-radius:12px;
+  width:100%;
+  padding:14px;
+  border:none;
+  border-radius:12px;
   background:linear-gradient(135deg,#667eea,#764ba2);
-  color:#fff;cursor:pointer;font-weight:600;font-size:14px;
-  transition:.3s;box-shadow:0 4px 16px rgba(102,126,234,.3);
+  color:white;
+  cursor:pointer;
+  font-weight:600;
+  font-size:14px;
+  transition:all 0.3s ease;
+  box-shadow:0 4px 16px rgba(102,126,234,0.3);
+  position:relative;
+  overflow:hidden;
 }
-.new-chat-btn:hover{transform:translateY(-2px)}
 
-/* --------------------------- */
-/* HEADER + THEME TOGGLE       */
-/* --------------------------- */
+.new-chat-btn::before{
+  content:'';
+  position:absolute;
+  top:0;
+  left:-100%;
+  width:100%;
+  height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent);
+  transition:left 0.5s ease;
+}
+
+.new-chat-btn:hover::before{
+  left:100%;
+}
+
+.new-chat-btn:hover{
+  transform:translateY(-2px);
+  box-shadow:0 6px 24px rgba(102,126,234,0.4);
+}
+
+.new-chat-btn:active{
+  transform:translateY(0);
+}
+
+.sidebar-content{
+  padding:16px;
+  flex:1;
+  overflow-y:auto;
+}
+
+.sidebar-content a{
+  display:flex;
+  align-items:center;
+  padding:12px 14px;
+  color:#999;
+  text-decoration:none;
+  border-radius:10px;
+  transition:all 0.3s ease;
+  margin-bottom:4px;
+  font-size:14px;
+  font-weight:500;
+  position:relative;
+}
+
+.sidebar-content a::before{
+  content:'';
+  position:absolute;
+  left:0;
+  top:50%;
+  transform:translateY(-50%);
+  width:3px;
+  height:0;
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  border-radius:0 2px 2px 0;
+  transition:height 0.3s ease;
+}
+
+.sidebar-content a:hover{
+  background:rgba(102,126,234,0.1);
+  color:#fff;
+  transform:translateX(4px);
+}
+
+.sidebar-content a:hover::before{
+  height:60%;
+}
+
+.sidebar-footer{
+  padding:16px;
+  font-size:11px;
+  color:#666;
+  border-top:1px solid rgba(255,255,255,0.06);
+  text-align:center;
+  line-height:1.6;
+  background:rgba(0,0,0,0.2);
+}
+
+/* Main */
+.main{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  position:relative;
+  z-index:1;
+}
+
 .header{
-  height:70px;background:var(--card-bg);
+  height:70px;
+  background:rgba(17,17,17,0.8);
   backdrop-filter:blur(20px);
-  border-bottom:1px solid var(--border);
-  display:flex; align-items:center; justify-content:space-between;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
   padding:0 32px;
+  box-shadow:0 2px 16px rgba(0,0,0,0.2);
 }
-.theme-toggle{
-  width:38px;height:38px;border-radius:50%;
-  background:var(--bubble-ai);
-  border:1px solid var(--border);
-  display:flex;align-items:center;justify-content:center;
-  cursor:pointer;font-size:18px;
-  transition:0.3s;
-}
-.theme-toggle:hover{opacity:0.7}
 
-/* --------------------------- */
-/* CHAT + BUBBLES              */
-/* --------------------------- */
-.chat{flex:1;padding:32px;overflow-y:auto;scroll-behavior:smooth}
+.header > div:first-child{
+  font-size:16px;
+  font-weight:600;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.header > div:last-child{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:#4ade80;
+  font-size:14px;
+  font-weight:500;
+}
+
+.header > div:last-child::before{
+  content:'●';
+  font-size:20px;
+  animation:pulse 2s ease infinite;
+}
+
+@keyframes pulse{
+  0%,100%{opacity:1}
+  50%{opacity:0.4}
+}
+
+.chat{
+  flex:1;
+  padding:32px;
+  overflow-y:auto;
+  scroll-behavior:smooth;
+}
+
+.chat::-webkit-scrollbar{
+  width:8px;
+}
+
+.chat::-webkit-scrollbar-track{
+  background:transparent;
+}
+
+.chat::-webkit-scrollbar-thumb{
+  background:rgba(102,126,234,0.3);
+  border-radius:4px;
+}
+
+.chat::-webkit-scrollbar-thumb:hover{
+  background:rgba(102,126,234,0.5);
+}
+
 .welcome{
-  padding:48px 32px;margin-bottom:24px;border-radius:20px;
+  padding:48px 32px;
+  margin-bottom:24px;
+  border-radius:20px;
   background:linear-gradient(135deg,rgba(102,126,234,0.15),rgba(118,75,162,0.15));
-  border:1px solid rgba(102,126,234,.2);
-  animation:fadeIn .6s ease;text-align:center;
+  text-align:center;
+  border:1px solid rgba(102,126,234,0.2);
+  backdrop-filter:blur(10px);
+  animation:fadeIn 0.6s ease;
 }
-@keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1}}
 
-.message{display:flex;margin-bottom:20px;animation:slideUp 0.4s ease}
-@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1}}
+@keyframes fadeIn{
+  from{opacity:0;transform:translateY(20px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+.welcome h2{
+  font-size:32px;
+  margin-bottom:12px;
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  font-weight:700;
+}
+
+.welcome p{
+  font-size:16px;
+  color:#999;
+  font-weight:500;
+}
+
+.message{
+  display:flex;
+  margin-bottom:20px;
+  animation:slideUp 0.4s ease;
+}
+
+@keyframes slideUp{
+  from{opacity:0;transform:translateY(10px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
 .message.user{justify-content:flex-end}
 .message.ai{justify-content:flex-start}
 
 .bubble{
-  max-width:70%;padding:16px 20px;border-radius:18px;
-  font-size:15px;line-height:1.6;white-space:pre-wrap;
+  max-width:70%;
+  padding:16px 20px;
+  border-radius:18px;
+  white-space:pre-wrap;
+  font-size:15px;
+  line-height:1.6;
+  position:relative;
+  box-shadow:0 2px 12px rgba(0,0,0,0.1);
 }
+
 .user .bubble{
-  background:linear-gradient(135deg,var(--bubble-user-grad1),var(--bubble-user-grad2));
-  color:white;border-bottom-right-radius:4px;
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  color:white;
+  border-bottom-right-radius:4px;
 }
+
 .ai .bubble{
-  background:var(--bubble-ai);
-  border:1px solid var(--border);
+  background:rgba(17,17,17,0.8);
+  border:1px solid rgba(255,255,255,0.08);
+  backdrop-filter:blur(10px);
   border-bottom-left-radius:4px;
 }
 
-/* --------------------------- */
-/* AI LOADING INDICATOR        */
-/* --------------------------- */
-.ai-loading{
-  display:inline-flex;gap:6px;padding:14px 20px;
-}
-.ai-loading span{
-  width:8px;height:8px;border-radius:50%;
-  background:#667eea;opacity:0.4;
-  animation:blink 1.4s infinite;
-}
-.ai-loading span:nth-child(2){animation-delay:0.2s}
-.ai-loading span:nth-child(3){animation-delay:0.4s}
-@keyframes blink { 50%{opacity:1} }
-
-/* --------------------------- */
-/* CODE CANVAS                */
-/* --------------------------- */
-.code-box{
-  background:#111;border:1px solid var(--border);
-  border-radius:12px;padding:16px;margin-top:10px;
-  font-family:monospace;font-size:14px;color:#ccc;
-  overflow-x:auto;max-height:250px;
-}
-.code-title{
-  font-size:12px;color:var(--subtext);margin-bottom:6px;
+/* Input */
+.input-bar{
+  padding:24px 32px;
+  background:rgba(17,17,17,0.8);
+  backdrop-filter:blur(20px);
+  border-top:1px solid rgba(255,255,255,0.06);
 }
 
-/* --------------------------- */
-/* INPUT AREA (unchanged)      */
-/* --------------------------- */
-.input-bar{padding:24px 32px;background:var(--card-bg);border-top:1px solid var(--border)}
-.input-wrap{display:flex;gap:12px;background:rgba(26,26,26,.8);padding:12px 16px;border-radius:16px;border:1px solid var(--border)}
-textarea{flex:1;background:none;border:none;color:var(--text);font-size:15px}
+.input-wrap{
+  display:flex;
+  gap:12px;
+  background:rgba(26,26,26,0.8);
+  border-radius:16px;
+  padding:12px 16px;
+  border:1px solid rgba(255,255,255,0.08);
+  transition:all 0.3s ease;
+}
+
+.input-wrap:focus-within{
+  border-color:rgba(102,126,234,0.5);
+  box-shadow:0 0 0 3px rgba(102,126,234,0.1);
+}
+
+textarea{
+  flex:1;
+  background:none;
+  border:none;
+  color:#e5e5e5;
+  resize:none;
+  outline:none;
+  font-size:15px;
+  font-family:inherit;
+  line-height:1.5;
+}
+
+textarea::placeholder{
+  color:#666;
+}
+
+button{cursor:pointer}
+
+.file-btn{
+  background:none;
+  border:none;
+  color:#999;
+  font-size:20px;
+  padding:4px 8px;
+  border-radius:8px;
+  transition:all 0.3s ease;
+}
+
+.file-btn:hover{
+  background:rgba(102,126,234,0.1);
+  color:#667eea;
+  transform:scale(1.1);
+}
+
 .send-btn{
   background:linear-gradient(135deg,#667eea,#764ba2);
-  border:none;border-radius:12px;color:white;
-  padding:10px 24px;font-weight:600;
+  border:none;
+  border-radius:12px;
+  color:white;
+  padding:10px 24px;
+  font-weight:600;
+  font-size:14px;
+  transition:all 0.3s ease;
+  box-shadow:0 4px 12px rgba(102,126,234,0.3);
 }
 
-/* Fade-out welcome */
-.welcome.fade-out { opacity:0; transform:translateY(-20px); transition:0.6s; }
+.send-btn:hover{
+  transform:translateY(-2px);
+  box-shadow:0 6px 20px rgba(102,126,234,0.4);
+}
+
+.send-btn:active{
+  transform:translateY(0);
+}
+
+.file-preview{
+  margin-bottom:12px;
+  font-size:13px;
+  display:none;
+}
+
+.file-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 14px;
+  background:rgba(102,126,234,0.15);
+  border:1px solid rgba(102,126,234,0.3);
+  border-radius:10px;
+  color:#e5e5e5;
+  font-size:13px;
+  font-weight:500;
+  animation:slideUp 0.3s ease;
+}
+
+.file-icon{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:28px;
+  height:28px;
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  border-radius:6px;
+  font-size:11px;
+  font-weight:700;
+  color:white;
+}
+
+.file-info{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+
+.file-name{
+  font-weight:600;
+  max-width:200px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.file-type{
+  font-size:11px;
+  color:#999;
+}
+
+.file-remove{
+  background:none;
+  border:none;
+  color:#999;
+  font-size:16px;
+  padding:4px;
+  margin-left:8px;
+  cursor:pointer;
+  border-radius:4px;
+  transition:all 0.2s ease;
+}
+
+.file-remove:hover{
+  background:rgba(239,68,68,0.2);
+  color:#ef4444;
+}
+
+/* Mobile responsive */
+@media(max-width:768px){
+  .sidebar{width:240px}
+  .chat{padding:20px}
+  .input-bar{padding:16px}
+  .bubble{max-width:85%}
+}
 </style>
 </head>
 
 <body>
 <div class="app">
 
-<!-- SIDEBAR (unchanged) -->
 <aside class="sidebar">
   <div class="sidebar-header">
     <div class="logo">
@@ -352,28 +651,32 @@ textarea{flex:1;background:none;border:none;color:var(--text);font-size:15px}
     <a href="https://esamz.info/privacypolicy" target="_blank">🔒 Privacy</a>
   </div>
 
-  <div class="sidebar-footer">© 2025 eSAMz<br>Created by Alakmar Teenwala</div>
+  <div class="sidebar-footer">
+    © 2025 eSAMz<br>Created by Alakmar Teenwala
+  </div>
 </aside>
 
-<!-- MAIN -->
 <main class="main">
   <div class="header">
     <div>Chat with eSAMz</div>
-
-    <!-- THEME TOGGLE -->
-    <div class="theme-toggle" onclick="toggleTheme()">☀️</div>
+    <div>Online</div>
   </div>
 
   <div class="chat" id="chat">
-    <div class="welcome" id="welcomeBox">
+    <div class="welcome">
       <h2>Welcome to eSAMz v7</h2>
       <p>Dive into intelligent conversations.</p>
     </div>
   </div>
 
   <div class="input-bar">
+    <div class="file-preview" id="filePreview"></div>
     <div class="input-wrap">
-      <textarea id="input" placeholder="Type your message..."></textarea>
+      <input type="file" id="fileInput" style="display:none"
+        accept=".txt,.pdf,.doc,.docx">
+      <button class="file-btn" onclick="fileInput.click()">📎</button>
+
+      <textarea id="input" placeholder="Type your message..." rows="1"></textarea>
       <button class="send-btn" id="send">Send</button>
     </div>
   </div>
@@ -382,104 +685,133 @@ textarea{flex:1;background:none;border:none;color:var(--text);font-size:15px}
 </div>
 
 <script>
-/* --------------------------- */
-/* THEME TOGGLE                */
-/* --------------------------- */
-function toggleTheme(){
-  const html = document.documentElement
-  const newTheme = html.dataset.theme === "dark" ? "light" : "dark"
-  html.dataset.theme = newTheme
-  localStorage.setItem("theme", newTheme)
-}
-
-document.documentElement.dataset.theme = localStorage.getItem("theme") || "dark"
-
-
-/* --------------------------- */
-/* CHAT ENGINE                 */
-/* --------------------------- */
 const chat = document.getElementById("chat")
 const input = document.getElementById("input")
 const send = document.getElementById("send")
-let conversationHistory=[]
+const fileInput = document.getElementById("fileInput")
+const filePreview = document.getElementById("filePreview")
 
-function addMessage(text, who){
+let uploadedFile = null
+let uploadedText = ""
+let conversationHistory = []  // Store conversation history
+
+/* Chat helpers */
+function add(text, who){
   const m=document.createElement("div")
   m.className="message "+who
-
-  const bubble=document.createElement("div")
-  bubble.className="bubble"
-
-  // auto code canvas
-  if(text.includes("```")){
-    const parts=text.split("```")
-    bubble.textContent=parts[0]
-
-    const codeBox=document.createElement("div")
-    codeBox.className="code-box"
-    codeBox.innerHTML = `<div class="code-title">AI Generated Code</div><pre>${parts[1]}</pre>`
-    bubble.appendChild(codeBox)
-  } else {
-    bubble.textContent=text
-  }
-
-  m.appendChild(bubble)
+  const b=document.createElement("div")
+  b.className="bubble"
+  b.textContent=text
+  m.appendChild(b)
   chat.appendChild(m)
   chat.scrollTop=chat.scrollHeight
 }
 
-function showLoader(){
-  const m=document.createElement("div")
-  m.className="message ai"
-  m.id="loadingMsg"
-  m.innerHTML = `<div class="bubble ai-loading">
-    <span></span><span></span><span></span>
+function newChat(){
+  chat.innerHTML=`<div class="welcome">
+    <h2>Welcome to eSAMz v7</h2>
+    <p>Dive into intelligent conversations.</p>
   </div>`
-  chat.appendChild(m)
-  chat.scrollTop=chat.scrollHeight
+  uploadedFile=null
+  uploadedText=""
+  filePreview.style.display='none'
+  filePreview.innerHTML=""
+  conversationHistory=[]  // Clear history on new chat
+  console.log("Chat history cleared")
 }
 
-function removeLoader(){
-  const loader=document.getElementById("loadingMsg")
-  if(loader) loader.remove()
-}
+/* File handling */
+fileInput.onchange=async()=>{
+  const file=fileInput.files[0]
+  if(!file)return
+  uploadedFile=file
+  uploadedText=""
 
-/* Hide welcome after first message */
-function hideWelcome(){
-  const w=document.getElementById("welcomeBox")
-  if(w){
-    w.classList.add("fade-out")
-    setTimeout(()=>w.remove(),600)
+  if(file.type==="text/plain"){
+    uploadedText=await file.text()
   }
+
+  // Get file extension
+  const ext = file.name.split('.').pop().toUpperCase()
+  
+  // Display file badge
+  filePreview.style.display='block'
+  filePreview.innerHTML=`
+    <div class="file-badge">
+      <div class="file-icon">${ext}</div>
+      <div class="file-info">
+        <div class="file-name">${file.name}</div>
+        <div class="file-type">${(file.size/1024).toFixed(1)} KB${uploadedText ? ' • Loaded' : ''}</div>
+      </div>
+      <button class="file-remove" onclick="removeFile()">✕</button>
+    </div>
+  `
 }
 
+function removeFile(){
+  uploadedFile=null
+  uploadedText=""
+  fileInput.value=""
+  filePreview.style.display='none'
+  filePreview.innerHTML=""
+}
+
+/* Send */
 async function sendMsg(){
   const text=input.value.trim()
-  if(!text) return
+  if(!text && !uploadedFile)return
 
-  hideWelcome()
-  addMessage(text,"user")
+  let payload=text
+  if(uploadedText){
+    payload=`[FILE CONTENT START]\n${uploadedText}\n[FILE CONTENT END]\n\n${text}`
+  } else if(uploadedFile){
+    payload=`[Attached file: ${uploadedFile.name}]\n\n${text}`
+  }
+
+  add(text || "[File sent]", "user")
   input.value=""
+  fileInput.value=""
+  filePreview.style.display='none'
+  filePreview.innerHTML=""
+  uploadedFile=null
+  uploadedText=""
 
-  conversationHistory.push({role:"user",content:text})
-
-  showLoader()
-
-  const r=await fetch("/api/chat",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({message:text, history:conversationHistory})
+  // Add user message to history
+  conversationHistory.push({
+    role: "user",
+    content: payload
   })
 
-  removeLoader()
+  console.log(`Sending message with ${conversationHistory.length} history items`)
 
-  const j=await r.json()
-  const reply = j.reply || "No response."
-  addMessage(reply,"ai")
-  conversationHistory.push({role:"assistant",content:reply})
+  try{
+    const r=await fetch("/api/chat",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        message: payload,
+        history: conversationHistory  // Send history with request
+      })
+    })
+    const j=await r.json()
+    const reply = j.reply || "No response."
+    
+    add(reply, "ai")
+    
+    // Add assistant response to history
+    conversationHistory.push({
+      role: "assistant",
+      content: reply
+    })
+    
+    console.log(`History now has ${conversationHistory.length} items`)
+  }catch(err){
+    add("Error connecting to AI.", "ai")
+    console.error("API Error:", err)
+  }
 }
 
-send.onclick = sendMsg
+send.onclick=sendMsg
 input.addEventListener("keydown",e=>{
   if(e.key==="Enter" && !e.shiftKey){
     e.preventDefault()
@@ -488,4 +820,4 @@ input.addEventListener("keydown",e=>{
 })
 </script>
 </body>
-</html>
+</html>    
