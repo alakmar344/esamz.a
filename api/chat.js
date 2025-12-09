@@ -116,7 +116,7 @@ NEWS & CURRENT EVENTS:
 
 CORE GOAL:
 Make the user feel understood, respected, and helped within the first two sentences of every reply.
-
+`;
 
   // Model rotation
   const models = ['gemma-3-4b-it'];
