@@ -701,174 +701,171 @@ button{cursor:pointer}
 </div>
 
 <script>
+/* =======================
+   ELEMENT REFERENCES
+======================= */
 const chat = document.getElementById("chat")
 const input = document.getElementById("input")
 const send = document.getElementById("send")
 const fileInput = document.getElementById("fileInput")
 const filePreview = document.getElementById("filePreview")
 
+/* =======================
+   STATE
+======================= */
 let uploadedFile = null
 let uploadedText = ""
-let conversationHistory = []  // Store conversation history
+let conversationHistory = []
 
-/* Chat helpers */
-function add(text, who){
-  const m=document.createElement("div")
-  m.className="message "+who
-  const b=document.createElement("div")
-  b.className="bubble"
-  b.textContent=text
-  m.appendChild(b)
-  chat.appendChild(m)
-  chat.scrollTop=chat.scrollHeight
+/* =======================
+   MESSAGE UI
+======================= */
+function addMessage(text, role){
+  const msg = document.createElement("div")
+  msg.className = "message " + role
+
+  const bubble = document.createElement("div")
+  bubble.className = "bubble"
+  bubble.textContent = text
+
+  if(role === "ai") attachTools(bubble, text)
+
+  msg.appendChild(bubble)
+  chat.appendChild(msg)
+  chat.scrollTop = chat.scrollHeight
 }
 
+/* =======================
+   AI TOOLS
+======================= */
+function attachTools(bubble, text){
+  const tools = document.createElement("div")
+  tools.className = "ai-tools"
+
+  const copyBtn = document.createElement("button")
+  copyBtn.textContent = "📋 Copy"
+  copyBtn.onclick = () => navigator.clipboard.writeText(text)
+
+  const likeBtn = document.createElement("button")
+  likeBtn.textContent = "👍"
+  likeBtn.onclick = () => console.log("Liked")
+
+  const dislikeBtn = document.createElement("button")
+  dislikeBtn.textContent = "👎"
+  dislikeBtn.onclick = () => console.log("Disliked")
+
+  tools.append(copyBtn, likeBtn, dislikeBtn)
+  bubble.appendChild(tools)
+}
+
+/* =======================
+   NEW CHAT
+======================= */
 function newChat(){
-  chat.innerHTML=`<div class="welcome">
-    <h2>Welcome to eSAMz v7</h2>
-    <p>Dive into intelligent conversations.</p>
-  </div>`
-  uploadedFile=null
-  uploadedText=""
-  filePreview.style.display='none'
-  filePreview.innerHTML=""
-  conversationHistory=[]  // Clear history on new chat
-  console.log("Chat history cleared")
+  chat.innerHTML = `
+    <div class="welcome">
+      <h2>Welcome to eSAMz v7</h2>
+      <p>Dive into intelligent conversations.</p>
+    </div>`
+  conversationHistory = []
+  resetFile()
 }
 
-/* File handling */
-fileInput.onchange=async()=>{
-  const file=fileInput.files[0]
-  if(!file)return
-  uploadedFile=file
-  uploadedText=""
+/* =======================
+   FILE HANDLING
+======================= */
+fileInput.onchange = async () => {
+  const file = fileInput.files[0]
+  if(!file) return
 
-  if(file.type==="text/plain"){
-    uploadedText=await file.text()
+  uploadedFile = file
+  uploadedText = ""
+
+  if(file.type === "text/plain"){
+    uploadedText = await file.text()
   }
 
-  // Get file extension
-  const ext = file.name.split('.').pop().toUpperCase()
-  
-  // Display file badge
-  filePreview.style.display='block'
-  filePreview.innerHTML=`
+  filePreview.style.display = "block"
+  filePreview.innerHTML = `
     <div class="file-badge">
-      <div class="file-icon">${ext}</div>
+      <div class="file-icon">${file.name.split('.').pop().toUpperCase()}</div>
       <div class="file-info">
         <div class="file-name">${file.name}</div>
-        <div class="file-type">${(file.size/1024).toFixed(1)} KB${uploadedText ? ' • Loaded' : ''}</div>
+        <div class="file-type">${(file.size/1024).toFixed(1)} KB</div>
       </div>
       <button class="file-remove" onclick="removeFile()">✕</button>
-    </div>
-  `
+    </div>`
 }
 
 function removeFile(){
-  uploadedFile=null
-  uploadedText=""
-  fileInput.value=""
-  filePreview.style.display='none'
-  filePreview.innerHTML=""
+  uploadedFile = null
+  uploadedText = ""
+  fileInput.value = ""
+  filePreview.style.display = "none"
+  filePreview.innerHTML = ""
 }
 
-/* Send */
-async function sendMsg(){
-  const text=input.value.trim()
-  if(!text && !uploadedFile)return
+function resetFile(){
+  uploadedFile = null
+  uploadedText = ""
+  fileInput.value = ""
+  filePreview.style.display = "none"
+  filePreview.innerHTML = ""
+}
 
-  let payload=text
+/* =======================
+   SEND MESSAGE
+======================= */
+async function sendMsg(){
+  const text = input.value.trim()
+  if(!text && !uploadedFile) return
+
+  let payload = text
   if(uploadedText){
-    payload=`[FILE CONTENT START]\n${uploadedText}\n[FILE CONTENT END]\n\n${text}`
+    payload = `[FILE CONTENT]\n${uploadedText}\n\n${text}`
   } else if(uploadedFile){
-    payload=`[Attached file: ${uploadedFile.name}]\n\n${text}`
+    payload = `[Attached file: ${uploadedFile.name}]\n\n${text}`
   }
 
-  add(text || "[File sent]", "user")
-  input.value=""
-  fileInput.value=""
-  filePreview.style.display='none'
-  filePreview.innerHTML=""
-  uploadedFile=null
-  uploadedText=""
+  addMessage(text || "[File sent]", "user")
+  input.value = ""
+  resetFile()
 
-  // Add user message to history
-  conversationHistory.push({
-    role: "user",
-    content: payload
-  })
-
-  console.log(`Sending message with ${conversationHistory.length} history items`)
+  conversationHistory.push({ role: "user", content: payload })
 
   try{
-    const r=await fetch("/api/chat",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
+    const res = await fetch("/api/chat",{
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         message: payload,
-        history: conversationHistory  // Send history with request
+        history: conversationHistory
       })
     })
-    const j=await r.json()
-    const reply = j.reply || "No response."
-    
-    add(reply, "ai")
-    
-    // Add assistant response to history
-    conversationHistory.push({
-      role: "assistant",
-      content: reply
-    })
-    
-    console.log(`History now has ${conversationHistory.length} items`)
-  }catch(err){
-    add("Error connecting to AI.", "ai")
-    console.error("API Error:", err)
+
+    const data = await res.json()
+    const reply = data.reply || "No response."
+
+    addMessage(reply, "ai")
+    conversationHistory.push({ role: "assistant", content: reply })
+
+  } catch (err){
+    console.error(err)
+    addMessage("Error connecting to AI.", "ai")
   }
 }
 
-send.onclick=sendMsg
-input.addEventListener("keydown",e=>{
-  if(e.key==="Enter" && !e.shiftKey){
+/* =======================
+   EVENTS
+======================= */
+send.onclick = sendMsg
+
+input.addEventListener("keydown", e => {
+  if(e.key === "Enter" && !e.shiftKey){
     e.preventDefault()
     sendMsg()
   }
 })
- /* ===== AI EXTRAS ===== */
-function attachTools(bubble, text){
-  const tools=document.createElement("div")
-  tools.className="ai-tools"
-
-  const copy=document.createElement("button")
-  copy.textContent="📋 Copy"
-  copy.onclick=()=>navigator.clipboard.writeText(text)
-
-  const like=document.createElement("button")
-  like.textContent="👍"
-  like.onclick=()=>console.log("Liked")
-
-  const dislike=document.createElement("button")
-  dislike.textContent="👎"
-  dislike.onclick=()=>console.log("Disliked")
-  }
-
-  tools.append(copy,like,dislike,)
-  bubble.appendChild(tools)
-}
- function add(text, who){
-  const m=document.createElement("div")
-  m.className="message "+who
-  const b=document.createElement("div")
-  b.className="bubble"
-  b.textContent=text
-
-  if(who==="ai") attachTools(b, text)
-
-  m.appendChild(b)
-  chat.appendChild(m)
-  chat.scrollTop=chat.scrollHeight
-}
-
 </script>
 </body>
-</html>    
+</html>
