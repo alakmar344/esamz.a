@@ -426,10 +426,18 @@ Politeness never overrides integrity.
 END OF PROTOCOL
 `;
 
-  // Model rotation
-  const models = ['gemma-3-4b-it'];
-  const modelIndex = Math.floor(Date.now() / 20000) % models.length;
-  const selectedModel = models[modelIndex];
+ // =======================
+// MODEL ROTATION (30s)
+// =======================
+const MODELS = [
+  "gemma-3-4b-it", // heavier, smarter
+  "gemma-3-1b-it"  // lighter, cheaper, TPM relief
+];
+
+// Rotate every 30 seconds
+const ROTATION_WINDOW_MS = 30 * 1000;
+const modelIndex = Math.floor(Date.now() / ROTATION_WINDOW_MS) % MODELS.length;
+const selectedModel = MODELS[modelIndex];
 
   try {
     // Check for API key
