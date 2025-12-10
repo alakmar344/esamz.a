@@ -1019,6 +1019,10 @@ function resetFile(){
 async function sendMsg(){
   const text = input.value.trim()
   if(!text && !uploadedFile) return
+if(isFirstMessage && welcomeMsg){
+  welcomeMsg.remove()
+  isFirstMessage = false
+}
 
   let payload = text
   if(uploadedText){
