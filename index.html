@@ -178,6 +178,65 @@ html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Sego
   position:relative;
   z-index:10;
   box-shadow:2px 0 24px rgba(0,0,0,0.4);
+  transition:transform 0.3s ease, width 0.3s ease;
+}
+
+.sidebar.collapsed{
+  transform:translateX(-280px);
+  width:0;
+}
+
+.sidebar-toggle{
+  position:absolute;
+  right:-40px;
+  top:20px;
+  background:rgba(17,17,17,0.8);
+  backdrop-filter:blur(20px);
+  border:1px solid rgba(255,255,255,0.06);
+  border-radius:0 8px 8px 0;
+  padding:12px 10px;
+  cursor:pointer;
+  color:#999;
+  font-size:18px;
+  transition:all 0.3s ease;
+  z-index:11;
+}
+
+.sidebar.collapsed .sidebar-toggle{
+  right:auto;
+  left:100%;
+  border-radius:0 8px 8px 0;
+}
+
+.sidebar-toggle:hover{
+  background:rgba(102,126,234,0.2);
+  color:#667eea;
+}
+
+.menu-toggle{
+  position:fixed;
+  top:20px;
+  left:20px;
+  background:rgba(17,17,17,0.8);
+  backdrop-filter:blur(20px);
+  border:1px solid rgba(255,255,255,0.06);
+  border-radius:8px;
+  padding:12px 14px;
+  cursor:pointer;
+  color:#999;
+  font-size:18px;
+  transition:all 0.3s ease;
+  z-index:5;
+  display:none;
+}
+
+.sidebar.collapsed ~ .main .menu-toggle{
+  display:block;
+}
+
+.menu-toggle:hover{
+  background:rgba(102,126,234,0.2);
+  color:#667eea;
 }
 
 .sidebar-header{
@@ -348,37 +407,18 @@ html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Sego
   border-bottom:1px solid rgba(255,255,255,0.06);
   display:flex;
   align-items:center;
-  justify-content:space-between;
+  justify-content:center;
   padding:0 32px;
   box-shadow:0 2px 16px rgba(0,0,0,0.2);
 }
 
-.header > div:first-child{
-  font-size:16px;
+.header > div{
+  font-size:18px;
   font-weight:600;
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
-
-.header > div:last-child{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  color:#4ade80;
-  font-size:14px;
-  font-weight:500;
-}
-
-.header > div:last-child::before{
-  content:'●';
-  font-size:20px;
-  animation:pulse 2s ease infinite;
-}
-
-@keyframes pulse{
-  0%,100%{opacity:1}
-  50%{opacity:0.4}
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
 }
 
 .chat{
@@ -516,7 +556,7 @@ textarea::placeholder{
 
 button{cursor:pointer}
 
-.file-btn{
+.file-btn, .voice-btn{
   background:none;
   border:none;
   color:#999;
@@ -526,10 +566,20 @@ button{cursor:pointer}
   transition:all 0.3s ease;
 }
 
-.file-btn:hover{
+.file-btn:hover, .voice-btn:hover{
   background:rgba(102,126,234,0.1);
   color:#667eea;
   transform:scale(1.1);
+}
+
+.voice-btn.recording{
+  color:#ef4444;
+  animation:recordPulse 1s ease infinite;
+}
+
+@keyframes recordPulse{
+  0%,100%{transform:scale(1)}
+  50%{transform:scale(1.2)}
 }
 
 .send-btn{
@@ -644,6 +694,42 @@ button{cursor:pointer}
   cursor:pointer;
 }
 .ai-tools button:hover{color:#fff}
+
+/* ===== APPROVAL POPUP ===== */
+.approval-popup{
+  position:fixed;
+  top:50%;
+  left:50%;
+  transform:translate(-50%, -50%) scale(0);
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  color:white;
+  padding:20px 32px;
+  border-radius:16px;
+  font-size:16px;
+  font-weight:600;
+  box-shadow:0 8px 32px rgba(102,126,234,0.5);
+  z-index:1000;
+  opacity:0;
+  transition:all 0.3s ease;
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.approval-popup.show{
+  transform:translate(-50%, -50%) scale(1);
+  opacity:1;
+}
+
+.approval-popup .icon{
+  font-size:24px;
+  animation:popIn 0.4s ease;
+}
+
+@keyframes popIn{
+  0%{transform:scale(0) rotate(0deg)}
+  50%{transform:scale(1.2) rotate(10deg)}
+  100%{transform:scale(1) rotate(0deg)}
 }
 </style>
 </head>
@@ -651,7 +737,8 @@ button{cursor:pointer}
 <body>
 <div class="app">
 
-<aside class="sidebar">
+<aside class="sidebar" id="sidebar">
+  <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
   <div class="sidebar-header">
     <div class="logo">
       <div class="logo-icon">e</div>
@@ -673,13 +760,13 @@ button{cursor:pointer}
 </aside>
 
 <main class="main">
+  <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
   <div class="header">
-    <div>Chat with eSAMz</div>
-    <div>Online</div>
+    <div>eSAMz AI Assistant</div>
   </div>
 
   <div class="chat" id="chat">
-    <div class="welcome">
+    <div class="welcome" id="welcomeMsg">
       <h2>Welcome to eSAMz v7</h2>
       <p>Dive into intelligent conversations.</p>
     </div>
@@ -691,6 +778,7 @@ button{cursor:pointer}
       <input type="file" id="fileInput" style="display:none"
         accept=".txt,.pdf,.doc,.docx">
       <button class="file-btn" onclick="fileInput.click()">📎</button>
+      <button class="voice-btn" id="voiceBtn" onclick="toggleVoice()">🎤</button>
 
       <textarea id="input" placeholder="Type your message..." rows="1"></textarea>
       <button class="send-btn" id="send">Send</button>
@@ -698,6 +786,12 @@ button{cursor:pointer}
   </div>
 </main>
 
+</div>
+
+<!-- Approval Popup -->
+<div class="approval-popup" id="approvalPopup">
+  <span class="icon" id="popupIcon"></span>
+  <span id="popupText"></span>
 </div>
 
 <script>
@@ -709,6 +803,9 @@ const input = document.getElementById("input")
 const send = document.getElementById("send")
 const fileInput = document.getElementById("fileInput")
 const filePreview = document.getElementById("filePreview")
+const voiceBtn = document.getElementById("voiceBtn")
+const welcomeMsg = document.getElementById("welcomeMsg")
+const sidebar = document.getElementById("sidebar")
 
 /* =======================
    STATE
@@ -716,11 +813,104 @@ const filePreview = document.getElementById("filePreview")
 let uploadedFile = null
 let uploadedText = ""
 let conversationHistory = []
+let recognition = null
+let isRecording = false
+let isFirstMessage = true
+
+/* =======================
+   APPROVAL POPUP
+======================= */
+function showApproval(icon, text){
+  const popup = document.getElementById("approvalPopup")
+  const popupIcon = document.getElementById("popupIcon")
+  const popupText = document.getElementById("popupText")
+
+  popupIcon.textContent = icon
+  popupText.textContent = text
+
+  popup.classList.add("show")
+
+  setTimeout(() => {
+    popup.classList.remove("show")
+  }, 2000)
+}
+
+/* =======================
+   SIDEBAR TOGGLE
+======================= */
+function toggleSidebar(){
+  sidebar.classList.toggle("collapsed")
+}
+
+/* =======================
+   VOICE TO TEXT
+======================= */
+function toggleVoice(){
+  if(!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)){
+    alert("Voice recognition not supported in your browser.")
+    return
+  }
+
+  if(isRecording){
+    stopRecording()
+  } else {
+    startRecording()
+  }
+}
+
+function startRecording(){
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+  recognition = new SpeechRecognition()
+  recognition.continuous = true
+  recognition.interimResults = true
+  recognition.lang = 'en-US'
+
+  recognition.onstart = () => {
+    isRecording = true
+    voiceBtn.classList.add("recording")
+  }
+
+  recognition.onresult = (event) => {
+    let transcript = ''
+    for(let i = event.resultIndex; i < event.results.length; i++){
+      transcript += event.results[i][0].transcript
+    }
+    input.value = transcript
+  }
+
+  recognition.onerror = (event) => {
+    console.error("Voice recognition error:", event.error)
+    stopRecording()
+  }
+
+  recognition.onend = () => {
+    stopRecording()
+  }
+
+  recognition.start()
+}
+
+function stopRecording(){
+  if(recognition){
+    recognition.stop()
+    recognition = null
+  }
+  isRecording = false
+  voiceBtn.classList.remove("recording")
+}
 
 /* =======================
    MESSAGE UI
 ======================= */
 function addMessage(text, role){
+  // Remove welcome message on first user message
+  if(role === "user" && isFirstMessage){
+    if(welcomeMsg){
+      welcomeMsg.style.display = "none"
+    }
+    isFirstMessage = false
+  }
+
   const msg = document.createElement("div")
   msg.className = "message " + role
 
@@ -744,15 +934,24 @@ function attachTools(bubble, text){
 
   const copyBtn = document.createElement("button")
   copyBtn.textContent = "📋 Copy"
-  copyBtn.onclick = () => navigator.clipboard.writeText(text)
+  copyBtn.onclick = () => {
+    navigator.clipboard.writeText(text)
+    showApproval("✓", "Copied to clipboard!")
+  }
 
   const likeBtn = document.createElement("button")
   likeBtn.textContent = "👍"
-  likeBtn.onclick = () => console.log("Liked")
+  likeBtn.onclick = () => {
+    console.log("Liked")
+    showApproval("👍", "Thanks for your feedback!")
+  }
 
   const dislikeBtn = document.createElement("button")
   dislikeBtn.textContent = "👎"
-  dislikeBtn.onclick = () => console.log("Disliked")
+  dislikeBtn.onclick = () => {
+    console.log("Disliked")
+    showApproval("👎", "Feedback received!")
+  }
 
   tools.append(copyBtn, likeBtn, dislikeBtn)
   bubble.appendChild(tools)
@@ -763,11 +962,12 @@ function attachTools(bubble, text){
 ======================= */
 function newChat(){
   chat.innerHTML = `
-    <div class="welcome">
+    <div class="welcome" id="welcomeMsg">
       <h2>Welcome to eSAMz v7</h2>
       <p>Dive into intelligent conversations.</p>
     </div>`
   conversationHistory = []
+  isFirstMessage = true
   resetFile()
 }
 
