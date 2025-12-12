@@ -4,149 +4,48 @@
 <meta charset="UTF-8">
 <title>eSAMz v7 - AI Assistant</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
- <!-- OFFICIAL eSAMz SCHEMA -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Organization",
-        "name": "eSAMz",
-        "legalName": "eSAMz AI",
-        "url": "https://esamz.info",
-        "logo": "https://esamz.info/logo.png",
-        "founder": {
-          "@type": "Person",
-          "name": "Alakmar Teenwala",
-          "sameAs": [
-            "https://www.instagram.com/esamz_ai",
-            "https://www.youtube.com/@esamzai"
-          ]
-        },
-        "description": "eSAMz is a Strategic Artificial Mind engineered for clarity, warmth, and human-aligned intelligence.",
-        "foundingDate": "2025-10-21",
-        "sameAs": [
-          "https://esamz.info",
-          "https://esamz.info/docs",
-          "https://www.instagram.com/esamz_ai",
-          "https://www.youtube.com/@esamzai",
-          "https://esamz.site"
-        ],
-        "contactPoint": {
-          "@type": "ContactPoint",
-          "email": "esamzai365@gmail.com",
-          "contactType": "Customer Support"
-        },
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "INR",
-          "availability": "https://schema.org/InStock",
-          "url": "https://esamz.info"
-        }
-      },
-      {
-        "@type": "Product",
-        "name": "eSAMz AI",
-        "brand": {
-          "@type": "Brand",
-          "name": "eSAMz",
-          "logo": "https://esamz.info/logo.png"
-        },
-        "description": "eSAMz AI is an emerging human-like AI companion and strategic cognitive system emphasizing emotional warmth, unlimited conversations, and deep contextual understanding.",
-        "url": "https://esamz.info",
-        "image": "https://esamz.info/product-image.png",
-        "sameAs": [
-          "https://esamz.info",
-          "https://esamz.info/docs",
-          "https://www.instagram.com/esamz_ai",
-          "https://www.youtube.com/@esamzai",
-          "https://esamz.site"
-        ],
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "INR",
-          "availability": "https://schema.org/InStock",
-          "itemCondition": "https://schema.org/NewCondition",
-          "url": "https://esamz.info"
-        },
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": "4.8",
-          "reviewCount": "150"
-        }
-      },
-      {
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "name": "eSAMz",
+      "legalName": "eSAMz AI",
+      "url": "https://esamz.info",
+      "logo": "https://esamz.info/logo.png",
+      "founder": {
         "@type": "Person",
         "name": "Alakmar Teenwala",
-        "jobTitle": "Founder & Chief Architect of eSAMz",
-        "url": "https://esamz.info",
         "sameAs": [
           "https://www.instagram.com/esamz_ai",
           "https://www.youtube.com/@esamzai"
-        ],
-        "description": "Alakmar Teenwala is the creator of eSAMz AI, a next-generation strategic artificial mind.",
-        "worksFor": {
-          "@type": "Organization",
-          "name": "eSAMz AI"
-        }
-      },
-      {
-        "@type": "WebApplication",
-        "name": "eSAMz v7 Chat",
-        "url": "https://esamz.info",
-        "applicationCategory": "AI Assistant",
-        "operatingSystem": "Web Browser",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "INR"
-        },
-        "creator": {
-          "@type": "Person",
-          "name": "Alakmar Teenwala"
-        }
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "What is eSAMz?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "eSAMz is a Strategic Artificial Mind created by Alakmar Teenwala, designed for clarity, warmth, and human-aligned intelligence."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Is eSAMz free to use?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Yes, eSAMz is completely free to use with unlimited conversations."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Does eSAMz store my data?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "No, eSAMz operates on a zero-storage policy. We do not store any of your conversations or personal data."
-            }
-          }
         ]
+      },
+      "description": "eSAMz is a Strategic Artificial Mind engineered for clarity, warmth, and human-aligned intelligence.",
+      "foundingDate": "2025-10-21",
+      "sameAs": [
+        "https://esamz.info",
+        "https://esamz.info/docs",
+        "https://www.instagram.com/esamz_ai",
+        "https://www.youtube.com/@esamzai",
+        "https://esamz.site"
+      ],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "email": "esamzai365@gmail.com",
+        "contactType": "Customer Support"
       }
-    ]
-  }
-  </script>
+    }
+  ]
+}
+</script>
 
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#0a0a0a;color:#e5e5e5}
 .app{display:flex;height:100vh;position:relative;overflow:hidden}
 
-/* Animated background gradient */
 .app::before{
   content:'';
   position:absolute;
@@ -167,10 +66,9 @@ html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Sego
   66%{transform:translate(-5%,10%) rotate(240deg)}
 }
 
-/* Sidebar */
 .sidebar{
-  width:280px;
-  background:rgba(17,17,17,0.8);
+  width:320px;
+  background:rgba(17,17,17,0.9);
   backdrop-filter:blur(20px);
   border-right:1px solid rgba(255,255,255,0.06);
   display:flex;
@@ -178,19 +76,18 @@ html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Sego
   position:relative;
   z-index:10;
   box-shadow:2px 0 24px rgba(0,0,0,0.4);
-  transition:transform 0.3s ease, width 0.3s ease;
+  transition:transform 0.3s ease;
 }
 
 .sidebar.collapsed{
-  transform:translateX(-280px);
-  width:0;
+  transform:translateX(-320px);
 }
 
 .sidebar-toggle{
   position:absolute;
   right:-40px;
   top:20px;
-  background:rgba(17,17,17,0.8);
+  background:rgba(17,17,17,0.9);
   backdrop-filter:blur(20px);
   border:1px solid rgba(255,255,255,0.06);
   border-radius:0 8px 8px 0;
@@ -205,19 +102,19 @@ html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Sego
 .sidebar.collapsed .sidebar-toggle{
   right:auto;
   left:100%;
-  border-radius:0 8px 8px 0;
 }
 
 .sidebar-toggle:hover{
-  background:rgba(102,126,234,0.2);
+  background:rgba(102,126,234,0.3);
   color:#667eea;
+  transform:scale(1.05);
 }
 
 .menu-toggle{
   position:fixed;
   top:20px;
   left:20px;
-  background:rgba(17,17,17,0.8);
+  background:rgba(17,17,17,0.9);
   backdrop-filter:blur(20px);
   border:1px solid rgba(255,255,255,0.06);
   border-radius:8px;
@@ -235,7 +132,7 @@ html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Sego
 }
 
 .menu-toggle:hover{
-  background:rgba(102,126,234,0.2);
+  background:rgba(102,126,234,0.3);
   color:#667eea;
 }
 
@@ -279,7 +176,7 @@ html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Sego
   left:-50%;
   width:200%;
   height:200%;
-  background:linear-gradient(45deg,transparent,rgba(255,255,255,0.1),transparent);
+  background:linear-gradient(45deg,transparent,rgba(255,255,255,0.15),transparent);
   transform:rotate(45deg);
   animation:shine 3s infinite;
 }
@@ -289,13 +186,24 @@ html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Sego
   100%{transform:translateX(100%) translateY(100%) rotate(45deg)}
 }
 
-.logo div{
+.logo-text{
+  display:flex;
+  flex-direction:column;
+}
+
+.logo-title{
   font-size:18px;
   font-weight:700;
   background:linear-gradient(135deg,#667eea,#764ba2);
   -webkit-background-clip:text;
   -webkit-text-fill-color:transparent;
   background-clip:text;
+}
+
+.logo-subtitle{
+  font-size:11px;
+  color:#999;
+  font-weight:500;
 }
 
 .new-chat-btn{
@@ -331,54 +239,153 @@ html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Sego
 
 .new-chat-btn:hover{
   transform:translateY(-2px);
-  box-shadow:0 6px 24px rgba(102,126,234,0.4);
+  box-shadow:0 6px 24px rgba(102,126,234,0.5);
 }
 
 .new-chat-btn:active{
   transform:translateY(0);
 }
 
-.sidebar-content{
-  padding:16px;
+.chat-history{
   flex:1;
   overflow-y:auto;
+  padding:16px;
 }
 
-.sidebar-content a{
+.chat-history::-webkit-scrollbar{
+  width:6px;
+}
+
+.chat-history::-webkit-scrollbar-track{
+  background:transparent;
+}
+
+.chat-history::-webkit-scrollbar-thumb{
+  background:rgba(102,126,234,0.3);
+  border-radius:3px;
+}
+
+.history-section{
+  margin-bottom:24px;
+}
+
+.history-label{
+  font-size:11px;
+  font-weight:700;
+  color:#666;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  margin-bottom:8px;
+  padding:0 8px;
+}
+
+.history-item{
   display:flex;
   align-items:center;
-  padding:12px 14px;
-  color:#999;
-  text-decoration:none;
-  border-radius:10px;
-  transition:all 0.3s ease;
+  gap:10px;
+  padding:12px;
   margin-bottom:4px;
-  font-size:14px;
-  font-weight:500;
+  border-radius:10px;
+  cursor:pointer;
+  transition:all 0.3s ease;
   position:relative;
+  overflow:hidden;
 }
 
-.sidebar-content a::before{
+.history-item::before{
   content:'';
   position:absolute;
   left:0;
-  top:50%;
-  transform:translateY(-50%);
+  top:0;
   width:3px;
   height:0;
   background:linear-gradient(135deg,#667eea,#764ba2);
-  border-radius:0 2px 2px 0;
   transition:height 0.3s ease;
 }
 
-.sidebar-content a:hover{
+.history-item:hover{
   background:rgba(102,126,234,0.1);
-  color:#fff;
   transform:translateX(4px);
 }
 
-.sidebar-content a:hover::before{
-  height:60%;
+.history-item:hover::before{
+  height:100%;
+}
+
+.history-item.active{
+  background:rgba(102,126,234,0.15);
+  border:1px solid rgba(102,126,234,0.3);
+}
+
+.history-icon{
+  font-size:16px;
+  opacity:0.8;
+}
+
+.history-content{
+  flex:1;
+  min-width:0;
+}
+
+.history-title{
+  font-size:14px;
+  font-weight:600;
+  color:#e5e5e5;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.history-time{
+  font-size:11px;
+  color:#999;
+  margin-top:2px;
+}
+
+.history-delete{
+  opacity:0;
+  background:none;
+  border:none;
+  color:#999;
+  font-size:16px;
+  padding:6px;
+  cursor:pointer;
+  border-radius:6px;
+  transition:all 0.2s ease;
+}
+
+.history-item:hover .history-delete{
+  opacity:1;
+}
+
+.history-delete:hover{
+  background:rgba(239,68,68,0.2);
+  color:#ef4444;
+}
+
+.sidebar-links{
+  padding:16px;
+  border-top:1px solid rgba(255,255,255,0.06);
+}
+
+.sidebar-links a{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 12px;
+  color:#999;
+  text-decoration:none;
+  border-radius:8px;
+  transition:all 0.3s ease;
+  margin-bottom:4px;
+  font-size:13px;
+  font-weight:500;
+}
+
+.sidebar-links a:hover{
+  background:rgba(102,126,234,0.1);
+  color:#fff;
+  transform:translateX(4px);
 }
 
 .sidebar-footer{
@@ -391,7 +398,6 @@ html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Sego
   background:rgba(0,0,0,0.2);
 }
 
-/* Main */
 .main{
   flex:1;
   display:flex;
@@ -402,23 +408,46 @@ html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Sego
 
 .header{
   height:70px;
-  background:rgba(17,17,17,0.8);
+  background:rgba(17,17,17,0.9);
   backdrop-filter:blur(20px);
   border-bottom:1px solid rgba(255,255,255,0.06);
   display:flex;
   align-items:center;
-  justify-content:center;
+  justify-content:space-between;
   padding:0 32px;
   box-shadow:0 2px 16px rgba(0,0,0,0.2);
 }
 
-.header > div{
+.header-title{
   font-size:18px;
   font-weight:600;
   background:linear-gradient(135deg,#667eea,#764ba2);
   -webkit-background-clip:text;
   -webkit-text-fill-color:transparent;
   background-clip:text;
+}
+
+.header-actions{
+  display:flex;
+  gap:8px;
+}
+
+.header-btn{
+  background:rgba(102,126,234,0.1);
+  border:1px solid rgba(102,126,234,0.2);
+  border-radius:8px;
+  padding:8px 16px;
+  color:#999;
+  cursor:pointer;
+  font-size:13px;
+  font-weight:500;
+  transition:all 0.3s ease;
+}
+
+.header-btn:hover{
+  background:rgba(102,126,234,0.2);
+  color:#667eea;
+  transform:translateY(-2px);
 }
 
 .chat{
@@ -446,7 +475,7 @@ html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Sego
 }
 
 .welcome{
-  padding:48px 32px;
+  padding:64px 32px;
   margin-bottom:24px;
   border-radius:20px;
   background:linear-gradient(135deg,rgba(102,126,234,0.15),rgba(118,75,162,0.15));
@@ -462,7 +491,7 @@ html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Sego
 }
 
 .welcome h2{
-  font-size:32px;
+  font-size:36px;
   margin-bottom:12px;
   background:linear-gradient(135deg,#667eea,#764ba2);
   -webkit-background-clip:text;
@@ -475,12 +504,48 @@ html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Sego
   font-size:16px;
   color:#999;
   font-weight:500;
+  margin-bottom:24px;
+}
+
+.welcome-features{
+  display:flex;
+  gap:16px;
+  justify-content:center;
+  flex-wrap:wrap;
+  margin-top:24px;
+}
+
+.feature-card{
+  background:rgba(17,17,17,0.6);
+  border:1px solid rgba(255,255,255,0.06);
+  border-radius:12px;
+  padding:16px 20px;
+  min-width:140px;
+  transition:all 0.3s ease;
+}
+
+.feature-card:hover{
+  background:rgba(102,126,234,0.1);
+  border-color:rgba(102,126,234,0.3);
+  transform:translateY(-4px);
+}
+
+.feature-icon{
+  font-size:24px;
+  margin-bottom:8px;
+}
+
+.feature-text{
+  font-size:13px;
+  color:#999;
+  font-weight:500;
 }
 
 .message{
   display:flex;
-  margin-bottom:20px;
+  margin-bottom:24px;
   animation:slideUp 0.4s ease;
+  gap:12px;
 }
 
 @keyframes slideUp{
@@ -491,6 +556,28 @@ html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Sego
 .message.user{justify-content:flex-end}
 .message.ai{justify-content:flex-start}
 
+.message-avatar{
+  width:36px;
+  height:36px;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:18px;
+  flex-shrink:0;
+  box-shadow:0 2px 8px rgba(0,0,0,0.2);
+}
+
+.message.user .message-avatar{
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  order:2;
+}
+
+.message.ai .message-avatar{
+  background:rgba(17,17,17,0.9);
+  border:1px solid rgba(255,255,255,0.1);
+}
+
 .bubble{
   max-width:70%;
   padding:16px 20px;
@@ -499,7 +586,7 @@ html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Sego
   font-size:15px;
   line-height:1.6;
   position:relative;
-  box-shadow:0 2px 12px rgba(0,0,0,0.1);
+  box-shadow:0 2px 12px rgba(0,0,0,0.15);
 }
 
 .user .bubble{
@@ -509,16 +596,41 @@ html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Sego
 }
 
 .ai .bubble{
-  background:rgba(17,17,17,0.8);
+  background:rgba(17,17,17,0.9);
   border:1px solid rgba(255,255,255,0.08);
   backdrop-filter:blur(10px);
   border-bottom-left-radius:4px;
 }
 
-/* Input */
+.ai-tools{
+  display:flex;
+  gap:12px;
+  margin-top:12px;
+  padding-top:12px;
+  border-top:1px solid rgba(255,255,255,0.06);
+}
+
+.ai-tools button{
+  background:rgba(102,126,234,0.1);
+  border:1px solid rgba(102,126,234,0.2);
+  border-radius:6px;
+  padding:6px 12px;
+  color:#999;
+  cursor:pointer;
+  font-size:12px;
+  font-weight:500;
+  transition:all 0.2s ease;
+}
+
+.ai-tools button:hover{
+  background:rgba(102,126,234,0.2);
+  color:#667eea;
+  transform:scale(1.05);
+}
+
 .input-bar{
   padding:24px 32px;
-  background:rgba(17,17,17,0.8);
+  background:rgba(17,17,17,0.9);
   backdrop-filter:blur(20px);
   border-top:1px solid rgba(255,255,255,0.06);
 }
@@ -531,6 +643,7 @@ html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Sego
   padding:12px 16px;
   border:1px solid rgba(255,255,255,0.08);
   transition:all 0.3s ease;
+  align-items:flex-end;
 }
 
 .input-wrap:focus-within{
@@ -548,26 +661,26 @@ textarea{
   font-size:15px;
   font-family:inherit;
   line-height:1.5;
+  max-height:150px;
 }
 
 textarea::placeholder{
   color:#666;
 }
 
-button{cursor:pointer}
-
 .file-btn, .voice-btn{
   background:none;
   border:none;
   color:#999;
   font-size:20px;
-  padding:4px 8px;
+  padding:6px 8px;
   border-radius:8px;
   transition:all 0.3s ease;
+  cursor:pointer;
 }
 
 .file-btn:hover, .voice-btn:hover{
-  background:rgba(102,126,234,0.1);
+  background:rgba(102,126,234,0.15);
   color:#667eea;
   transform:scale(1.1);
 }
@@ -579,7 +692,7 @@ button{cursor:pointer}
 
 @keyframes recordPulse{
   0%,100%{transform:scale(1)}
-  50%{transform:scale(1.2)}
+  50%{transform:scale(1.15)}
 }
 
 .send-btn{
@@ -592,34 +705,37 @@ button{cursor:pointer}
   font-size:14px;
   transition:all 0.3s ease;
   box-shadow:0 4px 12px rgba(102,126,234,0.3);
+  cursor:pointer;
 }
 
-.send-btn:hover{
+.send-btn:hover:not(:disabled){
   transform:translateY(-2px);
-  box-shadow:0 6px 20px rgba(102,126,234,0.4);
+  box-shadow:0 6px 20px rgba(102,126,234,0.5);
 }
 
-.send-btn:active{
+.send-btn:active:not(:disabled){
   transform:translateY(0);
+}
+
+.send-btn:disabled{
+  opacity:0.5;
+  cursor:not-allowed;
 }
 
 .file-preview{
   margin-bottom:12px;
-  font-size:13px;
   display:none;
 }
 
 .file-badge{
   display:inline-flex;
   align-items:center;
-  gap:8px;
-  padding:10px 14px;
+  gap:10px;
+  padding:12px 16px;
   background:rgba(102,126,234,0.15);
   border:1px solid rgba(102,126,234,0.3);
-  border-radius:10px;
+  border-radius:12px;
   color:#e5e5e5;
-  font-size:13px;
-  font-weight:500;
   animation:slideUp 0.3s ease;
 }
 
@@ -627,13 +743,14 @@ button{cursor:pointer}
   display:flex;
   align-items:center;
   justify-content:center;
-  width:28px;
-  height:28px;
+  width:32px;
+  height:32px;
   background:linear-gradient(135deg,#667eea,#764ba2);
-  border-radius:6px;
-  font-size:11px;
+  border-radius:8px;
+  font-size:12px;
   font-weight:700;
   color:white;
+  box-shadow:0 2px 8px rgba(102,126,234,0.3);
 }
 
 .file-info{
@@ -644,7 +761,8 @@ button{cursor:pointer}
 
 .file-name{
   font-weight:600;
-  max-width:200px;
+  font-size:14px;
+  max-width:250px;
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
@@ -659,11 +777,11 @@ button{cursor:pointer}
   background:none;
   border:none;
   color:#999;
-  font-size:16px;
-  padding:4px;
+  font-size:18px;
+  padding:6px;
   margin-left:8px;
   cursor:pointer;
-  border-radius:4px;
+  border-radius:6px;
   transition:all 0.2s ease;
 }
 
@@ -672,30 +790,6 @@ button{cursor:pointer}
   color:#ef4444;
 }
 
-/* Mobile responsive */
-@media(max-width:768px){
-  .sidebar{width:240px}
-  .chat{padding:20px}
-  .input-bar{padding:16px}
-  .bubble{max-width:85%}
-}
- /* ===== ADDITIONS: AI TOOLS ===== */
-.ai-tools{
-  display:flex;
-  gap:10px;
-  margin-top:10px;
-  opacity:0.6;
-  font-size:13px;
-}
-.ai-tools button{
-  background:none;
-  border:none;
-  color:#aaa;
-  cursor:pointer;
-}
-.ai-tools button:hover{color:#fff}
-
-/* ===== APPROVAL POPUP ===== */
 .approval-popup{
   position:fixed;
   top:50%;
@@ -705,9 +799,9 @@ button{cursor:pointer}
   color:white;
   padding:20px 32px;
   border-radius:16px;
-  font-size:16px;
+  font-size:15px;
   font-weight:600;
-  box-shadow:0 8px 32px rgba(102,126,234,0.5);
+  box-shadow:0 12px 48px rgba(102,126,234,0.5);
   z-index:1000;
   opacity:0;
   transition:all 0.3s ease;
@@ -731,6 +825,36 @@ button{cursor:pointer}
   50%{transform:scale(1.2) rotate(10deg)}
   100%{transform:scale(1) rotate(0deg)}
 }
+
+.clear-history-btn{
+  width:100%;
+  padding:10px;
+  margin-top:8px;
+  background:rgba(239,68,68,0.1);
+  border:1px solid rgba(239,68,68,0.2);
+  border-radius:8px;
+  color:#ef4444;
+  cursor:pointer;
+  font-size:12px;
+  font-weight:600;
+  transition:all 0.3s ease;
+}
+
+.clear-history-btn:hover{
+  background:rgba(239,68,68,0.2);
+  transform:translateY(-2px);
+}
+
+@media(max-width:768px){
+  .sidebar{width:280px}
+  .chat{padding:20px}
+  .input-bar{padding:16px}
+  .bubble{max-width:85%}
+  .welcome{padding:40px 20px}
+  .welcome-features{flex-direction:column;align-items:center}
+  .feature-card{width:100%;max-width:200px}
+  .header-actions{display:none}
+}
 </style>
 </head>
 
@@ -739,19 +863,26 @@ button{cursor:pointer}
 
 <aside class="sidebar" id="sidebar">
   <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+  
   <div class="sidebar-header">
     <div class="logo">
       <div class="logo-icon">e</div>
-      <div>eSAMz v7</div>
+      <div class="logo-text">
+        <div class="logo-title">eSAMz v7</div>
+        <div class="logo-subtitle">AI Assistant</div>
+      </div>
     </div>
     <button class="new-chat-btn" onclick="newChat()">+ New Chat</button>
   </div>
 
-  <div class="sidebar-content">
+  <div class="chat-history" id="chatHistory"></div>
+
+  <div class="sidebar-links">
     <a href="https://esamz.info" target="_blank">🏠 Home</a>
     <a href="https://esamz.info/docs" target="_blank">📚 Docs</a>
     <a href="https://esamz.info/aboutus" target="_blank">ℹ️ About</a>
     <a href="https://esamz.info/privacypolicy" target="_blank">🔒 Privacy</a>
+    <button class="clear-history-btn" onclick="clearAllHistory()">🗑️ Clear All History</button>
   </div>
 
   <div class="sidebar-footer">
@@ -761,25 +892,46 @@ button{cursor:pointer}
 
 <main class="main">
   <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+  
   <div class="header">
-    <div>eSAMz AI Assistant</div>
+    <div class="header-title">eSAMz AI Assistant</div>
+    <div class="header-actions">
+      <button class="header-btn" onclick="exportChat()">📥 Export</button>
+      <button class="header-btn" onclick="clearCurrentChat()">🗑️ Clear</button>
+    </div>
   </div>
 
   <div class="chat" id="chat">
     <div class="welcome" id="welcomeMsg">
       <h2>Welcome to eSAMz v7</h2>
-      <p>Dive into intelligent conversations.</p>
+      <p>Your intelligent AI companion for meaningful conversations</p>
+      <div class="welcome-features">
+        <div class="feature-card">
+          <div class="feature-icon">💬</div>
+          <div class="feature-text">Natural Conversations</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💾</div>
+          <div class="feature-text">Chat History</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🎤</div>
+          <div class="feature-text">Voice Input</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📎</div>
+          <div class="feature-text">File Support</div>
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="input-bar">
     <div class="file-preview" id="filePreview"></div>
     <div class="input-wrap">
-      <input type="file" id="fileInput" style="display:none"
-        accept=".txt,.pdf,.doc,.docx">
+      <input type="file" id="fileInput" style="display:none" accept=".txt,.pdf,.doc,.docx">
       <button class="file-btn" onclick="fileInput.click()">📎</button>
       <button class="voice-btn" id="voiceBtn" onclick="toggleVoice()">🎤</button>
-
       <textarea id="input" placeholder="Type your message..." rows="1"></textarea>
       <button class="send-btn" id="send">Send</button>
     </div>
@@ -788,16 +940,12 @@ button{cursor:pointer}
 
 </div>
 
-<!-- Approval Popup -->
 <div class="approval-popup" id="approvalPopup">
   <span class="icon" id="popupIcon"></span>
   <span id="popupText"></span>
 </div>
 
 <script>
-/* =======================
-   ELEMENT REFERENCES
-======================= */
 const chat = document.getElementById("chat")
 const input = document.getElementById("input")
 const send = document.getElementById("send")
@@ -805,92 +953,347 @@ const fileInput = document.getElementById("fileInput")
 const filePreview = document.getElementById("filePreview")
 const voiceBtn = document.getElementById("voiceBtn")
 const sidebar = document.getElementById("sidebar")
+const chatHistory = document.getElementById("chatHistory")
 
-/* =======================
-   STATE
-======================= */
 let uploadedFile = null
 let uploadedText = ""
 let conversationHistory = []
 let recognition = null
 let isRecording = false
-let isFirstMessage = true
+let currentChatId = null
+let allChats = {}
 
-/* =======================
-   APPROVAL POPUP
-======================= */
-function showApproval(icon, text){
-  const popup = document.getElementById("approvalPopup")
-  const popupIcon = document.getElementById("popupIcon")
-  const popupText = document.getElementById("popupText")
+// Initialize
+window.addEventListener('DOMContentLoaded', () => {
+  loadChatsFromStorage()
+  renderChatHistory()
+  autoResizeTextarea()
+})
 
-  popupIcon.textContent = icon
-  popupText.textContent = text
+// Auto-resize textarea
+input.addEventListener('input', autoResizeTextarea)
 
-  popup.classList.add("show")
-
-  setTimeout(() => {
-    popup.classList.remove("show")
-  }, 2000)
+function autoResizeTextarea() {
+  input.style.height = 'auto'
+  input.style.height = Math.min(input.scrollHeight, 150) + 'px'
 }
 
-/* =======================
-   SIDEBAR TOGGLE
-======================= */
-function toggleSidebar(){
+// Storage Functions
+function saveChatsToStorage() {
+  try {
+    localStorage.setItem('esamz_chats', JSON.stringify(allChats))
+    localStorage.setItem('esamz_current_chat', currentChatId)
+  } catch (e) {
+    console.error('Storage error:', e)
+  }
+}
+
+function loadChatsFromStorage() {
+  try {
+    const stored = localStorage.getItem('esamz_chats')
+    const storedCurrent = localStorage.getItem('esamz_current_chat')
+    
+    if (stored) {
+      allChats = JSON.parse(stored)
+    }
+    
+    if (storedCurrent && allChats[storedCurrent]) {
+      currentChatId = storedCurrent
+      loadChat(currentChatId)
+    }
+  } catch (e) {
+    console.error('Load error:', e)
+    allChats = {}
+  }
+}
+
+// Chat History UI
+function renderChatHistory() {
+  const chatArray = Object.entries(allChats).sort((a, b) => b[1].timestamp - a[1].timestamp)
+  
+  if (chatArray.length === 0) {
+    chatHistory.innerHTML = '<div style="padding:20px;text-align:center;color:#666;font-size:13px;">No chat history yet</div>'
+    return
+  }
+  
+  const today = []
+  const yesterday = []
+  const older = []
+  
+  const now = Date.now()
+  const oneDay = 24 * 60 * 60 * 1000
+  
+  chatArray.forEach(([id, chat]) => {
+    const age = now - chat.timestamp
+    if (age < oneDay) {
+      today.push([id, chat])
+    } else if (age < 2 * oneDay) {
+      yesterday.push([id, chat])
+    } else {
+      older.push([id, chat])
+    }
+  })
+  
+  let html = ''
+  
+  if (today.length > 0) {
+    html += '<div class="history-section"><div class="history-label">Today</div>'
+    today.forEach(([id, chat]) => {
+      html += renderHistoryItem(id, chat)
+    })
+    html += '</div>'
+  }
+  
+  if (yesterday.length > 0) {
+    html += '<div class="history-section"><div class="history-label">Yesterday</div>'
+    yesterday.forEach(([id, chat]) => {
+      html += renderHistoryItem(id, chat)
+    })
+    html += '</div>'
+  }
+  
+  if (older.length > 0) {
+    html += '<div class="history-section"><div class="history-label">Older</div>'
+    older.forEach(([id, chat]) => {
+      html += renderHistoryItem(id, chat)
+    })
+    html += '</div>'
+  }
+  
+  chatHistory.innerHTML = html
+}
+
+function renderHistoryItem(id, chat) {
+  const isActive = id === currentChatId ? 'active' : ''
+  const title = chat.title || 'New conversation'
+  const time = formatTime(chat.timestamp)
+  
+  return `
+    <div class="history-item ${isActive}" onclick="loadChat('${id}')">
+      <div class="history-icon">💬</div>
+      <div class="history-content">
+        <div class="history-title">${title}</div>
+        <div class="history-time">${time}</div>
+      </div>
+      <button class="history-delete" onclick="event.stopPropagation(); deleteChat('${id}')">🗑️</button>
+    </div>
+  `
+}
+
+function formatTime(timestamp) {
+  const date = new Date(timestamp)
+  const now = new Date()
+  
+  if (date.toDateString() === now.toDateString()) {
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+  }
+  
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+// Chat Management
+function newChat() {
+  currentChatId = 'chat_' + Date.now()
+  conversationHistory = []
+  
+  allChats[currentChatId] = {
+    id: currentChatId,
+    title: 'New conversation',
+    messages: [],
+    timestamp: Date.now()
+  }
+  
+  saveChatsToStorage()
+  renderChatHistory()
+  
+  chat.innerHTML = `
+    <div class="welcome" id="welcomeMsg">
+      <h2>Welcome to eSAMz v7</h2>
+      <p>Your intelligent AI companion for meaningful conversations</p>
+      <div class="welcome-features">
+        <div class="feature-card">
+          <div class="feature-icon">💬</div>
+          <div class="feature-text">Natural Conversations</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💾</div>
+          <div class="feature-text">Chat History</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🎤</div>
+          <div class="feature-text">Voice Input</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📎</div>
+          <div class="feature-text">File Support</div>
+        </div>
+      </div>
+    </div>`
+  
+  resetFile()
+}
+
+function loadChat(chatId) {
+  if (!allChats[chatId]) return
+  
+  currentChatId = chatId
+  const chatData = allChats[chatId]
+  conversationHistory = chatData.messages || []
+  
+  chat.innerHTML = ''
+  
+  if (conversationHistory.length === 0) {
+    chat.innerHTML = `
+      <div class="welcome" id="welcomeMsg">
+        <h2>Welcome to eSAMz v7</h2>
+        <p>Your intelligent AI companion for meaningful conversations</p>
+        <div class="welcome-features">
+          <div class="feature-card">
+            <div class="feature-icon">💬</div>
+            <div class="feature-text">Natural Conversations</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">💾</div>
+            <div class="feature-text">Chat History</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🎤</div>
+            <div class="feature-text">Voice Input</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">📎</div>
+            <div class="feature-text">File Support</div>
+          </div>
+        </div>
+      </div>`
+  } else {
+    conversationHistory.forEach(msg => {
+      addMessageToUI(msg.content, msg.role)
+    })
+  }
+  
+  saveChatsToStorage()
+  renderChatHistory()
+}
+
+function deleteChat(chatId) {
+  if (!confirm('Delete this conversation?')) return
+  
+  delete allChats[chatId]
+  
+  if (currentChatId === chatId) {
+    newChat()
+  } else {
+    saveChatsToStorage()
+    renderChatHistory()
+  }
+  
+  showApproval("🗑️", "Chat deleted")
+}
+
+function clearCurrentChat() {
+  if (!currentChatId || conversationHistory.length === 0) return
+  
+  if (!confirm('Clear current conversation?')) return
+  
+  conversationHistory = []
+  allChats[currentChatId].messages = []
+  allChats[currentChatId].timestamp = Date.now()
+  
+  saveChatsToStorage()
+  loadChat(currentChatId)
+  showApproval("✓", "Chat cleared")
+}
+
+function clearAllHistory() {
+  if (!confirm('Delete all chat history? This cannot be undone.')) return
+  
+  allChats = {}
+  localStorage.removeItem('esamz_chats')
+  localStorage.removeItem('esamz_current_chat')
+  
+  newChat()
+  showApproval("🗑️", "All history cleared")
+}
+
+function exportChat() {
+  if (!currentChatId || conversationHistory.length === 0) {
+    showApproval("⚠️", "No messages to export")
+    return
+  }
+  
+  const chatData = allChats[currentChatId]
+  let content = `eSAMz Chat Export\nTitle: ${chatData.title}\nDate: ${new Date(chatData.timestamp).toLocaleString()}\n\n`
+  
+  conversationHistory.forEach(msg => {
+    content += `${msg.role === 'user' ? 'You' : 'eSAMz'}: ${msg.content}\n\n`
+  })
+  
+  const blob = new Blob([content], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `esamz-chat-${Date.now()}.txt`
+  a.click()
+  URL.revokeObjectURL(url)
+  
+  showApproval("📥", "Chat exported")
+}
+
+// Sidebar Toggle
+function toggleSidebar() {
   sidebar.classList.toggle("collapsed")
 }
 
-/* =======================
-   VOICE TO TEXT
-======================= */
-function toggleVoice(){
-  if(!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)){
-    alert("Voice recognition not supported in your browser.")
+// Voice Recognition
+function toggleVoice() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    showApproval("⚠️", "Voice not supported")
     return
   }
-
-  if(isRecording){
+  
+  if (isRecording) {
     stopRecording()
   } else {
     startRecording()
   }
 }
 
-function startRecording(){
+function startRecording() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
   recognition = new SpeechRecognition()
   recognition.continuous = true
   recognition.interimResults = true
   recognition.lang = 'en-US'
-
+  
   recognition.onstart = () => {
     isRecording = true
     voiceBtn.classList.add("recording")
   }
-
+  
   recognition.onresult = (event) => {
     let transcript = ''
-    for(let i = event.resultIndex; i < event.results.length; i++){
+    for (let i = event.resultIndex; i < event.results.length; i++) {
       transcript += event.results[i][0].transcript
     }
     input.value = transcript
+    autoResizeTextarea()
   }
-
+  
   recognition.onerror = (event) => {
-    console.error("Voice recognition error:", event.error)
+    console.error("Voice error:", event.error)
     stopRecording()
   }
-
+  
   recognition.onend = () => {
     stopRecording()
   }
-
+  
   recognition.start()
 }
 
-function stopRecording(){
-  if(recognition){
+function stopRecording() {
+  if (recognition) {
     recognition.stop()
     recognition = null
   }
@@ -898,97 +1301,31 @@ function stopRecording(){
   voiceBtn.classList.remove("recording")
 }
 
-/* =======================
-   MESSAGE UI
-======================= */
-function addMessage(text, role){
-  const msg = document.createElement("div")
-  msg.className = "message " + role
-
-  const bubble = document.createElement("div")
-  bubble.className = "bubble"
-  bubble.textContent = text
-
-  if(role === "ai") attachTools(bubble, text)
-
-  msg.appendChild(bubble)
-  chat.appendChild(msg)
-  chat.scrollTop = chat.scrollHeight
-}
-
-/* =======================
-   AI TOOLS
-======================= */
-function attachTools(bubble, text){
-  const tools = document.createElement("div")
-  tools.className = "ai-tools"
-
-  const copyBtn = document.createElement("button")
-  copyBtn.textContent = "📋 Copy"
-  copyBtn.onclick = () => {
-    navigator.clipboard.writeText(text)
-    showApproval("✓", "Copied to clipboard!")
-  }
-
-  const likeBtn = document.createElement("button")
-  likeBtn.textContent = "👍"
-  likeBtn.onclick = () => {
-    console.log("Liked")
-    showApproval("👍", "Thanks for your feedback!")
-  }
-
-  const dislikeBtn = document.createElement("button")
-  dislikeBtn.textContent = "👎"
-  dislikeBtn.onclick = () => {
-    console.log("Disliked")
-    showApproval("👎", "Feedback received!")
-  }
-
-  tools.append(copyBtn, likeBtn, dislikeBtn)
-  bubble.appendChild(tools)
-}
-
-/* =======================
-   NEW CHAT
-======================= */
-function newChat(){
-  chat.innerHTML = `
-    <div class="welcome" id="welcomeMsg">
-      <h2>Welcome to eSAMz v7</h2>
-      <p>Dive into intelligent conversations.</p>
-    </div>`
-  conversationHistory = []
-  isFirstMessage = true
-  resetFile()
-}
-
-/* =======================
-   FILE HANDLING
-======================= */
+// File Handling
 fileInput.onchange = async () => {
   const file = fileInput.files[0]
-  if(!file) return
-
+  if (!file) return
+  
   uploadedFile = file
   uploadedText = ""
-
-  if(file.type === "text/plain"){
+  
+  if (file.type === "text/plain") {
     uploadedText = await file.text()
   }
-
+  
   filePreview.style.display = "block"
   filePreview.innerHTML = `
     <div class="file-badge">
       <div class="file-icon">${file.name.split('.').pop().toUpperCase()}</div>
       <div class="file-info">
         <div class="file-name">${file.name}</div>
-        <div class="file-type">${(file.size/1024).toFixed(1)} KB</div>
+        <div class="file-type">${(file.size / 1024).toFixed(1)} KB</div>
       </div>
       <button class="file-remove" onclick="removeFile()">✕</button>
     </div>`
 }
 
-function removeFile(){
+function removeFile() {
   uploadedFile = null
   uploadedText = ""
   fileInput.value = ""
@@ -996,7 +1333,7 @@ function removeFile(){
   filePreview.innerHTML = ""
 }
 
-function resetFile(){
+function resetFile() {
   uploadedFile = null
   uploadedText = ""
   fileInput.value = ""
@@ -1004,30 +1341,93 @@ function resetFile(){
   filePreview.innerHTML = ""
 }
 
-/* =======================
-   SEND MESSAGE
-======================= */
-async function sendMsg(){
-  const text = input.value.trim()
-  if(!text && !uploadedFile) return
+// Message Functions
+function addMessageToUI(text, role) {
+  const msg = document.createElement("div")
+  msg.className = "message " + role
+  
+  const avatar = document.createElement("div")
+  avatar.className = "message-avatar"
+  avatar.textContent = role === "user" ? "👤" : "🤖"
+  
+  const bubble = document.createElement("div")
+  bubble.className = "bubble"
+  bubble.textContent = text
+  
+  if (role === "ai") attachTools(bubble, text)
+  
+  msg.appendChild(avatar)
+  msg.appendChild(bubble)
+  chat.appendChild(msg)
+  chat.scrollTop = chat.scrollHeight
+}
 
-  const welcome = document.getElementById("welcomeMsg")
-  if(welcome){
-    welcome.remove()
-    isFirstMessage = false
+function attachTools(bubble, text) {
+  const tools = document.createElement("div")
+  tools.className = "ai-tools"
+  
+  const copyBtn = document.createElement("button")
+  copyBtn.textContent = "📋 Copy"
+  copyBtn.onclick = () => {
+    navigator.clipboard.writeText(text)
+    showApproval("✓", "Copied!")
   }
+  
+  const likeBtn = document.createElement("button")
+  likeBtn.textContent = "👍 Like"
+  likeBtn.onclick = () => {
+    showApproval("👍", "Thanks!")
+  }
+  
+  const dislikeBtn = document.createElement("button")
+  dislikeBtn.textContent = "👎 Dislike"
+  dislikeBtn.onclick = () => {
+    showApproval("👎", "Feedback noted")
+  }
+  
+  tools.append(copyBtn, likeBtn, dislikeBtn)
+  bubble.appendChild(tools)
+}
 
+// Send Message
+async function sendMsg() {
+  const text = input.value.trim()
+  if (!text && !uploadedFile) return
+  
+  const welcome = document.getElementById("welcomeMsg")
+  if (welcome) welcome.remove()
+  
+  if (!currentChatId) {
+    currentChatId = 'chat_' + Date.now()
+    allChats[currentChatId] = {
+      id: currentChatId,
+      title: text.substring(0, 50),
+      messages: [],
+      timestamp: Date.now()
+    }
+  }
+  
   let payload = text
-
-  addMessage(text || "[File sent]", "user")
+  
+  addMessageToUI(text || "[File sent]", "user")
   input.value = ""
+  autoResizeTextarea()
   resetFile()
-
-
-  conversationHistory.push({ role: "user", content: payload })
-
-  try{
-    const res = await fetch("/api/chat",{
+  
+  const userMsg = { role: "user", content: payload }
+  conversationHistory.push(userMsg)
+  allChats[currentChatId].messages.push(userMsg)
+  allChats[currentChatId].timestamp = Date.now()
+  
+  if (conversationHistory.length === 1) {
+    allChats[currentChatId].title = text.substring(0, 50)
+  }
+  
+  saveChatsToStorage()
+  renderChatHistory()
+  
+  try {
+    const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1035,26 +1435,47 @@ async function sendMsg(){
         history: conversationHistory
       })
     })
-
+    
     const data = await res.json()
     const reply = data.reply || "No response."
-
-    addMessage(reply, "ai")
-    conversationHistory.push({ role: "assistant", content: reply })
-
-  } catch (err){
+    
+    addMessageToUI(reply, "ai")
+    
+    const aiMsg = { role: "assistant", content: reply }
+    conversationHistory.push(aiMsg)
+    allChats[currentChatId].messages.push(aiMsg)
+    allChats[currentChatId].timestamp = Date.now()
+    
+    saveChatsToStorage()
+    renderChatHistory()
+    
+  } catch (err) {
     console.error(err)
-    addMessage("Error connecting to AI.", "ai")
+    addMessageToUI("Error connecting to AI.", "ai")
   }
 }
 
-/* =======================
-   EVENTS
-======================= */
+// Approval Popup
+function showApproval(icon, text) {
+  const popup = document.getElementById("approvalPopup")
+  const popupIcon = document.getElementById("popupIcon")
+  const popupText = document.getElementById("popupText")
+  
+  popupIcon.textContent = icon
+  popupText.textContent = text
+  
+  popup.classList.add("show")
+  
+  setTimeout(() => {
+    popup.classList.remove("show")
+  }, 2000)
+}
+
+// Events
 send.onclick = sendMsg
 
 input.addEventListener("keydown", e => {
-  if(e.key === "Enter" && !e.shiftKey){
+  if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault()
     sendMsg()
   }
