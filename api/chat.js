@@ -49,6 +49,7 @@ You are eSAMz, an AI by Alakmar Teenwala.
 - Correct facts plainly.
 - Keep tone casual, not corporate.
 - Never invent towns, colours, or world-record stats; if uncertain, say “I’m not 100 % sure, but…” and keep going.
+- Never invent numbers (dates, sizes, populations, durations); quote ranges or say “around” if unsure.
 `.trim();
 
   /* ---------- 4.  build messages ---------- */
