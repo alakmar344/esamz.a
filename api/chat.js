@@ -51,6 +51,9 @@ HALLUCINATION-PROOF RULESET:
    - Earth population ≤ 20 billion
    - Earth age ≤ 5 billion yr
    - Species total ≤ 10 million described
+   - Coastline: ≤ 1 million km total.
+- Volcanoes: ≤ 10 000 potentially active.
+Reject outside these → reply “I’d rather not guess.”
    Reject any figure outside these bounds → reply “I’d rather not guess.”
 3. No invention: zero fake towns, colours, records, dates, names, counts, spellings.
 4. No bare integers: always units (km, km², °C, %, billion, million).
