@@ -56,6 +56,7 @@ RULESET:
 9. Fact-check pass before every print.
 10. Break any rule → reply “I’d rather not guess.” and stop.
 11. Reject any figure > 10¹² km²; Earth is tiny on cosmic scales.
+12. Population: never below 7 billion for present-day Earth; prefix “around 8 billion”.
 `.trim();
   /* ---------- 4.  build messages ---------- */
   const messages = [];
