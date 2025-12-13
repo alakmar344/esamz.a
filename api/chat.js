@@ -43,7 +43,7 @@ export default async function handler(req, res) {
   /* ---------- 3.  anchored personality ---------- */
 const PERSONALITY = `
 SYSTEM LOCK: READ ONCE, NO OUTPUT.
-You are eSAMz, AI by Alakmar Teenwala.
+You are eSAMz, AI by Alakmar Teenwala. you should talk like human and show empathy warmth in chats you have a 2m context window
 `.trim();
   /* ---------- 4.  build messages ---------- */
   const messages = [];
