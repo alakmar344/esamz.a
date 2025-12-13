@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // Enable CORS
   res.setHeader("Access-Control-Allow-Credentials", true);
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,POST");
@@ -21,172 +20,90 @@ export default async function handler(req, res) {
   const raw = message.trim();
   const text = raw.toLowerCase();
 
-  // Low signal short replies
+  /* ---------- 1.  1B-only chit-chat ---------- */
   const lowSignal = [
     "ok", "okay", "hmm", "hm", "yes", "yeah",
     "nothing", "its nothing", "it's nothing",
     "cool", "fine", "alright", "k"
   ];
-
   if (lowSignal.includes(text)) {
     return res.status(200).json({
-      reply: "Got it. I’m here whenever you want to go deeper or ask something."
+      reply: await callGemma("1b", raw, history)
     });
   }
 
-  // Simple intent detection for execution mode
-  const executionKeywords = [
+  /* ---------- 2.  smarter routing ---------- */
+  const deepKeys = [
     "code", "html", "css", "javascript", "js",
-    "api", "backend", "function", "file", "script"
+    "api", "backend", "function", "file", "script",
+    "debug", "explain", "logic", "algorithm"
   ];
+  const needs4B = text.length > 120 || deepKeys.some(k => text.includes(k));
 
-  const executionIntent = executionKeywords.some(k => text.includes(k));
-
-  // =======================
-  // PERSONALITY SYSTEM PROMPT
-  // =======================
+  /* ---------- 3.  anchored personality ---------- */
   const PERSONALITY = `
-You are eSAMz v7.
+INSTRUCTIONS FOR ASSISTANT (DO NOT RESPOND TO THIS LINE):
+You are eSAMz, an AI by Alakmar Teenwala.
+- Transparent when unsure.
+- Friendly, concise.
+- Correct facts plainly.
+`.trim();
 
-Purpose
-Provide human grade clarity, empathy, strategy, and action oriented intelligence with natural warmth and precision.
-
-Knowledge
-Your verified knowledge extends up to June 2024.
-
-Identity
-Never state your name, creator, origin, version, or training unless the user explicitly asks an identity question.
-Only allowed identity response:
-“I am eSAMz v7 created by Alakmar Teenwala.”
-
-Behavior
-Friendly, chill, casual by default.
-Never robotic, academic, template based, or preachy.
-
-Tone
-Switch immediately if the user asks for a specific tone.
-
-Truth
-Never agree to false factual claims.
-Correct clearly and firmly.
-Politeness never overrides correctness.
-
-Modes
-Factual, Hypothetical, Roleplay, Identity.
-Never mix modes silently.
-
-Communication
-Include emotional grounding, insight, next step, and forward question naturally.
-Never label them.
-
-Execution
-When the task is code or systems:
-Deliver production ready output.
-No explanations.
-No teaching tone.
-
-Links
-Never hallucinate links or sources.
-
-Reasoning
-Internal reasoning is hidden.
-Only final answers are shown.
-`;
-
-  // =======================
-  // MODEL ROTATION (30s)
-  // =======================
-  const MODELS = [
-    "gemma-3-4b-it",
-    "gemma-3-1b-it"
-  ];
-
-  const ROTATION_WINDOW_MS = 30 * 1000;
-  const modelIndex = Math.floor(Date.now() / ROTATION_WINDOW_MS) % MODELS.length;
-  const selectedModel = MODELS[modelIndex];
-
-  try {
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(200).json({
-        reply: "Configuration error. Please contact support."
-      });
-    }
-
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    const messages = [];
-
-    // System instruction (locked, no response expected)
-    messages.push({
-      role: "user",
-      parts: [{ text: PERSONALITY }]
-    });
-
-    // Conversation history
-    if (Array.isArray(history)) {
-      for (const msg of history.slice(-20)) {
-        if (msg?.content?.trim()) {
-          messages.push({
-            role: msg.role === "assistant" ? "model" : "user",
-            parts: [{ text: msg.content.trim() }]
-          });
-        }
+  /* ---------- 4.  build messages ---------- */
+  const messages = [];
+  messages.push({ role: "user", parts: [{ text: PERSONALITY }] });
+  if (Array.isArray(history)) {
+    for (const h of history.slice(-8)) {
+      if (h?.content?.trim()) {
+        messages.push({
+          role: h.role === "assistant" ? "model" : "user",
+          parts: [{ text: h.content.trim() }]
+        });
       }
     }
-
-    // Execution intent hint (silent)
-    if (executionIntent) {
-      messages.push({
-        role: "user",
-        parts: [{ text: "Execution mode active. Deliver output directly." }]
-      });
-    }
-
-    // Current user input
-    messages.push({
-      role: "user",
-      parts: [{ text: raw }]
-    });
-
-    console.log(`Model: ${selectedModel} | Messages: ${messages.length}`);
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: messages,
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 2048,
-            topP: 0.95,
-            topK: 40
-          }
-        })
-      }
-    );
-
-    if (!response.ok) {
-      return res.status(200).json({
-        reply: "Temporary model issue. Please try again."
-      });
-    }
-
-    const data = await response.json();
-    const reply = data?.candidates?.[0]?.content?.parts
-      ?.map(p => p.text || "")
-      .join("")
-      .trim();
-
-    return res.status(200).json({
-      reply: reply || "I’m here. What would you like to explore?"
-    });
-
-  } catch (err) {
-    console.error("Handler error:", err);
-    return res.status(200).json({
-      reply: "Something went wrong. Try again in a moment."
-    });
   }
+  messages.push({ role: "user", parts: [{ text: raw }] });
+
+  /* ---------- 5.  call model ---------- */
+  try {
+    const reply = await callGemma(needs4B ? "4b" : "1b", null, messages);
+    return res.status(200).json({ reply });
+  } catch (e) {
+    console.error("gemma fail", e);
+    return res.status(200).json({ reply: "Temporary model issue. Please try again." });
+  }
+}
+
+/* ---------- helper: identical fetch path ---------- */
+async function callGemma(size, singlePrompt, fullMessages) {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error("No GEMINI_API_KEY");
+
+  const model = size === "4b" ? "gemma-3-4b-it" : "gemma-3-1b-it";
+
+  const body = {
+    contents: singlePrompt
+      ? [{ role: "user", parts: [{ text: singlePrompt }] }]
+      : fullMessages,
+    generationConfig: {
+      temperature: 0.6,
+      topP: 0.95,
+      topK: 40,
+      maxOutputTokens: size === "4b" ? 2048 : 512
+    }
+  };
+
+  const rsp = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
+  );
+
+  if (!rsp.ok) {
+    console.error(await rsp.text());          // real error body
+    throw new Error(`Gemma ${size} ${rsp.status}`);
+  }
+
+  const data = await rsp.json();
+  return data?.candidates?.[0]?.content?.parts?.map(p => p.text).join("").trim() ||
+         "I’m here. What would you like to explore?";
 }
