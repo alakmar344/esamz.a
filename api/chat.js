@@ -54,6 +54,7 @@ COMPLIANCE CODE RED:
    - Earth lifespan ≤ 80 yr (global 70-75)
    - Volcanoes ≤ 10 000 active
    - Species ≤ 10 million described
+   - Population floor: never below 8 billion for present-day Earth.
 3. Zero invention: no fake towns, colours, records, dates, names, counts.
 4. No bare integers – always units (km, km², °C, %, billion, million).
 5. One duplicate fact = instant delete.
