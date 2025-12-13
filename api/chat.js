@@ -55,8 +55,8 @@ RULESET:
 8. Lists: ≤5 items; each item ≤12 words.
 9. Fact-check pass before every print.
 10. Break any rule → reply “I’d rather not guess.” and stop.
+11. Reject any figure > 10¹² km²; Earth is tiny on cosmic scales.
 `.trim();
-
   /* ---------- 4.  build messages ---------- */
   const messages = [];
   messages.push({ role: "user", parts: [{ text: PERSONALITY }] });
