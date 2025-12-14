@@ -1,6 +1,5 @@
 export default async function handler(req, res) {
   // ---------- CORS ----------
-  res.setHeader("Access-Control-Allow-Credentials", true);
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -10,7 +9,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Only POST allowed" });
   }
 
-  // ---------- INPUT ----------
   const { message, history } = req.body || {};
   if (!message || !message.trim()) {
     return res.status(400).json({ error: "Message required" });
@@ -18,24 +16,17 @@ export default async function handler(req, res) {
 
   const userText = message.trim();
   const lower = userText.toLowerCase();
+  const isQuick = userText.length < 12;
 
-  // ---------- QUICK CHECK ----------
-  const quickReplies = ["hi", "hello", "ok", "okay", "yes", "yeah", "thanks"];
-  const isQuick = quickReplies.includes(lower) && userText.length < 10;
-
-  // ---------- SYSTEM PROMPT (INLINE FOR REST) ----------
+  // ---------- SYSTEM PROMPT (INLINE) ----------
   const SYSTEM =
     "You are eSAMz AI by Alakmar Teenwala. Be warm, clear, and helpful. " +
     "When writing HTML, always output a single file with inline style and script.\n\n";
 
-  // ---------- BUILD CONTENTS ----------
-  const contents = [];
-
-  // System prompt injected once
-  contents.push({
-    role: "user",
-    parts: [{ text: SYSTEM + userText }]
-  });
+  // ---------- BUILD COMMON CONTENT ----------
+  const contents = [
+    { role: "user", parts: [{ text: SYSTEM + userText }] }
+  ];
 
   if (Array.isArray(history)) {
     history.slice(-10).forEach(h => {
@@ -48,100 +39,133 @@ export default async function handler(req, res) {
     });
   }
 
-  // ---------- MODEL ORDER ----------
-  // Priority: Gemini → Gemma
-  const modelChain = isQuick
-    ? [
-        "gemini-2.5-flash-lite",
-        "gemma-3-1b",
-        "gemma-3-4b"
-      ]
-    : [
-        "gemini-2.5-flash",
-        "gemma-3-4b",
-        "gemma-3-12b"
-      ];
+  // ---------- MODEL FALLBACK CHAIN ----------
+  const chain = [
+    { provider: "gemini", model: isQuick ? "gemini-2.5-flash-lite" : "gemini-2.5-flash" },
+    { provider: "cloudflare", model: "@cf/meta/llama-3-8b-instruct" },
+    { provider: "gemma", model: isQuick ? "gemma-3-1b" : "gemma-3-4b" }
+  ];
 
-  // ---------- TRY MODELS ONE BY ONE ----------
-  for (const model of modelChain) {
+  for (const step of chain) {
     try {
-      const reply = await callModel(model, contents, isQuick);
-      return res.status(200).json({ reply, model });
-    } catch (err) {
-      if (!err.retryable) {
-        console.error("Fatal model error:", err.message);
+      let reply;
+
+      if (step.provider === "gemini") {
+        reply = await callGemini(step.model, contents, isQuick);
+      } else if (step.provider === "cloudflare") {
+        reply = await callCloudflareLlama(step.model, userText);
+      } else {
+        reply = await callGemma(step.model, userText);
+      }
+
+      return res.status(200).json({
+        reply,
+        model: step.model,
+        provider: step.provider
+      });
+    } catch (e) {
+      if (!e.retryable) {
+        console.error("Fatal error:", e.message);
         break;
       }
-      // retry with next model
     }
   }
 
-  // ---------- TOTAL FAILURE ----------
   return res.status(200).json({
     reply: "I'm currently at capacity. Please try again shortly."
   });
 }
 
-/* ---------- MODEL CALLER ---------- */
-async function callModel(model, contents, isQuick) {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new Error("No GEMINI_API_KEY");
-
-  const maxTokens =
-    model.startsWith("gemini")
-      ? isQuick ? 512 : 4096
-      : isQuick ? 512 : 2048;
-
-  const body = {
-    contents,
-    generationConfig: {
-      temperature: 0.7,
-      topP: 0.95,
-      topK: 40,
-      maxOutputTokens: maxTokens
-    }
-  };
-
+/* ---------- GEMINI ---------- */
+async function callGemini(model, contents, isQuick) {
   const rsp = await fetch(
-    `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${key}`,
+    `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
+      body: JSON.stringify({
+        contents,
+        generationConfig: {
+          temperature: 0.7,
+          topP: 0.95,
+          topK: 40,
+          maxOutputTokens: isQuick ? 512 : 4096
+        }
+      })
     }
   );
 
   if (!rsp.ok) {
-    const errText = await rsp.text();
-
-    // Retryable errors → try next model
-    if (
-      errText.includes("RESOURCE_EXHAUSTED") ||
-      errText.includes("429")
-    ) {
-      const e = new Error(`Quota hit on ${model}`);
+    const t = await rsp.text();
+    if (t.includes("RESOURCE_EXHAUSTED") || rsp.status === 429) {
+      const e = new Error("Gemini quota");
       e.retryable = true;
       throw e;
     }
+    throw new Error(t);
+  }
 
-    // Non-retryable
-    const e = new Error(errText);
+  const data = await rsp.json();
+  return (
+    data?.candidates?.[0]?.content?.parts?.map(p => p.text).join("").trim()
+  );
+}
+
+/* ---------- CLOUDFLARE LLAMA ---------- */
+async function callCloudflareLlama(model, prompt) {
+  const rsp = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/run/${model}`,
+    {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.CF_API_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        messages: [
+          { role: "system", content: "You are a helpful AI assistant." },
+          { role: "user", content: prompt }
+        ]
+      })
+    }
+  );
+
+  const data = await rsp.json();
+
+  if (!data.success) {
+    const e = new Error("Cloudflare quota or failure");
+    e.retryable = true;
+    throw e;
+  }
+
+  return data.result.response;
+}
+
+/* ---------- GEMMA ---------- */
+async function callGemma(model, prompt) {
+  const rsp = await fetch(
+    `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 1024
+        }
+      })
+    }
+  );
+
+  if (!rsp.ok) {
+    const e = new Error("Gemma failed");
     e.retryable = false;
     throw e;
   }
 
   const data = await rsp.json();
-  const reply =
-    data?.candidates?.[0]?.content?.parts
-      ?.map(p => p.text)
-      .join("")
-      .trim();
-
-  if (!reply) {
-    const e = new Error("Empty response");
-    e.retryable = true;
-    throw e;
-  }
-
-  return reply;
+  return (
+    data?.candidates?.[0]?.content?.parts?.map(p => p.text).join("").trim()
+  );
 }
