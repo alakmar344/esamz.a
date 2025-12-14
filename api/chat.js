@@ -30,7 +30,7 @@ export default async function handler(req, res) {
   /* ---------- SYSTEM PROMPT ---------- */
   const SYSTEM = `You are eSAMz AI by Alakmar Teenwala. 2M context. Be warm, helpful, human-like.
 
-.`;
+Single file HTML = inline <style> and <script> tags only. No external links.`;
 
   /* ---------- BUILD MESSAGES ---------- */
   const messages = [{ role: "user", parts: [{ text: SYSTEM }] }];
@@ -55,7 +55,8 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error("Model error:", e);
     return res.status(500).json({ 
-      reply: "Technical issue. Please try again." 
+      error: "Technical issue",
+      reply: "I'm experiencing technical difficulties. Please try again." 
     });
   }
 }
@@ -130,7 +131,7 @@ async function callGemma(size, singlePrompt, fullMessages) {
   if (!rsp.ok) {
     const errorText = await rsp.text();
     console.error(`Gemma ${size} error:`, errorText);
-    throw new Error(`Gemma ${size} failed: ${rsp.status}`);
+    throw new Error(`Gemma ${size} failed: ${rsp.status}`); // ✅ FIXED THIS LINE
   }
 
   const data = await rsp.json();
@@ -146,9 +147,4 @@ async function callGemma(size, singlePrompt, fullMessages) {
   }
 
   return reply;
-}
-
-  const data = await rsp.json();
-  return data?.candidates?.[0]?.content?.parts?.map(p => p.text).join("").trim() ||
-         "I’m here. What would you like to explore?";
 }
