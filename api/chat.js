@@ -105,17 +105,12 @@ async function callGemini(type, singlePrompt, fullMessages) {
       topP: 0.95,
       topK: 40,
       maxOutputTokens: maxTokens[type]
-    },
-    safetySettings: [
-      { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-      { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-      { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-      { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-    ]
+    }
+    // 🚫 NO safetySettings
   };
 
   const rsp = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${models[type]}:generateContent?key=${key}`,
+    `https://generativelanguage.googleapis.com/v1/models/${models[type]}:generateContent?key=${key}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -125,7 +120,7 @@ async function callGemini(type, singlePrompt, fullMessages) {
 
   if (!rsp.ok) {
     const err = await rsp.text();
-    console.error("Gemini API error:", err);
+    console.error("Gemini API RAW ERROR:", err);
     throw new Error(`Gemini ${type} failed`);
   }
 
