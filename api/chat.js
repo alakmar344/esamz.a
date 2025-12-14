@@ -32,14 +32,21 @@ export default async function handler(req, res) {
       ? "gemini-2.0-flash-001"
       : "gemini-2.0-flash-lite-001";
 
-  // ---------- SYSTEM PROMPT ----------
+  // ---------- SYSTEM PROMPT (INLINE) ----------
   const SYSTEM_PROMPT =
     "You are eSAMz AI by Alakmar Teenwala. Be warm, clear, and helpful. " +
-    "When writing HTML, use a single file with inline style and script only.";
+    "When writing HTML, use a single file with inline style and script only.\n\n";
 
   // ---------- BUILD CONTENTS ----------
   const contents = [];
 
+  // Inject system prompt ONCE as first user message
+  contents.push({
+    role: "user",
+    parts: [{ text: SYSTEM_PROMPT + userText }]
+  });
+
+  // Optional history AFTER system prompt
   if (Array.isArray(history)) {
     history.slice(-10).forEach(h => {
       if (h?.content?.trim()) {
@@ -51,18 +58,9 @@ export default async function handler(req, res) {
     });
   }
 
-  contents.push({
-    role: "user",
-    parts: [{ text: userText }]
-  });
-
   // ---------- GEMINI REQUEST ----------
   try {
     const body = {
-      systemInstruction: {
-        role: "system",
-        parts: [{ text: SYSTEM_PROMPT }]
-      },
       contents,
       generationConfig: {
         temperature: 0.7,
