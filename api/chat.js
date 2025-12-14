@@ -16,9 +16,8 @@ export default async function handler(req, res) {
   }
 
   const system =
-    'You are eSAMz AI by Alakmar Teenwala. Be warm, clear, helpful. ' +
-    'When writing HTML, always output a single file with inline style and script.';
-
+    'You are eSAMz AI by Alakmar Teenwala. Be warm, clear, helpful.be human like and you have 2m context window ' ';
+   
   // Build OpenAI-compatible messages array
   const messages = [
     { role: 'system', content: system },
