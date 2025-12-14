@@ -30,7 +30,7 @@ export default async function handler(req, res) {
   /* ---------- SYSTEM PROMPT ---------- */
   const SYSTEM = `You are eSAMz AI by Alakmar Teenwala. 2M context. Be warm, helpful, human-like.
 
-Single file HTML = inline <style> and <script> tags only. No external links.`;
+.`;
 
   /* ---------- BUILD MESSAGES ---------- */
   const messages = [{ role: "user", parts: [{ text: SYSTEM }] }];
