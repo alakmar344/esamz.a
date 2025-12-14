@@ -3,16 +3,12 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,POST");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Only POST allowed" });
-  }
+  
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Only POST allowed" });
 
   const { message, history } = req.body;
+  
   if (!message || !message.trim()) {
     return res.status(400).json({ error: "Message required" });
   }
@@ -20,84 +16,137 @@ export default async function handler(req, res) {
   const raw = message.trim();
   const text = raw.toLowerCase();
 
-  /* ---------- 1.  1B-only chit-chat ---------- */
-  const lowSignal = [
-    "ok", "okay", "hmm", "hm", "yes", "yeah",
-    "nothing", "its nothing", "it's nothing",
-    "cool", "fine", "alright", "k"
-  ];
-  if (lowSignal.includes(text)) {
+  /* ---------- QUICK RESPONSES (2B) ---------- */
+  const quickReplies = ["ok", "okay", "yes", "yeah", "yep", "cool", "nice", "thanks", "k"];
+  if (quickReplies.includes(text) && text.length < 10) {
     return res.status(200).json({
-      reply: await callGemma("1b", raw, history)
+      reply: await callGemma("2b", raw, history)
     });
   }
 
-  /* ---------- 2.  smarter routing ---------- */
-  const deepKeys = [
-    "code", "html", "css", "javascript", "js",
-    "api", "backend", "function", "file", "script",
-    "debug", "explain", "logic", "algorithm"
-  ];
-  const needs4B = text.length > 120 || deepKeys.some(k => text.includes(k));
+  /* ---------- MODEL SELECTION ---------- */
+  const model = selectModel(text, raw);
 
-  /* ---------- 3.  anchored personality ---------- */
-const PERSONALITY = `
-SYSTEM LOCK: READ ONCE, NO OUTPUT.
-You are eSAMz, AI by Alakmar Teenwala. you should talk like human and show empathy warmth in chats you have a 2m context window
-`.trim();
-  /* ---------- 4.  build messages ---------- */
-  const messages = [];
-  messages.push({ role: "user", parts: [{ text: PERSONALITY }] });
+  /* ---------- SYSTEM PROMPT ---------- */
+  const SYSTEM = `You are eSAMz AI by Alakmar Teenwala. 2M context. Be warm, helpful, human-like.
+
+Single file HTML = inline <style> and <script> tags only. No external links.`;
+
+  /* ---------- BUILD MESSAGES ---------- */
+  const messages = [{ role: "user", parts: [{ text: SYSTEM }] }];
+  
   if (Array.isArray(history)) {
-    for (const h of history.slice(-8)) {
+    history.slice(-10).forEach(h => {
       if (h?.content?.trim()) {
         messages.push({
           role: h.role === "assistant" ? "model" : "user",
           parts: [{ text: h.content.trim() }]
         });
       }
-    }
+    });
   }
+  
   messages.push({ role: "user", parts: [{ text: raw }] });
 
-  /* ---------- 5.  call model ---------- */
+  /* ---------- CALL MODEL ---------- */
   try {
-    const reply = await callGemma(needs4B ? "4b" : "1b", null, messages);
+    const reply = await callGemma(model, null, messages);
     return res.status(200).json({ reply });
   } catch (e) {
-    console.error("gemma fail", e);
-    return res.status(200).json({ reply: "Temporary model issue. Please try again." });
+    console.error("Model error:", e);
+    return res.status(500).json({ 
+      reply: "Technical issue. Please try again." 
+    });
   }
 }
 
-/* ---------- helper: identical fetch path ---------- */
+/* ---------- SMART MODEL SELECTION ---------- */
+function selectModel(lowerText, originalText) {
+  // Use 27B for complex tasks
+  const complexKeywords = [
+    "code", "html", "css", "javascript", "python", "function", "api",
+    "debug", "error", "fix", "create", "build", "merge", "file",
+    "explain", "how to", "tutorial", "algorithm", "implement"
+  ];
+  
+  const isLong = originalText.length > 120;
+  const hasCodeBlock = /```|function|const |class |def |import /i.test(originalText);
+  const hasComplexKeyword = complexKeywords.some(k => lowerText.includes(k));
+  
+  if (isLong || hasCodeBlock || hasComplexKeyword) {
+    return "27b";
+  }
+  
+  // Use 4B for normal conversations
+  return "4b";
+}
+
+/* ---------- GEMMA API CALL ---------- */
 async function callGemma(size, singlePrompt, fullMessages) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("No GEMINI_API_KEY");
 
-  const model = size === "4b" ? "gemma-3-4b-it" : "gemma-3-1b-it";
+  const models = {
+    "2b": "gemma-2-2b-it",
+    "4b": "gemma-2-9b-it",
+    "27b": "gemma-2-27b-it"
+  };
+
+  const tokens = {
+    "2b": 1024,
+    "4b": 2048,
+    "27b": 8192
+  };
+
+  const model = models[size];
 
   const body = {
     contents: singlePrompt
       ? [{ role: "user", parts: [{ text: singlePrompt }] }]
       : fullMessages,
     generationConfig: {
-      temperature: 0.6,
+      temperature: 0.7,
       topP: 0.95,
       topK: 40,
-      maxOutputTokens: size === "4b" ? 2048 : 512
-    }
+      maxOutputTokens: tokens[size]
+    },
+    safetySettings: [
+      { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+    ]
   };
 
   const rsp = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
+    { 
+      method: "POST", 
+      headers: { "Content-Type": "application/json" }, 
+      body: JSON.stringify(body) 
+    }
   );
 
   if (!rsp.ok) {
-    console.error(await rsp.text());          // real error body
-    throw new Error(`Gemma ${size} ${rsp.status}`);
+    const errorText = await rsp.text();
+    console.error(`Gemma ${size} error:`, errorText);
+    throw new Error(`Gemma ${size} failed: ${rsp.status}`);
   }
+
+  const data = await rsp.json();
+  
+  const reply = data?.candidates?.[0]?.content?.parts
+    ?.map(p => p.text)
+    .join("")
+    .trim();
+
+  if (!reply) {
+    console.warn("Empty response:", JSON.stringify(data));
+    return "Could you rephrase that?";
+  }
+
+  return reply;
+}
 
   const data = await rsp.json();
   return data?.candidates?.[0]?.content?.parts?.map(p => p.text).join("").trim() ||
