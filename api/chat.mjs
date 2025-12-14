@@ -1,4 +1,4 @@
-// /api/chat.js  –  serverless handler for Vercel
+// api/chat.mjs  –-  Vercel serverless (ES-module)
 export default async function handler(req, res) {
   // ---------- CORS ----------
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -16,9 +16,8 @@ export default async function handler(req, res) {
   }
 
   const system =
-    'You are eSAMz AI by Alakmar Teenwala. Be warm, clear, helpful.be human like and you have 2m context window ' ';
-   
-  // Build OpenAI-compatible messages array
+    'You are eSAMz AI by Alakmar Teenwala. Be warm, clear, helpful, human-like.';
+
   const messages = [
     { role: 'system', content: system },
     ...history.slice(-10).map(h => ({
@@ -38,7 +37,7 @@ export default async function handler(req, res) {
           Authorization: `Bearer ${process.env.GROQ_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'llama-3.1-8b-instant', // 128k ctx, 7 500 free req/day
+          model: 'llama-3.1-8b-instant',
           messages,
           temperature: 0.7,
           max_tokens: message.length < 12 ? 512 : 4096
@@ -66,4 +65,4 @@ export default async function handler(req, res) {
       reply: "I'm currently at capacity. Please try again shortly."
     });
   }
-}
+        }
