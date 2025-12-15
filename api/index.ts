@@ -1,44 +1,100 @@
-export default async function (req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Only POST' });
+// api/index.ts  –-  Vercel serverless (TypeScript-safe)
+export const config = { runtime: 'edge' };
 
-  const { message, history = [], mode = 'thinking' } = req.body || {};
-  if (!message?.trim()) return res.status(400).json({ error: 'Message required' });
+export default async function (req: Request): Promise<Response> {
+  // ---------- CORS ----------
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+    });
+  }
+
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Only POST allowed' }), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const body = await req.json().catch(() => ({}));
+  const { message, history = [], mode = 'thinking' } = body;
+  if (!message?.trim()) {
+    return new Response(JSON.stringify({ error: 'Message required' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 
   const system = { role: 'system', content: 'You are eSAMz AI by Alakmar Teenwala. Be warm, clear, helpful.' };
   const msgs = [system, ...history.slice(-10), { role: 'user', content: message.trim() }];
 
   try {
     const fast = mode === 'fast';
-    const reply = fast
-      ? await cf(msgs)
-      : await groq(msgs);
-    return res.status(200).json({ reply, model: fast ? 'phi-3-mini' : 'llama-3.1-70b', provider: fast ? 'cloudflare' : 'groq' });
+    const reply = fast ? await cf(msgs) : await groq(msgs);
+
+    return new Response(
+      JSON.stringify({
+        reply,
+        model: fast ? 'phi-3-mini' : 'llama-3.1-70b',
+        provider: fast ? 'cloudflare' : 'groq',
+      }),
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      }
+    );
   } catch (e) {
-    console.error(e);
-    return res.status(200).json({ reply: "I'm at capacity. Try again shortly." });
+    return new Response(
+      JSON.stringify({ reply: "I'm at capacity. Try again shortly." }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
   }
 }
 
-async function cf(msgs) {
-  const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/run/${process.env.CF_MODEL_PHI}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${process.env.CF_API_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages: msgs, temperature: 0.7, max_tokens: 2048 })
-  });
+/* ---------- Cloudflare PHI ---------- */
+async function cf(msgs: any[]) {
+  const accountId = process.env.CF_ACCOUNT_ID as string;
+  const token = process.env.CF_API_TOKEN as string;
+  const model = process.env.CF_MODEL_PHI as string;
+
+  const r = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: msgs, temperature: 0.7, max_tokens: 2048 }),
+    }
+  );
   const j = await r.json();
   if (!j.success) throw new Error(j.errors?.[0]?.message || 'CF error');
   return j.result.response.trim();
 }
 
-async function groq(msgs) {
+/* ---------- Groq LLAMA ---------- */
+async function groq(msgs: any[]) {
   const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'llama-3.1-70b-versatile', messages: msgs, temperature: 0.7, max_tokens: 4096 })
+    headers: {
+      Authorization: `Bearer ${process.env.GROQ_API_KEY as string}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'llama-3.1-70b-versatile',
+      messages: msgs,
+      temperature: 0.7,
+      max_tokens: 4096,
+    }),
   });
   if (!r.ok) throw new Error(await r.text());
   return (await r.json()).choices[0].message.content.trim();
