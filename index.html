@@ -4,106 +4,6 @@
 <meta charset="UTF-8">
 <title>eSAMz v7 - AI Assistant</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org ",
-  "@graph": [
-    {
-      "@type": "Organization",
-      "@id": "https://esamz.info/#organization ",
-      "name": "ESAMZ AI",
-      "legalName": "ESAMZ AI",
-      "url": "https://esamz.info ",
-      "logo": "https://esamz.info/logo.png ",
-      "foundingDate": "2025-10-21",
-      "description": "ESAMZ AI is a Strategic Artificial Mind engineered to elevate human thinking through deep reasoning, emotional intelligence, long-horizon clarity, and zero-storage privacy.",
-      "founder": {
-        "@type": "Person",
-        "@id": "https://esamz.info/#alakmar-teenwala ",
-        "name": "Alakmar Teenwala",
-        "jobTitle": "Founder and Chief Architect",
-        "description": "Creator of ESAMZ AI and architect of the Strategic Artificial Mind paradigm.",
-        "sameAs": [
-          "https://www.instagram.com/esamz_ai ",
-          "https://www.youtube.com/@esamzai "
-        ]
-      },
-      "sameAs": [
-        "https://esamz.site ",
-        "https://www.instagram.com/esamz_ai ",
-        "https://www.youtube.com/@esamzai "
-      ]
-    },
-    {
-      "@type": "Brand",
-      "@id": "https://esamz.info/#brand ",
-      "name": "ESAMZ",
-      "logo": "https://esamz.info/logo.png ",
-      "slogan": "The Strategic Artificial Mind"
-    },
-    {
-      "@type": "Product",
-      "@id": "https://esamz.info/#product ",
-      "name": "ESAMZ AI",
-      "description": "A next-generation Strategic Artificial Mind designed as a cognitive partner for deep reasoning, strategic decision-making, and emotionally aligned intelligence.",
-      "brand": {"@id": "https://esamz.info/#brand "},
-      "manufacturer": {"@id": "https://esamz.info/#organization "},
-      "category": "Artificial Intelligence Software",
-      "releaseDate": "2025-10-28",
-      "offers": {
-        "@type": "Offer",
-        "url": "https://esamz.site ",
-        "price": "0",
-        "priceCurrency": "INR",
-        "availability": "https://schema.org/InStock "
-      }
-    },
-    {
-      "@type": "SoftwareApplication",
-      "@id": "https://esamz.info/#software ",
-      "name": "ESAMZ AI",
-      "applicationCategory": "BusinessApplication",
-      "operatingSystem": "Web",
-      "url": "https://esamz.site ",
-      "creator": {"@id": "https://esamz.info/#organization "},
-      "description": "Strategic Artificial Mind with a 2 million token context window, 240 tokens per second generation speed, and ultra-low long-form drift.",
-      "featureList": [
-        "Strategic Artificial Mind",
-        "Hybrid Cognitive Engine",
-        "Heart First Intelligence",
-        "Systems Thinking",
-        "2 Million Token Context Window",
-        "240 Tokens per Second Generation",
-        "Deep Pattern Detection",
-        "Long-Term Intent Alignment",
-        "Radical Transparency",
-        "Adaptive Intelligence",
-        "Zero-Storage Privacy"
-      ]
-    },
-    {
-      "@type": "WebSite",
-      "@id": "https://esamz.info/#website ",
-      "url": "https://esamz.info ",
-      "name": "ESAMZ AI",
-      "publisher": {"@id": "https://esamz.info/#organization "},
-      "inLanguage": "en"
-    },
-    {
-      "@type": "Person",
-      "@id": "https://esamz.info/#alakmar-teenwala ",
-      "name": "Alakmar Teenwala",
-      "jobTitle": "Founder & Chief Architect of ESAMZ AI",
-      "worksFor": {"@id": "https://esamz.info/#organization "},
-      "description": "Engineer and visionary focused on structured reasoning, human-aligned intelligence, and precision-based AI systems.",
-      "sameAs": [
-        "https://www.instagram.com/esamz_ai ",
-        "https://www.youtube.com/@esamzai "
-      ]
-    }
-  ]
-}
-</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#0a0a0a;color:#e5e5e5}
@@ -390,7 +290,47 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sy
   background-clip:text;
 }
 
-.header-actions{display:flex;gap:6px}
+.header-actions{display:flex;gap:6px;align-items:center}
+
+.mode-switch{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  background:rgba(26,26,26,0.8);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:8px;
+  padding:4px;
+  margin-right:8px;
+}
+
+.mode-btn{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  background:transparent;
+  border:none;
+  border-radius:6px;
+  padding:6px 12px;
+  color:#999;
+  cursor:pointer;
+  font-size:12px;
+  font-weight:600;
+  transition:all 0.2s ease;
+  white-space:nowrap;
+}
+
+.mode-btn.active{
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  color:white;
+  box-shadow:0 2px 8px rgba(102,126,234,0.3);
+}
+
+.mode-btn:not(.active):hover{
+  background:rgba(102,126,234,0.1);
+  color:#667eea;
+}
+
+.mode-icon{font-size:14px}
 
 .header-btn{
   background:rgba(102,126,234,0.1);
@@ -520,6 +460,19 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sy
   background:rgba(17,17,17,0.9);
   border:1px solid rgba(255,255,255,0.08);
   border-bottom-left-radius:4px;
+}
+
+.model-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  margin-top:8px;
+  padding:4px 8px;
+  background:rgba(0,0,0,0.3);
+  border-radius:6px;
+  font-size:10px;
+  color:#999;
+  font-weight:600;
 }
 
 .code-block{
@@ -694,12 +647,18 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sy
   border-radius:12px;
   padding:10px 12px;
   border:1px solid rgba(255,255,255,0.08);
-  transition:border-color 0.2s ease;
+  transition:all 0.2s ease;
   align-items:flex-end;
+  position:relative;
 }
 
 .input-wrap:focus-within{
   border-color:rgba(102,126,234,0.5);
+}
+
+.input-wrap.drag-over{
+  border-color:rgba(102,126,234,0.8);
+  background:rgba(102,126,234,0.1);
 }
 
 textarea{
@@ -801,7 +760,6 @@ textarea::placeholder{color:#666}
 
 .clear-history-btn:hover{background:rgba(239,68,68,0.2)}
 
-/* Loading Animation Styles */
 @keyframes pulse-glow {
   0%, 100% {
     box-shadow: 0 0 5px rgba(102,126,234,0.3);
@@ -867,54 +825,44 @@ textarea::placeholder{color:#666}
   }
 }
 
-/* Drag and Drop Styles */
 .drag-drop-overlay {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(102,126,234,0.1);
-  border: 2px dashed rgba(102,126,234,0.5);
+  background: rgba(102,126,234,0.15);
+  border: 2px dashed rgba(102,126,234,0.6);
   border-radius: 12px;
   display: none;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   z-index: 100;
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
 }
 
 .drag-drop-overlay.active {
   display: flex;
-  animation: fade-in 0.3s ease;
-}
-
-.drag-drop-text {
-  color: #667eea;
-  font-size: 18px;
-  font-weight: 600;
-  text-align: center;
 }
 
 .drag-drop-icon {
   font-size: 48px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   animation: bounce 2s infinite;
 }
 
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.drag-drop-text {
+  color: #667eea;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
 }
 
 @keyframes bounce {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-10px); }
-}
-
-.input-wrap.drag-over {
-  border-color: rgba(102,126,234,0.8);
-  background: rgba(102,126,234,0.1);
 }
 
 @media(max-width:768px){
@@ -923,7 +871,8 @@ textarea::placeholder{color:#666}
   .input-bar{padding:14px}
   .bubble{max-width:85%}
   .welcome{padding:32px 16px}
-  .header-actions{display:none}
+  .header-actions{flex-wrap:wrap}
+  .mode-switch{margin-right:0;margin-bottom:4px}
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -957,10 +906,10 @@ textarea::placeholder{color:#666}
   <div class="chat-history" id="chatHistory"></div>
 
   <div class="sidebar-links">
-    <a href="https://esamz.info " target="_blank">🏠 Home</a>
-    <a href="https://esamz.info/docs " target="_blank">📚 Docs</a>
-    <a href="https://esamz.info/aboutus " target="_blank">ℹ️ About</a>
-    <a href="https://esamz.info/privacypolicy " target="_blank">🔒 Privacy</a>
+    <a href="https://esamz.info" target="_blank">🏠 Home</a>
+    <a href="https://esamz.info/docs" target="_blank">📚 Docs</a>
+    <a href="https://esamz.info/aboutus" target="_blank">ℹ️ About</a>
+    <a href="https://esamz.info/privacypolicy" target="_blank">🔒 Privacy</a>
     <button class="clear-history-btn" onclick="clearAllHistory()">🗑️ Clear All</button>
   </div>
 
@@ -975,6 +924,16 @@ textarea::placeholder{color:#666}
   <div class="header">
     <div class="header-title">eSAMz AI Assistant</div>
     <div class="header-actions">
+      <div class="mode-switch">
+        <button class="mode-btn active" id="fastModeBtn" onclick="setMode('fast')">
+          <span class="mode-icon">⚡</span>
+          <span>Fast</span>
+        </button>
+        <button class="mode-btn" id="thinkingModeBtn" onclick="setMode('thinking')">
+          <span class="mode-icon">🧠</span>
+          <span>Thinking</span>
+        </button>
+      </div>
       <button class="header-btn" onclick="exportChat()">📥 Export</button>
       <button class="header-btn" onclick="clearCurrentChat()">🗑️ Clear</button>
     </div>
@@ -986,12 +945,12 @@ textarea::placeholder{color:#666}
       <p>Your intelligent AI companion</p>
       <div class="welcome-features">
         <div class="feature-card">
-          <div class="feature-icon">💬</div>
-          <div class="feature-text">Smart Chat</div>
+          <div class="feature-icon">⚡</div>
+          <div class="feature-text">Fast Mode</div>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">💾</div>
-          <div class="feature-text">Auto Save</div>
+          <div class="feature-icon">🧠</div>
+          <div class="feature-text">Thinking Mode</div>
         </div>
         <div class="feature-card">
           <div class="feature-icon">🎤</div>
@@ -1010,10 +969,8 @@ textarea::placeholder{color:#666}
     <div class="files-info" id="filesInfo" style="display:none"></div>
     <div class="input-wrap" id="inputWrap">
       <div class="drag-drop-overlay" id="dragDropOverlay">
-        <div class="drag-drop-text">
-          <div class="drag-drop-icon">📁</div>
-          Drop files here to upload
-        </div>
+        <div class="drag-drop-icon">📁</div>
+        <div class="drag-drop-text">Drop files here to upload</div>
       </div>
       <input type="file" id="fileInput" style="display:none" 
         accept=".txt,.js,.py,.java,.cpp,.c,.html,.css,.json,.xml,.md,.csv,.log,.sh,.bat,.yaml,.yml,.ts,.jsx,.tsx,.php,.rb,.go,.rs,.swift,.kt,.scala,.r,.sql,.pl,.lua,.dart,.vim,.ini,.cfg,.conf,.properties,audio/*,video/*" 
@@ -1045,6 +1002,8 @@ const sidebar = document.getElementById("sidebar")
 const chatHistory = document.getElementById("chatHistory")
 const inputWrap = document.getElementById("inputWrap")
 const dragDropOverlay = document.getElementById("dragDropOverlay")
+const fastModeBtn = document.getElementById("fastModeBtn")
+const thinkingModeBtn = document.getElementById("thinkingModeBtn")
 
 let uploadedFiles = []
 let conversationHistory = []
@@ -1054,9 +1013,11 @@ let currentChatId = null
 let allChats = {}
 let saveTimeout = null
 let isLoading = false
+let currentMode = 'fast'
+let dragCounter = 0
 
 const MAX_FILES = 10
-const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024
 
 window.addEventListener('DOMContentLoaded', () => {
   loadChatsFromStorage()
@@ -1072,11 +1033,23 @@ function autoResizeTextarea() {
   input.style.height = Math.min(input.scrollHeight, 120) + 'px'
 }
 
+function setMode(mode) {
+  currentMode = mode
+  
+  if (mode === 'fast') {
+    fastModeBtn.classList.add('active')
+    thinkingModeBtn.classList.remove('active')
+  } else {
+    thinkingModeBtn.classList.add('active')
+    fastModeBtn.classList.remove('active')
+  }
+  
+  showApproval(mode === 'fast' ? '⚡' : '🧠', `${mode === 'fast' ? 'Fast' : 'Thinking'} Mode`)
+}
+
 function setupDragAndDrop() {
-  // Prevent default drag behaviors
   ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-    document.addEventListener(eventName, preventDefaults, false)
-    inputWrap.addEventListener(eventName, preventDefaults, false)
+    document.body.addEventListener(eventName, preventDefaults, false)
   })
   
   function preventDefaults(e) {
@@ -1084,35 +1057,43 @@ function setupDragAndDrop() {
     e.stopPropagation()
   }
   
-  // Highlight drop area when item is dragged over it
-  ['dragenter', 'dragover'].forEach(eventName => {
-    inputWrap.addEventListener(eventName, highlight, false)
-  })
+  document.body.addEventListener('dragenter', handleDragEnter, false)
+  document.body.addEventListener('dragleave', handleDragLeave, false)
+  document.body.addEventListener('dragover', handleDragOver, false)
+  document.body.addEventListener('drop', handleDrop, false)
   
-  ['dragleave', 'drop'].forEach(eventName => {
-    inputWrap.addEventListener(eventName, unhighlight, false)
-  })
+  function handleDragEnter(e) {
+    dragCounter++
+    if (!isLoading && e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      inputWrap.classList.add('drag-over')
+      dragDropOverlay.classList.add('active')
+    }
+  }
   
-  function highlight(e) {
+  function handleDragLeave(e) {
+    dragCounter--
+    if (dragCounter === 0) {
+      inputWrap.classList.remove('drag-over')
+      dragDropOverlay.classList.remove('active')
+    }
+  }
+  
+  function handleDragOver(e) {
     if (!isLoading) {
       inputWrap.classList.add('drag-over')
       dragDropOverlay.classList.add('active')
     }
   }
   
-  function unhighlight(e) {
+  function handleDrop(e) {
+    dragCounter = 0
     inputWrap.classList.remove('drag-over')
     dragDropOverlay.classList.remove('active')
-  }
-  
-  // Handle dropped files
-  inputWrap.addEventListener('drop', handleDrop, false)
-  
-  function handleDrop(e) {
-    const dt = e.dataTransfer
-    const files = dt.files
     
-    handleFiles(files)
+    const files = e.dataTransfer.files
+    if (files.length > 0) {
+      handleFiles(files)
+    }
   }
 }
 
@@ -1292,12 +1273,12 @@ function newChat() {
       <p>Your intelligent AI companion</p>
       <div class="welcome-features">
         <div class="feature-card">
-          <div class="feature-icon">💬</div>
-          <div class="feature-text">Smart Chat</div>
+          <div class="feature-icon">⚡</div>
+          <div class="feature-text">Fast Mode</div>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">💾</div>
-          <div class="feature-text">Auto Save</div>
+          <div class="feature-icon">🧠</div>
+          <div class="feature-text">Thinking Mode</div>
         </div>
         <div class="feature-card">
           <div class="feature-icon">🎤</div>
@@ -1329,12 +1310,12 @@ function loadChat(chatId) {
         <p>Your intelligent AI companion</p>
         <div class="welcome-features">
           <div class="feature-card">
-            <div class="feature-icon">💬</div>
-            <div class="feature-text">Smart Chat</div>
+            <div class="feature-icon">⚡</div>
+            <div class="feature-text">Fast Mode</div>
           </div>
           <div class="feature-card">
-            <div class="feature-icon">💾</div>
-            <div class="feature-text">Auto Save</div>
+            <div class="feature-icon">🧠</div>
+            <div class="feature-text">Thinking Mode</div>
           </div>
           <div class="feature-card">
             <div class="feature-icon">🎤</div>
@@ -1348,7 +1329,7 @@ function loadChat(chatId) {
       </div>`
   } else {
     conversationHistory.forEach(msg => {
-      addMessageToUI(msg.content, msg.role)
+      addMessageToUI(msg.content, msg.role, msg.model, msg.provider)
     })
   }
   
@@ -1535,7 +1516,7 @@ function resetFiles() {
   filesContainer.innerHTML = ''
 }
 
-function addMessageToUI(text, role) {
+function addMessageToUI(text, role, model, provider) {
   const msg = document.createElement("div")
   msg.className = "message " + role
   
@@ -1548,6 +1529,14 @@ function addMessageToUI(text, role) {
   
   if (role === "ai") {
     bubble.innerHTML = parseMessageContent(text)
+    
+    if (model && provider) {
+      const badge = document.createElement("div")
+      badge.className = "model-badge"
+      badge.innerHTML = `${model} • ${provider}`
+      bubble.appendChild(badge)
+    }
+    
     attachTools(bubble, text)
   } else {
     bubble.textContent = text
@@ -1576,7 +1565,7 @@ function addLoadingMessage() {
   
   const dots = document.createElement("span")
   dots.className = "loading-dots"
-  dots.textContent = "Thinking"
+  dots.textContent = currentMode === 'fast' ? 'Thinking' : 'Deep thinking'
   
   const pulse1 = document.createElement("div")
   pulse1.className = "loading-pulse"
@@ -1769,7 +1758,6 @@ async function sendMsg() {
   saveChatsToStorage()
   renderChatHistory()
   
-  // Show loading message
   addLoadingMessage()
   
   try {
@@ -1778,18 +1766,23 @@ async function sendMsg() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message: payload,
-        history: conversationHistory
+        history: conversationHistory,
+        mode: currentMode
       })
     })
     
     const data = await res.json()
     const reply = data.reply || "No response."
     
-    // Remove loading message and add actual response
     removeLoadingMessage()
-    addMessageToUI(reply, "ai")
+    addMessageToUI(reply, "ai", data.model, data.provider)
     
-    const aiMsg = { role: "assistant", content: reply }
+    const aiMsg = { 
+      role: "assistant", 
+      content: reply,
+      model: data.model,
+      provider: data.provider
+    }
     conversationHistory.push(aiMsg)
     allChats[currentChatId].messages.push(aiMsg)
     allChats[currentChatId].timestamp = Date.now()
