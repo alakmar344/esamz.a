@@ -2,7 +2,7 @@
 export const config = { runtime: 'edge' };
 // api/index.ts  (line 2, right after the export config)
 declare const process: { env: Record<string, string> };
-export default async function (req: Request): Promise<Response> {
+ {
   // ---------- CORS ----------
   if (req.method === 'OPTIONS') {
     return new Response(null, {
