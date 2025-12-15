@@ -1,7 +1,4 @@
 {
-  "routes": [{ "src": "/(.*)", "dest": "/index.html" }]
-}
-{
   "functions": {
     "api/chat.mjs": {
       "runtime": "nodejs20.x"
