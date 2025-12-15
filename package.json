@@ -1,5 +1,6 @@
 {
-  "name": "esamz-chat",
+  "name": "esamz",
   "version": "1.0.0",
-  "private": true
+  "private": true,
+  "type": "module"
 }
