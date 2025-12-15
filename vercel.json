@@ -1,7 +1,7 @@
 {
   "functions": {
-    "api/script.mjs": {
-      "runtime": "edge"
+    "api/*.js": {
+      "runtime": "nodejs20.x"
     }
   }
 }
