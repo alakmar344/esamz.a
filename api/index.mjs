@@ -1,4 +1,9 @@
+// api/index.mjs
 export const config = { runtime: 'edge' };
+
+export default async (req) => {
+  return new Response('pong');
+};
 declare const process: { env: Record<string, string> };
 
 export default async function (req: Request): Promise<Response> {
