@@ -62,4 +62,5 @@ async function groq(msgs) {
 // very end of chat.mjs
 export const config = {
   runtime: 'edge',          // optional, but guarantees serverless
-};
+};// bottom of api/index.js
+export const config = { runtime: 'edge' };
