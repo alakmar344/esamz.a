@@ -1,3 +1,6 @@
+// api/index.ts
+export const config = { runtime: 'edge' };
+declare const process: { env: Record<string, string> };   // <-- add this
 export default async function (req: Request): Promise<Response> {
   console.log('📬 request', req.method);
 
