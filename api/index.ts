@@ -1,6 +1,8 @@
 // api/index.ts
 export const config = { runtime: 'edge' };
-declare const process: { env: Record<string, string> };   // <-- add this
+
+declare const process: { env: Record<string, string> };
+
 export default async function (req: Request): Promise<Response> {
   console.log('📬 request', req.method);
 
@@ -37,9 +39,9 @@ export default async function (req: Request): Promise<Response> {
 
 /* ---------- helpers ---------- */
 async function cf(msgs: any[]) {
-  const accountId = (process as any).env.CF_ACCOUNT_ID;
-  const token     = (process as any).env.CF_API_TOKEN;
-  const model     = (process as any).env.CF_MODEL_PHI;
+  const accountId = process.env.CF_ACCOUNT_ID;
+  const token     = process.env.CF_API_TOKEN;
+  const model     = process.env.CF_MODEL_PHI;
   const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -53,7 +55,7 @@ async function cf(msgs: any[]) {
 async function groq(msgs: any[]) {
   const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${(process as any).env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ model: 'llama-3.1-70b-versatile', messages: msgs, temperature: 0.7, max_tokens: 4096 })
   });
   if (!r.ok) throw new Error(await r.text());
