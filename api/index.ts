@@ -100,3 +100,7 @@ async function groq(msgs: any[]) {
   if (!r.ok) throw new Error(await r.text());
   return (await r.json()).choices[0].message.content.trim();
 }
+export default async (req: Request) => {
+  throw new Error('BOOM-trace');   // ← first line
+  ...
+};
