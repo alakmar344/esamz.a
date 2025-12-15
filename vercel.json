@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/script.mjs": {
+      "runtime": "edge"
+    }
+  }
+}
