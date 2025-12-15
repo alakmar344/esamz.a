@@ -61,10 +61,17 @@ export default async function handler(req, res) {
     });
 
     const data = await r.json();
-    return res.json({
-      provider: "cloudflare",
-      reply: data.result?.response || ""
-    });
+   const cfReply =
+  typeof data.result?.response === "string"
+    ? data.result.response
+    : data.result?.response?.text || "";
+
+return res.json({
+  provider: "cloudflare",
+  model: "phi-3-lite",
+  reply: cfReply
+});
+
 
   } catch (e) {
     return res.status(500).json({ error: e.message });
