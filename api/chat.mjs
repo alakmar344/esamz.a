@@ -59,3 +59,7 @@ async function groq(msgs) {
   if (!r.ok) throw new Error(await r.text());
   return (await r.json()).choices[0].message.content.trim();
 }
+// very end of chat.mjs
+export const config = {
+  runtime: 'edge',          // optional, but guarantees serverless
+};
