@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/chat.mjs": {
-      "runtime": "nodejs"
+      "runtime": "node"
     }
   }
 }
