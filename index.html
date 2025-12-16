@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-  <script>
-  {
+  <script>{
   "@context": "https://schema.org",
   "@graph": [
     {
@@ -169,6 +168,11 @@
             "@type": "Answer",
             "text": "eSAMz AI was created by Alakmar Teenwala"
           }
+        }
+      ]
+    }
+  ]
+}
 </script>
 <title>eSAMz v7 - AI Assistant</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -223,7 +227,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sy
 .clear-history-btn{width:100%;padding:8px;margin-top:6px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:6px;color:#ef4444;cursor:pointer;font-size:11px;font-weight:600;transition:all 0.2s ease}
 .clear-history-btn:hover{background:rgba(239,68,68,0.2)}
 
-.main{flex:1;display:flex;flex-direction:column;position:relative;z-index:1;min-width:0;transition:margin-left 0.3s ease}
+.main{flex:1;display:flex;flex-direction:column;position:relative;z-index:1;min-width:0;width:100%;transition:margin-left 0.3s ease}
 
 .header{height:60px;background:rgba(17,17,17,0.95);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;padding:0 24px}
 .header-title{font-size:16px;font-weight:600;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
@@ -257,7 +261,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sy
 .user .bubble{background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-bottom-right-radius:4px}
 .ai .bubble{background:rgba(17,17,17,0.9);border:1px solid rgba(255,255,255,0.08);border-bottom-left-radius:4px}
 
-.input-bar{padding:20px 24px;background:rgba(17,17,17,0.95);backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,0.06)}
+.input-bar{padding:20px 24px;background:rgba(17,17,17,0.95);backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,0.06);position:relative;z-index:5}
 .files-container{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;max-height:150px;overflow-y:auto}
 .files-container::-webkit-scrollbar{width:4px}
 .files-container::-webkit-scrollbar-track{background:transparent}
@@ -329,7 +333,9 @@ textarea::placeholder{color:#666}
   
   .menu-toggle{display:flex}
   
-  .main{margin-left:0 !important}
+  .main{margin-left:0 !important;width:100%;flex:1}
+  
+  .input-bar{position:relative;z-index:5;width:100%}
   
   .header{
     height:56px;
@@ -401,6 +407,8 @@ textarea::placeholder{color:#666}
   .sidebar{width:260px}
   
   .sidebar.open{transform:translateX(0)}
+  
+  .main{width:100vw !important;flex:1}
   
   .menu-toggle{
     top:10px;
