@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <title>eSAMz v7 - AI Assistant</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#0a0a0a;color:#e5e5e5}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#0a0a0a;color:#e5e5e5;overflow:hidden}
 .app{display:flex;height:100vh;position:relative;overflow:hidden}
 
 .app::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(circle at 20% 50%, rgba(102,126,234,0.06) 0%, transparent 50%),radial-gradient(circle at 80% 80%, rgba(118,75,162,0.06) 0%, transparent 50%);animation:gradient 30s ease infinite;pointer-events:none;z-index:0;will-change:transform}
@@ -15,12 +15,11 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sy
 
 .sidebar{width:300px;background:rgba(17,17,17,0.95);backdrop-filter:blur(10px);border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;position:relative;z-index:10;transition:transform 0.3s ease}
 .sidebar.collapsed{transform:translateX(-300px)}
-.sidebar-toggle{position:absolute;right:-40px;top:20px;background:rgba(17,17,17,0.95);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.06);border-radius:0 8px 8px 0;padding:10px 8px;cursor:pointer;color:#999;font-size:16px;transition:all 0.2s ease;z-index:11}
-.sidebar.collapsed .sidebar-toggle{right:auto;left:100%}
-.sidebar-toggle:hover{background:rgba(102,126,234,0.2);color:#667eea}
-.menu-toggle{position:fixed;top:20px;left:20px;background:rgba(17,17,17,0.95);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px 12px;cursor:pointer;color:#999;font-size:16px;transition:all 0.2s ease;z-index:5;display:none}
-.sidebar.collapsed ~ .main .menu-toggle{display:block}
+
+.menu-toggle{position:fixed;top:15px;left:15px;background:rgba(17,17,17,0.95);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px 12px;cursor:pointer;color:#999;font-size:18px;transition:all 0.2s ease;z-index:15;display:none;width:44px;height:44px;align-items:center;justify-content:center}
 .menu-toggle:hover{background:rgba(102,126,234,0.2);color:#667eea}
+.menu-toggle:active{transform:scale(0.95)}
+
 .sidebar-header{padding:20px;border-bottom:1px solid rgba(255,255,255,0.06)}
 .logo{display:flex;gap:10px;align-items:center;margin-bottom:14px}
 .logo-icon{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px}
@@ -30,6 +29,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sy
 .new-chat-btn{width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;cursor:pointer;font-weight:600;font-size:13px;transition:all 0.2s ease}
 .new-chat-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(102,126,234,0.3)}
 .new-chat-btn:active{transform:translateY(0)}
+
 .chat-history{flex:1;overflow-y:auto;padding:12px}
 .chat-history::-webkit-scrollbar{width:4px}
 .chat-history::-webkit-scrollbar-track{background:transparent}
@@ -46,21 +46,30 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sy
 .history-delete{opacity:0;background:none;border:none;color:#999;font-size:14px;padding:4px;cursor:pointer;border-radius:4px;transition:opacity 0.2s ease}
 .history-item:hover .history-delete{opacity:1}
 .history-delete:hover{background:rgba(239,68,68,0.2);color:#ef4444}
+
 .sidebar-links{padding:12px;border-top:1px solid rgba(255,255,255,0.06)}
 .sidebar-links a{display:flex;align-items:center;gap:8px;padding:8px 10px;color:#999;text-decoration:none;border-radius:6px;transition:background 0.2s ease;margin-bottom:2px;font-size:12px;font-weight:500}
 .sidebar-links a:hover{background:rgba(102,126,234,0.1);color:#fff}
 .sidebar-footer{padding:12px;font-size:10px;color:#666;border-top:1px solid rgba(255,255,255,0.06);text-align:center;line-height:1.5;background:rgba(0,0,0,0.2)}
-.main{flex:1;display:flex;flex-direction:column;position:relative;z-index:1}
+
+.clear-history-btn{width:100%;padding:8px;margin-top:6px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:6px;color:#ef4444;cursor:pointer;font-size:11px;font-weight:600;transition:all 0.2s ease}
+.clear-history-btn:hover{background:rgba(239,68,68,0.2)}
+
+.main{flex:1;display:flex;flex-direction:column;position:relative;z-index:1;min-width:0;transition:margin-left 0.3s ease}
+
 .header{height:60px;background:rgba(17,17,17,0.95);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;padding:0 24px}
 .header-title{font-size:16px;font-weight:600;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .header-actions{display:flex;gap:6px;align-items:center}
-.header-btn{background:rgba(102,126,234,0.1);border:1px solid rgba(102,126,234,0.2);border-radius:6px;padding:6px 12px;color:#999;cursor:pointer;font-size:12px;font-weight:500;transition:all 0.2s ease}
+.header-btn{background:rgba(102,126,234,0.1);border:1px solid rgba(102,126,234,0.2);border-radius:6px;padding:6px 12px;color:#999;cursor:pointer;font-size:12px;font-weight:500;transition:all 0.2s ease;white-space:nowrap}
 .header-btn:hover{background:rgba(102,126,234,0.2);color:#667eea}
+
 .chat{flex:1;padding:24px;overflow-y:auto;scroll-behavior:smooth}
 .chat::-webkit-scrollbar{width:6px}
 .chat::-webkit-scrollbar-track{background:transparent}
 .chat::-webkit-scrollbar-thumb{background:rgba(102,126,234,0.3);border-radius:3px}
-.welcome{padding:48px 24px;margin-bottom:20px;border-radius:16px;background:linear-gradient(135deg,rgba(102,126,234,0.12),rgba(118,75,162,0.12));text-align:center;border:1px solid rgba(102,126,234,0.2)}
+
+.welcome{padding:48px 24px;margin-bottom:20px;border-radius:16px;background:linear-gradient(135deg,rgba(102,126,234,0.12),rgba(118,75,162,0.12));text-align:center;border:1px solid rgba(102,126,234,0.2);transition:opacity 0.3s ease, transform 0.3s ease}
+.welcome.hide{opacity:0;transform:translateY(-20px);pointer-events:none}
 .welcome h2{font-size:28px;margin-bottom:10px;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:700}
 .welcome p{font-size:14px;color:#999;font-weight:500;margin-bottom:20px}
 .welcome-features{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:20px}
@@ -68,15 +77,18 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sy
 .feature-card:hover{background:rgba(102,126,234,0.1);border-color:rgba(102,126,234,0.3)}
 .feature-icon{font-size:20px;margin-bottom:6px}
 .feature-text{font-size:12px;color:#999;font-weight:500}
-.message{display:flex;margin-bottom:20px;gap:10px}
+
+.message{display:flex;margin-bottom:20px;gap:10px;animation:slideIn 0.3s ease}
+@keyframes slideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .message.user{justify-content:flex-end}
 .message.ai{justify-content:flex-start}
 .message-avatar{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
 .message.user .message-avatar{background:linear-gradient(135deg,#667eea,#764ba2);order:2}
 .message.ai .message-avatar{background:rgba(17,17,17,0.9);border:1px solid rgba(255,255,255,0.1)}
-.bubble{max-width:70%;padding:12px 16px;border-radius:14px;white-space:pre-wrap;font-size:14px;line-height:1.5}
+.bubble{max-width:70%;padding:12px 16px;border-radius:14px;white-space:pre-wrap;font-size:14px;line-height:1.5;word-wrap:break-word}
 .user .bubble{background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-bottom-right-radius:4px}
 .ai .bubble{background:rgba(17,17,17,0.9);border:1px solid rgba(255,255,255,0.08);border-bottom-left-radius:4px}
+
 .input-bar{padding:20px 24px;background:rgba(17,17,17,0.95);backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,0.06)}
 .files-container{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;max-height:150px;overflow-y:auto}
 .files-container::-webkit-scrollbar{width:4px}
@@ -90,38 +102,282 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sy
 .file-remove{background:none;border:none;color:#999;font-size:14px;padding:2px;cursor:pointer;border-radius:4px;transition:all 0.2s ease}
 .file-remove:hover{background:rgba(239,68,68,0.2);color:#ef4444}
 .files-info{font-size:11px;color:#999;margin-bottom:8px;text-align:center}
+
 .input-wrap{display:flex;gap:10px;background:rgba(26,26,26,0.8);border-radius:12px;padding:10px 12px;border:1px solid rgba(255,255,255,0.08);transition:all 0.2s ease;align-items:flex-end;position:relative}
 .input-wrap:focus-within{border-color:rgba(102,126,234,0.5)}
 .input-wrap.drag-over{border-color:rgba(102,126,234,0.8);background:rgba(102,126,234,0.1)}
-textarea{flex:1;background:none;border:none;color:#e5e5e5;resize:none;outline:none;font-size:14px;font-family:inherit;line-height:1.4;max-height:120px}
+
+textarea{flex:1;background:none;border:none;color:#e5e5e5;resize:none;outline:none;font-size:14px;font-family:inherit;line-height:1.4;max-height:120px;min-height:20px}
 textarea::placeholder{color:#666}
+
 .file-btn,.voice-btn{background:none;border:none;color:#999;font-size:18px;padding:4px 6px;border-radius:6px;transition:all 0.2s ease;cursor:pointer}
 .file-btn:hover,.voice-btn:hover{background:rgba(102,126,234,0.15);color:#667eea}
 .voice-btn.recording{color:#ef4444;animation:recordPulse 1s ease infinite}
 @keyframes recordPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
-.send-btn{background:linear-gradient(135deg,#667eea,#764ba2);border:none;border-radius:10px;color:white;padding:8px 20px;font-weight:600;font-size:13px;transition:all 0.2s ease;cursor:pointer}
+
+.send-btn{background:linear-gradient(135deg,#667eea,#764ba2);border:none;border-radius:10px;color:white;padding:8px 20px;font-weight:600;font-size:13px;transition:all 0.2s ease;cursor:pointer;white-space:nowrap}
 .send-btn:hover:not(:disabled){transform:translateY(-1px)}
 .send-btn:active:not(:disabled){transform:translateY(0)}
 .send-btn:disabled{opacity:0.5;cursor:not-allowed}
+
 .approval-popup{position:fixed;top:50%;left:50%;transform:translate(-50%, -50%) scale(0);background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:16px 24px;border-radius:12px;font-size:14px;font-weight:600;z-index:1000;opacity:0;transition:all 0.2s ease;display:flex;align-items:center;gap:10px}
 .approval-popup.show{transform:translate(-50%, -50%) scale(1);opacity:1}
 .approval-popup .icon{font-size:20px}
-.clear-history-btn{width:100%;padding:8px;margin-top:6px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:6px;color:#ef4444;cursor:pointer;font-size:11px;font-weight:600;transition:all 0.2s ease}
-.clear-history-btn:hover{background:rgba(239,68,68,0.2)}
+
 .drag-drop-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(102,126,234,0.15);border:2px dashed rgba(102,126,234,0.6);border-radius:12px;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(8px);pointer-events:none}
 .drag-drop-overlay.active{display:flex}
 .drag-drop-icon{font-size:48px;margin-bottom:12px;animation:bounce 2s infinite}
 .drag-drop-text{color:#667eea;font-size:16px;font-weight:600;text-align:center}
 @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
-@media(max-width:768px){.sidebar{width:260px}.chat{padding:16px}.input-bar{padding:14px}.bubble{max-width:85%}.welcome{padding:32px 16px}.header-actions{flex-wrap:wrap}}
+
+/* Mobile overlay for sidebar */
+.sidebar-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9;opacity:0;pointer-events:none;transition:opacity 0.3s ease}
+.sidebar-overlay.active{opacity:1;pointer-events:auto}
+
+/* ==================== RESPONSIVE STYLES ==================== */
+
+/* Tablet & Small Desktop */
+@media(max-width:1024px){
+  .sidebar{width:280px}
+  .sidebar.collapsed{transform:translateX(-280px)}
+  .chat{padding:20px}
+  .input-bar{padding:16px 20px}
+  .bubble{max-width:75%}
+}
+
+/* Mobile Landscape & Portrait Tablet */
+@media(max-width:768px){
+  .sidebar{
+    width:280px;
+    position:fixed;
+    top:0;
+    left:0;
+    bottom:0;
+    z-index:20;
+    transform:translateX(-280px)
+  }
+  
+  .sidebar.open{transform:translateX(0)}
+  
+  .menu-toggle{display:flex}
+  
+  .main{margin-left:0 !important}
+  
+  .header{
+    height:56px;
+    padding:0 60px 0 60px;
+  }
+  
+  .header-title{font-size:15px}
+  
+  .header-actions{gap:4px}
+  
+  .header-btn{
+    padding:6px 10px;
+    font-size:11px;
+  }
+  
+  .chat{padding:16px 12px}
+  
+  .welcome{
+    padding:32px 20px;
+    margin-bottom:16px;
+  }
+  
+  .welcome h2{font-size:24px}
+  
+  .welcome p{font-size:13px}
+  
+  .feature-card{
+    min-width:100px;
+    padding:10px 14px;
+  }
+  
+  .feature-icon{font-size:18px}
+  
+  .feature-text{font-size:11px}
+  
+  .message{margin-bottom:16px;gap:8px}
+  
+  .message-avatar{width:28px;height:28px;font-size:14px}
+  
+  .bubble{
+    max-width:85%;
+    font-size:13px;
+    padding:10px 14px;
+  }
+  
+  .input-bar{padding:12px}
+  
+  .input-wrap{padding:8px 10px;gap:8px}
+  
+  textarea{font-size:14px}
+  
+  .file-btn,.voice-btn{font-size:16px;padding:4px}
+  
+  .send-btn{padding:8px 16px;font-size:12px}
+  
+  .file-badge{padding:6px 10px;font-size:11px}
+  
+  .file-icon{width:20px;height:20px;font-size:9px}
+  
+  .file-name{max-width:120px;font-size:11px}
+  
+  .drag-drop-icon{font-size:36px}
+  
+  .drag-drop-text{font-size:14px}
+}
+
+/* Small Mobile */
+@media(max-width:480px){
+  .sidebar{width:260px}
+  
+  .sidebar.open{transform:translateX(0)}
+  
+  .menu-toggle{
+    top:10px;
+    left:10px;
+    width:40px;
+    height:40px;
+    font-size:16px;
+  }
+  
+  .header{
+    height:52px;
+    padding:0 50px 0 55px;
+  }
+  
+  .header-title{font-size:14px}
+  
+  .header-btn{
+    padding:5px 8px;
+    font-size:10px;
+  }
+  
+  .header-btn span{display:none}
+  
+  .chat{padding:12px 8px}
+  
+  .welcome{
+    padding:24px 16px;
+    margin-bottom:12px;
+  }
+  
+  .welcome h2{font-size:20px;margin-bottom:8px}
+  
+  .welcome p{font-size:12px;margin-bottom:16px}
+  
+  .welcome-features{gap:8px}
+  
+  .feature-card{
+    min-width:80px;
+    padding:8px 12px;
+  }
+  
+  .feature-icon{font-size:16px;margin-bottom:4px}
+  
+  .feature-text{font-size:10px}
+  
+  .message{margin-bottom:12px;gap:6px}
+  
+  .message-avatar{width:26px;height:26px;font-size:13px}
+  
+  .bubble{
+    max-width:90%;
+    font-size:13px;
+    padding:9px 12px;
+  }
+  
+  .input-bar{padding:10px 8px}
+  
+  .input-wrap{padding:6px 8px;gap:6px}
+  
+  textarea{font-size:13px;line-height:1.3}
+  
+  .file-btn,.voice-btn{font-size:15px;padding:3px}
+  
+  .send-btn{padding:7px 14px;font-size:11px}
+  
+  .file-badge{
+    padding:5px 8px;
+    font-size:10px;
+    gap:6px;
+  }
+  
+  .file-icon{width:18px;height:18px;font-size:8px}
+  
+  .file-name{max-width:100px;font-size:10px}
+  
+  .drag-drop-icon{font-size:32px}
+  
+  .drag-drop-text{font-size:13px;padding:0 10px}
+  
+  .approval-popup{
+    padding:12px 20px;
+    font-size:13px;
+  }
+  
+  .approval-popup .icon{font-size:18px}
+  
+  .logo-icon{width:34px;height:34px;font-size:16px}
+  
+  .logo-title{font-size:15px}
+  
+  .new-chat-btn{padding:10px;font-size:12px}
+  
+  .history-item{padding:8px;gap:6px}
+  
+  .history-title{font-size:12px}
+  
+  .history-icon{font-size:13px}
+  
+  .sidebar-links a{padding:7px 8px;font-size:11px}
+}
+
+/* Extra Small Mobile */
+@media(max-width:360px){
+  .sidebar{width:240px}
+  
+  .bubble{max-width:92%}
+  
+  .welcome h2{font-size:18px}
+  
+  .feature-card{min-width:70px;padding:6px 10px}
+  
+  .feature-icon{font-size:14px}
+  
+  .feature-text{font-size:9px}
+}
+
+/* Landscape Mode for Mobile */
+@media(max-height:500px) and (orientation:landscape){
+  .header{height:48px}
+  
+  .chat{padding:8px}
+  
+  .welcome{padding:16px;margin-bottom:8px}
+  
+  .welcome h2{font-size:18px;margin-bottom:6px}
+  
+  .welcome p{font-size:11px;margin-bottom:12px}
+  
+  .welcome-features{margin-top:12px;gap:6px}
+  
+  .feature-card{padding:6px 10px;min-width:70px}
+  
+  .message{margin-bottom:10px}
+  
+  .input-bar{padding:8px}
+}
 </style>
 </head>
 
 <body>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
 <div class="app">
 
 <aside class="sidebar" id="sidebar">
-  <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
   <div class="sidebar-header">
     <div class="logo">
       <div class="logo-icon">e</div>
@@ -144,12 +400,12 @@ textarea::placeholder{color:#666}
 </aside>
 
 <main class="main">
-  <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+  <button class="menu-toggle" id="menuToggle" onclick="toggleSidebar()">☰</button>
   <div class="header">
     <div class="header-title">eSAMz AI Assistant</div>
     <div class="header-actions">
-      <button class="header-btn" onclick="exportChat()">📥 Export</button>
-      <button class="header-btn" onclick="clearCurrentChat()">🗑️ Clear</button>
+      <button class="header-btn" onclick="exportChat()">📥 <span>Export</span></button>
+      <button class="header-btn" onclick="clearCurrentChat()">🗑️ <span>Clear</span></button>
     </div>
   </div>
 
@@ -196,6 +452,8 @@ const chat = document.getElementById("chat");
 const input = document.getElementById("input");
 const sendBtn = document.getElementById("sendBtn");
 const sidebar = document.getElementById("sidebar");
+const sidebarOverlay = document.getElementById("sidebarOverlay");
+const menuToggle = document.getElementById("menuToggle");
 const chatHistory = document.getElementById("chatHistory");
 const welcomeMsg = document.getElementById("welcomeMsg");
 const filesContainer = document.getElementById("filesContainer");
@@ -213,6 +471,40 @@ let currentChatId = null;
 let uploadedFiles = [];
 let recognition = null;
 let isRecording = false;
+let isMobile = window.innerWidth <= 768;
+let hasUserSentMessage = false;
+
+// ==================== RESPONSIVE UTILITIES ====================
+function updateMobileState() {
+  isMobile = window.innerWidth <= 768;
+  if (!isMobile) {
+    sidebar.classList.remove('open');
+    sidebarOverlay.classList.remove('active');
+  } else {
+    sidebar.classList.add('collapsed');
+  }
+}
+
+window.addEventListener('resize', updateMobileState);
+
+// ==================== SIDEBAR MANAGEMENT ====================
+function toggleSidebar() {
+  if (isMobile) {
+    sidebar.classList.toggle('open');
+    sidebarOverlay.classList.toggle('active');
+    document.body.style.overflow = sidebar.classList.contains('open') ? 'hidden' : '';
+  } else {
+    sidebar.classList.toggle('collapsed');
+  }
+}
+
+function closeSidebar() {
+  if (isMobile) {
+    sidebar.classList.remove('open');
+    sidebarOverlay.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+}
 
 // ==================== CHAT MANAGEMENT ====================
 function loadChatHistory() {
@@ -255,7 +547,10 @@ function renderHistorySection(label, items) {
       </div>
       <button class="history-delete" onclick="deleteChat('${item.id}'); event.stopPropagation()">×</button>
     `;
-    div.onclick = () => loadChat(item.id);
+    div.onclick = () => {
+      loadChat(item.id);
+      if (isMobile) closeSidebar();
+    };
     section.appendChild(div);
   });
   
@@ -291,9 +586,18 @@ function loadChat(id) {
   if (!chatData) return;
   
   chat.innerHTML = "";
-  welcomeMsg.style.display = "none";
   
-  chatData.messages.forEach(msg => addMessage(msg.text, msg.role));
+  // Check if there are messages
+  if (chatData.messages && chatData.messages.length > 0) {
+    hasUserSentMessage = true;
+    welcomeMsg.classList.add('hide');
+  } else {
+    hasUserSentMessage = false;
+    welcomeMsg.classList.remove('hide');
+    chat.appendChild(welcomeMsg);
+  }
+  
+  chatData.messages.forEach(msg => addMessage(msg.text, msg.role, false));
   loadChatHistory();
 }
 
@@ -322,7 +626,8 @@ function newChat() {
   localStorage.setItem("chatHistory", JSON.stringify(history));
   
   chat.innerHTML = "";
-  welcomeMsg.style.display = "block";
+  hasUserSentMessage = false;
+  welcomeMsg.classList.remove('hide');
   chat.appendChild(welcomeMsg);
   uploadedFiles = [];
   filesContainer.style.display = "none";
@@ -330,12 +635,14 @@ function newChat() {
   filesContainer.innerHTML = "";
   
   loadChatHistory();
+  if (isMobile) closeSidebar();
 }
 
 function clearCurrentChat() {
   if (confirm("Clear this chat?")) {
     chat.innerHTML = "";
-    welcomeMsg.style.display = "block";
+    hasUserSentMessage = false;
+    welcomeMsg.classList.remove('hide');
     chat.appendChild(welcomeMsg);
     
     if (currentChatId) {
@@ -385,8 +692,18 @@ function exportChat() {
 }
 
 // ==================== UI FUNCTIONS ====================
-function addMessage(text, role) {
-  welcomeMsg.style.display = "none";
+function addMessage(text, role, isNew = true) {
+  // Hide welcome message on first user message
+  if (role === "user" && !hasUserSentMessage) {
+    hasUserSentMessage = true;
+    welcomeMsg.classList.add('hide');
+    // Remove from DOM after animation
+    setTimeout(() => {
+      if (welcomeMsg.classList.contains('hide')) {
+        welcomeMsg.remove();
+      }
+    }, 300);
+  }
   
   const msg = document.createElement("div");
   msg.className = "message " + role;
@@ -404,7 +721,9 @@ function addMessage(text, role) {
   chat.appendChild(msg);
   chat.scrollTop = chat.scrollHeight;
   
-  saveCurrentChat();
+  if (isNew) {
+    saveCurrentChat();
+  }
 }
 
 function addLoading() {
@@ -438,10 +757,6 @@ function showApproval(icon, text) {
   setTimeout(() => approvalPopup.classList.remove("show"), 2000);
 }
 
-function toggleSidebar() {
-  sidebar.classList.toggle("collapsed");
-}
-
 // ==================== MESSAGE SENDING ====================
 async function sendMessage() {
   const text = input.value.trim();
@@ -452,6 +767,9 @@ async function sendMessage() {
   isLoading = true;
   sendBtn.disabled = true;
   input.value = "";
+  
+  // Auto-resize textarea
+  input.style.height = 'auto';
   
   // Update chat title with first message
   const history = JSON.parse(localStorage.getItem("chatHistory") || "[]");
@@ -465,10 +783,15 @@ async function sendMessage() {
   addMessage(text, "user");
   addLoading();
   
+  // Close sidebar on mobile after sending
+  if (isMobile) {
+    closeSidebar();
+  }
+  
   try {
     const res = await fetch("/api/chat", {
       method: "POST",
-            headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message: text,
         files: uploadedFiles.map(f => ({ name: f.name, type: f.type, size: f.size }))
@@ -568,6 +891,7 @@ if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
     const transcript = e.results[0][0].transcript;
     input.value += transcript;
     input.focus();
+    autoResize();
   };
 
   recognition.onerror = () => {
@@ -599,6 +923,14 @@ function toggleVoice() {
   }
 }
 
+// ==================== AUTO-RESIZE TEXTAREA ====================
+function autoResize() {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+}
+
+input.addEventListener('input', autoResize);
+
 // ==================== EVENT LISTENERS ====================
 sendBtn.addEventListener("click", sendMessage);
 input.addEventListener("keydown", e => {
@@ -609,8 +941,17 @@ input.addEventListener("keydown", e => {
 });
 
 // ==================== INIT ====================
+updateMobileState();
 loadChatHistory();
 if (!currentChatId) newChat();
+
+// Set initial sidebar state based on screen size
+if (isMobile) {
+  sidebar.classList.add('collapsed');
+  sidebar.classList.remove('open');
+} else {
+  sidebar.classList.remove('collapsed');
+}
 </script>
 </body>
 </html>
