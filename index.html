@@ -989,838 +989,130 @@ textarea::placeholder{color:#666}
   <span class="icon" id="popupIcon"></span>
   <span id="popupText"></span>
 </div>
-
 <script>
-const chat = document.getElementById("chat")
-const input = document.getElementById("input")
-const send = document.getElementById("send")
-const fileInput = document.getElementById("fileInput")
-const filesContainer = document.getElementById("filesContainer")
-const filesInfo = document.getElementById("filesInfo")
-const voiceBtn = document.getElementById("voiceBtn")
-const sidebar = document.getElementById("sidebar")
-const chatHistory = document.getElementById("chatHistory")
-const inputWrap = document.getElementById("inputWrap")
-const dragDropOverlay = document.getElementById("dragDropOverlay")
-const fastModeBtn = document.getElementById("fastModeBtn")
-const thinkingModeBtn = document.getElementById("thinkingModeBtn")
+const chat = document.getElementById("chat");
+const input = document.getElementById("input");
+const sendBtn = document.getElementById("send");
+const fastBtn = document.getElementById("fastModeBtn");
+const thinkingBtn = document.getElementById("thinkingModeBtn");
 
-let uploadedFiles = []
-let conversationHistory = []
-let recognition = null
-let isRecording = false
-let currentChatId = null
-let allChats = {}
-let saveTimeout = null
-let isLoading = false
-let currentMode = 'fast'
-let dragCounter = 0
+let isLoading = false;
+let mode = "fast"; // fast | thinking
 
-const MAX_FILES = 10
-const MAX_FILE_SIZE = 50 * 1024 * 1024
+// -------- MODE SWITCH --------
+function setMode(newMode) {
+  mode = newMode;
 
-window.addEventListener('DOMContentLoaded', () => {
-  loadChatsFromStorage()
-  renderChatHistory()
-  autoResizeTextarea()
-  setupDragAndDrop()
-})
-
-input.addEventListener('input', autoResizeTextarea)
-
-function autoResizeTextarea() {
-  input.style.height = 'auto'
-  input.style.height = Math.min(input.scrollHeight, 120) + 'px'
-}
-
-function setMode(mode) {
-  currentMode = mode
-  
-  if (mode === 'fast') {
-    fastModeBtn.classList.add('active')
-    thinkingModeBtn.classList.remove('active')
+  if (mode === "fast") {
+    fastBtn.classList.add("active");
+    thinkingBtn.classList.remove("active");
   } else {
-    thinkingModeBtn.classList.add('active')
-    fastModeBtn.classList.remove('active')
-  }
-  
-  showApproval(mode === 'fast' ? '⚡' : '🧠', `${mode === 'fast' ? 'Fast' : 'Thinking'} Mode`)
-}
-
-function setupDragAndDrop() {
-  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-    document.body.addEventListener(eventName, preventDefaults, false)
-  })
-  
-  function preventDefaults(e) {
-    e.preventDefault()
-    e.stopPropagation()
-  }
-  
-  document.body.addEventListener('dragenter', handleDragEnter, false)
-  document.body.addEventListener('dragleave', handleDragLeave, false)
-  document.body.addEventListener('dragover', handleDragOver, false)
-  document.body.addEventListener('drop', handleDrop, false)
-  
-  function handleDragEnter(e) {
-    dragCounter++
-    if (!isLoading && e.dataTransfer.items && e.dataTransfer.items.length > 0) {
-      inputWrap.classList.add('drag-over')
-      dragDropOverlay.classList.add('active')
-    }
-  }
-  
-  function handleDragLeave(e) {
-    dragCounter--
-    if (dragCounter === 0) {
-      inputWrap.classList.remove('drag-over')
-      dragDropOverlay.classList.remove('active')
-    }
-  }
-  
-  function handleDragOver(e) {
-    if (!isLoading) {
-      inputWrap.classList.add('drag-over')
-      dragDropOverlay.classList.add('active')
-    }
-  }
-  
-  function handleDrop(e) {
-    dragCounter = 0
-    inputWrap.classList.remove('drag-over')
-    dragDropOverlay.classList.remove('active')
-    
-    const files = e.dataTransfer.files
-    if (files.length > 0) {
-      handleFiles(files)
-    }
+    thinkingBtn.classList.add("active");
+    fastBtn.classList.remove("active");
   }
 }
 
-function handleFiles(files) {
-  const fileArray = Array.from(files)
-  
-  for (const file of fileArray) {
-    if (uploadedFiles.length >= MAX_FILES) {
-      showApproval("⚠️", `Max ${MAX_FILES} files`)
-      break
-    }
-    
-    if (file.size > MAX_FILE_SIZE) {
-      showApproval("⚠️", `${file.name} too large (max 50MB)`)
-      continue
-    }
-    
-    const fileData = {
-      file: file,
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      extension: file.name.split('.').pop().toLowerCase()
-    }
-    
-    if (file.type.startsWith('text/') || isTextFile(file.name)) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        fileData.content = e.target.result
-      }
-      reader.readAsText(file)
-    }
-    
-    uploadedFiles.push(fileData)
-  }
-  
-  renderFilesPreview()
+fastBtn.onclick = () => setMode("fast");
+thinkingBtn.onclick = () => setMode("thinking");
+
+// -------- UI HELPERS --------
+function addMessage(text, role) {
+  const msg = document.createElement("div");
+  msg.className = "message " + role;
+
+  const avatar = document.createElement("div");
+  avatar.className = "message-avatar";
+  avatar.textContent = role === "user" ? "👤" : "🤖";
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  bubble.textContent = text;
+
+  msg.appendChild(avatar);
+  msg.appendChild(bubble);
+  chat.appendChild(msg);
+  chat.scrollTop = chat.scrollHeight;
 }
 
-function saveChatsToStorage() {
-  clearTimeout(saveTimeout)
-  saveTimeout = setTimeout(() => {
-    try {
-      localStorage.setItem('esamz_chats', JSON.stringify(allChats))
-      localStorage.setItem('esamz_current_chat', currentChatId)
-    } catch (e) {
-      console.error('Storage error:', e)
-    }
-  }, 500)
+function addLoading() {
+  const msg = document.createElement("div");
+  msg.className = "message ai";
+  msg.id = "loading";
+
+  const avatar = document.createElement("div");
+  avatar.className = "message-avatar";
+  avatar.textContent = "🤖";
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  bubble.textContent =
+    mode === "thinking" ? "Thinking deeply…" : "Thinking…";
+
+  msg.appendChild(avatar);
+  msg.appendChild(bubble);
+  chat.appendChild(msg);
+  chat.scrollTop = chat.scrollHeight;
 }
 
-function loadChatsFromStorage() {
-  try {
-    const stored = localStorage.getItem('esamz_chats')
-    const storedCurrent = localStorage.getItem('esamz_current_chat')
-    
-    if (stored) {
-      allChats = JSON.parse(stored)
-    }
-    
-    if (storedCurrent && allChats[storedCurrent]) {
-      currentChatId = storedCurrent
-      loadChat(currentChatId)
-    }
-  } catch (e) {
-    console.error('Load error:', e)
-    allChats = {}
-  }
+function removeLoading() {
+  const el = document.getElementById("loading");
+  if (el) el.remove();
 }
 
-function renderChatHistory() {
-  const chatArray = Object.entries(allChats).sort((a, b) => b[1].timestamp - a[1].timestamp)
-  
-  if (chatArray.length === 0) {
-    chatHistory.innerHTML = '<div style="padding:16px;text-align:center;color:#666;font-size:12px;">No history yet</div>'
-    return
-  }
-  
-  const today = []
-  const yesterday = []
-  const older = []
-  
-  const now = Date.now()
-  const oneDay = 86400000
-  
-  chatArray.forEach(([id, chat]) => {
-    const age = now - chat.timestamp
-    if (age < oneDay) {
-      today.push([id, chat])
-    } else if (age < 2 * oneDay) {
-      yesterday.push([id, chat])
-    } else {
-      older.push([id, chat])
-    }
-  })
-  
-  let html = ''
-  
-  if (today.length > 0) {
-    html += '<div class="history-section"><div class="history-label">Today</div>'
-    today.forEach(([id, chat]) => {
-      html += renderHistoryItem(id, chat)
-    })
-    html += '</div>'
-  }
-  
-  if (yesterday.length > 0) {
-    html += '<div class="history-section"><div class="history-label">Yesterday</div>'
-    yesterday.forEach(([id, chat]) => {
-      html += renderHistoryItem(id, chat)
-    })
-    html += '</div>'
-  }
-  
-  if (older.length > 0) {
-    html += '<div class="history-section"><div class="history-label">Older</div>'
-    older.forEach(([id, chat]) => {
-      html += renderHistoryItem(id, chat)
-    })
-    html += '</div>'
-  }
-  
-  chatHistory.innerHTML = html
-}
+// -------- SEND MESSAGE --------
+async function sendMessage() {
+  const text = input.value.trim();
+  if (!text || isLoading) return;
 
-function renderHistoryItem(id, chat) {
-  const isActive = id === currentChatId ? 'active' : ''
-  const title = chat.title || 'New conversation'
-  const time = formatTime(chat.timestamp)
-  
-  return `
-    <div class="history-item ${isActive}" onclick="loadChat('${id}')">
-      <div class="history-icon">💬</div>
-      <div class="history-content">
-        <div class="history-title">${escapeHtml(title)}</div>
-        <div class="history-time">${time}</div>
-      </div>
-      <button class="history-delete" onclick="event.stopPropagation(); deleteChat('${id}')">🗑️</button>
-    </div>
-  `
-}
+  isLoading = true;
+  input.value = "";
 
-function formatTime(timestamp) {
-  const date = new Date(timestamp)
-  const now = new Date()
-  
-  if (date.toDateString() === now.toDateString()) {
-    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-  }
-  
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
+  addMessage(text, "user");
+  addLoading();
 
-function escapeHtml(text) {
-  const div = document.createElement('div')
-  div.textContent = text
-  return div.innerHTML
-}
+  const provider = mode === "thinking" ? "groq" : "cloudflare";
 
-function newChat() {
-  currentChatId = 'chat_' + Date.now()
-  conversationHistory = []
-  
-  allChats[currentChatId] = {
-    id: currentChatId,
-    title: 'New conversation',
-    messages: [],
-    timestamp: Date.now()
-  }
-  
-  saveChatsToStorage()
-  renderChatHistory()
-  
-  chat.innerHTML = `
-    <div class="welcome" id="welcomeMsg">
-      <h2>Welcome to eSAMz v7</h2>
-      <p>Your intelligent AI companion</p>
-      <div class="welcome-features">
-        <div class="feature-card">
-          <div class="feature-icon">⚡</div>
-          <div class="feature-text">Fast Mode</div>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🧠</div>
-          <div class="feature-text">Thinking Mode</div>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🎤</div>
-          <div class="feature-text">Voice Input</div>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">📎</div>
-          <div class="feature-text">Multi-File</div>
-        </div>
-      </div>
-    </div>`
-  
-  resetFiles()
-}
-
-function loadChat(chatId) {
-  if (!allChats[chatId]) return
-  
-  currentChatId = chatId
-  const chatData = allChats[chatId]
-  conversationHistory = chatData.messages || []
-  
-  chat.innerHTML = ''
-  
-  if (conversationHistory.length === 0) {
-    chat.innerHTML = `
-      <div class="welcome" id="welcomeMsg">
-        <h2>Welcome to eSAMz v7</h2>
-        <p>Your intelligent AI companion</p>
-        <div class="welcome-features">
-          <div class="feature-card">
-            <div class="feature-icon">⚡</div>
-            <div class="feature-text">Fast Mode</div>
-          </div>
-          <div class="feature-card">
-            <div class="feature-icon">🧠</div>
-            <div class="feature-text">Thinking Mode</div>
-          </div>
-          <div class="feature-card">
-            <div class="feature-icon">🎤</div>
-            <div class="feature-text">Voice Input</div>
-          </div>
-          <div class="feature-card">
-            <div class="feature-icon">📎</div>
-            <div class="feature-text">Multi-File</div>
-          </div>
-        </div>
-      </div>`
-  } else {
-    conversationHistory.forEach(msg => {
-      addMessageToUI(msg.content, msg.role, msg.model, msg.provider)
-    })
-  }
-  
-  saveChatsToStorage()
-  renderChatHistory()
-}
-
-function deleteChat(chatId) {
-  if (!confirm('Delete this chat?')) return
-  
-  delete allChats[chatId]
-  
-  if (currentChatId === chatId) {
-    newChat()
-  } else {
-    saveChatsToStorage()
-    renderChatHistory()
-  }
-  
-  showApproval("🗑️", "Deleted")
-}
-
-function clearCurrentChat() {
-  if (!currentChatId || conversationHistory.length === 0) return
-  
-  if (!confirm('Clear this chat?')) return
-  
-  conversationHistory = []
-  allChats[currentChatId].messages = []
-  allChats[currentChatId].timestamp = Date.now()
-  
-  saveChatsToStorage()
-  loadChat(currentChatId)
-  showApproval("✓", "Cleared")
-}
-
-function clearAllHistory() {
-  if (!confirm('Delete all history?')) return
-  
-  allChats = {}
-  localStorage.removeItem('esamz_chats')
-  localStorage.removeItem('esamz_current_chat')
-  
-  newChat()
-  showApproval("🗑️", "All cleared")
-}
-
-function exportChat() {
-  if (!currentChatId || conversationHistory.length === 0) {
-    showApproval("⚠️", "No messages")
-    return
-  }
-  
-  const chatData = allChats[currentChatId]
-  let content = `eSAMz Chat Export\nTitle: ${chatData.title}\nDate: ${new Date(chatData.timestamp).toLocaleString()}\n\n`
-  
-  conversationHistory.forEach(msg => {
-    content += `${msg.role === 'user' ? 'You' : 'eSAMz'}: ${msg.content}\n\n`
-  })
-  
-  const blob = new Blob([content], { type: 'text/plain' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `esamz-${Date.now()}.txt`
-  a.click()
-  URL.revokeObjectURL(url)
-  
-  showApproval("📥", "Exported")
-}
-
-function toggleSidebar() {
-  sidebar.classList.toggle("collapsed")
-}
-
-function toggleVoice() {
-  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    showApproval("⚠️", "Not supported")
-    return
-  }
-  
-  if (isRecording) {
-    stopRecording()
-  } else {
-    startRecording()
-  }
-}
-
-function startRecording() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-  recognition = new SpeechRecognition()
-  recognition.continuous = true
-  recognition.interimResults = true
-  recognition.lang = 'en-US'
-  
-  recognition.onstart = () => {
-    isRecording = true
-    voiceBtn.classList.add("recording")
-  }
-  
-  recognition.onresult = (event) => {
-    let transcript = ''
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      transcript += event.results[i][0].transcript
-    }
-    input.value = transcript
-    autoResizeTextarea()
-  }
-  
-  recognition.onerror = () => {
-    stopRecording()
-  }
-  
-  recognition.onend = () => {
-    stopRecording()
-  }
-  
-  recognition.start()
-}
-
-function stopRecording() {
-  if (recognition) {
-    recognition.stop()
-    recognition = null
-  }
-  isRecording = false
-  voiceBtn.classList.remove("recording")
-}
-
-fileInput.onchange = async () => {
-  const files = Array.from(fileInput.files)
-  handleFiles(files)
-  fileInput.value = ''
-}
-
-function isTextFile(filename) {
-  const textExtensions = ['txt', 'js', 'py', 'java', 'cpp', 'c', 'html', 'css', 'json', 'xml', 'md', 'csv', 'log', 'sh', 'bat', 'yaml', 'yml', 'ts', 'jsx', 'tsx', 'php', 'rb', 'go', 'rs', 'swift', 'kt', 'scala', 'r', 'sql', 'pl', 'lua', 'dart', 'vim', 'ini', 'cfg', 'conf', 'properties']
-  const ext = filename.split('.').pop().toLowerCase()
-  return textExtensions.includes(ext)
-}
-
-function renderFilesPreview() {
-  if (uploadedFiles.length === 0) {
-    filesContainer.style.display = 'none'
-    filesInfo.style.display = 'none'
-    return
-  }
-  
-  filesContainer.style.display = 'flex'
-  filesInfo.style.display = 'block'
-  
-  const totalSize = uploadedFiles.reduce((sum, f) => sum + f.size, 0)
-  filesInfo.textContent = `${uploadedFiles.length}/${MAX_FILES} files • ${(totalSize / (1024 * 1024)).toFixed(1)}MB/50MB`
-  
-  filesContainer.innerHTML = uploadedFiles.map((fileData, index) => `
-    <div class="file-badge">
-      <div class="file-icon">${getFileIcon(fileData)}</div>
-      <div class="file-info">
-        <div class="file-name">${escapeHtml(fileData.name)}</div>
-        <div class="file-type">${(fileData.size / 1024).toFixed(1)} KB</div>
-      </div>
-      <button class="file-remove" onclick="removeFile(${index})">✕</button>
-    </div>
-  `).join('')
-}
-
-function getFileIcon(fileData) {
-  if (fileData.type.startsWith('audio/')) return '🎵'
-  if (fileData.type.startsWith('video/')) return '🎥'
-  if (fileData.type.startsWith('image/')) return '🖼️'
-  return fileData.extension.toUpperCase().substring(0, 3)
-}
-
-function removeFile(index) {
-  uploadedFiles.splice(index, 1)
-  renderFilesPreview()
-}
-
-function resetFiles() {
-  uploadedFiles = []
-  fileInput.value = ''
-  filesContainer.style.display = 'none'
-  filesInfo.style.display = 'none'
-  filesContainer.innerHTML = ''
-}
-
-function addMessageToUI(text, role, model, provider) {
-  const msg = document.createElement("div")
-  msg.className = "message " + role
-  
-  const avatar = document.createElement("div")
-  avatar.className = "message-avatar"
-  avatar.textContent = role === "user" ? "👤" : "🤖"
-  
-  const bubble = document.createElement("div")
-  bubble.className = "bubble"
-  
-  if (role === "ai") {
-    bubble.innerHTML = parseMessageContent(text)
-    
-    if (model && provider) {
-      const badge = document.createElement("div")
-      badge.className = "model-badge"
-      badge.innerHTML = `${model} • ${provider}`
-      bubble.appendChild(badge)
-    }
-    
-    attachTools(bubble, text)
-  } else {
-    bubble.textContent = text
-  }
-  
-  msg.appendChild(avatar)
-  msg.appendChild(bubble)
-  chat.appendChild(msg)
-  chat.scrollTop = chat.scrollHeight
-}
-
-function addLoadingMessage() {
-  const msg = document.createElement("div")
-  msg.className = "message ai loading-message"
-  msg.id = "loadingMessage"
-  
-  const avatar = document.createElement("div")
-  avatar.className = "message-avatar"
-  avatar.textContent = "🤖"
-  
-  const bubble = document.createElement("div")
-  bubble.className = "bubble"
-  
-  const loadingIndicator = document.createElement("div")
-  loadingIndicator.className = "loading-indicator"
-  
-  const dots = document.createElement("span")
-  dots.className = "loading-dots"
-  dots.textContent = currentMode === 'fast' ? 'Thinking' : 'Deep thinking'
-  
-  const pulse1 = document.createElement("div")
-  pulse1.className = "loading-pulse"
-  const pulse2 = document.createElement("div")
-  pulse2.className = "loading-pulse"
-  const pulse3 = document.createElement("div")
-  pulse3.className = "loading-pulse"
-  
-  loadingIndicator.appendChild(dots)
-  loadingIndicator.appendChild(pulse1)
-  loadingIndicator.appendChild(pulse2)
-  loadingIndicator.appendChild(pulse3)
-  
-  bubble.appendChild(loadingIndicator)
-  msg.appendChild(avatar)
-  msg.appendChild(bubble)
-  chat.appendChild(msg)
-  chat.scrollTop = chat.scrollHeight
-  
-  isLoading = true
-}
-
-function removeLoadingMessage() {
-  const loadingMsg = document.getElementById("loadingMessage")
-  if (loadingMsg) {
-    loadingMsg.remove()
-  }
-  isLoading = false
-}
-
-function parseMessageContent(text) {
-  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g
-  let lastIndex = 0
-  let result = ''
-  let match
-  
-  while ((match = codeBlockRegex.exec(text)) !== null) {
-    result += escapeHtml(text.substring(lastIndex, match.index))
-    
-    const lang = match[1] || 'code'
-    const code = match[2]
-    
-    result += createCodeBlock(lang, code)
-    lastIndex = match.index + match[0].length
-  }
-  
-  result += escapeHtml(text.substring(lastIndex))
-  
-  return result.replace(/\n/g, '<br>')
-}
-
-function createCodeBlock(lang, code) {
-  const escapedCode = escapeHtml(code.trim())
-  const blockId = 'code_' + Date.now() + Math.random().toString(36).substr(2, 9)
-  
-  return `
-    <div class="code-block">
-      <div class="code-header">
-        <span class="code-lang">${escapeHtml(lang)}</span>
-        <div class="code-actions">
-          <button class="code-btn" onclick="copyCode('${blockId}')">📋 Copy</button>
-          <button class="code-btn" onclick="downloadCode('${blockId}', '${lang}')">💾 Download</button>
-        </div>
-      </div>
-      <div class="code-content" id="${blockId}">${escapedCode}</div>
-    </div>
-  `
-}
-
-function copyCode(blockId) {
-  const codeElement = document.getElementById(blockId)
-  if (!codeElement) return
-  
-  const code = codeElement.textContent
-  navigator.clipboard.writeText(code)
-  showApproval("✓", "Code copied!")
-}
-
-function downloadCode(blockId, lang) {
-  const codeElement = document.getElementById(blockId)
-  if (!codeElement) return
-  
-  const code = codeElement.textContent
-  const extensions = {
-    'javascript': 'js',
-    'python': 'py',
-    'java': 'java',
-    'cpp': 'cpp',
-    'c': 'c',
-    'html': 'html',
-    'css': 'css',
-    'json': 'json',
-    'typescript': 'ts',
-    'php': 'php',
-    'ruby': 'rb',
-    'go': 'go',
-    'rust': 'rs',
-    'swift': 'swift',
-    'kotlin': 'kt',
-    'sql': 'sql'
-  }
-  
-  const ext = extensions[lang.toLowerCase()] || 'txt'
-  const filename = `code_${Date.now()}.${ext}`
-  
-  const blob = new Blob([code], { type: 'text/plain' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
-  
-  showApproval("💾", "Downloaded!")
-}
-
-function attachTools(bubble, text) {
-  const tools = document.createElement("div")
-  tools.className = "ai-tools"
-  
-  const copyBtn = document.createElement("button")
-  copyBtn.textContent = "📋 Copy"
-  copyBtn.onclick = () => {
-    const textOnly = text.replace(/```[\s\S]*?```/g, '[code block]')
-    navigator.clipboard.writeText(textOnly)
-    showApproval("✓", "Copied!")
-  }
-  
-  const likeBtn = document.createElement("button")
-  likeBtn.textContent = "👍"
-  likeBtn.onclick = () => {
-    showApproval("👍", "Thanks!")
-  }
-  
-  const dislikeBtn = document.createElement("button")
-  dislikeBtn.textContent = "👎"
-  dislikeBtn.onclick = () => {
-    showApproval("👎", "Noted")
-  }
-  
-  tools.append(copyBtn, likeBtn, dislikeBtn)
-  bubble.appendChild(tools)
-}
-
-async function sendMsg() {
-  const text = input.value.trim()
-  if (!text && uploadedFiles.length === 0) return
-  
-  const welcome = document.getElementById("welcomeMsg")
-  if (welcome) welcome.remove()
-  
-  if (!currentChatId) {
-    currentChatId = 'chat_' + Date.now()
-    allChats[currentChatId] = {
-      id: currentChatId,
-      title: text.substring(0, 50) || 'File conversation',
-      messages: [],
-      timestamp: Date.now()
-    }
-  }
-  
-  let payload = text
-  
-  if (uploadedFiles.length > 0) {
-    payload += '\n\n[Attached files: '
-    payload += uploadedFiles.map(f => {
-      if (f.content) {
-        return `\n\n${f.name}:\n${f.content}`
-      } else {
-        return `${f.name} (${f.type || 'file'}, ${(f.size / 1024).toFixed(1)}KB)`
-      }
-    }).join(', ')
-    payload += ']'
-  }
-  
-  addMessageToUI(text || `📎 ${uploadedFiles.length} file(s) attached`, "user")
-  input.value = ""
-  autoResizeTextarea()
-  resetFiles()
-  
-  const userMsg = { role: "user", content: payload }
-  conversationHistory.push(userMsg)
-  allChats[currentChatId].messages.push(userMsg)
-  allChats[currentChatId].timestamp = Date.now()
-  
-  if (conversationHistory.length === 1) {
-    allChats[currentChatId].title = text.substring(0, 50) || 'File conversation'
-  }
-  
-  saveChatsToStorage()
-  renderChatHistory()
-  
-  addLoadingMessage()
-  
   try {
     const res = await fetch("/api/chat", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-     body: JSON.stringify({
-  message: payload,
-  provider: currentMode === "thinking" ? "groq" : "cloudflare"
-})
-
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: text,
+        provider
       })
-    })
-    
-    const data = await res.json()
-    const reply = data.reply || "No response."
-    
-    removeLoadingMessage()
-    addMessageToUI(reply, "ai", data.model, data.provider)
-    
-    const aiMsg = { 
-      role: "assistant", 
-      content: reply,
-      model: data.model,
-      provider: data.provider
-    }
-    conversationHistory.push(aiMsg)
-    allChats[currentChatId].messages.push(aiMsg)
-    allChats[currentChatId].timestamp = Date.now()
-    
-    saveChatsToStorage()
-    renderChatHistory()
-    
+    });
+
+    const data = await res.json();
+    removeLoading();
+
+    const reply =
+      typeof data.reply === "string" && data.reply.trim()
+        ? data.reply
+        : "No response from model.";
+
+    addMessage(reply, "ai");
+
   } catch (err) {
-    console.error(err)
-    removeLoadingMessage()
-    addMessageToUI("Connection error.", "ai")
+    removeLoading();
+    addMessage("Connection error.", "ai");
+    console.error(err);
+  } finally {
+    isLoading = false;
   }
 }
 
-function showApproval(icon, text) {
-  const popup = document.getElementById("approvalPopup")
-  const popupIcon = document.getElementById("popupIcon")
-  const popupText = document.getElementById("popupText")
-  
-  popupIcon.textContent = icon
-  popupText.textContent = text
-  
-  popup.classList.add("show")
-  
-  setTimeout(() => {
-    popup.classList.remove("show")
-  }, 1500)
-}
-
-send.onclick = sendMsg
+// -------- EVENTS --------
+sendBtn.addEventListener("click", sendMessage);
 
 input.addEventListener("keydown", e => {
   if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault()
-    sendMsg()
+    e.preventDefault();
+    sendMessage();
   }
-})
+});
 </script>
+
 </body>
 </html>
