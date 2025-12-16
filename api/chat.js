@@ -48,7 +48,7 @@ export default async function handler(req, res) {
           body: JSON.stringify({
             model: "llama-3.1-8b-instant",
             messages: [
-              { role: "system", content: "You are a helpful AI assistant." },
+              { role: "system", content: "You are esamz ai created by alakmar teenwal you should be helpful human like and you have a 2m context window." },
               { role: "user", content: message }
             ]
           })
