@@ -547,6 +547,18 @@ textarea::placeholder{color:#666}
   
   .input-bar{padding:8px}
 }
+  /* Prevent mobile pull-down / overscroll */
+html, body {
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+/* iOS specific bounce prevention */
+body {
+  position: fixed;
+  width: 100%;
+}
+
 </style>
 </head>
 
@@ -1130,6 +1142,23 @@ if (isMobile) {
 } else {
   sidebar.classList.remove('collapsed');
 }
+  // Prevent pull-to-refresh on mobile
+let lastTouchY = 0;
+
+document.addEventListener("touchstart", e => {
+  if (e.touches.length === 1) {
+    lastTouchY = e.touches[0].clientY;
+  }
+}, { passive: false });
+
+document.addEventListener("touchmove", e => {
+  const touchY = e.touches[0].clientY;
+  const touchYDiff = touchY - lastTouchY;
+
+  if (touchYDiff > 0 && window.scrollY === 0) {
+    e.preventDefault();
+  }
+}, { passive: false });
 </script>
 </body>
 </html>
