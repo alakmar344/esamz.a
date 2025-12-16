@@ -1014,7 +1014,6 @@ async function sendMessage() {
 } catch (err) {
   removeLoading();
   addMessage("Network error. Please try again.", "ai");
-
 } finally {
   isLoading = false;
   sendBtn.disabled = false;
