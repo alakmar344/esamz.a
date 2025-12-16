@@ -1,8 +1,6 @@
 {
   "name": "esamz",
   "version": "1.0.0",
-  "private": true,
-  "devdependencies": {
-    "javascript"
+  "private": true",
   }
 }
