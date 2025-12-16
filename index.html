@@ -554,11 +554,11 @@ html, body {
   touch-action: manipulation;
 }
 
-/* iOS specific bounce prevention */
 body {
-  position: fixed;
+  position: relative;
   width: 100%;
 }
+
 
 </style>
 </head>
@@ -979,29 +979,31 @@ async function sendMessage() {
     closeSidebar();
   }
   
-  try {
-    const res = await fetch(window.location.origin + "/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: text,
-        files: uploadedFiles.map(f => ({ name: f.name, type: f.type, size: f.size }))
-      })
-    });
+ try {
+  const res = await fetch(window.location.origin + "/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message: text,
+      files: uploadedFiles.map(f => ({
+        name: f.name,
+        type: f.type,
+        size: f.size
+      }))
+    })
+  });
 
-    const data = await res.json();
-    removeLoading();
-    addMessage(data.reply, "ai");
- } catch (err) {
+  const data = await res.json();
+  removeLoading();
+  addMessage(data.reply, "ai");
+
+} catch (err) {
   removeLoading();
   addMessage("Network error. Please try again.", "ai");
+
+} finally {
   isLoading = false;
   sendBtn.disabled = false;
-}
-  } finally {
-    isLoading = false;
-    sendBtn.disabled = false;
-  }
 }
 
 // ==================== FILE UPLOAD ====================
