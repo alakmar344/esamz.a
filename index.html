@@ -1110,8 +1110,11 @@ input.addEventListener("keydown", e => {
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
     sendMessage();
-  }
-});
+  } 
+  function newChat() {
+  chat.innerHTML = "";
+}
+  });
 </script>
 
 </body>
