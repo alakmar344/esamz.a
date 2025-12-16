@@ -2,7 +2,7 @@
   "name": "esamz",
   "version": "1.0.0",
   "private": true,
-  "dependencies": {
-    "undici": "^6.19.8"
+  "devdependencies": {
+    "javascript"
   }
 }
