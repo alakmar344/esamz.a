@@ -1764,10 +1764,11 @@ async function sendMsg() {
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: payload,
-        history: conversationHistory,
-        mode: currentMode
+     body: JSON.stringify({
+  message: payload,
+  provider: currentMode === "thinking" ? "groq" : "cloudflare"
+})
+
       })
     })
     
