@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <!-- ==== START-JSON-LD ==== -->
+<title>eSAMz v7 – AI Assistant</title>
+
+<!-- ========  JSON-LD  ======== -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -157,35 +159,33 @@
   ]
 }
 </script>
-<!-- ==== END-JSON-LD ==== -->
-<title>eSAMz v7 – AI Assistant</title>
 
-<!-- ==================== CSS ==================== -->
+<!-- ====================  CSS  ==================== -->
 <style>
-/* ---------- RESET / BASE ---------- */
+/* ----------  RESET / BASE  ---------- */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:#0a0a0a;color:#e5e5e5;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
 
-/* ---------- APP SHELL ---------- */
+/* ----------  APP SHELL  ---------- */
 .app{height:100%;display:flex;position:relative}
 .sidebar{width:300px;background:#111;border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;flex-shrink:0;transition:transform .3s ease}
 .sidebar.collapsed{transform:translateX(-100%)}
 .main{flex:1;display:flex;flex-direction:column;min-width:0}
 
-/* ---------- HEADER ---------- */
+/* ----------  HEADER  ---------- */
 .header{height:60px;background:#111;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;padding:0 24px;flex-shrink:0}
 .header-title{font-size:16px;font-weight:600;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .header-actions{display:flex;gap:6px}
 .header-btn{background:rgba(102,126,234,.1);border:1px solid rgba(102,126,234,.2);border-radius:6px;padding:6px 12px;color:#999;cursor:pointer;font-size:12px;font-weight:500;transition:all .2s ease}
 .header-btn:hover{background:rgba(102,126,234,.2);color:#667eea}
 
-/* ---------- CHAT AREA ---------- */
+/* ----------  CHAT AREA  ---------- */
 .chat{flex:1;padding:24px 24px 90px;overflow-y:auto;scroll-behavior:smooth}
 .chat::-webkit-scrollbar{width:6px}
 .chat::-webkit-scrollbar-thumb{background:rgba(102,126,234,.3);border-radius:3px}
 
-/* ---------- WELCOME ---------- */
+/* ----------  WELCOME  ---------- */
 .welcome{padding:48px 24px;margin-bottom:20px;border-radius:16px;background:linear-gradient(135deg,rgba(102,126,234,.12),rgba(118,75,162,.12));text-align:center;border:1px solid rgba(102,126,234,.2);transition:opacity .3s, transform .3s}
 .welcome.hide{opacity:0;transform:translateY(-20px);pointer-events:none}
 .welcome h2{font-size:28px;margin-bottom:10px;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:700}
@@ -196,27 +196,50 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-seri
 .feature-icon{font-size:20px;margin-bottom:6px}
 .feature-text{font-size:12px;color:#999;font-weight:500}
 
-/* ---------- MESSAGES ---------- */
+/* ----------  MESSAGES  ---------- */
 .message{display:flex;margin-bottom:20px;gap:10px;animation:slideIn .3s ease}
 @keyframes slideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .message.user{justify-content:flex-end}
-.message.ai{justify-content:flex-start}
+.message.ai{justify-content:flex-start;position:relative}
 .message-avatar{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
 .message.user .message-avatar{background:linear-gradient(135deg,#667eea,#764ba2);order:2}
 .message.ai .message-avatar{background:#111;border:1px solid rgba(255,255,255,.1)}
-.bubble{max-width:70%;padding:12px 16px;border-radius:14px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.bubble{max-width:70%;padding:12px 16px;border-radius:14px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word;position:relative}
 .user .bubble{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-bottom-right-radius:4px}
 .ai .bubble{background:#1a1a1a;border:1px solid rgba(255,255,255,.08);border-bottom-left-radius:4px}
 
-/* ---------- INPUT BAR – FIXED BOTTOM ---------- */
+/* ----------  COPY BUTTON  ---------- */
+.copy-btn{
+  position:absolute;
+  bottom:4px;
+  right:6px;
+  background:rgba(102,126,234,.15);
+  border:1px solid rgba(102,126,234,.3);
+  color:#999;
+  font-size:11px;
+  padding:3px 7px;
+  border-radius:4px;
+  cursor:pointer;
+  opacity:0;
+  transition:opacity .2s ease;
+}
+.message.ai:hover .copy-btn{opacity:1}
+.copy-btn:hover{background:rgba(102,126,234,.25);color:#fff}
+
+/* ----------  INPUT BAR – FIXED BOTTOM  ---------- */
 .input-bar{
-  position: sticky;
-  bottom: 0;
-  width: 100%;
-  background: #111;
-  border-top: 1px solid rgba(255,255,255,.06);
-  padding: 12px 16px;
-  z-index: 10;
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  background:#111;
+  border-top:1px solid rgba(255,255,255,.06);
+  padding:12px 16px;
+  z-index:10;
+}
+/*  LAPTOP FIX: respect sidebar width  */
+@media (min-width:769px){
+  .input-bar{left:300px}
 }
 
 .files-container{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;max-height:150px;overflow-y:auto}
@@ -251,7 +274,7 @@ textarea::placeholder{color:#666}
 .drag-drop-text{color:#667eea;font-size:16px;font-weight:600;text-align:center}
 @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 
-/* ---------- SIDEBAR INTERNALS ---------- */
+/* ----------  SIDEBAR INTERNALS  ---------- */
 .sidebar-header{padding:20px;border-bottom:1px solid rgba(255,255,255,.06)}
 .logo{display:flex;gap:10px;align-items:center;margin-bottom:14px}
 .logo-icon{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px}
@@ -283,20 +306,37 @@ textarea::placeholder{color:#666}
 .clear-history-btn{width:100%;padding:8px;margin-top:6px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:6px;color:#ef4444;cursor:pointer;font-size:11px;font-weight:600;transition:all .2s ease}
 .clear-history-btn:hover{background:rgba(239,68,68,.2)}
 
-/* ---------- APPROVAL POPUP ---------- */
-.approval-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:16px 24px;border-radius:12px;font-size:14px;font-weight:600;z-index:1000;opacity:0;transition:all .2s ease;display:flex;align-items:center;gap:10px}
-.approval-popup.show{transform:translate(-50%,-50%) scale(1);opacity:1}
-.approval-popup .icon{font-size:20px}
+/* ----------  COPY TOAST  ---------- */
+.copy-toast{
+  position:fixed;
+  bottom:80px;
+  left:50%;
+  transform:translateX(-50%) scale(0);
+  background:#667eea;
+  color:#fff;
+  padding:6px 14px;
+  border-radius:6px;
+  font-size:12px;
+  font-weight:600;
+  z-index:20;
+  opacity:0;
+  transition:transform .25s ease, opacity .25s ease;
+}
+.copy-toast.show{
+  transform:translateX(-50%) scale(1);
+  opacity:1;
+}
 
-/* ---------- MOBILE ---------- */
+/* ----------  MOBILE  ---------- */
 @media(max-width:768px){
   .sidebar{width:280px;position:fixed;top:0;left:0;bottom:0;z-index:20;transform:translateX(-100%)}
   .sidebar.open{transform:translateX(0)}
   .menu-toggle{display:flex;position:fixed;top:12px;left:12px;z-index:30;width:40px;height:40px;align-items:center;justify-content:center;background:#111;border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#ccc;font-size:18px}
   .main{width:100%}
   .header{padding:0 60px 0 60px}
-  .chat{padding:16px 12px 80px} /* extra bottom pad = input-bar height */
+  .chat{padding:16px 12px 80px}
   .bubble{max-width:85%}
+  .input-bar{left:0}
 }
 @media(max-width:480px){
   .header{padding:0 50px 0 55px}
@@ -306,23 +346,11 @@ textarea::placeholder{color:#666}
   .input-wrap{padding:6px 8px;gap:6px}
   textarea{font-size:13px;line-height:1.3}
   .send-btn{padding:7px 14px;font-size:11px}
-  /* Desktop: input bar should respect sidebar width */
-@media (min-width: 769px) {
-  .input-bar {
-    left: 300px; /* EXACT sidebar width */
-  }
-}
 }
 </style>
-
-<script type="application/ld+json">
-/* …keep your original JSON-LD here… */
-</script>
-<base target="_blank">
 </head>
 
 <body>
-<!-- ---------- APP SHELL ---------- -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 <div class="app">
   <aside class="sidebar" id="sidebar">
@@ -357,7 +385,6 @@ textarea::placeholder{color:#666}
       </div>
     </header>
     <section class="chat" id="chat">
-      <div class="input-bar">
       <div class="welcome" id="welcomeMsg">
         <h2>Welcome to eSAMz v7</h2>
         <p>Your intelligent AI companion</p>
@@ -372,7 +399,7 @@ textarea::placeholder{color:#666}
   </main>
 </div>
 
-<!-- ---------- FIXED INPUT BAR – WHATSAPP STYLE ---------- -->
+<!-- ----------  INPUT BAR  ---------- -->
 <div class="input-bar">
   <div class="files-container" id="filesContainer" style="display:none"></div>
   <div class="files-info" id="filesInfo" style="display:none"></div>
@@ -389,28 +416,31 @@ textarea::placeholder{color:#666}
   </div>
 </div>
 
-<!-- ---------- APPROVAL POPUP ---------- -->
+<!-- ----------  COPY TOAST  ---------- -->
+<div class="copy-toast" id="copyToast">Copied!</div>
+
+<!-- ----------  APPROVAL POPUP  ---------- -->
 <div class="approval-popup" id="approvalPopup">
   <span class="icon" id="popupIcon"></span>
   <span id="popupText"></span>
 </div>
 
-<!-- ==================== JAVASCRIPT ==================== -->
 <script>
-/* ---------- SHORTCUTS ---------- */
+/* ----------  SHORTCUTS  ---------- */
 const $ = id => document.getElementById(id);
 const chat=$('chat'), input=$('input'), sendBtn=$('sendBtn'), sidebar=$('sidebar'), menuToggle=$('menuToggle'),
       chatHistory=$('chatHistory'), welcomeMsg=$('welcomeMsg'), filesContainer=$('filesContainer'),
       filesInfo=$('filesInfo'), fileInput=$('fileInput'), inputWrap=$('inputWrap'), dragDropOverlay=$('dragDropOverlay'),
-      voiceBtn=$('voiceBtn'), approvalPopup=$('approvalPopup'), popupIcon=$('popupIcon'), popupText=$('popupText');
+      voiceBtn=$('voiceBtn'), approvalPopup=$('approvalPopup'), popupIcon=$('popupIcon'), popupText=$('popupText'),
+      copyToast=$('copyToast');
 
-/* ---------- STATE ---------- */
+/* ----------  STATE  ---------- */
 let isLoading=false, currentChatId=null, uploadedFiles=[], recognition=null, isRecording=false, isMobile=innerWidth<=768, hasUserSentMessage=false;
 
-/* ---------- RESPONSIVE ---------- */
+/* ----------  RESPONSIVE  ---------- */
 window.addEventListener('resize', () => isMobile = innerWidth <= 768);
 
-/* ---------- SIDEBAR ---------- */
+/* ----------  SIDEBAR  ---------- */
 function toggleSidebar(){
   if(isMobile){ sidebar.classList.toggle('open'); $('sidebarOverlay').classList.toggle('active'); }
   else sidebar.classList.toggle('collapsed');
@@ -419,16 +449,13 @@ function closeSidebar(){
   if(isMobile){ sidebar.classList.remove('open'); $('sidebarOverlay').classList.remove('active'); }
 }
 
-/* ---------- CHAT HISTORY ---------- */
+/* ----------  CHAT HISTORY  ---------- */
 function loadChatHistory(){
   const history=JSON.parse(localStorage.getItem('chatHistory')||'[]');
   chatHistory.innerHTML='';
   const now=Date.now(), dayMs=86400000;
   const today=[],yesterday=[],older=[];
-  history.forEach(item=>{
-    const age=now-item.timestamp;
-    if(age<dayMs)today.push(item);else if(age<dayMs*2)yesterday.push(item);else older.push(item);
-  });
+  history.forEach(item=>{ const age=now-item.timestamp; if(age<dayMs)today.push(item);else if(age<dayMs*2)yesterday.push(item);else older.push(item); });
   if(today.length)renderSection('Today',today);
   if(yesterday.length)renderSection('Yesterday',yesterday);
   if(older.length)renderSection('Older',older);
@@ -508,7 +535,7 @@ function exportChat(){
   showApproval('✅','Chat exported');
 }
 
-/* ---------- UI ---------- */
+/* ----------  UI  ---------- */
 function showApproval(icon,text){
   popupIcon.textContent=icon;popupText.textContent=text;
   approvalPopup.classList.add('show');
@@ -520,7 +547,20 @@ function addMessage(text,role,isNew=true){
   div.innerHTML=`<div class="message-avatar">${role==='user'?'👤':'🤖'}</div><div class="bubble"></div>`;
   div.querySelector('.bubble').textContent=text;
   chat.appendChild(div);chat.scrollTop=chat.scrollHeight;
+  if(role==='ai')attachCopyButton(div);
   if(isNew)saveCurrentChat();
+}
+function attachCopyButton(msgEl){
+  const bubble=msgEl.querySelector('.bubble');
+  const btn=document.createElement('button');
+  btn.className='copy-btn';btn.textContent='Copy';
+  btn.onclick=()=>{
+    navigator.clipboard.writeText(bubble.textContent).then(()=>{
+      copyToast.classList.add('show');
+      setTimeout(()=>copyToast.classList.remove('show'),1200);
+    });
+  };
+  msgEl.appendChild(btn);
 }
 function addLoading(){
   const div=document.createElement('div');div.className='message ai';div.id='loading';
@@ -529,7 +569,7 @@ function addLoading(){
 }
 function removeLoading(){const el=$('loading');if(el)el.remove();}
 
-/* ---------- SEND ---------- */
+/* ----------  SEND  ---------- */
 async function sendMessage(){
   const text=input.value.trim();if(!text||isLoading)return;
   if(!currentChatId)newChat();
@@ -549,7 +589,7 @@ async function sendMessage(){
 sendBtn.onclick=sendMessage;
 input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}});
 
-/* ---------- FILE HANDLING ---------- */
+/* ----------  FILE HANDLING  ---------- */
 fileInput.addEventListener('change',e=>handleFiles(e.target.files));
 function handleFiles(files){
   const valid=Array.from(files).slice(0,10);
@@ -573,14 +613,14 @@ function renderFiles(){
 }
 function removeFile(i){uploadedFiles.splice(i,1);renderFiles();}
 
-/* ---------- DRAG & DROP ---------- */
+/* ----------  DRAG & DROP  ---------- */
 ['dragenter','dragover','dragleave','drop'].forEach(evt=>inputWrap.addEventListener(evt,preventDefaults,false));
 function preventDefaults(e){e.preventDefault();e.stopPropagation();}
 ['dragenter','dragover'].forEach(evt=>inputWrap.addEventListener(evt,()=>{dragDropOverlay.classList.add('active');inputWrap.classList.add('drag-over');},false));
 ['dragleave','drop'].forEach(evt=>inputWrap.addEventListener(evt,()=>{dragDropOverlay.classList.remove('active');inputWrap.classList.remove('drag-over');},false));
 inputWrap.addEventListener('drop',e=>handleFiles(e.dataTransfer.files),false);
 
-/* ---------- VOICE ---------- */
+/* ----------  VOICE  ---------- */
 if(window.SpeechRecognition||window.webkitSpeechRecognition){
   recognition=new (window.SpeechRecognition||window.webkitSpeechRecognition)();
   recognition.lang='en-US';recognition.interimResults=false;recognition.maxAlternatives=1;
@@ -593,11 +633,11 @@ function toggleVoice(){
   if(isRecording){recognition.stop();}else{recognition.start();voiceBtn.classList.add('recording');isRecording=true;}
 }
 
-/* ---------- TEXTAREA AUTO-GROW ---------- */
+/* ----------  TEXTAREA AUTO-GROW  ---------- */
 function autoGrow(){input.style.height='auto';input.style.height=Math.min(input.scrollHeight,120)+'px';}
 input.addEventListener('input',autoGrow);
 
-/* ---------- INIT ---------- */
+/* ----------  INIT  ---------- */
 loadChatHistory();if(!currentChatId)newChat();
 if(isMobile)sidebar.classList.add('collapsed');
 </script>
