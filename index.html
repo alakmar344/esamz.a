@@ -41,12 +41,13 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text-main); height: 100vh; overflow: hidden; }
 
-.app { display: flex; height: 100vh; width: 100%; }
+.app { display: flex; height: 100vh; width: 100%; position: relative; }
 
-/* --- SPICED SIDEBAR (Fixed Width) --- */
+/* --- SPICED SIDEBAR --- */
 .sidebar { 
     width: 300px; background: var(--panel); border-right: 1px solid var(--border); 
-    display: flex; flex-direction: column; flex-shrink: 0; transition: 0.3s;
+    display: flex; flex-direction: column; flex-shrink: 0; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 100;
 }
 
 .sidebar-header { padding: 25px; border-bottom: 1px solid var(--border); }
@@ -67,6 +68,26 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
 .main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; background: radial-gradient(circle at top right, #111, transparent); }
 
 .header { height: 65px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 25px; background: rgba(5,5,5,0.8); backdrop-filter: blur(10px); z-index: 10; }
+
+/* Mobile Menu Toggle */
+.menu-toggle { display: none; background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
+
+/* --- RESPONSIVE LOGIC --- */
+@media (max-width: 768px) {
+    .sidebar {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        transform: translateX(-100%); /* Closed by default on mobile */
+    }
+    .sidebar.open {
+        transform: translateX(0);
+    }
+    .menu-toggle { display: block; }
+    .chat-container, .input-area { padding-left: 5%; padding-right: 5%; }
+    .feature-grid { grid-template-columns: 1fr; }
+}
 
 /* --- CHAT FLOW --- */
 .chat-container { flex: 1; overflow-y: auto; padding: 40px 15%; scroll-behavior: smooth; }
@@ -137,13 +158,16 @@ textarea { flex: 1; background: none; border: none; color: white; resize: none; 
 
     <main class="main">
         <header class="header">
-            <div id="status" style="font-size: 12px; color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">● eSAMz System Active</div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+                <div id="status" style="font-size: 12px; color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">● eSAMz Active</div>
+            </div>
             <div style="display: flex; gap: 10px;">
                 <button class="tool-btn" style="border-radius: 8px; width: auto; padding: 0 15px; font-size: 12px;" onclick="clearCurrentChat()">Clear Screen</button>
             </div>
         </header>
 
-        <div class="chat-container" id="chat">
+        <div class="chat-container" id="chat" onclick="closeSidebarOnMobile()">
             <div class="welcome-screen" id="welcomeMsg">
                 <h1 style="font-size: 42px; font-weight: 800; margin-bottom: 10px;">Hello, Architect.</h1>
                 <p style="color: var(--text-dim); font-size: 18px;">Ready to build something extraordinary today?</p>
@@ -180,21 +204,33 @@ textarea { flex: 1; background: none; border: none; color: white; resize: none; 
 
 <script>
 const $ = id => document.getElementById(id);
-const chat = $('chat'), input = $('userInput'), historyDiv = $('chatHistory'), welcomeMsg = $('welcomeMsg'), preview = $('filesPreview');
+const chat = $('chat'), input = $('userInput'), historyDiv = $('chatHistory'), welcomeMsg = $('welcomeMsg'), preview = $('filesPreview'), sidebar = $('sidebar');
 
 let currentChatId = null, uploadedFiles = [], recognition = null, isRecording = false;
 
-/* --- BACKEND CORE (RESTORED ORIGINAL LOGIC) --- */
+/* --- SIDEBAR TOGGLE --- */
+function toggleSidebar() {
+    sidebar.classList.toggle('open');
+}
+
+function closeSidebarOnMobile() {
+    if (window.innerWidth <= 768) {
+        sidebar.classList.remove('open');
+    }
+}
+
+/* --- BACKEND CORE --- */
 async function sendMessage() {
     const text = input.value.trim();
     if (!text && uploadedFiles.length === 0) return;
+    
+    closeSidebarOnMobile();
 
     if (!currentChatId) createChatId(text);
     
     welcomeMsg.style.display = 'none';
     addMessage(text, 'user');
     
-    // Original JSON Payload format
     const filePayload = uploadedFiles.map(f => ({ name: f.name, type: f.type, size: f.size }));
     
     input.value = '';
@@ -205,10 +241,10 @@ async function sendMessage() {
     addLoading();
 
     try {
-        const res = await fetch('/api/chat', { // RESTORED ORIGINAL ENDPOINT
+        const res = await fetch('/api/chat', { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: text, files: filePayload }) // RESTORED ORIGINAL JSON FORMAT
+            body: JSON.stringify({ message: text, files: filePayload }) 
         });
         const data = await res.json();
         removeLoading();
@@ -245,7 +281,6 @@ function addMessage(text, role) {
     saveSession();
 }
 
-/* --- STATE MANAGEMENT --- */
 function createChatId(title) {
     currentChatId = 'chat_' + Date.now();
     const history = JSON.parse(localStorage.getItem('esamz_v7_history') || '[]');
@@ -278,10 +313,10 @@ function loadChat(id) {
         welcomeMsg.style.display = 'none';
         chat.innerHTML = item.html;
         Prism.highlightAll();
+        closeSidebarOnMobile();
     }
 }
 
-/* --- TOOLS --- */
 function handleFiles(files) {
     Array.from(files).forEach(f => {
         uploadedFiles.push(f);
