@@ -19,34 +19,46 @@ module.exports = async function handler(req, res) {
   if (!message || typeof message !== 'string')
     return res.status(400).json({ error: 'message required' });
 
-  /* ---------- GROQ CALL (Qwen DeepSeek only) ---------- */
+  /* ---------- GROQ CALL (hard-coded Qwen-32B) ---------- */
   try {
+    const model = 'deepseek-r1-distill-qwen-32b';          // exact Groq name
+    const payload = {
+      model,
+      messages: [
+        { role: 'system', content: 'You are esamz ai created by alakmar teenwal you should be helpful human like and you have a 2m context window.' },
+        { role: 'user', content: message }
+      ]
+    };
+
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        model: 'deepseek-r1-distill-qwen-32b',
-        messages: [
-          { role: 'system', content: 'You are esamz ai created by alakmar teenwal you should be helpful human like and you have a 2m context window.' },
-          { role: 'user', content: message }
-        ]
-      })
+      body: JSON.stringify(payload)
     });
 
     const data = await r.json();
-    const content = data?.choices?.[0]?.message?.content ?? '';
-    const reply = Array.isArray(content) ? content.map(p => p.text || '').join('') : content;
 
-    if (!reply) {
-      return res.status(502).json({ error: 'Empty reply from Groq', groq: data });
+    /* ---- 1. log the entire response ---- */
+    console.log('Groq status:', r.status, r.statusText);
+    console.log('Groq body  :', JSON.stringify(data, null, 2));
+
+    /* ---- 2. if Groq itself complains, forward that ---- */
+    if (!r.ok) {                     // 401/404/429/500 etc
+      return res.status(r.status).json({ error: 'Groq error', groq: data });
     }
 
-    return res.json({ provider: 'groq', model: 'deepseek-r1-distill-qwen-32b', reply });
+    /* ---- 3. empty choice ---- */
+    const content = data?.choices?.[0]?.message?.content;
+    if (typeof content !== 'string' || !content.trim()) {
+      return res.status(502).json({ error: 'Groq returned empty content', groq: data });
+    }
+
+    /* ---- 4. success ---- */
+    return res.json({ provider: 'groq', model, reply: content });
   } catch (err) {
-    console.error('BACKEND ERROR:', err);
+    console.error('Network / parsing error:', err);
     return res.status(500).json({ error: 'Backend failure', detail: err.message });
   }
-};
