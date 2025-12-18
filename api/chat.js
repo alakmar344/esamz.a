@@ -1,5 +1,6 @@
-// api/chat.js
 module.exports = async function handler(req, res) {
+  console.log('>>> handler started');   // <-- NEW
+  /* ---------- CORS ---------- */
   /* ---------- CORS ---------- */
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
