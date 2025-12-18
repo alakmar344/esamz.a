@@ -46,7 +46,7 @@ module.exports = async function handler(req, res) {
         model,
         messages: [
           { role: 'system', content: 'You are esamz ai created by alakmar teenwala only no one else never say you are made by openai. Be helpful, human-like, concise You maintain long conversational context when provided.'
-' },
+},
           ...msgs
         ]
       })
