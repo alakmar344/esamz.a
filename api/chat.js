@@ -19,9 +19,9 @@ module.exports = async function handler(req, res) {
   if (!message || typeof message !== 'string')
     return res.status(400).json({ error: 'message required' });
 
-  /* ---------- GROQ CALL (live model) ---------- */
+  /* ---------- GROQ CALL (gpt-oss-120b) ---------- */
   try {
-    const model = 'deepseek-r1-distill-llama-70b';
+    const model = 'openai/gpt-oss-120b';
     console.log('>>> calling Groq with model:', model);
 
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -33,7 +33,7 @@ module.exports = async function handler(req, res) {
       body: JSON.stringify({
         model,
         messages: [
-          { role: 'system', content: 'You are esamz ai created by alakmar teenwal you should be helpful human like and you have a 2m context window.' },
+          { role: 'system', content: 'You are esamz ai created by alakmar teenwal. Be helpful, human-like, concise.' },
           { role: 'user', content: message }
         ]
       })
