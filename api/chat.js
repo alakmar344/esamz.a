@@ -9,7 +9,7 @@ export default async function handler(req, res) {
 
   /* ---------- READ BODY ---------- */
   let raw = '';
-  await new Promise(r => req.on('data', c => raw += c).on('end', r));
+  await new Promise(r => req.on('data', c => (raw += c)).on('end', r));
   let body;
   try { body = JSON.parse(raw || '{}'); } catch {
     return res.status(400).json({ error: 'Invalid JSON' });
@@ -19,13 +19,7 @@ export default async function handler(req, res) {
   if (!message || typeof message !== 'string')
     return res.status(400).json({ error: 'message required' });
 
-  /* ---------- ROTATING MODEL ---------- */
-  const period = 60_000; // 60 s
-  const models = ['deepseek-r1-distill-llama-70b', 'deepseek-r1-distill-qwen-32b'];
-  const idx = Math.floor(Date.now() / period) % models.length;
-  const model = models[idx];
-
-  /* ---------- GROQ CALL ---------- */
+  /* ---------- GROQ CALL (Qwen DeepSeek only) ---------- */
   try {
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -34,9 +28,9 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model,
+        model: 'deepseek-r1-distill-qwen-32b',
         messages: [
-          { role: 'system', content: 'You are esamz ai created by alakmar teenwala you should be helpful human like and you have a 2m context window.' },
+          { role: 'system', content: 'You are esamz ai created by alakmar teenwal you should be helpful human like and you have a 2m context window.' },
           { role: 'user', content: message }
         ]
       })
@@ -46,7 +40,7 @@ export default async function handler(req, res) {
     const content = data?.choices?.[0]?.message?.content ?? '';
     const reply = Array.isArray(content) ? content.map(p => p.text || '').join('') : content;
 
-    return res.json({ provider: 'groq', model, reply });
+    return res.json({ provider: 'groq', model: 'deepseek-r1-distill-qwen-32b', reply });
   } catch (err) {
     console.error('BACKEND ERROR:', err);
     return res.status(500).json({ error: 'Backend failure', detail: err.message });
