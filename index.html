@@ -1,265 +1,315 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>eSAMz v7.2 – Voice & Intelligence</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>eSAMz v7 – AI Assistant</title>
 
-    <style>
-        :root {
-            --accent: #6366f1;
-            --accent-glow: rgba(99, 102, 241, 0.4);
-            --bg: #050505;
-            --panel: rgba(23, 23, 23, 0.85);
-            --border: rgba(255, 255, 255, 0.1);
-            --text-main: #e5e5e5;
-            --text-dim: #888;
-        }
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://esamz.site/#organization",
+      "name": "eSAMz",
+      "legalName": "eSAMz AI",
+      "url": "https://esamz.site",
+      "logo": "https://esamz.site/logo.png",
+      "foundingDate": "2025",
+      "founder": { "@type": "Person", "name": "Alakmar Teenwala" },
+      "brand": { "@type": "Brand", "name": "eSAMz AI", "slogan": "Not just responsive but supportive" }
+    }
+  ]
+}
+</script>
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text-main); height: 100vh; overflow: hidden; }
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
 
-        .app-container { display: flex; height: 100vh; }
+<style>
+/* RESTORED SPICES + SIDEBAR FIX */
+:root {
+    --accent: #667eea;
+    --accent-grad: linear-gradient(135deg, #667eea, #764ba2);
+    --bg: #0a0a0a;
+    --panel: #111;
+    --border: rgba(255, 255, 255, 0.08);
+}
 
-        /* --- SIDEBAR --- */
-        .sidebar { width: 280px; background: #0d0d0d; border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 25px; }
-        .logo { font-size: 24px; font-weight: 800; background: linear-gradient(135deg, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 40px; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter', sans-serif; background:var(--bg); color:#e5e5e5; height:100vh; overflow:hidden;}
 
-        .nav-group { margin-bottom: 30px; }
-        .nav-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; display: block; }
-        
-        .side-btn { 
-            width: 100%; padding: 12px 15px; background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-            color: #ccc; border-radius: 10px; cursor: pointer; text-align: left; margin-bottom: 10px; transition: 0.2s;
-            display: flex; align-items: center; gap: 12px; font-size: 14px; text-decoration: none;
-        }
-        .side-btn:hover { background: rgba(255,255,255,0.07); border-color: var(--accent); color: white; }
+.app{height:100%; display:flex; position:relative}
 
-        /* --- MAIN AREA --- */
-        .main-content { flex: 1; display: flex; flex-direction: column; position: relative; background: radial-gradient(circle at top right, #111, transparent); }
+/* SIDEBAR: Visible on Desktop by default */
+.sidebar{
+    width:300px; background:var(--panel); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; flex-shrink:0; transition: transform 0.3s ease;
+}
+.sidebar.collapsed{transform:translateX(-100%)}
 
-        #welcome-screen { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; }
-        .feature-card { 
-            background: var(--panel); border: 1px solid var(--border); padding: 24px; border-radius: 16px; 
-            cursor: pointer; transition: 0.3s; text-align: left;
-        }
-        .feature-card:hover { border-color: var(--accent); transform: translateY(-4px); }
+.main{flex:1; display:flex; flex-direction:column; min-width:0; position:relative;}
 
-        #chat-flow { flex: 1; overflow-y: auto; padding: 40px 15%; display: none; scroll-behavior: smooth; }
-        .msg { margin-bottom: 35px; animation: slideUp 0.4s ease-out; line-height: 1.7; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .msg.user { background: #1a1a1a; padding: 18px; border-radius: 16px 16px 0 16px; border: 1px solid var(--border); max-width: 80%; margin-left: auto; }
-        .msg.ai { border-left: 3px solid var(--accent); padding-left: 25px; font-size: 16px; }
+/* HEADER */
+.header{
+    height:60px; background:var(--panel); border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between; padding:0 24px;
+}
+.header-title{font-weight:700; background:var(--accent-grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent;}
+.header-btn{background:rgba(102,126,234,.1); border:1px solid rgba(102,126,234,.2); border-radius:6px; padding:6px 12px; color:#999; cursor:pointer; font-size:12px; margin-left:5px;}
 
-        /* FILE PREVIEW CHIP */
-        #file-preview-area { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-        .file-chip { background: var(--accent); color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; display: flex; align-items: center; gap: 8px; }
+/* CHAT AREA */
+.chat{flex:1; padding:24px 24px 120px; overflow-y:auto; scroll-behavior:smooth}
+.welcome{
+    padding:48px 24px; border-radius:16px; text-align:center;
+    background:linear-gradient(135deg,rgba(102,126,234,.1),rgba(118,75,162,.1));
+    border:1px solid rgba(102,126,234,.2); margin-bottom:20px;
+}
+.welcome h2{font-size:28px; margin-bottom:10px; background:var(--accent-grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent;}
 
-        /* INPUT AREA & VOICE SPICE */
-        .input-area { padding: 20px 15% 40px 15%; }
-        .input-box { 
-            background: var(--panel); border: 1px solid var(--border); border-radius: 20px; 
-            padding: 12px 20px; display: flex; flex-direction: column; backdrop-filter: blur(20px);
-            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-        }
-        .input-row { display: flex; align-items: flex-end; gap: 12px; }
-        textarea { flex: 1; background: none; border: none; color: white; resize: none; outline: none; font-size: 16px; padding: 10px 0; max-height: 200px; }
-        
-        .btn-round { 
-            width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--border); 
-            background: rgba(255,255,255,0.05); color: var(--text-dim); cursor: pointer; transition: 0.2s;
-            display: flex; align-items: center; justify-content: center; font-size: 18px;
-        }
-        .btn-round:hover { background: rgba(255,255,255,0.1); color: white; }
-        .btn-round.active-mic { background: #ef4444 !important; color: white !important; animation: pulse 1.5s infinite; border: none; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+/* MESSAGES */
+.message{display:flex; margin-bottom:25px; gap:12px; animation:slideIn .3s ease}
+@keyframes slideIn{from{opacity:0; transform:translateY(10px)}to{opacity:1; transform:translateY(0)}}
+.message.user{justify-content:flex-end}
+.message-avatar{width:35px; height:35px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:700;}
+.user .message-avatar{background:var(--accent-grad); order:2}
+.ai .message-avatar{background:#1a1a1a; border:1px solid var(--border)}
 
-        .send-btn { background: var(--accent) !important; color: white !important; border: none !important; }
+.bubble{max-width:75%; padding:14px 18px; border-radius:14px; font-size:14px; line-height:1.6;}
+.user .bubble{background:var(--accent-grad); color:#fff; border-bottom-right-radius:2px}
+.ai .bubble{background:#1a1a1a; border:1px solid var(--border); border-bottom-left-radius:2px; color:#ddd;}
 
-        /* CODE BLOCK SPICE */
-        .code-wrapper { background: #000; border-radius: 12px; margin: 20px 0; border: 1px solid var(--border); overflow: hidden; }
-        .code-header { background: #181818; padding: 12px 20px; display: flex; justify-content: space-between; font-size: 12px; color: var(--text-dim); }
-        .copy-btn { background: none; border: none; color: var(--accent); cursor: pointer; font-weight: 600; }
-    </style>
+/* CODE BLOCK SPICE */
+.code-wrapper{background:#000; border-radius:10px; margin:15px 0; border:1px solid var(--border); overflow:hidden;}
+.code-header{background:#1d1d1d; padding:8px 15px; display:flex; justify-content:space-between; font-size:11px; color:#888;}
+pre{padding:15px !important; margin:0 !important; font-family:'JetBrains Mono', monospace !important; font-size:13px !important;}
+
+/* INPUT BAR */
+.input-bar{position:fixed; bottom:0; left:300px; right:0; background:var(--panel); border-top:1px solid var(--border); padding:15px 20px; z-index:100;}
+@media(max-width:768px){ .input-bar{left:0;} .sidebar{position:fixed; z-index:1000; height:100%; transform:translateX(-100%);} .sidebar.open{transform:translateX(0);}}
+
+.input-wrap{display:flex; gap:10px; background:#1a1a1a; border:1px solid var(--border); border-radius:12px; padding:10px 15px; align-items:flex-end;}
+textarea{flex:1; background:none; border:none; color:#fff; resize:none; outline:none; font-size:14px; max-height:150px;}
+
+.files-preview{display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;}
+.file-badge{background:rgba(102,126,234,0.2); padding:5px 10px; border-radius:6px; font-size:11px; display:flex; align-items:center; gap:5px; border:1px solid var(--accent);}
+
+.send-btn{background:var(--accent-grad); border:none; color:white; padding:8px 20px; border-radius:8px; cursor:pointer; font-weight:600;}
+.icon-btn{background:none; border:none; color:#777; font-size:18px; cursor:pointer; transition:0.2s;}
+.icon-btn:hover{color:var(--accent);}
+.recording{color:#ef4444 !important; animation: pulse 1s infinite;}
+@keyframes pulse{50%{opacity:0.5}}
+</style>
 </head>
+
 <body>
-
-<div class="app-container">
-    <aside class="sidebar">
-        <div class="logo">eSAMz AI</div>
-        
-        <div class="nav-group">
-            <span class="nav-label">Core</span>
-            <button class="side-btn" onclick="location.reload()"><span>✦</span> New Session</button>
-            <button class="side-btn" onclick="clearMem()"><span>🗑</span> Clear Cache</button>
-            <button class="side-btn" onclick="exportData()"><span>📥</span> Export History</button>
+<div class="app">
+    <aside class="sidebar" id="sidebar">
+        <div style="padding:25px; border-bottom:1px solid var(--border)">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px;">
+                <div style="width:35px; height:35px; background:var(--accent-grad); border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:800;">e</div>
+                <h2 style="font-size:18px;">eSAMz v7</h2>
+            </div>
+            <button onclick="newChat()" style="width:100%; padding:10px; border:none; border-radius:8px; background:var(--accent-grad); color:white; font-weight:600; cursor:pointer;">+ New Chat</button>
         </div>
-
-        <div class="nav-group">
-            <span class="nav-label">Assets</span>
-            <a href="/docs" class="side-btn"><span>📁</span> Documentation</a>
-            <a href="https://esamz.site" class="side-btn"><span>🔗</span> Official Site</a>
+        <div id="chatHistory" style="flex:1; overflow-y:auto; padding:15px;"></div>
+        <div style="padding:15px; border-top:1px solid var(--border)">
+            <button onclick="clearAllHistory()" style="width:100%; background:none; border:1px solid #333; color:#888; padding:8px; border-radius:6px; font-size:12px; cursor:pointer;">🗑 Clear History</button>
+            <div style="font-size:10px; color:#444; margin-top:10px; text-align:center;">© 2025 Alakmar Teenwala</div>
         </div>
     </aside>
 
-    <main class="main-content">
-        <section id="welcome-screen">
-            <h1 style="font-size: 36px; margin-bottom: 10px; font-weight: 800;">Command Center.</h1>
-            <p style="color: var(--text-dim); margin-bottom: 40px; font-size: 18px;">How shall we innovate today?</p>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 700px;">
-                <div class="feature-card" onclick="fill('Build a secure API endpoint in Node.js')">
-                    <h4 style="color: var(--accent); margin-bottom: 8px;">Architecture</h4>
-                    <p style="font-size: 13px; color: var(--text-dim);">Design high-performance code structures.</p>
-                </div>
-                <div class="feature-card" onclick="fill('Explain the latest trends in AI agents')">
-                    <h4 style="color: #a855f7; margin-bottom: 8px;">Research</h4>
-                    <p style="font-size: 13px; color: var(--text-dim);">Get summarized insights on any topic.</p>
+    <main class="main">
+        <button onclick="toggleSidebar()" style="position:fixed; top:12px; left:12px; z-index:1001; background:var(--panel); border:1px solid var(--border); color:white; width:35px; height:35px; border-radius:6px; cursor:pointer;" class="mobile-only">☰</button>
+        <header class="header">
+            <div class="header-title">Intelligence Center</div>
+            <div class="header-actions">
+                <button class="header-btn" onclick="exportChat()">📥 Export</button>
+                <button class="header-btn" onclick="clearCurrentChat()">🗑 Clear</button>
+            </div>
+        </header>
+
+        <section class="chat" id="chat">
+            <div class="welcome" id="welcomeMsg">
+                <h2>eSAMz Artificial Intelligence</h2>
+                <p>Fast. Contextual. Reliable.</p>
+                <div style="display:flex; gap:10px; justify-content:center; margin-top:20px; flex-wrap:wrap;">
+                    <div style="padding:10px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; font-size:12px;">⚡ High Speed</div>
+                    <div style="padding:10px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; font-size:12px;">📎 Multi-File</div>
+                    <div style="padding:10px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; font-size:12px;">🎤 Voice Mode</div>
                 </div>
             </div>
         </section>
 
-        <div id="chat-flow"></div>
-
-        <div class="input-area">
-            <div id="file-preview-area"></div>
-            <div class="input-box">
-                <div class="input-row">
-                    <button class="btn-round" title="Attach File" onclick="document.getElementById('file-input').click()">+</button>
-                    <input type="file" id="file-input" hidden multiple onchange="handleFile(this)">
-                    
-                    <button class="btn-round" id="mic-btn" title="Voice Input" onclick="toggleVoice()">🎤</button>
-                    
-                    <textarea id="userInput" placeholder="Ask eSAMz anything..." rows="1" oninput="this.style.height='';this.style.height=this.scrollHeight+'px'"></textarea>
-                    
-                    <button class="btn-round send-btn" onclick="handleSend()">↑</button>
-                </div>
+        <div class="input-bar">
+            <div class="files-preview" id="filesContainer"></div>
+            <div class="input-wrap">
+                <button class="icon-btn" onclick="document.getElementById('fileInput').click()">📎</button>
+                <input type="file" id="fileInput" hidden multiple onchange="handleFiles(this.files)">
+                <button class="icon-btn" id="voiceBtn" onclick="toggleVoice()">🎤</button>
+                <textarea id="userInput" placeholder="Ask eSAMz anything..." rows="1" oninput="this.style.height='';this.style.height=this.scrollHeight+'px'"></textarea>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()">Send</button>
             </div>
         </div>
     </main>
 </div>
 
 <script>
-    const chat = document.getElementById('chat-flow');
-    const welcome = document.getElementById('welcome-screen');
-    const input = document.getElementById('userInput');
-    const preview = document.getElementById('file-preview-area');
-    const micBtn = document.getElementById('mic-btn');
-    
-    let attachedFiles = [];
-    let recognition;
+const $ = id => document.getElementById(id);
+const chat = $('chat'), input = $('userInput'), sendBtn = $('sendBtn'), sidebar = $('sidebar'), chatHistory = $('chatHistory'), welcomeMsg = $('welcomeMsg'), filesContainer = $('filesContainer');
 
-    // Load Session
-    if(localStorage.getItem('esamz_v7_chat')) {
-        welcome.style.display = 'none';
-        chat.style.display = 'block';
-        chat.innerHTML = localStorage.getItem('esamz_v7_chat');
+let currentChatId = null, uploadedFiles = [], recognition = null, isRecording = false;
+
+/* RESTORED ORIGINAL API LOGIC */
+async function sendMessage() {
+    const text = input.value.trim();
+    if (!text && uploadedFiles.length === 0) return;
+
+    if (!currentChatId) createChatEntry(text);
+    
+    welcomeMsg.style.display = 'none';
+    addMessage(text, 'user');
+    input.value = '';
+    input.style.height = 'auto';
+
+    // File Data for JSON (Original method)
+    const fileData = uploadedFiles.map(f => ({ name: f.name, type: f.type, size: f.size }));
+    
+    // Clear previews
+    uploadedFiles = [];
+    filesContainer.innerHTML = '';
+
+    addLoading();
+
+    try {
+        const res = await fetch('/api/chat', { // RESTORED ORIGINAL ENDPOINT
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text, files: fileData }) // RESTORED ORIGINAL JSON FORMAT
+        });
+        const data = await res.json();
+        removeLoading();
+        addMessage(data.reply, 'ai');
+    } catch (e) {
+        removeLoading();
+        addMessage("Connection to backend failed. Check your API route.", 'ai');
+    }
+}
+
+function addMessage(text, role) {
+    const div = document.createElement('div');
+    div.className = `message ${role}`;
+    
+    // Process markdown + code blocks
+    let content = marked.parse(text);
+
+    div.innerHTML = `
+        <div class="message-avatar">${role === 'user' ? '👤' : '🤖'}</div>
+        <div class="bubble">${content}</div>
+    `;
+    chat.appendChild(div);
+
+    if (role === 'ai') {
+        div.querySelectorAll('pre').forEach(pre => {
+            const wrap = document.createElement('div');
+            wrap.className = 'code-wrapper';
+            wrap.innerHTML = `<div class="code-header"><span>Terminal</span><button onclick="copyCode(this)" style="background:none; border:none; color:var(--accent); cursor:pointer;">Copy</button></div>`;
+            pre.parentNode.insertBefore(wrap, pre);
+            wrap.appendChild(pre);
+        });
+        Prism.highlightAllUnder(div);
+    }
+    chat.scrollTop = chat.scrollHeight;
+    saveToLocal();
+}
+
+/* STATE & HISTORY LOGIC */
+function createChatEntry(title) {
+    currentChatId = 'chat_' + Date.now();
+    const history = JSON.parse(localStorage.getItem('esamz_history') || '[]');
+    history.unshift({ id: currentChatId, title: title.slice(0, 30), timestamp: Date.now(), html: "" });
+    localStorage.setItem('esamz_history', JSON.stringify(history));
+    renderHistory();
+}
+
+function saveToLocal() {
+    const history = JSON.parse(localStorage.getItem('esamz_history') || '[]');
+    const idx = history.findIndex(i => i.id === currentChatId);
+    if (idx !== -1) {
+        history[idx].html = chat.innerHTML;
+        localStorage.setItem('esamz_history', JSON.stringify(history));
+    }
+}
+
+function renderHistory() {
+    const history = JSON.parse(localStorage.getItem('esamz_history') || '[]');
+    chatHistory.innerHTML = history.map(item => `
+        <div class="history-item" onclick="loadChat('${item.id}')" style="padding:10px; cursor:pointer; border-radius:8px; margin-bottom:5px; background:rgba(255,255,255,0.03); font-size:13px;">
+            💬 ${item.title}...
+        </div>
+    `).join('');
+}
+
+function loadChat(id) {
+    const history = JSON.parse(localStorage.getItem('esamz_history') || '[]');
+    const item = history.find(i => i.id === id);
+    if (item) {
+        currentChatId = id;
+        welcomeMsg.style.display = 'none';
+        chat.innerHTML = item.html;
         Prism.highlightAll();
     }
+}
 
-    // --- VOICE LOGIC ---
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
+/* TOOLS */
+function handleFiles(files) {
+    Array.from(files).forEach(f => {
+        uploadedFiles.push(f);
+        const badge = document.createElement('div');
+        badge.className = 'file-badge';
+        badge.innerHTML = `📄 ${f.name.slice(0,10)}... <span onclick="this.parentElement.remove()" style="cursor:pointer">×</span>`;
+        filesContainer.appendChild(badge);
+    });
+}
 
-        recognition.onstart = () => micBtn.classList.add('active-mic');
-        recognition.onend = () => micBtn.classList.remove('active-mic');
-        recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            input.value += transcript;
-            input.style.height = input.scrollHeight + 'px';
-        };
+function toggleVoice() {
+    if (!('webkitSpeechRecognition' in window)) return alert("Voice not supported");
+    if (!recognition) {
+        recognition = new webkitSpeechRecognition();
+        recognition.onresult = (e) => { input.value += e.results[0][0].transcript; };
+        recognition.onstart = () => $('voiceBtn').classList.add('recording');
+        recognition.onend = () => $('voiceBtn').classList.remove('recording');
     }
+    isRecording ? recognition.stop() : recognition.start();
+    isRecording = !isRecording;
+}
 
-    function toggleVoice() {
-        if (!recognition) return alert("Speech recognition not supported in this browser.");
-        recognition.start();
-    }
+function addLoading() {
+    const l = document.createElement('div'); l.id = 'loader'; l.className = 'message ai';
+    l.innerHTML = `<div class="message-avatar">🤖</div><div class="bubble">Thinking...</div>`;
+    chat.appendChild(l);
+}
+function removeLoading() { if($('loader')) $('loader').remove(); }
 
-    function fill(t) { input.value = t; input.focus(); }
+function toggleSidebar() { sidebar.classList.toggle('open'); }
+function newChat() { welcomeMsg.style.display = 'block'; chat.innerHTML = ""; chat.appendChild(welcomeMsg); currentChatId = null; }
+function clearAllHistory() { localStorage.removeItem('esamz_history'); renderHistory(); newChat(); }
+function copyCode(btn) { 
+    const code = btn.closest('.code-wrapper').querySelector('code').innerText;
+    navigator.clipboard.writeText(code); btn.innerText = "Copied!";
+    setTimeout(() => btn.innerText = "Copy", 2000);
+}
+function exportChat() {
+    const blob = new Blob([chat.innerText], {type:'text/plain'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = 'chat.txt'; a.click();
+}
 
-    function handleFile(inputElement) {
-        const files = Array.from(inputElement.files);
-        files.forEach(file => {
-            attachedFiles.push(file);
-            const chip = document.createElement('div');
-            chip.className = 'file-chip';
-            chip.innerHTML = `${file.name} <span style="cursor:pointer; margin-left:5px" onclick="this.parentElement.remove()">×</span>`;
-            preview.appendChild(chip);
-        });
-    }
-
-    async function handleSend() {
-        const text = input.value.trim();
-        if(!text && attachedFiles.length === 0) return;
-
-        welcome.style.display = 'none';
-        chat.style.display = 'block';
-
-        addMessage('user', text + (attachedFiles.length ? `\n\n*(Attached: ${attachedFiles.map(f => f.name).join(', ')})*` : ''));
-        
-        const formData = new FormData();
-        formData.append('message', text);
-        attachedFiles.forEach(f => formData.append('files', f));
-
-        input.value = '';
-        input.style.height = 'auto';
-        preview.innerHTML = '';
-        attachedFiles = [];
-
-        try {
-            const res = await fetch('/api/chat.js', { method: 'POST', body: formData });
-            const data = await res.json();
-            addMessage('ai', data.reply || data.message);
-        } catch (e) {
-            addMessage('ai', "System Error: Connection to backend failed.");
-        }
-    }
-
-    function addMessage(role, text) {
-        const div = document.createElement('div');
-        div.className = `msg ${role}`;
-        div.innerHTML = marked.parse(text);
-        chat.appendChild(div);
-
-        if(role === 'ai') {
-            div.querySelectorAll('pre').forEach(pre => {
-                const w = document.createElement('div');
-                w.className = 'code-wrapper';
-                w.innerHTML = `<div class="code-header"><span>Terminal</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>`;
-                pre.parentNode.insertBefore(w, pre);
-                w.appendChild(pre);
-            });
-            Prism.highlightAllUnder(div);
-        }
-        chat.scrollTop = chat.scrollHeight;
-        localStorage.setItem('esamz_v7_chat', chat.innerHTML);
-    }
-
-    function clearMem() { localStorage.removeItem('esamz_v7_chat'); location.reload(); }
-    function copyCode(btn) {
-        const code = btn.closest('.code-wrapper').querySelector('code').innerText;
-        navigator.clipboard.writeText(code);
-        btn.innerText = "Saved!";
-        setTimeout(() => btn.innerText = "Copy", 2000);
-    }
-    function exportData() {
-        const blob = new Blob([localStorage.getItem('esamz_v7_chat')], {type:'text/html'});
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'esamz-session.html';
-        a.click();
-    }
-
-    input.addEventListener('keydown', (e) => { if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }});
+window.onload = () => { renderHistory(); };
+input.addEventListener('keydown', e => { if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }});
 </script>
-
 </body>
 </html>
