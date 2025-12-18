@@ -21,7 +21,7 @@ module.exports = async function handler(req, res) {
 
   /* ---------- GROQ CALL ---------- */
   try {
-    const model = 'deepseek-r1-distill-qwen-32b';
+    const model = 'deepseek-r1-distill-llama-70b';  // live as of 18 Dec 2025
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -38,7 +38,7 @@ module.exports = async function handler(req, res) {
     });
 
     const data = await r.json();
-    console.log('Groq response:', JSON.stringify(data, null, 2)); // ← shows real error
+    console.log('Groq response:', JSON.stringify(data, null, 2));
 
     const content = data?.choices?.[0]?.message?.content;
     if (typeof content !== 'string' || !content.trim())
@@ -48,6 +48,4 @@ module.exports = async function handler(req, res) {
   } catch (err) {
     console.error('Network / code error:', err);
     return res.status(500).json({ error: 'Backend failure', detail: err.message });
-  }
-};
-
+}
