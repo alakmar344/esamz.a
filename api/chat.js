@@ -46,3 +46,18 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Backend failure', detail: err.message });
   }
 }
+    const data = await r.json();
+
+    /* ---------- DEBUG ---------- */
+    console.log('Groq raw response:', JSON.stringify(data, null, 2));
+    /* --------------------------- */
+
+    const content = data?.choices?.[0]?.message?.content ?? '';
+    const reply = Array.isArray(content) ? content.map(p => p.text || '').join('') : content;
+
+    /* return empty error to front-end so you notice */
+    if (!reply) {
+      return res.status(502).json({ error: 'Empty reply from Groq', groq: data });
+    }
+
+    return res.json({ provider: 'groq', model: 'deepseek-r1-distill-qwen-32b', reply });
