@@ -1,6 +1,5 @@
+// api/chat.js
 module.exports = async function handler(req, res) {
-  console.log('>>> handler started');   // <-- NEW
-  /* ---------- CORS ---------- */
   /* ---------- CORS ---------- */
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
@@ -20,9 +19,9 @@ module.exports = async function handler(req, res) {
   if (!message || typeof message !== 'string')
     return res.status(400).json({ error: 'message required' });
 
-  /* ---------- GROQ CALL (working model) ---------- */
+  /* ---------- GROQ CALL ---------- */
   try {
-    const model = 'deepseek-r1-distill-llama-70b';
+    const model = 'deepseek-r1-distill-qwen-32b';
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -39,13 +38,15 @@ module.exports = async function handler(req, res) {
     });
 
     const data = await r.json();
+    console.log('Groq response:', JSON.stringify(data, null, 2)); // ← shows real error
+
     const content = data?.choices?.[0]?.message?.content;
     if (typeof content !== 'string' || !content.trim())
       return res.status(502).json({ error: 'Empty Groq reply', groq: data });
 
     return res.json({ provider: 'groq', model, reply: content });
   } catch (err) {
-    console.error('Backend error:', err);
+    console.error('Network / code error:', err);
     return res.status(500).json({ error: 'Backend failure', detail: err.message });
   }
 };
