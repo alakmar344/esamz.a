@@ -365,38 +365,51 @@ input.addEventListener('keydown', e => { if(e.key==='Enter' && !e.shiftKey) { e.
   /* ==============  THREAD-AWARE CHAT  ============== */
 const THREAD_KEY = 'esamz-thread-id';
 let threadId = localStorage.getItem(THREAD_KEY) || crypto.randomUUID();
-localStorage.setItem(THREAD_KEY, threadId);          // persist across reloads
+localStorage.setItem(THREAD_KEY, threadId);
 
-/* hook into your existing send-message function */
-const originalSend = sendMessage;                    // whatever you already have
-async function sendMessage(message) {
-  const payload = { message, threadId };
-  const res = await fetch('/api/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  if (!res.ok) throw new Error((await res.json()).error || 'Network error');
-  const data = await res.json();
-  return data.reply;                                 // your UI code expects this
-}
+/* --- inject threadId into the EXISTING sendMessage --- */
+const _originalSend = sendMessage;          // keep reference
+sendMessage = async function() {            // override globally
+  const text = input.value.trim();
+  if (!text && uploadedFiles.length === 0) return;
+  closeSidebarOnMobile();
+  if (!currentChatId) createChatId(text);
+  welcomeMsg.style.display = 'none';
+  addMessage(text, 'user');
 
-/* optional UI helpers */
+  const filePayload = uploadedFiles.map(f => ({name:f.name, type:f.type, size:f.size}));
+  input.value = ''; input.style.height = 'auto'; preview.innerHTML = ''; uploadedFiles = [];
+  addLoading();
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({message:text, files:filePayload, threadId})
+    });
+    const data = await res.json();
+    removeLoading();
+    addMessage(data.reply || data.message, 'ai');
+  } catch (e) {
+    removeLoading();
+    addMessage("System Alert: Connection to /api/chat failed. Check backend status.", 'ai');
+  }
+};
+
+/* --- optional UI helpers --- */
 document.addEventListener('DOMContentLoaded', () => {
-  /* show current thread id */
   const info = document.createElement('div');
   info.id = 'thread-info';
   info.style.cssText = 'font-size:0.75rem;color:#666;margin-top:4px';
   info.innerHTML = `Thread: <span>${threadId}</span>
     <button onclick="resetThread()">new chat</button>`;
-  document.querySelector('#chat-container').appendChild(info);
+  document.querySelector('.input-area').appendChild(info);
 
-  /* reset thread */
   window.resetThread = () => {
     threadId = crypto.randomUUID();
     localStorage.setItem(THREAD_KEY, threadId);
     document.querySelector('#thread-info span').textContent = threadId;
-    /* optionally clear on-screen history here */
+    clearCurrentChat();
   };
 });
 </script>
