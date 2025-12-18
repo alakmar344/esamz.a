@@ -362,14 +362,14 @@ function exportChat() {
 
 window.onload = renderHistory;
 input.addEventListener('keydown', e => { if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }});
-  /* ==============  THREAD-AWARE CHAT  ============== */
+/* ==============  THREAD-AWARE CHAT  (invisible)  ============== */
 const THREAD_KEY = 'esamz-thread-id';
 let threadId = localStorage.getItem(THREAD_KEY) || crypto.randomUUID();
 localStorage.setItem(THREAD_KEY, threadId);
 
 /* --- inject threadId into the EXISTING sendMessage --- */
-const _originalSend = sendMessage;          // keep reference
-sendMessage = async function() {            // override globally
+const _originalSend = sendMessage;
+sendMessage = async function () {
   const text = input.value.trim();
   if (!text && uploadedFiles.length === 0) return;
   closeSidebarOnMobile();
@@ -377,15 +377,15 @@ sendMessage = async function() {            // override globally
   welcomeMsg.style.display = 'none';
   addMessage(text, 'user');
 
-  const filePayload = uploadedFiles.map(f => ({name:f.name, type:f.type, size:f.size}));
+  const filePayload = uploadedFiles.map(f => ({ name: f.name, type: f.type, size: f.size }));
   input.value = ''; input.style.height = 'auto'; preview.innerHTML = ''; uploadedFiles = [];
   addLoading();
 
   try {
     const res = await fetch('/api/chat', {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({message:text, files:filePayload, threadId})
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text, files: filePayload, threadId })
     });
     const data = await res.json();
     removeLoading();
@@ -395,23 +395,6 @@ sendMessage = async function() {            // override globally
     addMessage("System Alert: Connection to /api/chat failed. Check backend status.", 'ai');
   }
 };
-
-/* --- optional UI helpers --- */
-document.addEventListener('DOMContentLoaded', () => {
-  const info = document.createElement('div');
-  info.id = 'thread-info';
-  info.style.cssText = 'font-size:0.75rem;color:#666;margin-top:4px';
-  info.innerHTML = `Thread: <span>${threadId}</span>
-    <button onclick="resetThread()">new chat</button>`;
-  document.querySelector('.input-area').appendChild(info);
-
-  window.resetThread = () => {
-    threadId = crypto.randomUUID();
-    localStorage.setItem(THREAD_KEY, threadId);
-    document.querySelector('#thread-info span').textContent = threadId;
-    clearCurrentChat();
-  };
-});
 </script>
 </body>
 </html>
