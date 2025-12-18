@@ -8,17 +8,33 @@
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Organization",
-      "@id": "https://esamz.site/#organization",
-      "name": "eSAMz",
-      "legalName": "eSAMz AI",
-      "url": "https://esamz.site",
-      "logo": "https://esamz.site/logo.png",
-      "brand": { "name": "eSAMz AI", "slogan": "Not just responsive but supportive" }
-    }
-  ]
+  "@type": "Organization",
+  "@id": "https://esamz.site/#organization",
+  "name": "eSAMz",
+  "legalName": "eSAMz AI",
+  "url": "https://esamz.site",
+  "logo": {
+    "@type": "ImageObject",
+    "url": "https://esamz.site/logo.png",
+    "width": "512",
+    "height": "512"
+  },
+  "description": "eSAMz AI - Intelligence Redefined. Advanced AI chat interface with multi-modal capabilities, file uploads, voice input, and seamless conversation management.",
+  "brand": {
+    "@type": "Brand",
+    "name": "eSAMz AI",
+    "slogan": "Not just responsive but supportive"
+  },
+  "foundingDate": "2024",
+  "sameAs": [
+    "https://esamz.info",
+    "https://esamz.site"
+  ],
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "contactType": "Customer Support",
+    "url": "https://esamz.info"
+  }
 }
 </script>
 
@@ -111,7 +127,7 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
 .ai .bubble { background: #161616; border: 1px solid var(--border); border-bottom-left-radius: 4px; color: #ddd; }
 
 /* --- INPUT SPICE --- */
-.input-area { padding: 20px 15% 40px; background: linear-gradient(to top, var(--bg) 70%, transparent); }
+.input-area { padding: 20px 15% 10px; background: linear-gradient(to top, var(--bg) 70%, transparent); }
 .input-box-wrap { background: var(--panel); border: 1px solid var(--border); border-radius: 20px; padding: 12px 18px; display: flex; flex-direction: column; backdrop-filter: blur(20px); box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
 .input-row { display: flex; align-items: flex-end; gap: 12px; }
 textarea { flex: 1; background: none; border: none; color: white; resize: none; outline: none; font-size: 15px; padding: 8px 0; max-height: 180px; }
@@ -128,6 +144,24 @@ textarea { flex: 1; background: none; border: none; color: white; resize: none; 
 /* --- CODE SPICE --- */
 .code-wrapper { background: #000; border-radius: 12px; margin: 15px 0; border: 1px solid var(--border); overflow: hidden; }
 .code-header { background: #1a1a1a; padding: 10px 15px; display: flex; justify-content: space-between; font-size: 11px; color: #666; }
+
+/* --- FOOTER --- */
+.footer { 
+    padding: 15px 15%; 
+    text-align: center; 
+    font-size: 12px; 
+    color: var(--text-dim); 
+    border-top: 1px solid var(--border); 
+    background: var(--bg);
+}
+.footer a { 
+    color: var(--accent); 
+    text-decoration: none; 
+    margin: 0 5px;
+}
+.footer a:hover { 
+    text-decoration: underline; 
+}
 </style>
 </head>
 
@@ -199,6 +233,10 @@ textarea { flex: 1; background: none; border: none; color: white; resize: none; 
                 </div>
             </div>
         </div>
+
+        <footer class="footer">
+            <p>© 2025 eSAMz AI · <a href="https://esamz.info">esamz.info</a> · <a href="https://esamz.info/privacy">Privacy</a> · <a href="https://esamz.info/terms">Terms</a></p>
+        </footer>
     </main>
 </div>
 
@@ -217,6 +255,19 @@ function closeSidebarOnMobile() {
     if (window.innerWidth <= 768) {
         sidebar.classList.remove('open');
     }
+}
+
+/* --- NEW CHAT FUNCTION --- */
+function newChat() {
+    currentChatId = null;
+    chat.innerHTML = '';
+    chat.appendChild(welcomeMsg);
+    welcomeMsg.style.display = 'block';
+    input.value = '';
+    input.style.height = 'auto';
+    preview.innerHTML = '';
+    uploadedFiles = [];
+    closeSidebarOnMobile();
 }
 
 /* --- BACKEND CORE --- */
