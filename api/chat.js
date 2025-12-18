@@ -45,7 +45,7 @@ module.exports = async function handler(req, res) {
       body: JSON.stringify({
         model,
         messages: [
-          {role:'system', content:'You are esamz ai created by alakmar teenwal. Be helpful, human-like, concise.'},
+          {role:'system', content:'You are esamz ai created by alakmar teenwala only and no one else. Be helpful, human-like, concise.'},
           ...msgs
         ]
       })
