@@ -19,9 +19,11 @@ module.exports = async function handler(req, res) {
   if (!message || typeof message !== 'string')
     return res.status(400).json({ error: 'message required' });
 
-  /* ---------- GROQ CALL ---------- */
+  /* ---------- GROQ CALL (live model) ---------- */
   try {
-    const model = 'deepseek-r1-distill-qwen-32b';
+    const model = 'deepseek-r1-distill-llama-70b';
+    console.log('>>> calling Groq with model:', model);
+
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -38,7 +40,7 @@ module.exports = async function handler(req, res) {
     });
 
     const data = await r.json();
-    console.log('Groq response:', JSON.stringify(data, null, 2)); // ← shows real error
+    console.log('Groq response:', JSON.stringify(data, null, 2));
 
     const content = data?.choices?.[0]?.message?.content;
     if (typeof content !== 'string' || !content.trim())
@@ -46,7 +48,7 @@ module.exports = async function handler(req, res) {
 
     return res.json({ provider: 'groq', model, reply: content });
   } catch (err) {
-    console.error('Network / code error:', err);
+    console.log('>>> fetch threw:', err.message);
     return res.status(500).json({ error: 'Backend failure', detail: err.message });
   }
 };
