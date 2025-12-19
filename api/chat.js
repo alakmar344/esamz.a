@@ -1,7 +1,56 @@
-/* ---------- in-memory thread store ---------- */
+/* ----------  in-memory thread store  ---------- */
 const threads    = new Map();     // id -> [{role,content}]
 const timers     = new Map();     // id -> timeout
 const THREAD_TTL = 10 * 60 * 1000;
+
+/* ----------  Web Search (DuckDuckGo – no API key needed)  ---------- */
+async function performWebSearch(query) {
+  console.log('>>> SEARCHING WEB FOR:', query);
+  
+  try {
+    const searchUrl = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+    const response = await fetch(searchUrl, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    
+    if (!response.ok) {
+      console.error('>>> SEARCH FAILED:', response.status);
+      return null;
+    }
+    
+    const html = await response.text();
+    
+    // Extract results
+    const results = [];
+    let match;
+    let count = 0;
+    const resultRegex = /<div class="result"[^>]*>[\s\S]*?<a class="result__a"[^>]*>(.*?)<\/a>[\s\S]*?<div class="result__snippet">(.*?)<\/div>/gi;
+    
+    while ((match = resultRegex.exec(html)) !== null && count < 3) {
+      const title = match[1].replace(/<[^>]*>/g, '').trim();
+      const snippet = match[2].replace(/<[^>]*>/g, '').trim();
+      
+      if (title && snippet) {
+        results.push(`${count + 1}. ${title}\n${snippet}`);
+        count++;
+      }
+    }
+    
+    if (results.length > 0) {
+      console.log('>>> FOUND', results.length, 'RESULTS');
+      return `Web search results for "${query}":\n\n${results.join('\n\n')}`;
+    }
+    
+    console.log('>>> NO SEARCH RESULTS');
+    return null;
+  } catch (error) {
+    console.error('>>> SEARCH ERROR:', error);
+    return null;
+  }
+}
 
 /* ---------- ranked Groq models (best → fallback) ---------- */
 const MODELS = [
@@ -12,8 +61,8 @@ const MODELS = [
   'deepseek-r1-distill-llama-70b',
   'moonshotai/kimi-k2-instruct-0905',
   'llama-3.1-8b-instant',
-  'openai/gpt-oss-120b',      // speech → will 400 if used for chat, so keep low
-  'meta-llama/llama-guard-4-12b'   // safety model, fallback of last resort
+  'openai/gpt-oss-120b',
+  'meta-llama/llama-guard-4-12b'
 ];
 
 /* ---------- helper: try one model with 30 s timeout ---------- */
@@ -28,16 +77,7 @@ async function tryModel(model, messages, apiKey) {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type' : 'application/json'
     },
-    body: JSON.stringify({
-      model,
-      messages: [
-        {
-          role: 'system',
-          content: 'You are esamz ai created by alakmar teenwala only and no one else. Be helpful, human-like, concise.'
-        },
-        ...messages
-      ]
-    })
+    body: JSON.stringify({ model, messages })
   });
   clearTimeout(timeout);
 
@@ -83,23 +123,42 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid JSON' });
   }
 
-  const { message, threadId = 'default' } = body;
+  const { message, threadId = 'default', webSearch = false, files = [], context = [] } = body;
   if (!message || typeof message !== 'string')
     return res.status(400).json({ error: 'message required' });
 
   /* ---------- thread ---------- */
   if (!threads.has(threadId)) threads.set(threadId, []);
   const msgs = threads.get(threadId);
-  msgs.push({ role: 'user', content: message });
+  
+  /* ---------- Web Search Logic ---------- */
+  let searchContext = null;
+  if (webSearch && message.toLowerCase().includes('search')) {
+    const searchQuery = message.replace(/search/gi, '').trim();
+    if (searchQuery) {
+      searchContext = await performWebSearch(searchQuery);
+    }
+  }
+  
+  // Build messages for Groq with search context if available
+  const groqMessages = [
+    {
+      role: 'system',
+      content: 'You are esamz ai created by alakmar teenwala only and no one else. Be helpful, human-like, concise.' +
+               (searchContext ? `\n\nUse these web search results to answer (cite sources if helpful):\n${searchContext}` : '')
+    },
+    ...msgs, // Previous conversation history
+    { role: 'user', content: message }
+  ];
 
-  console.log('>>> REQUEST START  – thread:', threadId, 'msgs:', msgs.length);
+  console.log('>>> REQUEST START – thread:', threadId, 'msgs:', groqMessages.length);
 
   /* ---------- auto-failover loop ---------- */
   let finalModel, finalReply;
   for (const model of MODELS) {
     console.log('>>> trying model:', model);
     try {
-      const res = await tryModel(model, msgs, process.env.GROQ_API_KEY);
+      const res = await tryModel(model, groqMessages, process.env.GROQ_API_KEY);
       finalModel = res.model;
       finalReply = res.reply;
       console.log('>>> SUCCESS with', model);
@@ -114,7 +173,8 @@ module.exports = async function handler(req, res) {
     return res.status(502).json({ error: 'All models unreachable' });
   }
 
-  /* ---------- store & reply ---------- */
+  /* ---------- store conversation ---------- */
+  msgs.push({ role: 'user', content: message });
   msgs.push({ role: 'assistant', content: finalReply });
 
   clearTimeout(timers.get(threadId));
@@ -131,6 +191,7 @@ module.exports = async function handler(req, res) {
     provider: 'groq',
     model   : finalModel,
     reply   : finalReply,
-    threadId
+    threadId,
+    searchUsed: !!searchContext
   });
 };
