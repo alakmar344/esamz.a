@@ -231,15 +231,6 @@ textarea {
     box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
-/* Web Search Indicator */
-.web-indicator {
-    display: flex; align-items: center; gap: 8px; padding: 8px 14px;
-    background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3);
-    border-radius: 12px; font-size: 12px; color: var(--warning);
-    margin-bottom: 12px; animation: slideIn 0.3s ease;
-}
-@keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
-
 /* --- CODE ENHANCED --- */
 .code-wrapper { 
     background: #000; border-radius: 14px; margin: 18px 0; 
@@ -307,10 +298,6 @@ textarea {
 
             <span class="nav-label">⚙️ Options</span>
             <button class="side-btn" onclick="openExportModal()"><span>📥</span> Export Chat</button>
-            <button class="side-btn" onclick="toggleWebSearch()">
-                <span>🌐</span> Web Search 
-                <span id="webToggleStatus" style="margin-left: auto; font-size: 10px; color: var(--success);">ON</span>
-            </button>
             <button class="side-btn" onclick="clearAllHistory()"><span>🗑</span> Clear All Cache</button>
             
             <span class="nav-label">🔗 Resources</span>
@@ -338,12 +325,8 @@ textarea {
             <div class="welcome-screen" id="welcomeMsg">
                 <h1 style="font-size: 48px; font-weight: 800; margin-bottom: 15px; background: var(--accent-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Hello, Architect.</h1>
                 <p style="color: var(--text-dim); font-size: 18px; margin-bottom: 10px;">Ready to build something extraordinary today?</p>
-                <p style="color: var(--text-dim); font-size: 13px; margin-bottom: 30px;">✨ Now with Context Awareness & Web Search</p>
+                <p style="color: var(--text-dim); font-size: 13px; margin-bottom: 30px;">✨ Now with Context Awareness</p>
                 <div class="feature-grid">
-                    <div class="feature-card" onclick="fillInput('Search the web for latest AI developments')">
-                        <h4 style="color: var(--accent); margin-bottom: 8px; font-size: 15px;">🌐 Web Search</h4>
-                        <p style="font-size: 13px; color: var(--text-dim); line-height: 1.6;">Search and analyze real-time information from the web.</p>
-                    </div>
                     <div class="feature-card" onclick="fillInput('Design a scalable database schema for a SaaS app')">
                         <h4 style="color: #10b981; margin-bottom: 8px; font-size: 15px;">🏗️ Logic Design</h4>
                         <p style="font-size: 13px; color: var(--text-dim); line-height: 1.6;">Create code architectures and system flows.</p>
@@ -361,10 +344,6 @@ textarea {
         </div>
 
         <div class="input-area">
-            <div id="webSearchIndicator" class="web-indicator" style="display: none;">
-                <span>🌐</span>
-                <span>Searching the web...</span>
-            </div>
             <div class="file-preview-bar" id="filesPreview"></div>
             <div class="input-box-wrap">
                 <div class="input-row">
@@ -386,7 +365,6 @@ textarea {
     </main>
 </div>
 
-<!-- Export Modal -->
 <div class="modal" id="exportModal">
     <div class="modal-content">
         <div class="modal-header">
@@ -434,7 +412,6 @@ const preview     = $('filesPreview');
 const sidebar     = $('sidebar');
 const contextBadge= $('contextBadge');
 const contextCount= $('contextCount');
-const webIndicator= $('webSearchIndicator');
 
 /* ----------  STATE  ---------- */
 let currentChatId       = null;
@@ -442,7 +419,6 @@ let uploadedFiles       = [];
 let recognition         = null;
 let isRecording         = false;
 let conversationContext = [];
-let webSearchEnabled    = true;
 
 /* ----------  CONTEXT  ---------- */
 function updateContext(role, content) {
@@ -465,17 +441,6 @@ function loadContext() {
     }
   } catch {}
 }
-
-/* ----------  WEB SEARCH  ---------- */
-function toggleWebSearch() {
-  webSearchEnabled = !webSearchEnabled;
-  const st = $('webToggleStatus');
-  st.textContent = webSearchEnabled ? 'ON' : 'OFF';
-  st.style.color   = webSearchEnabled ? 'var(--success)' : 'var(--text-dim)';
-  localStorage.setItem('esamz_web_search', webSearchEnabled);
-}
-function showWebSearching() { webIndicator.style.display = 'flex'; }
-function hideWebSearching() { webIndicator.style.display = 'none'; }
 
 /* ----------  SIDEBAR  ---------- */
 function toggleSidebar()        { sidebar.classList.toggle('open'); }
@@ -513,11 +478,6 @@ async function sendMessage() {
   input.style.height = 'auto';
   preview.innerHTML = '';
   uploadedFiles = [];
-
-  // Show indicator if message contains "search" AND web search is enabled
-  if (webSearchEnabled && text.toLowerCase().includes('search')) {
-    showWebSearching();
-  }
   
   addLoading();
 
@@ -525,16 +485,14 @@ async function sendMessage() {
     const res = await fetch('/api/chat', {
       method : 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body   : JSON.stringify({ message: text, files: filePayload, context: conversationContext, webSearch: webSearchEnabled })
+      body   : JSON.stringify({ message: text, files: filePayload, context: conversationContext })
     });
     const data = await res.json();
-    hideWebSearching(); // Hide on success
     removeLoading();
     const reply = data.reply || data.message || 'No reply';
     addMessage(reply, 'ai');
     updateContext('ai', reply);
   } catch (e) {
-    hideWebSearching(); // Hide on error
     removeLoading();
     addMessage('Sorry, something went wrong. Please try again.', 'ai');
     console.error(e);
@@ -731,9 +689,6 @@ function fillInput(t) { input.value = t; autoGrow(input); input.focus(); }
 window.onload = () => {
   loadHistory();
   loadContext();
-  webSearchEnabled = localStorage.getItem('esamz_web_search') !== 'false';
-  $('webToggleStatus').textContent = webSearchEnabled ? 'ON' : 'OFF';
-  $('webToggleStatus').style.color   = webSearchEnabled ? 'var(--success)' : 'var(--text-dim)';
   input.focus();
 };
 window.addEventListener('resize', () => { if (window.innerWidth > 768) sidebar.classList.remove('open'); });
