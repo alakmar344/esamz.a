@@ -40,6 +40,7 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
 
@@ -52,6 +53,8 @@
     --border: rgba(255, 255, 255, 0.08);
     --text-main: #e5e5e5;
     --text-dim: #999;
+    --success: #10b981;
+    --warning: #f59e0b;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -59,31 +62,58 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
 
 .app { display: flex; height: 100vh; width: 100%; position: relative; }
 
-/* --- SPICED SIDEBAR --- */
+/* --- ENHANCED SIDEBAR --- */
 .sidebar { 
-    width: 300px; background: var(--panel); border-right: 1px solid var(--border); 
+    width: 320px; background: var(--panel); border-right: 1px solid var(--border); 
     display: flex; flex-direction: column; flex-shrink: 0; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 100;
+    z-index: 100; position: relative;
 }
 
 .sidebar-header { padding: 25px; border-bottom: 1px solid var(--border); }
 .logo-box { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-.logo-icon { width: 40px; height: 40px; background: var(--accent-grad); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; color: white; }
+.logo-icon { 
+    width: 40px; height: 40px; background: var(--accent-grad); border-radius: 12px; 
+    display: flex; align-items: center; justify-content: center; font-weight: 800; 
+    font-size: 20px; color: white; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
 
 .side-nav { flex: 1; overflow-y: auto; padding: 15px; }
-.nav-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.5px; margin: 20px 0 10px 10px; display: block; }
+.nav-label { 
+    font-size: 10px; color: var(--text-dim); text-transform: uppercase; 
+    letter-spacing: 1.5px; margin: 20px 0 10px 10px; display: flex; 
+    align-items: center; gap: 8px;
+}
 
 .side-btn { 
     width: 100%; padding: 12px 15px; background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-    color: #ccc; border-radius: 10px; cursor: pointer; text-align: left; margin-bottom: 8px; transition: 0.2s;
-    display: flex; align-items: center; gap: 12px; font-size: 13px; text-decoration: none;
+    color: #ccc; border-radius: 10px; cursor: pointer; text-align: left; margin-bottom: 8px; 
+    transition: all 0.2s; display: flex; align-items: center; gap: 12px; font-size: 13px; 
+    text-decoration: none; position: relative; overflow: hidden;
 }
-.side-btn:hover { background: rgba(255,255,255,0.07); border-color: var(--accent); color: white; }
+.side-btn:hover { 
+    background: rgba(255,255,255,0.07); border-color: var(--accent); color: white; 
+    transform: translateX(3px);
+}
+.side-btn.active { background: rgba(102, 126, 234, 0.15); border-color: var(--accent); }
 
 /* --- MAIN CONTENT --- */
-.main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; background: radial-gradient(circle at top right, #111, transparent); }
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; background: radial-gradient(circle at top right, #1a1a2e, var(--bg)); }
 
-.header { height: 65px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 25px; background: rgba(5,5,5,0.8); backdrop-filter: blur(10px); z-index: 10; }
+.header { 
+    height: 70px; border-bottom: 1px solid var(--border); display: flex; 
+    align-items: center; justify-content: space-between; padding: 0 25px; 
+    background: rgba(5,5,5,0.9); backdrop-filter: blur(20px); z-index: 10;
+}
+
+.header-left { display: flex; align-items: center; gap: 15px; }
+.header-right { display: flex; gap: 10px; align-items: center; }
+
+/* Context Badge */
+.context-badge { 
+    display: flex; align-items: center; gap: 8px; background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3); padding: 6px 12px; border-radius: 20px;
+    font-size: 11px; color: var(--success); font-weight: 600;
+}
 
 /* Mobile Menu Toggle */
 .menu-toggle { display: none; background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
@@ -91,77 +121,172 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
 /* --- RESPONSIVE LOGIC --- */
 @media (max-width: 768px) {
     .sidebar {
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        transform: translateX(-100%); /* Closed by default on mobile */
+        position: absolute; left: 0; top: 0; bottom: 0;
+        transform: translateX(-100%);
     }
-    .sidebar.open {
-        transform: translateX(0);
-    }
+    .sidebar.open { transform: translateX(0); }
     .menu-toggle { display: block; }
     .chat-container, .input-area { padding-left: 5%; padding-right: 5%; }
     .feature-grid { grid-template-columns: 1fr; }
+    .header-right .context-badge { display: none; }
 }
 
 /* --- CHAT FLOW --- */
-.chat-container { flex: 1; overflow-y: auto; padding: 40px 15%; scroll-behavior: smooth; }
-.welcome-screen { text-align: center; padding: 60px 20px; animation: fadeIn 0.8s ease; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.chat-container { 
+    flex: 1; overflow-y: auto; padding: 40px 15%; scroll-behavior: smooth;
+    background: linear-gradient(180deg, transparent, rgba(102, 126, 234, 0.02) 50%, transparent);
+}
+.welcome-screen { text-align: center; padding: 80px 20px; animation: fadeIn 0.8s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-.feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 600px; margin: 30px auto; }
-.feature-card { background: var(--panel); border: 1px solid var(--border); padding: 20px; border-radius: 16px; cursor: pointer; transition: 0.3s; text-align: left; }
-.feature-card:hover { border-color: var(--accent); transform: translateY(-3px); background: rgba(255,255,255,0.02); }
+.feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 650px; margin: 40px auto; }
+.feature-card { 
+    background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)); 
+    border: 1px solid var(--border); padding: 25px; border-radius: 18px; cursor: pointer; 
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); text-align: left; position: relative;
+    overflow: hidden;
+}
+.feature-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--accent-grad); opacity: 0; transition: 0.3s;
+}
+.feature-card:hover { 
+    border-color: var(--accent); transform: translateY(-5px) scale(1.02); 
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+}
+.feature-card:hover::before { opacity: 0.1; }
+.feature-card > * { position: relative; z-index: 1; }
 
 /* --- MESSAGES --- */
-.msg { margin-bottom: 30px; animation: slideUp 0.4s ease; line-height: 1.7; display: flex; gap: 15px; }
-@keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+.msg { 
+    margin-bottom: 35px; animation: slideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1); 
+    line-height: 1.8; display: flex; gap: 15px; position: relative;
+}
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 .msg.user { flex-direction: row-reverse; }
-.msg-avatar { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 18px; }
+.msg-avatar { 
+    width: 38px; height: 38px; border-radius: 12px; display: flex; 
+    align-items: center; justify-content: center; flex-shrink: 0; font-size: 18px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
 .user .msg-avatar { background: var(--accent-grad); }
 .ai .msg-avatar { background: #1a1a1a; border: 1px solid var(--border); color: var(--accent); }
 
-.bubble { max-width: 80%; padding: 16px 20px; border-radius: 18px; font-size: 15px; position: relative; }
-.user .bubble { background: var(--accent-grad); color: white; border-bottom-right-radius: 4px; }
-.ai .bubble { background: #161616; border: 1px solid var(--border); border-bottom-left-radius: 4px; color: #ddd; }
+.bubble { 
+    max-width: 80%; padding: 18px 22px; border-radius: 20px; font-size: 15px; 
+    position: relative; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+.user .bubble { 
+    background: var(--accent-grad); color: white; border-bottom-right-radius: 6px; 
+}
+.ai .bubble { 
+    background: linear-gradient(135deg, #161616, #1a1a1a); 
+    border: 1px solid var(--border); border-bottom-left-radius: 6px; color: #e5e5e5; 
+}
 
-/* --- INPUT SPICE --- */
-.input-area { padding: 20px 15% 10px; background: linear-gradient(to top, var(--bg) 70%, transparent); }
-.input-box-wrap { background: var(--panel); border: 1px solid var(--border); border-radius: 20px; padding: 12px 18px; display: flex; flex-direction: column; backdrop-filter: blur(20px); box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+/* Message Actions */
+.msg-actions {
+    display: flex; gap: 8px; margin-top: 10px; opacity: 0; transition: 0.2s;
+}
+.msg:hover .msg-actions { opacity: 1; }
+.action-btn {
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+    padding: 6px 12px; border-radius: 8px; font-size: 11px; cursor: pointer;
+    color: var(--text-dim); transition: 0.2s; display: flex; align-items: center; gap: 5px;
+}
+.action-btn:hover { background: rgba(255,255,255,0.1); color: white; border-color: var(--accent); }
+
+/* --- INPUT ENHANCED --- */
+.input-area { padding: 20px 15% 15px; background: linear-gradient(to top, var(--bg) 80%, transparent); }
+.input-box-wrap { 
+    background: var(--panel); border: 2px solid var(--border); border-radius: 22px; 
+    padding: 14px 20px; display: flex; flex-direction: column; backdrop-filter: blur(30px); 
+    box-shadow: 0 10px 50px rgba(0,0,0,0.6); transition: 0.3s;
+}
+.input-box-wrap:focus-within { border-color: var(--accent); box-shadow: 0 10px 50px rgba(102, 126, 234, 0.3); }
+
 .input-row { display: flex; align-items: flex-end; gap: 12px; }
-textarea { flex: 1; background: none; border: none; color: white; resize: none; outline: none; font-size: 15px; padding: 8px 0; max-height: 180px; }
+textarea { 
+    flex: 1; background: none; border: none; color: white; resize: none; 
+    outline: none; font-size: 15px; padding: 8px 0; max-height: 180px; 
+    line-height: 1.6;
+}
 
-.tool-btn { width: 40px; height: 40px; border-radius: 50%; border: none; background: rgba(255,255,255,0.05); color: #888; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; font-size: 18px; }
-.tool-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+.tool-btn { 
+    width: 42px; height: 42px; border-radius: 50%; border: none; 
+    background: rgba(255,255,255,0.05); color: #888; cursor: pointer; 
+    transition: all 0.2s; display: flex; align-items: center; justify-content: center; 
+    font-size: 18px; position: relative;
+}
+.tool-btn:hover { background: rgba(255,255,255,0.12); color: white; transform: scale(1.1); }
 .send-btn { background: var(--accent-grad) !important; color: white !important; }
+.send-btn:hover { transform: scale(1.1) rotate(5deg); }
 .recording-mic { background: #ef4444 !important; color: white !important; animation: pulse 1.5s infinite; }
-@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); } 70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } }
 
-.file-preview-bar { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
-.chip { background: var(--accent); color: white; padding: 4px 12px; border-radius: 20px; font-size: 11px; display: flex; align-items: center; gap: 8px; }
+.file-preview-bar { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.chip { 
+    background: var(--accent); color: white; padding: 6px 14px; border-radius: 20px; 
+    font-size: 11px; display: flex; align-items: center; gap: 8px; 
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
 
-/* --- CODE SPICE --- */
-.code-wrapper { background: #000; border-radius: 12px; margin: 15px 0; border: 1px solid var(--border); overflow: hidden; }
-.code-header { background: #1a1a1a; padding: 10px 15px; display: flex; justify-content: space-between; font-size: 11px; color: #666; }
+/* Web Search Indicator */
+.web-indicator {
+    display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+    background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 12px; font-size: 12px; color: var(--warning);
+    margin-bottom: 12px; animation: slideIn 0.3s ease;
+}
+@keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+
+/* --- CODE ENHANCED --- */
+.code-wrapper { 
+    background: #000; border-radius: 14px; margin: 18px 0; 
+    border: 1px solid var(--border); overflow: hidden; 
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+.code-header { 
+    background: #1a1a1a; padding: 12px 18px; display: flex; 
+    justify-content: space-between; font-size: 11px; color: #666; 
+    border-bottom: 1px solid var(--border);
+}
+
+/* --- MODAL --- */
+.modal {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 1000;
+    align-items: center; justify-content: center; animation: fadeIn 0.3s ease;
+}
+.modal.active { display: flex; }
+.modal-content {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 20px;
+    padding: 30px; max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+}
+.modal-header {
+    display: flex; justify-content: space-between; align-items: center; 
+    margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border);
+}
+.modal-close {
+    background: none; border: none; color: var(--text-dim); 
+    font-size: 24px; cursor: pointer; line-height: 1;
+}
+.modal-close:hover { color: white; }
+
+.export-option {
+    padding: 15px; background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 12px; margin-bottom: 10px; cursor: pointer; transition: 0.2s;
+    display: flex; align-items: center; gap: 12px;
+}
+.export-option:hover { background: rgba(255,255,255,0.07); border-color: var(--accent); }
 
 /* --- FOOTER --- */
 .footer { 
-    padding: 15px 15%; 
-    text-align: center; 
-    font-size: 12px; 
-    color: var(--text-dim); 
-    border-top: 1px solid var(--border); 
-    background: var(--bg);
+    padding: 15px 15%; text-align: center; font-size: 12px; 
+    color: var(--text-dim); border-top: 1px solid var(--border); background: var(--bg);
 }
-.footer a { 
-    color: var(--accent); 
-    text-decoration: none; 
-    margin: 0 5px;
-}
-.footer a:hover { 
-    text-decoration: underline; 
-}
+.footer a { color: var(--accent); text-decoration: none; margin: 0 5px; }
+.footer a:hover { text-decoration: underline; }
 </style>
 </head>
 
@@ -173,18 +298,22 @@ textarea { flex: 1; background: none; border: none; color: white; resize: none; 
                 <div class="logo-icon">e</div>
                 <h2 style="font-weight: 800; letter-spacing: -0.5px;">eSAMz v7</h2>
             </div>
-            <button class="side-btn" style="background: var(--accent-grad); color: white; border: none; font-weight: 600;" onclick="newChat()">+ New Chat</button>
+            <button class="side-btn" style="background: var(--accent-grad); color: white; border: none; font-weight: 600;" onclick="newChat()">✨ New Chat</button>
         </div>
         
         <div class="side-nav">
-            <span class="nav-label">Recent History</span>
+            <span class="nav-label">📚 Recent History</span>
             <div id="chatHistory"></div>
 
-            <span class="nav-label">Options</span>
-            <button class="side-btn" onclick="exportChat()"><span>📥</span> Export Chat</button>
+            <span class="nav-label">⚙️ Options</span>
+            <button class="side-btn" onclick="openExportModal()"><span>📥</span> Export Chat</button>
+            <button class="side-btn" onclick="toggleWebSearch()">
+                <span>🌐</span> Web Search 
+                <span id="webToggleStatus" style="margin-left: auto; font-size: 10px; color: var(--success);">ON</span>
+            </button>
             <button class="side-btn" onclick="clearAllHistory()"><span>🗑</span> Clear All Cache</button>
             
-            <span class="nav-label">Resources</span>
+            <span class="nav-label">🔗 Resources</span>
             <a href="https://esamz.info/docs" class="side-btn"><span>📚</span> Documentation</a>
             <a href="https://esamz.info" class="side-btn"><span>🌐</span> Home Portal</a>
         </div>
@@ -192,33 +321,50 @@ textarea { flex: 1; background: none; border: none; color: white; resize: none; 
 
     <main class="main">
         <header class="header">
-            <div style="display: flex; align-items: center; gap: 15px;">
+            <div class="header-left">
                 <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
                 <div id="status" style="font-size: 12px; color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">● eSAMz Active</div>
             </div>
-            <div style="display: flex; gap: 10px;">
-                <button class="tool-btn" style="border-radius: 8px; width: auto; padding: 0 15px; font-size: 12px;" onclick="clearCurrentChat()">Clear Screen</button>
+            <div class="header-right">
+                <div class="context-badge" id="contextBadge" style="display: none;">
+                    <span>🧠</span>
+                    <span id="contextCount">0 contexts</span>
+                </div>
+                <button class="tool-btn" style="border-radius: 10px; width: auto; padding: 0 16px; font-size: 12px; height: 38px;" onclick="clearCurrentChat()">Clear Screen</button>
             </div>
         </header>
 
         <div class="chat-container" id="chat" onclick="closeSidebarOnMobile()">
             <div class="welcome-screen" id="welcomeMsg">
-                <h1 style="font-size: 42px; font-weight: 800; margin-bottom: 10px;">Hello, Architect.</h1>
-                <p style="color: var(--text-dim); font-size: 18px;">Ready to build something extraordinary today?</p>
+                <h1 style="font-size: 48px; font-weight: 800; margin-bottom: 15px; background: var(--accent-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Hello, Architect.</h1>
+                <p style="color: var(--text-dim); font-size: 18px; margin-bottom: 10px;">Ready to build something extraordinary today?</p>
+                <p style="color: var(--text-dim); font-size: 13px; margin-bottom: 30px;">✨ Now with Context Awareness & Web Search</p>
                 <div class="feature-grid">
-                    <div class="feature-card" onclick="fillInput('Design a scalable database schema for a SaaS app')">
-                        <h4 style="color: var(--accent); margin-bottom: 5px;">Logic Design</h4>
-                        <p style="font-size: 12px; color: var(--text-dim);">Ask for code architectures and system flows.</p>
+                    <div class="feature-card" onclick="fillInput('Search the web for latest AI developments')">
+                        <h4 style="color: var(--accent); margin-bottom: 8px; font-size: 15px;">🌐 Web Search</h4>
+                        <p style="font-size: 13px; color: var(--text-dim); line-height: 1.6;">Search and analyze real-time information from the web.</p>
                     </div>
-                    <div class="feature-card" onclick="fillInput('Explain the core principles of AI Alignment')">
-                        <h4 style="color: #a855f7; margin-bottom: 5px;">Deep Research</h4>
-                        <p style="font-size: 12px; color: var(--text-dim);">Summarize complex topics into clear insights.</p>
+                    <div class="feature-card" onclick="fillInput('Design a scalable database schema for a SaaS app')">
+                        <h4 style="color: #10b981; margin-bottom: 8px; font-size: 15px;">🏗️ Logic Design</h4>
+                        <p style="font-size: 13px; color: var(--text-dim); line-height: 1.6;">Create code architectures and system flows.</p>
+                    </div>
+                    <div class="feature-card" onclick="fillInput('Explain quantum computing in simple terms')">
+                        <h4 style="color: #a855f7; margin-bottom: 8px; font-size: 15px;">🔬 Deep Research</h4>
+                        <p style="font-size: 13px; color: var(--text-dim); line-height: 1.6;">Summarize complex topics with context memory.</p>
+                    </div>
+                    <div class="feature-card" onclick="fillInput('Write a creative story about AI')">
+                        <h4 style="color: #f59e0b; margin-bottom: 8px; font-size: 15px;">✍️ Creative Writing</h4>
+                        <p style="font-size: 13px; color: var(--text-dim); line-height: 1.6;">Generate creative content with personality.</p>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="input-area">
+            <div id="webSearchIndicator" class="web-indicator" style="display: none;">
+                <span>🌐</span>
+                <span>Searching the web...</span>
+            </div>
             <div class="file-preview-bar" id="filesPreview"></div>
             <div class="input-box-wrap">
                 <div class="input-row">
@@ -235,16 +381,98 @@ textarea { flex: 1; background: none; border: none; color: white; resize: none; 
         </div>
 
         <footer class="footer">
-            <p>© 2025 eSAMz AI · <a href="https://esamz.info">esamz.info</a> · <a href="https://esamz.info/privacypolicy">Privacy</a> · <a href="https://esamz.info/aboutus">aboutus</a></p>
+            <p>© 2025 eSAMz AI · <a href="https://esamz.info">esamz.info</a> · <a href="https://esamz.info/privacypolicy">Privacy</a> · <a href="https://esamz.info/aboutus">About Us</a></p>
         </footer>
     </main>
 </div>
 
+<!-- Export Modal -->
+<div class="modal" id="exportModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 style="font-weight: 700;">📥 Export Chat</h3>
+            <button class="modal-close" onclick="closeExportModal()">×</button>
+        </div>
+        <div class="export-option" onclick="exportAs('txt')">
+            <span style="font-size: 24px;">📄</span>
+            <div>
+                <div style="font-weight: 600; margin-bottom: 3px;">Plain Text (.txt)</div>
+                <div style="font-size: 11px; color: var(--text-dim);">Simple text format for quick sharing</div>
+            </div>
+        </div>
+        <div class="export-option" onclick="exportAs('md')">
+            <span style="font-size: 24px;">📝</span>
+            <div>
+                <div style="font-weight: 600; margin-bottom: 3px;">Markdown (.md)</div>
+                <div style="font-size: 11px; color: var(--text-dim);">Formatted text with code highlighting</div>
+            </div>
+        </div>
+        <div class="export-option" onclick="exportAs('html')">
+            <span style="font-size: 24px;">🌐</span>
+            <div>
+                <div style="font-weight: 600; margin-bottom: 3px;">HTML (.html)</div>
+                <div style="font-size: 11px; color: var(--text-dim);">Web page with full styling</div>
+            </div>
+        </div>
+        <div class="export-option" onclick="exportAs('pdf')">
+            <span style="font-size: 24px;">📕</span>
+            <div>
+                <div style="font-weight: 600; margin-bottom: 3px;">PDF Document (.pdf)</div>
+                <div style="font-size: 11px; color: var(--text-dim);">Professional document format</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 const $ = id => document.getElementById(id);
-const chat = $('chat'), input = $('userInput'), historyDiv = $('chatHistory'), welcomeMsg = $('welcomeMsg'), preview = $('filesPreview'), sidebar = $('sidebar');
+const chat = $('chat'), input = $('userInput'), historyDiv = $('chatHistory'), welcomeMsg = $('welcomeMsg'), 
+      preview = $('filesPreview'), sidebar = $('sidebar'), contextBadge = $('contextBadge'), 
+      contextCount = $('contextCount'), webIndicator = $('webSearchIndicator');
 
-let currentChatId = null, uploadedFiles = [], recognition = null, isRecording = false;
+let currentChatId = null, uploadedFiles = [], recognition = null, isRecording = false, 
+    conversationContext = [], webSearchEnabled = true;
+
+/* --- CONTEXT MANAGEMENT --- */
+function updateContext(role, content) {
+    conversationContext.push({ role, content, timestamp: Date.now() });
+    if (conversationContext.length > 10) conversationContext.shift(); // Keep last 10 messages
+    
+    const count = conversationContext.length;
+    contextCount.textContent = `${count} context${count !== 1 ? 's' : ''}`;
+    contextBadge.style.display = count > 0 ? 'flex' : 'none';
+    
+    localStorage.setItem('esamz_context', JSON.stringify(conversationContext));
+}
+
+function loadContext() {
+    const saved = localStorage.getItem('esamz_context');
+    if (saved) {
+        conversationContext = JSON.parse(saved);
+        const count = conversationContext.length;
+        if (count > 0) {
+            contextCount.textContent = `${count} context${count !== 1 ? 's' : ''}`;
+            contextBadge.style.display = 'flex';
+        }
+    }
+}
+
+/* --- WEB SEARCH --- */
+function toggleWebSearch() {
+    webSearchEnabled = !webSearchEnabled;
+    const status = $('webToggleStatus');
+    status.textContent = webSearchEnabled ? 'ON' : 'OFF';
+    status.style.color = webSearchEnabled ? 'var(--success)' : 'var(--text-dim)';
+    localStorage.setItem('esamz_web_search', webSearchEnabled);
+}
+
+function showWebSearching() {
+    webIndicator.style.display = 'flex';
+}
+
+function hideWebSearching() {
+    webIndicator.style.display = 'none';
+}
 
 /* --- SIDEBAR TOGGLE --- */
 function toggleSidebar() {
@@ -267,6 +495,9 @@ function newChat() {
     input.style.height = 'auto';
     preview.innerHTML = '';
     uploadedFiles = [];
+    conversationContext = [];
+    contextBadge.style.display = 'none';
+    localStorage.removeItem('esamz_context');
     closeSidebarOnMobile();
 }
 
@@ -281,6 +512,7 @@ async function sendMessage() {
     
     welcomeMsg.style.display = 'none';
     addMessage(text, 'user');
+    updateContext('user', text);
     
     const filePayload = uploadedFiles.map(f => ({ name: f.name, type: f.type, size: f.size }));
     
@@ -289,163 +521,337 @@ async function sendMessage() {
     preview.innerHTML = '';
     uploadedFiles = [];
 
+    if (webSearchEnabled && text.toLowerCase().includes('search')) {
+        showWebSearching();
+    }
+
     addLoading();
 
     try {
         const res = await fetch('/api/chat', { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: text, files: filePayload }) 
+            body: JSON.stringify({ 
+                message: text, 
+                files: filePayload,
+                context: conversationContext,
+                webSearch: webSearchEnabled
+            }) 
+        });
+        const data = await res.json();
+        hideWebSearching();
+        removeLoading();
+        const reply = data.reply || data.message;
+        addMessage(reply, 'ai');
+        updateContext('ai', reply);
+    } catch (e) {
+        hideWebSearch        removeLoading();
+        addMessage("Sorry, something went wrong. Please try again.", "ai");
+        console.error(e);
+    }
+}
+
+/* --- UI HELPERS --- */
+function addMessage(text, sender) {
+    const wrap = document.createElement("div");
+    wrap.className = "msg " + sender;
+
+    const avatar = document.createElement("div");
+    avatar.className = "msg-avatar";
+    avatar.textContent = sender === "user" ? "U" : "e";
+
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.innerHTML = marked.parse(text);
+
+    const actions = document.createElement("div");
+    actions.className = "msg-actions";
+    actions.innerHTML = `
+        <button class="action-btn" onclick="copyMessage(this)">📋 Copy</button>
+        <button class="action-btn" onclick="regenerateMessage(this)">🔄 Regenerate</button>
+    `;
+
+    wrap.appendChild(avatar);
+    wrap.appendChild(bubble);
+    bubble.appendChild(actions);
+    chat.appendChild(wrap);
+    chat.scrollTop = chat.scrollHeight;
+    Prism.highlightAllUnder(chat);
+}
+
+function addLoading() {
+    const wrap = document.createElement("div");
+    wrap.className = "msg ai";
+    wrap.id = "loadingMsg";
+    wrap.innerHTML = `
+        <div class="msg-avatar">e</div>
+        <div class="bubble">
+            <div class="loading-dots">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+    `;
+    chat.appendChild(wrap);
+    chat.scrollTop = chat.scrollHeight;
+}
+
+function removeLoading() {
+    const loading = $("loadingMsg");
+    if (loading) loading.remove();
+}
+
+/* --- COPY & REGENERATE --- */
+function copyMessage(btn) {
+    const bubble = btn.closest(".bubble");
+    const text = bubble.textContent.replace("📋 Copy🔄 Regenerate", "").trim();
+    navigator.clipboard.writeText(text);
+    btn.textContent = "✅ Copied";
+    setTimeout(() => btn.textContent = "📋 Copy", 1500);
+}
+
+async function regenerateMessage(btn) {
+    const wrap = btn.closest(".msg");
+    const text = wrap.previousElementSibling.querySelector(".bubble").textContent.trim();
+    wrap.remove();
+    addLoading();
+    try {
+        const res = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: text, context: conversationContext, regenerate: true })
         });
         const data = await res.json();
         removeLoading();
-        addMessage(data.reply || data.message, 'ai');
+        addMessage(data.reply || data.message, "ai");
     } catch (e) {
         removeLoading();
-        addMessage("System Alert: Connection to /api/chat failed. Check backend status.", 'ai');
+        addMessage("Regeneration failed.", "ai");
     }
 }
 
-function addMessage(text, role) {
-    const div = document.createElement('div');
-    div.className = `msg ${role}`;
-    
-    const content = marked.parse(text);
-
-    div.innerHTML = `
-        <div class="msg-avatar">${role === 'user' ? '👤' : '🤖'}</div>
-        <div class="bubble">${content}</div>
-    `;
-    chat.appendChild(div);
-
-    if (role === 'ai') {
-        div.querySelectorAll('pre').forEach(pre => {
-            const w = document.createElement('div');
-            w.className = 'code-wrapper';
-            w.innerHTML = `<div class="code-header"><span>Terminal</span><button onclick="copyCode(this)" style="background:none; border:none; color:var(--accent); cursor:pointer; font-weight:600;">Copy</button></div>`;
-            pre.parentNode.insertBefore(w, pre);
-            w.appendChild(pre);
-        });
-        Prism.highlightAllUnder(div);
+/* --- VOICE INPUT --- */
+function toggleVoice() {
+    const btn = $("voiceBtn");
+    if (!recognition) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Voice input not supported in this browser.");
+            return;
+        }
+        recognition = new SpeechRecognition();
+        recognition.lang = "en-US";
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        recognition.onresult = e => input.value += e.results[0][0].transcript;
+        recognition.onerror = () => btn.classList.remove("recording-mic");
+        recognition.onend = () => btn.classList.remove("recording-mic");
     }
-    chat.scrollTop = chat.scrollHeight;
-    saveSession();
-}
-
-function createChatId(title) {
-    currentChatId = 'chat_' + Date.now();
-    const history = JSON.parse(localStorage.getItem('esamz_v7_history') || '[]');
-    history.unshift({ id: currentChatId, title: title.slice(0, 30) + '...', html: "" });
-    localStorage.setItem('esamz_v7_history', JSON.stringify(history));
-    renderHistory();
-}
-
-function saveSession() {
-    const history = JSON.parse(localStorage.getItem('esamz_v7_history') || '[]');
-    const item = history.find(i => i.id === currentChatId);
-    if (item) {
-        item.html = chat.innerHTML;
-        localStorage.setItem('esamz_v7_history', JSON.stringify(history));
+    if (isRecording) {
+        recognition.stop();
+        btn.classList.remove("recording-mic");
+        isRecording = false;
+    } else {
+        recognition.start();
+        btn.classList.add("recording-mic");
+        isRecording = true;
     }
 }
 
-function renderHistory() {
-    const history = JSON.parse(localStorage.getItem('esamz_v7_history') || '[]');
-    historyDiv.innerHTML = history.map(h => `
-        <button class="side-btn" onclick="loadChat('${h.id}')">💬 ${h.title}</button>
-    `).join('');
-}
-
-function loadChat(id) {
-    const history = JSON.parse(localStorage.getItem('esamz_v7_history') || '[]');
-    const item = history.find(i => i.id === id);
-    if (item) {
-        currentChatId = id;
-        welcomeMsg.style.display = 'none';
-        chat.innerHTML = item.html;
-        Prism.highlightAll();
-        closeSidebarOnMobile();
-    }
-}
-
+/* --- FILE HANDLING --- */
 function handleFiles(files) {
-    Array.from(files).forEach(f => {
-        uploadedFiles.push(f);
-        const chip = document.createElement('div');
-        chip.className = 'chip';
-        chip.innerHTML = `📄 ${f.name.slice(0,10)}... <span onclick="this.parentElement.remove()" style="cursor:pointer">×</span>`;
+    uploadedFiles = [...files];
+    preview.innerHTML = "";
+    files.forEach(f => {
+        const chip = document.createElement("div");
+        chip.className = "chip";
+        chip.innerHTML = `${f.name} <span style="cursor:pointer;" onclick="removeFile('${f.name}')">×</span>`;
         preview.appendChild(chip);
     });
 }
 
-function toggleVoice() {
-    if (!('webkitSpeechRecognition' in window)) return alert("Speech API not supported");
-    if (!recognition) {
-        recognition = new webkitSpeechRecognition();
-        recognition.onresult = e => { input.value += e.results[0][0].transcript; autoGrow(input); };
-        recognition.onstart = () => $('voiceBtn').classList.add('recording-mic');
-        recognition.onend = () => $('voiceBtn').classList.remove('recording-mic');
+function removeFile(name) {
+    uploadedFiles = uploadedFiles.filter(f => f.name !== name);
+    handleFiles(uploadedFiles);
+}
+
+/* --- EXPORT --- */
+function openExportModal() {
+    $("exportModal").classList.add("active");
+}
+
+function closeExportModal() {
+    $("exportModal").classList.remove("active");
+}
+
+function exportAs(type) {
+    const msgs = [...chat.querySelectorAll(".msg")].map(m => {
+        const sender = m.classList.contains("user") ? "User" : "eSAMz";
+        const text = m.querySelector(".bubble").textContent.replace("📋 Copy🔄 Regenerate", "").trim();
+        return `**${sender}:** ${text}`;
+    }).join("\n\n");
+
+    const ts = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
+    const filename = `chat-${ts}`;
+
+    if (type === "txt") {
+        download(`${filename}.txt`, msgs);
+    } else if (type === "md") {
+        download(`${filename}.md`, msgs);
+    } else if (type === "html") {
+        const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>eSAMz Chat</title></head><body><h1>eSAMz Chat Export</h1>${marked.parse(msgs)}</body></html>`;
+        download(`${filename}.html`, html);
+    } else if (type === "pdf") {
+        const el = document.createElement("div");
+        el.innerHTML = marked.parse(msgs);
+        html2pdf().set({ margin: 10 }).from(el).save(`${filename}.pdf`);
     }
-    isRecording ? recognition.stop() : recognition.start();
-    isRecording = !isRecording;
+    closeExportModal();
 }
 
-function autoGrow(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
-function fillInput(t) { input.value = t; input.focus(); autoGrow(input); }
-function addLoading() {
-    const l = document.createElement('div'); l.id = 'loader'; l.className = 'msg ai';
-    l.innerHTML = `<div class="msg-avatar">🤖</div><div class="bubble">Thinking...</div>`;
-    chat.appendChild(l);
-}
-function removeLoading() { if($('loader')) $('loader').remove(); }
-function clearCurrentChat() { chat.innerHTML = ''; chat.appendChild(welcomeMsg); welcomeMsg.style.display='block'; currentChatId = null; }
-function clearAllHistory() { if(confirm("Clear all history?")) { localStorage.removeItem('esamz_v7_history'); location.reload(); } }
-function copyCode(btn) { 
-    const code = btn.closest('.code-wrapper').querySelector('code').innerText;
-    navigator.clipboard.writeText(code); btn.innerText = "Done!";
-    setTimeout(() => btn.innerText = "Copy", 2000);
-}
-function exportChat() {
-    const blob = new Blob([chat.innerText], {type:'text/plain'});
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = 'esamz-chat.txt'; a.click();
+function download(filename, content) {
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
 }
 
-window.onload = renderHistory;
-input.addEventListener('keydown', e => { if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }});
-/* ==============  THREAD-AWARE CHAT  (invisible)  ============== */
-const THREAD_KEY = 'esamz-thread-id';
-let threadId = localStorage.getItem(THREAD_KEY) || crypto.randomUUID();
-localStorage.setItem(THREAD_KEY, threadId);
+/* --- HISTORY & STORAGE --- */
+function createChatId(text) {
+    currentChatId = Date.now().toString();
+    const entry = document.createElement("button");
+    entry.className = "side-btn";
+    entry.textContent = text.slice(0, 30) + (text.length > 30 ? "…" : "");
+    entry.onclick = () => loadChat(currentChatId);
+    historyDiv.prepend(entry);
+    saveHistory();
+}
 
-/* --- inject threadId into the EXISTING sendMessage --- */
-const _originalSend = sendMessage;
-sendMessage = async function () {
-  const text = input.value.trim();
-  if (!text && uploadedFiles.length === 0) return;
-  closeSidebarOnMobile();
-  if (!currentChatId) createChatId(text);
-  welcomeMsg.style.display = 'none';
-  addMessage(text, 'user');
+function saveHistory() {
+    const history = [...historyDiv.children].map(b => b.textContent);
+    localStorage.setItem("esamz_history", JSON.stringify(history));
+}
 
-  const filePayload = uploadedFiles.map(f => ({ name: f.name, type: f.type, size: f.size }));
-  input.value = ''; input.style.height = 'auto'; preview.innerHTML = ''; uploadedFiles = [];
-  addLoading();
-
-  try {
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, files: filePayload, threadId })
+function loadHistory() {
+    const saved = JSON.parse(localStorage.getItem("esamz_history") || "[]");
+    saved.forEach(text => {
+        const entry = document.createElement("button");
+        entry.className = "side-btn";
+        entry.textContent = text;
+        historyDiv.appendChild(entry);
     });
-    const data = await res.json();
-    removeLoading();
-    addMessage(data.reply || data.message, 'ai');
-  } catch (e) {
-    removeLoading();
-    addMessage("System Alert: Connection to /api/chat failed. Check backend status.", 'ai');
-  }
+}
+
+function clearAllHistory() {
+    if (!confirm("Delete all cached history?")) return;
+    localStorage.clear();
+    historyDiv.innerHTML = "";
+    newChat();
+}
+
+function clearCurrentChat() {
+    chat.innerHTML = "";
+    chat.appendChild(welcomeMsg);
+    welcomeMsg.style.display = "block";
+    conversationContext = [];
+    contextBadge.style.display = "none";
+    localStorage.removeItem("esamz_context");
+}
+
+function loadChat(id) {
+    // Stub for future persistence
+    newChat();
+}
+
+/* --- UTILS --- */
+function autoGrow(t) {
+    t.style.height = "auto";
+    t.style.height = t.scrollHeight + "px";
+}
+
+function fillInput(text) {
+    input.value = text;
+    autoGrow(input);
+    input.focus();
+}
+
+/* --- INIT --- */
+window.onload = () => {
+    loadHistory();
+    loadContext();
+    webSearchEnabled = localStorage.getItem("esamz_web_search") !== "false";
+    $("webToggleStatus").textContent = webSearchEnabled ? "ON" : "OFF";
+    $("webToggleStatus").style.color = webSearchEnabled ? "var(--success)" : "var(--text-dim)";
+    input.focus();
 };
+
+/* --- RESPONSIVE --- */
+window.addEventListener("resize", () => {
+    if (window.innerWidth > 768) sidebar.classList.remove("open");
+});
+
+/* --- KEYBOARD SHORTCUTS --- */
+window.addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+</script>
+
+<style>
+/* --- LOADING ANIMATION --- */
+.loading-dots {
+    display: flex; gap: 6px;
+}
+.loading-dots span {
+    width: 8px; height: 8px; background: var(--accent); border-radius: 50%;
+    animation: dotPulse 1.2s infinite;
+}
+.loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dotPulse {
+    0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+    40% { transform: scale(1); opacity: 1; }
+}
+
+/* --- DRAG & DROP --- */
+.input-box-wrap.dragover {
+    border-color: var(--accent);
+    box-shadow: 0 10px 50px rgba(102, 126, 234, 0.5);
+    transform: scale(1.02);
+}
+</style>
+
+<script>
+/* --- DRAG & DROP IMPLEMENTATION --- */
+const inputWrap = document.querySelector(".input-box-wrap");
+
+["dragenter", "dragover", "dragleave", "drop"].forEach(evt => {
+    inputWrap.addEventListener(evt, preventDefaults, false);
+    document.body.addEventListener(evt, preventDefaults, false);
+});
+
+function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+}
+
+["dragenter", "dragover"].forEach(evt => {
+    inputWrap.addEventListener(evt, () => inputWrap.classList.add("dragover"), false);
+});
+
+["dragleave", "drop"].forEach(evt => {
+    inputWrap.addEventListener(evt, () => inputWrap.classList.remove("dragover"), false);
+});
+
+inputWrap.addEventListener("drop", e => {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    handleFiles(files);
+}, false);
 </script>
 </body>
 </html>
