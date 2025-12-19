@@ -423,384 +423,329 @@ textarea {
         </div>
     </div>
 </div>
-
 <script>
+/* ----------  HELPERS  ---------- */
 const $ = id => document.getElementById(id);
-const chat = $('chat'), input = $('userInput'), historyDiv = $('chatHistory'), welcomeMsg = $('welcomeMsg'), 
-      preview = $('filesPreview'), sidebar = $('sidebar'), contextBadge = $('contextBadge'), 
-      contextCount = $('contextCount'), webIndicator = $('webSearchIndicator');
+const chat        = $('chat');
+const input       = $('userInput');
+const historyDiv  = $('chatHistory');
+const welcomeMsg  = $('welcomeMsg');
+const preview     = $('filesPreview');
+const sidebar     = $('sidebar');
+const contextBadge= $('contextBadge');
+const contextCount= $('contextCount');
+const webIndicator= $('webSearchIndicator');
 
-let currentChatId = null, uploadedFiles = [], recognition = null, isRecording = false, 
-    conversationContext = [], webSearchEnabled = true;
+/* ----------  STATE  ---------- */
+let currentChatId       = null;
+let uploadedFiles       = [];
+let recognition         = null;
+let isRecording         = false;
+let conversationContext = [];
+let webSearchEnabled    = true;
 
-/* --- CONTEXT MANAGEMENT --- */
+/* ----------  CONTEXT  ---------- */
 function updateContext(role, content) {
-    conversationContext.push({ role, content, timestamp: Date.now() });
-    if (conversationContext.length > 10) conversationContext.shift(); // Keep last 10 messages
-    
-    const count = conversationContext.length;
-    contextCount.textContent = `${count} context${count !== 1 ? 's' : ''}`;
-    contextBadge.style.display = count > 0 ? 'flex' : 'none';
-    
-    localStorage.setItem('esamz_context', JSON.stringify(conversationContext));
+  conversationContext.push({ role, content, timestamp: Date.now() });
+  if (conversationContext.length > 10) conversationContext.shift();
+  const count = conversationContext.length;
+  contextCount.textContent = `${count} context${count !== 1 ? 's' : ''}`;
+  contextBadge.style.display = count ? 'flex' : 'none';
+  localStorage.setItem('esamz_context', JSON.stringify(conversationContext));
 }
 
 function loadContext() {
-    const saved = localStorage.getItem('esamz_context');
-    if (saved) {
-        conversationContext = JSON.parse(saved);
-        const count = conversationContext.length;
-        if (count > 0) {
-            contextCount.textContent = `${count} context${count !== 1 ? 's' : ''}`;
-            contextBadge.style.display = 'flex';
-        }
+  try {
+    const saved = JSON.parse(localStorage.getItem('esamz_context') || '[]');
+    conversationContext = saved;
+    const count = conversationContext.length;
+    if (count) {
+      contextCount.textContent = `${count} context${count !== 1 ? 's' : ''}`;
+      contextBadge.style.display = 'flex';
     }
+  } catch {}
 }
 
-/* --- WEB SEARCH --- */
+/* ----------  WEB SEARCH  ---------- */
 function toggleWebSearch() {
-    webSearchEnabled = !webSearchEnabled;
-    const status = $('webToggleStatus');
-    status.textContent = webSearchEnabled ? 'ON' : 'OFF';
-    status.style.color = webSearchEnabled ? 'var(--success)' : 'var(--text-dim)';
-    localStorage.setItem('esamz_web_search', webSearchEnabled);
+  webSearchEnabled = !webSearchEnabled;
+  const st = $('webToggleStatus');
+  st.textContent = webSearchEnabled ? 'ON' : 'OFF';
+  st.style.color   = webSearchEnabled ? 'var(--success)' : 'var(--text-dim)';
+  localStorage.setItem('esamz_web_search', webSearchEnabled);
 }
+function showWebSearching() { webIndicator.style.display = 'flex'; }
+function hideWebSearching() { webIndicator.style.display = 'none'; }
 
-function showWebSearching() {
-    webIndicator.style.display = 'flex';
-}
+/* ----------  SIDEBAR  ---------- */
+function toggleSidebar()        { sidebar.classList.toggle('open'); }
+function closeSidebarOnMobile() { if (window.innerWidth <= 768) sidebar.classList.remove('open'); }
 
-function hideWebSearching() {
-    webIndicator.style.display = 'none';
-}
-
-/* --- SIDEBAR TOGGLE --- */
-function toggleSidebar() {
-    sidebar.classList.toggle('open');
-}
-
-function closeSidebarOnMobile() {
-    if (window.innerWidth <= 768) {
-        sidebar.classList.remove('open');
-    }
-}
-
-/* --- NEW CHAT FUNCTION --- */
+/* ----------  NEW CHAT  ---------- */
 function newChat() {
-    currentChatId = null;
-    chat.innerHTML = '';
-    chat.appendChild(welcomeMsg);
-    welcomeMsg.style.display = 'block';
-    input.value = '';
-    input.style.height = 'auto';
-    preview.innerHTML = '';
-    uploadedFiles = [];
-    conversationContext = [];
-    contextBadge.style.display = 'none';
-    localStorage.removeItem('esamz_context');
-    closeSidebarOnMobile();
+  currentChatId = null;
+  chat.innerHTML = '';
+  chat.appendChild(welcomeMsg);
+  welcomeMsg.style.display = 'block';
+  input.value = '';
+  input.style.height = 'auto';
+  preview.innerHTML = '';
+  uploadedFiles = [];
+  conversationContext = [];
+  contextBadge.style.display = 'none';
+  localStorage.removeItem('esamz_context');
+  closeSidebarOnMobile();
 }
 
-/* --- BACKEND CORE --- */
+/* ----------  MESSAGE FLOW  ---------- */
 async function sendMessage() {
-    const text = input.value.trim();
-    if (!text && uploadedFiles.length === 0) return;
-    
-    closeSidebarOnMobile();
+  const text = input.value.trim();
+  if (!text && !uploadedFiles.length) return;
+  closeSidebarOnMobile();
+  if (!currentChatId) createChatId(text);
 
-    if (!currentChatId) createChatId(text);
-    
-    welcomeMsg.style.display = 'none';
-    addMessage(text, 'user');
-    updateContext('user', text);
-    
-    const filePayload = uploadedFiles.map(f => ({ name: f.name, type: f.type, size: f.size }));
-    
-    input.value = '';
-    input.style.height = 'auto';
-    preview.innerHTML = '';
-    uploadedFiles = [];
+  welcomeMsg.style.display = 'none';
+  addMessage(text, 'user');
+  updateContext('user', text);
 
-    if (webSearchEnabled && text.toLowerCase().includes('search')) {
-        showWebSearching();
-    }
+  const filePayload = uploadedFiles.map(f => ({ name: f.name, type: f.type, size: f.size }));
+  input.value = '';
+  input.style.height = 'auto';
+  preview.innerHTML = '';
+  uploadedFiles = [];
 
-    addLoading();
+  if (webSearchEnabled && text.toLowerCase().includes('search')) showWebSearching();
+  addLoading();
 
-    try {
-        const res = await fetch('/api/chat', { 
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                message: text, 
-                files: filePayload,
-                context: conversationContext,
-                webSearch: webSearchEnabled
-            }) 
-        });
-        const data = await res.json();
-        hideWebSearching();
-        removeLoading();
-        const reply = data.reply || data.message;
-        addMessage(reply, 'ai');
-        updateContext('ai', reply);
-    } catch (e) {
-        hideWebSearch        removeLoading();
-        addMessage("Sorry, something went wrong. Please try again.", "ai");
-        console.error(e);
-    }
+  try {
+    const res = await fetch('/api/chat', {
+      method : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify({ message: text, files: filePayload, context: conversationContext, webSearch: webSearchEnabled })
+    });
+    const data = await res.json();
+    hideWebSearching();
+    removeLoading();
+    const reply = data.reply || data.message || 'No reply';
+    addMessage(reply, 'ai');
+    updateContext('ai', reply);
+  } catch (e) {
+    hideWebSearching();
+    removeLoading();
+    addMessage('Sorry, something went wrong. Please try again.', 'ai');
+    console.error(e);
+  }
 }
 
-/* --- UI HELPERS --- */
+/* ----------  RENDER  ---------- */
 function addMessage(text, sender) {
-    const wrap = document.createElement("div");
-    wrap.className = "msg " + sender;
+  const wrap   = document.createElement('div');
+  wrap.className = 'msg ' + sender;
 
-    const avatar = document.createElement("div");
-    avatar.className = "msg-avatar";
-    avatar.textContent = sender === "user" ? "U" : "e";
+  const avatar = document.createElement('div');
+  avatar.className = 'msg-avatar';
+  avatar.textContent = sender === 'user' ? 'U' : 'e';
 
-    const bubble = document.createElement("div");
-    bubble.className = "bubble";
-    bubble.innerHTML = marked.parse(text);
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.innerHTML = marked.parse(text);
 
-    const actions = document.createElement("div");
-    actions.className = "msg-actions";
-    actions.innerHTML = `
-        <button class="action-btn" onclick="copyMessage(this)">📋 Copy</button>
-        <button class="action-btn" onclick="regenerateMessage(this)">🔄 Regenerate</button>
-    `;
+  const actions = document.createElement('div');
+  actions.className = 'msg-actions';
+  actions.innerHTML = `
+    <button class="action-btn" onclick="copyMessage(this)">📋 Copy</button>
+    <button class="action-btn" onclick="regenerateMessage(this)">🔄 Regenerate</button>`;
 
-    wrap.appendChild(avatar);
-    wrap.appendChild(bubble);
-    bubble.appendChild(actions);
-    chat.appendChild(wrap);
-    chat.scrollTop = chat.scrollHeight;
-    Prism.highlightAllUnder(chat);
+  bubble.appendChild(actions);
+  wrap.append(avatar, bubble);
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+  Prism.highlightAllUnder(chat);
 }
 
 function addLoading() {
-    const wrap = document.createElement("div");
-    wrap.className = "msg ai";
-    wrap.id = "loadingMsg";
-    wrap.innerHTML = `
-        <div class="msg-avatar">e</div>
-        <div class="bubble">
-            <div class="loading-dots">
-                <span></span><span></span><span></span>
-            </div>
-        </div>
-    `;
-    chat.appendChild(wrap);
-    chat.scrollTop = chat.scrollHeight;
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ai';
+  wrap.id = 'loadingMsg';
+  wrap.innerHTML = `
+    <div class="msg-avatar">e</div>
+    <div class="bubble">
+      <div class="loading-dots"><span></span><span></span><span></span></div>
+    </div>`;
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
 }
+function removeLoading() { const l = $('loadingMsg'); if (l) l.remove(); }
 
-function removeLoading() {
-    const loading = $("loadingMsg");
-    if (loading) loading.remove();
-}
-
-/* --- COPY & REGENERATE --- */
+/* ----------  COPY / REGENERATE  ---------- */
 function copyMessage(btn) {
-    const bubble = btn.closest(".bubble");
-    const text = bubble.textContent.replace("📋 Copy🔄 Regenerate", "").trim();
-    navigator.clipboard.writeText(text);
-    btn.textContent = "✅ Copied";
-    setTimeout(() => btn.textContent = "📋 Copy", 1500);
+  const bubble = btn.closest('.bubble');
+  const text = bubble.textContent.replace(/📋 Copy|🔄 Regenerate/g, '').trim();
+  navigator.clipboard.writeText(text);
+  btn.textContent = '✅ Copied';
+  setTimeout(() => btn.textContent = '📋 Copy', 1500);
 }
-
 async function regenerateMessage(btn) {
-    const wrap = btn.closest(".msg");
-    const text = wrap.previousElementSibling.querySelector(".bubble").textContent.trim();
-    wrap.remove();
-    addLoading();
-    try {
-        const res = await fetch("/api/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: text, context: conversationContext, regenerate: true })
-        });
-        const data = await res.json();
-        removeLoading();
-        addMessage(data.reply || data.message, "ai");
-    } catch (e) {
-        removeLoading();
-        addMessage("Regeneration failed.", "ai");
-    }
+  const wrap  = btn.closest('.msg');
+  const prev  = wrap.previousElementSibling;
+  if (!prev) return;
+  const text  = prev.querySelector('.bubble').textContent.trim();
+  wrap.remove();
+  addLoading();
+  try {
+    const res = await fetch('/api/chat', {
+      method : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify({ message: text, context: conversationContext, regenerate: true })
+    });
+    const data = await res.json();
+    removeLoading();
+    addMessage(data.reply || data.message, 'ai');
+  } catch {
+    removeLoading();
+    addMessage('Regeneration failed.', 'ai');
+  }
 }
 
-/* --- VOICE INPUT --- */
+/* ----------  VOICE  ---------- */
 function toggleVoice() {
-    const btn = $("voiceBtn");
-    if (!recognition) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            alert("Voice input not supported in this browser.");
-            return;
-        }
-        recognition = new SpeechRecognition();
-        recognition.lang = "en-US";
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
-        recognition.onresult = e => input.value += e.results[0][0].transcript;
-        recognition.onerror = () => btn.classList.remove("recording-mic");
-        recognition.onend = () => btn.classList.remove("recording-mic");
-    }
-    if (isRecording) {
-        recognition.stop();
-        btn.classList.remove("recording-mic");
-        isRecording = false;
-    } else {
-        recognition.start();
-        btn.classList.add("recording-mic");
-        isRecording = true;
-    }
+  const btn = $('voiceBtn');
+  if (!recognition) {
+    const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Speech) return alert('Voice input not supported.');
+    recognition = new Speech();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.onresult = e => input.value += e.results[0][0].transcript;
+    recognition.onerror  = () => btn.classList.remove('recording-mic');
+    recognition.onend    = () => btn.classList.remove('recording-mic');
+  }
+  if (isRecording) {
+    recognition.stop();
+    btn.classList.remove('recording-mic');
+    isRecording = false;
+  } else {
+    recognition.start();
+    btn.classList.add('recording-mic');
+    isRecording = true;
+  }
 }
 
-/* --- FILE HANDLING --- */
+/* ----------  FILES  ---------- */
 function handleFiles(files) {
-    uploadedFiles = [...files];
-    preview.innerHTML = "";
-    files.forEach(f => {
-        const chip = document.createElement("div");
-        chip.className = "chip";
-        chip.innerHTML = `${f.name} <span style="cursor:pointer;" onclick="removeFile('${f.name}')">×</span>`;
-        preview.appendChild(chip);
-    });
+  uploadedFiles = [...files];
+  preview.innerHTML = '';
+  uploadedFiles.forEach(f => {
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.innerHTML = `${f.name} <span style="cursor:pointer;" onclick="removeFile('${f.name}')">×</span>`;
+    preview.appendChild(chip);
+  });
 }
-
 function removeFile(name) {
-    uploadedFiles = uploadedFiles.filter(f => f.name !== name);
-    handleFiles(uploadedFiles);
+  uploadedFiles = uploadedFiles.filter(f => f.name !== name);
+  handleFiles(uploadedFiles);
+  document.getElementById('fileInput').value = ''; // reset input
 }
 
-/* --- EXPORT --- */
-function openExportModal() {
-    $("exportModal").classList.add("active");
-}
-
-function closeExportModal() {
-    $("exportModal").classList.remove("active");
-}
-
+/* ----------  EXPORT  ---------- */
+function openExportModal()  { $('exportModal').classList.add('active'); }
+function closeExportModal() { $('exportModal').classList.remove('active'); }
 function exportAs(type) {
-    const msgs = [...chat.querySelectorAll(".msg")].map(m => {
-        const sender = m.classList.contains("user") ? "User" : "eSAMz";
-        const text = m.querySelector(".bubble").textContent.replace("📋 Copy🔄 Regenerate", "").trim();
-        return `**${sender}:** ${text}`;
-    }).join("\n\n");
-
-    const ts = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
-    const filename = `chat-${ts}`;
-
-    if (type === "txt") {
-        download(`${filename}.txt`, msgs);
-    } else if (type === "md") {
-        download(`${filename}.md`, msgs);
-    } else if (type === "html") {
-        const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>eSAMz Chat</title></head><body><h1>eSAMz Chat Export</h1>${marked.parse(msgs)}</body></html>`;
-        download(`${filename}.html`, html);
-    } else if (type === "pdf") {
-        const el = document.createElement("div");
-        el.innerHTML = marked.parse(msgs);
-        html2pdf().set({ margin: 10 }).from(el).save(`${filename}.pdf`);
-    }
-    closeExportModal();
+  const msgs = [...chat.querySelectorAll('.msg')].map(m => {
+    const who  = m.classList.contains('user') ? 'User' : 'eSAMz';
+    const text = m.querySelector('.bubble').textContent.replace(/📋 Copy|🔄 Regenerate/g, '').trim();
+    return `**${who}:** ${text}`;
+  }).join('\n\n');
+  const ts   = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+  const name = `chat-${ts}`;
+  if (type === 'txt') download(`${name}.txt`, msgs);
+  else if (type === 'md') download(`${name}.md`, msgs);
+  else if (type === 'html') download(`${name}.html`, `<!DOCTYPE html><html><head><meta charset="utf-8"><title>eSAMz Chat</title></head><body><h1>eSAMz Chat Export</h1>${marked.parse(msgs)}</body></html>`);
+  else if (type === 'pdf') {
+    const el = document.createElement('div');
+    el.innerHTML = marked.parse(msgs);
+    html2pdf().set({ margin: 10 }).from(el).save(`${name}.pdf`);
+  }
+  closeExportModal();
 }
-
 function download(filename, content) {
-    const blob = new Blob([content], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+  const blob = new Blob([content], { type: 'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
 }
 
-/* --- HISTORY & STORAGE --- */
+/* ----------  HISTORY  ---------- */
 function createChatId(text) {
-    currentChatId = Date.now().toString();
-    const entry = document.createElement("button");
-    entry.className = "side-btn";
-    entry.textContent = text.slice(0, 30) + (text.length > 30 ? "…" : "");
-    entry.onclick = () => loadChat(currentChatId);
-    historyDiv.prepend(entry);
-    saveHistory();
+  currentChatId = Date.now().toString();
+  const btn = document.createElement('button');
+  btn.className = 'side-btn';
+  btn.textContent = text.slice(0, 30) + (text.length > 30 ? '…' : '');
+  btn.onclick = () => loadChat(currentChatId);
+  historyDiv.prepend(btn);
+  saveHistory();
 }
-
 function saveHistory() {
-    const history = [...historyDiv.children].map(b => b.textContent);
-    localStorage.setItem("esamz_history", JSON.stringify(history));
+  const history = [...historyDiv.children].map(b => b.textContent);
+  localStorage.setItem('esamz_history', JSON.stringify(history));
 }
-
 function loadHistory() {
-    const saved = JSON.parse(localStorage.getItem("esamz_history") || "[]");
+  try {
+    const saved = JSON.parse(localStorage.getItem('esamz_history') || '[]');
     saved.forEach(text => {
-        const entry = document.createElement("button");
-        entry.className = "side-btn";
-        entry.textContent = text;
-        historyDiv.appendChild(entry);
+      const btn = document.createElement('button');
+      btn.className = 'side-btn';
+      btn.textContent = text;
+      historyDiv.appendChild(btn);
     });
+  } catch {}
 }
-
 function clearAllHistory() {
-    if (!confirm("Delete all cached history?")) return;
-    localStorage.clear();
-    historyDiv.innerHTML = "";
-    newChat();
+  if (!confirm('Delete all cached history?')) return;
+  localStorage.clear();
+  historyDiv.innerHTML = '';
+  newChat();
 }
-
 function clearCurrentChat() {
-    chat.innerHTML = "";
-    chat.appendChild(welcomeMsg);
-    welcomeMsg.style.display = "block";
-    conversationContext = [];
-    contextBadge.style.display = "none";
-    localStorage.removeItem("esamz_context");
+  chat.innerHTML = '';
+  chat.appendChild(welcomeMsg);
+  welcomeMsg.style.display = 'block';
+  conversationContext = [];
+  contextBadge.style.display = 'none';
+  localStorage.removeItem('esamz_context');
 }
+function loadChat(id) { newChat(); } // stub
 
-function loadChat(id) {
-    // Stub for future persistence
-    newChat();
-}
+/* ----------  UTILS  ---------- */
+function autoGrow(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
+function fillInput(t) { input.value = t; autoGrow(input); input.focus(); }
 
-/* --- UTILS --- */
-function autoGrow(t) {
-    t.style.height = "auto";
-    t.style.height = t.scrollHeight + "px";
-}
-
-function fillInput(text) {
-    input.value = text;
-    autoGrow(input);
-    input.focus();
-}
-
-/* --- INIT --- */
+/* ----------  INIT  ---------- */
 window.onload = () => {
-    loadHistory();
-    loadContext();
-    webSearchEnabled = localStorage.getItem("esamz_web_search") !== "false";
-    $("webToggleStatus").textContent = webSearchEnabled ? "ON" : "OFF";
-    $("webToggleStatus").style.color = webSearchEnabled ? "var(--success)" : "var(--text-dim)";
-    input.focus();
+  loadHistory();
+  loadContext();
+  webSearchEnabled = localStorage.getItem('esamz_web_search') !== 'false';
+  $('webToggleStatus').textContent = webSearchEnabled ? 'ON' : 'OFF';
+  $('webToggleStatus').style.color   = webSearchEnabled ? 'var(--success)' : 'var(--text-dim)';
+  input.focus();
 };
+window.addEventListener('resize', () => { if (window.innerWidth > 768) sidebar.classList.remove('open'); });
+window.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
 
-/* --- RESPONSIVE --- */
-window.addEventListener("resize", () => {
-    if (window.innerWidth > 768) sidebar.classList.remove("open");
+/* ----------  DRAG & DROP  ---------- */
+const inputWrap = document.querySelector('.input-box-wrap');
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
+  inputWrap.addEventListener(evt, preventDefaults, false);
+  document.body.addEventListener(evt, preventDefaults, false);
 });
-
-/* --- KEYBOARD SHORTCUTS --- */
-window.addEventListener("keydown", e => {
-    if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-    }
-});
+function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+['dragenter', 'dragover'].forEach(evt => inputWrap.addEventListener(evt, () => inputWrap.classList.add('dragover'), false));
+['dragleave', 'drop'].forEach(evt => inputWrap.addEventListener(evt, () => inputWrap.classList.remove('dragover'), false));
+inputWrap.addEventListener('drop', e => handleFiles(e.dataTransfer.files), false);
 </script>
-
 <style>
 /* --- LOADING ANIMATION --- */
 .loading-dots {
