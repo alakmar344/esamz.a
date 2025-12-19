@@ -6,65 +6,6 @@ const threads    = new Map();
 const timers     = new Map();
 const THREAD_TTL = 10 * 60 * 1000;
 
-/* ----------  Web Search (with detailed logging)  ---------- */
-async function performWebSearch(query) {
-  console.log('>>> SEARCH STARTED:', query);
-  
-  try {
-    const searchUrl = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-    console.log('>>> FETCHING:', searchUrl);
-    
-    const response = await fetch(searchUrl, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
-    });
-    
-    console.log('>>> RESPONSE STATUS:', response.status);
-    
-    if (!response.ok) {
-      console.error('>>> SEARCH FAILED - Status:', response.status);
-      return null;
-    }
-    
-    const html = await response.text();
-    console.log('>>> HTML LENGTH:', html.length);
-    
-    // More robust parsing
-    const results = [];
-    let match;
-    let count = 0;
-    
-    // DuckDuckGo HTML structure
-    const resultRegex = /<div class="result"[\s\S]*?<a class="result__a"[^>]*>(.*?)<\/a>[\s\S]*?<div class="result__snippet">(.*?)<\/div>/gi;
-    
-    while ((match = resultRegex.exec(html)) !== null && count < 3) {
-      const title = match[1].replace(/<[^>]*>/g, '').trim();
-      const snippet = match[2].replace(/<[^>]*>/g, '').trim();
-      
-      if (title && snippet) {
-        results.push(`${count + 1}. ${title}\n${snippet}`);
-        count++;
-      }
-    }
-    
-    console.log('>>> EXTRACTED', results.length, 'RESULTS');
-    
-    if (results.length > 0) {
-      const resultText = `Web search results for "${query}":\n\n${results.join('\n\n')}`;
-      console.log('>>> RETURNING SEARCH CONTEXT');
-      return resultText;
-    }
-    
-    console.log('>>> NO RESULTS FOUND');
-    return null;
-  } catch (error) {
-    console.error('>>> SEARCH ERROR:', error.message, error.stack);
-    return null;
-  }
-}
-
 /* ---------- ranked Groq models ---------- */
 const MODELS = [
   'llama-3.3-70b-versatile',
@@ -85,7 +26,7 @@ async function tryModel(model, messages, apiKey) {
 
   console.log('>>> TRYING MODEL:', model);
   
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions ', {
     method : 'POST',
     signal : controller.signal,
     headers: {
@@ -147,38 +88,25 @@ module.exports = async function handler(req, res) {
 
   console.log('>>> PARSED BODY:', JSON.stringify(body, null, 2));
 
-  const { message, threadId = 'default', webSearch = false, files = [], context = [] } = body;
+  const { message, threadId = 'default', files = [], context = [] } = body;
   
   if (!message || typeof message !== 'string') {
     console.log('>>> MISSING MESSAGE');
     return res.status(400).json({ error: 'message required' });
   }
 
-  console.log('>>> WEB SEARCH FLAG:', webSearch);
   console.log('>>> MESSAGE:', message);
 
   /* ---------- thread ---------- */
   if (!threads.has(threadId)) threads.set(threadId, []);
   const msgs = threads.get(threadId);
   console.log('>>> THREAD SIZE:', msgs.length);
-  
-  /* ---------- Web Search Logic ---------- */
-  let searchContext = null;
-  if (webSearch && message.toLowerCase().includes('search')) {
-    const searchQuery = message.replace(/search/gi, '').trim();
-    console.log('>>> SEARCH QUERY EXTRACTED:', searchQuery);
-    if (searchQuery) {
-      searchContext = await performWebSearch(searchQuery);
-      console.log('>>> SEARCH CONTEXT:', searchContext ? 'FOUND' : 'NULL');
-    }
-  }
-  
+
   // Build messages for Groq
   const groqMessages = [
     {
       role: 'system',
-      content: 'You are esamz ai created by alakmar teenwala only and no one else. Be helpful, human-like, concise.' +
-               (searchContext ? `\n\nUse these web search results to answer (cite sources):\n${searchContext}` : '')
+      content: 'You are esamz ai created by alakmar teenwala only and no one else. Be helpful, human-like, concise.'
     },
     ...msgs,
     { role: 'user', content: message }
@@ -223,7 +151,6 @@ module.exports = async function handler(req, res) {
     provider: 'groq',
     model   : finalModel,
     reply   : finalReply,
-    threadId,
-    searchUsed: !!searchContext
+    threadId
   });
 };
