@@ -133,7 +133,6 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
 }
 .sidebar-close:hover { background: rgba(255,255,255,0.1); color: white; }
 
-/* --- RESPONSIVE LOGIC --- */
 @media (max-width: 768px) {
     .sidebar {
         position: fixed; left: 0; top: 0; bottom: 0;
@@ -150,6 +149,9 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
     .feature-grid { grid-template-columns: 1fr; gap: 12px; }
     .header { padding: 0 15px; }
     .footer { padding: 15px 5%; font-size: 10px; }
+
+    /* ----  keep send button visible on mobile  ---- */
+    .send-btn { flex-shrink: 0 !important; }
 }
 
 @media (min-width: 769px) {
@@ -322,6 +324,8 @@ textarea {
 }
 .footer a { color: var(--accent); text-decoration: none; margin: 0 5px; }
 .footer a:hover { text-decoration: underline; }
+  /* ---- force send button to stay visible on mobile ---- */
+
 </style>
 </head>
 
