@@ -514,7 +514,11 @@ async function sendMessage() {
   preview.innerHTML = '';
   uploadedFiles = [];
 
-  if (webSearchEnabled && text.toLowerCase().includes('search')) showWebSearching();
+  // Show indicator if message contains "search" AND web search is enabled
+  if (webSearchEnabled && text.toLowerCase().includes('search')) {
+    showWebSearching();
+  }
+  
   addLoading();
 
   try {
@@ -524,13 +528,13 @@ async function sendMessage() {
       body   : JSON.stringify({ message: text, files: filePayload, context: conversationContext, webSearch: webSearchEnabled })
     });
     const data = await res.json();
-    hideWebSearching();
+    hideWebSearching(); // Hide on success
     removeLoading();
     const reply = data.reply || data.message || 'No reply';
     addMessage(reply, 'ai');
     updateContext('ai', reply);
   } catch (e) {
-    hideWebSearching();
+    hideWebSearching(); // Hide on error
     removeLoading();
     addMessage('Sorry, something went wrong. Please try again.', 'ai');
     console.error(e);
@@ -646,7 +650,7 @@ function handleFiles(files) {
 function removeFile(name) {
   uploadedFiles = uploadedFiles.filter(f => f.name !== name);
   handleFiles(uploadedFiles);
-  document.getElementById('fileInput').value = ''; // reset input
+  document.getElementById('fileInput').value = '';
 }
 
 /* ----------  EXPORT  ---------- */
@@ -745,58 +749,6 @@ function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
 ['dragenter', 'dragover'].forEach(evt => inputWrap.addEventListener(evt, () => inputWrap.classList.add('dragover'), false));
 ['dragleave', 'drop'].forEach(evt => inputWrap.addEventListener(evt, () => inputWrap.classList.remove('dragover'), false));
 inputWrap.addEventListener('drop', e => handleFiles(e.dataTransfer.files), false);
-</script>
-<style>
-/* --- LOADING ANIMATION --- */
-.loading-dots {
-    display: flex; gap: 6px;
-}
-.loading-dots span {
-    width: 8px; height: 8px; background: var(--accent); border-radius: 50%;
-    animation: dotPulse 1.2s infinite;
-}
-.loading-dots span:nth-child(2) { animation-delay: 0.2s; }
-.loading-dots span:nth-child(3) { animation-delay: 0.4s; }
-@keyframes dotPulse {
-    0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-    40% { transform: scale(1); opacity: 1; }
-}
-
-/* --- DRAG & DROP --- */
-.input-box-wrap.dragover {
-    border-color: var(--accent);
-    box-shadow: 0 10px 50px rgba(102, 126, 234, 0.5);
-    transform: scale(1.02);
-}
-</style>
-
-<script>
-/* --- DRAG & DROP IMPLEMENTATION --- */
-const inputWrap = document.querySelector(".input-box-wrap");
-
-["dragenter", "dragover", "dragleave", "drop"].forEach(evt => {
-    inputWrap.addEventListener(evt, preventDefaults, false);
-    document.body.addEventListener(evt, preventDefaults, false);
-});
-
-function preventDefaults(e) {
-    e.preventDefault();
-    e.stopPropagation();
-}
-
-["dragenter", "dragover"].forEach(evt => {
-    inputWrap.addEventListener(evt, () => inputWrap.classList.add("dragover"), false);
-});
-
-["dragleave", "drop"].forEach(evt => {
-    inputWrap.addEventListener(evt, () => inputWrap.classList.remove("dragover"), false);
-});
-
-inputWrap.addEventListener("drop", e => {
-    const dt = e.dataTransfer;
-    const files = dt.files;
-    handleFiles(files);
-}, false);
 </script>
 </body>
 </html>
