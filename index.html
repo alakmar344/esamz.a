@@ -511,39 +511,75 @@ function newChat() {
 async function sendMessage() {
   const text = input.value.trim();
   if (!text && !uploadedFiles.length) return;
+
   closeSidebarOnMobile();
+
   if (!currentChatId) createChatId(text);
 
   welcomeMsg.style.display = 'none';
+
   addMessage(text, 'user');
   updateContext('user', text);
 
   const filePayload = uploadedFiles.map(f => ({ name: f.name, type: f.type, size: f.size }));
+
   input.value = '';
   input.style.height = 'auto';
   preview.innerHTML = '';
   uploadedFiles = [];
-  
+
   addThinking();
 
   try {
     const res = await fetch('/api/chat', {
-      method : 'POST',
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body   : JSON.stringify({ message: text, files: filePayload, context: conversationContext })
+      body: JSON.stringify({
+        message: text,
+        files: filePayload,
+        context: conversationContext,
+        enableWebSearch: true  // ← NEW: Tell backend it can use web search
+      })
     });
+
+    if (!res.ok) throw new Error('Server error');
+
     const data = await res.json();
+
+    // NEW: Show a quick "Searching the web…" indicator if backend used search
+    if (data.webSearched) {
+      const indicator = document.createElement('div');
+      indicator.className = 'msg ai';
+      indicator.innerHTML = `
+        <div class="msg-avatar">e</div>
+        <div class="bubble">
+          <div class="thinking-indicator">
+            <span>Searching the web for "${data.searchQuery || 'related info'}"…</span>
+            <div class="thinking-dots"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+      `;
+      chat.appendChild(indicator);
+      chat.scrollTop = chat.scrollHeight;
+
+      // Auto-remove after 2–3 seconds (or keep it longer if you prefer)
+      setTimeout(() => {
+        if (indicator && indicator.parentNode) indicator.remove();
+      }, 2500);
+    }
+
     removeThinking();
+
     const reply = data.reply || data.message || 'No reply';
     addMessage(reply, 'ai');
     updateContext('ai', reply);
+
   } catch (e) {
     removeThinking();
     addMessage('Sorry, something went wrong. Please try again.', 'ai');
     console.error(e);
   }
 }
-
 /* ----------  RENDER  ---------- */
 function addMessage(text, sender) {
   const wrap   = document.createElement('div');
