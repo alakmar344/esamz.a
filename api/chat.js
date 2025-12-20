@@ -1,5 +1,5 @@
 /* ---------- DEBUG BOOT ---------- */
-console.log('>>> ESAMZ BACKEND v3 - WITH FREE WEB SEARCH - STARTED');
+console.log('>>> ESAMZ BACKEND v4 - FREE WEB SEARCH - STARTED 2025');
 
 /* ---------- in-memory stores ---------- */
 const threads = new Map(); // threadId -> messages[]
@@ -23,7 +23,7 @@ const MODELS = [
 
 /* ---------- FREE SEARCH HELPERS ---------- */
 
-// DuckDuckGo JSON API - 100% free, no key, reliable
+// DuckDuckGo JSON API (official, free, no key)
 async function searchDDG(query) {
   try {
     const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&pretty=1`;
@@ -49,25 +49,29 @@ async function searchDDG(query) {
   }
 }
 
-// SearXNG fallback (public instances)
+// SearXNG fallback with stable instances
 async function searchSearXNG(query) {
   const instances = [
     'https://searx.be',
-    'https://search.sapinet.fr',
-    'https://searx.tiekoetter.net',
-    'https://search.bus-hit.me'
+    'https://searx.space',
+    'https://search.invidious.io',
+    'https://searx.tux.pizza',
+    'https://search.sapinet.fr'
   ];
 
   for (const base of instances) {
     try {
       const url = `${base}/search?q=${encodeURIComponent(query)}&format=json&categories=general`;
-      const res = await fetch(url, { timeout: 5000 });
+      const res = await fetch(url, { timeout: 6000 });
       if (!res.ok) continue;
       const data = await res.json();
-      return data.results.slice(0, 5).map(r => ({
-        title: r.title || 'Untitled',
-        snippet: r.content || 'No description'
-      }));
+      if (data.results && data.results.length > 0) {
+        console.log(`>>> SearXNG succeeded on ${base}`);
+        return data.results.slice(0, 5).map(r => ({
+          title: r.title || 'Untitled',
+          snippet: r.content || 'No description'
+        }));
+      }
     } catch (e) {
       console.warn(`SearXNG ${base} failed:`, e.message);
     }
@@ -75,16 +79,21 @@ async function searchSearXNG(query) {
   return null;
 }
 
-// Combined search
+// Combined search (DDG first, then SearXNG)
 async function performSearch(query) {
   let results = await searchDDG(query);
-  if (results) return results;
+  if (results) {
+    console.log('>>> DDG search succeeded');
+    return results;
+  }
 
   results = await searchSearXNG(query);
-  return results || [{ title: 'Search failed', snippet: 'Could not fetch web results at this time.' }];
+  if (results) return results;
+
+  return [{ title: 'No web results', snippet: 'Using knowledge up to Nov 2025.' }];
 }
 
-// When to search?
+// Smart trigger for search
 function needsSearch(message) {
   const lower = message.toLowerCase().trim();
   if (lower.length < 10) return false;
@@ -98,7 +107,7 @@ function needsSearch(message) {
   ];
 
   return triggers.some(t => lower.includes(t)) ||
-         (lower.split(' ').length > 10 && !lower.includes('write') && !lower.includes('code'));
+         (lower.endsWith('?') && lower.split(' ').length > 8);
 }
 
 /* ---------- try single model ---------- */
