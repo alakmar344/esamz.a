@@ -1,57 +1,74 @@
-/* ----------  DEBUG CONFIG  ---------- */
-console.log('>>> BACKEND LOADED');
+/* ---------- DEBUG BOOT ---------- */
+console.log('>>> ESAMZ BACKEND BOOTED');
 
-/* ----------  in-memory thread store  ---------- */
-const threads    = new Map();
-const timers     = new Map();
-const THREAD_TTL = 10 * 60 * 1000;
+/* ---------- in-memory stores ---------- */
+const threads = new Map(); // threadId -> messages[]
+const timers  = new Map();
 
-/* ---------- ranked Groq models ---------- */
+const THREAD_TTL   = 10 * 60 * 1000; // 10 min
+const MAX_HISTORY  = 20;
+const MODEL_TIMEOUT = 30_000;
+
+/* ---------- verified Groq chat models ---------- */
 const MODELS = [
-  'llama-3.3-70b-versatile',
-  'meta-llama/llama-4-scout-17b-16e-instruct',
-  'meta-llama/llama-4-maverick-17b-128e-instruct',
-  'qwen/qwen3-32b',
-  'deepseek-r1-distill-llama-70b',
-  'moonshotai/kimi-k2-instruct-0905',
-  'llama-3.1-8b-instant',
-  'openai/gpt-oss-120b',
-  'meta-llama/llama-guard-4-12b'
+ 'llama-3.3-70b-versatile', 'meta-llama/llama-4-scout-17b-16e-instruct', 'meta-llama/llama-4-maverick-17b-128e-instruct', 'qwen/qwen3-32b', 'deepseek-r1-distill-llama-70b', 'moonshotai/kimi-k2-instruct-0905', 'llama-3.1-8b-instant', 'openai/gpt-oss-120b', 'meta-llama/llama-guard-4-12b'
 ];
 
-/* ---------- helper: try one model ---------- */
+/* ---------- helper: try single model ---------- */
 async function tryModel(model, messages, apiKey) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000);
+  const timeout = setTimeout(() => controller.abort(), MODEL_TIMEOUT);
 
-  console.log('>>> TRYING MODEL:', model);
-  
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions ', {
-    method : 'POST',
-    signal : controller.signal,
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type' : 'application/json'
-    },
-    body: JSON.stringify({ model, messages })
-  });
-  clearTimeout(timeout);
+  console.log('>>> TRY MODEL:', model);
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => '{}');
-    throw new Error(`Groq ${res.status} – ${body}`);
+  try {
+    const res = await fetch(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature: 0.6,
+          max_tokens: 800
+        })
+      }
+    );
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status}: ${txt}`);
+    }
+
+    const data = await res.json();
+    const reply = data?.choices?.[0]?.message?.content;
+
+    if (!reply) throw new Error('Empty model reply');
+
+    console.log('>>> MODEL OK:', model);
+    return { model, reply };
+
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      console.warn('>>> MODEL TIMEOUT:', model);
+    } else {
+      console.warn('>>> MODEL ERROR:', model, e.message);
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeout);
   }
-
-  const data = await res.json();
-  const reply = data?.choices?.[0]?.message?.content;
-  if (!reply) throw new Error('Empty reply from Groq');
-  console.log('>>> MODEL SUCCESS:', model);
-  return { model, reply };
 }
 
+/* ---------- main handler ---------- */
 module.exports = async function handler(req, res) {
-  console.log('>>> REQUEST RECEIVED');
-  
+  console.log('>>> REQUEST IN');
+
   /* ---------- CORS ---------- */
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
@@ -59,11 +76,10 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') {
-    console.log('>>> INVALID METHOD:', req.method);
     return res.status(405).json({ error: 'POST only' });
   }
 
-  /* ---------- read body ---------- */
+  /* ---------- read body safely ---------- */
   let raw = '';
   try {
     await new Promise((resolve, reject) => {
@@ -71,70 +87,76 @@ module.exports = async function handler(req, res) {
       req.on('end', resolve);
       req.on('error', reject);
     });
-  } catch (e) {
-    console.error('>>> BODY READ ERROR:', e);
-    return res.status(400).json({ error: 'Failed to read body' });
+  } catch {
+    return res.status(400).json({ error: 'Body read failed' });
   }
-
-  console.log('>>> RAW BODY:', raw.substring(0, 200) + '...');
 
   let body;
   try {
     body = JSON.parse(raw || '{}');
-  } catch (e) {
-    console.error('>>> JSON PARSE ERROR:', raw);
+  } catch {
     return res.status(400).json({ error: 'Invalid JSON' });
   }
 
-  console.log('>>> PARSED BODY:', JSON.stringify(body, null, 2));
+  const { message, threadId = 'default' } = body;
 
-  const { message, threadId = 'default', files = [], context = [] } = body;
-  
   if (!message || typeof message !== 'string') {
-    console.log('>>> MISSING MESSAGE');
     return res.status(400).json({ error: 'message required' });
   }
 
-  console.log('>>> MESSAGE:', message);
-
-  /* ---------- thread ---------- */
+  /* ---------- thread setup ---------- */
   if (!threads.has(threadId)) threads.set(threadId, []);
-  const msgs = threads.get(threadId);
-  console.log('>>> THREAD SIZE:', msgs.length);
+  const history = threads.get(threadId);
 
-  // Build messages for Groq
-  const groqMessages = [
+  // trim history hard cap
+  if (history.length > MAX_HISTORY) {
+    history.splice(0, history.length - MAX_HISTORY);
+  }
+
+  console.log('>>> THREAD META:', {
+    threadId,
+    historySize: history.length
+  });
+
+  /* ---------- build model messages ---------- */
+  const messages = [
     {
       role: 'system',
-      content: 'You are esamz ai created by alakmar teenwala only and no one else. Be helpful, human-like, concise.'
+      content:
+        'You are eSAMz AI, created by Alakmar Teenwala only. ' +
+        'Be human like, concise, helpful, and clear.'
     },
-    ...msgs,
+    ...history,
     { role: 'user', content: message }
   ];
 
-  console.log('>>> GROQ MESSAGES COUNT:', groqMessages.length);
+  /* ---------- failover loop ---------- */
+  let finalReply = null;
+  let finalModel = null;
 
-  /* ---------- auto-failover loop ---------- */
-  let finalModel, finalReply;
   for (const model of MODELS) {
     try {
-      const res = await tryModel(model, groqMessages, process.env.GROQ_API_KEY);
-      finalModel = res.model;
-      finalReply = res.reply;
+      const out = await tryModel(
+        model,
+        messages,
+        process.env.GROQ_API_KEY
+      );
+      finalReply = out.reply;
+      finalModel = out.model;
       break;
-    } catch (e) {
-      console.warn('>>> MODEL FAILED:', model, e.message);
+    } catch {
+      continue;
     }
   }
 
   if (!finalReply) {
-    console.error('>>> ALL MODELS FAILED');
+    console.error('>>> ALL MODELS DOWN');
     return res.status(502).json({ error: 'All models unreachable' });
   }
 
   /* ---------- store conversation ---------- */
-  msgs.push({ role: 'user', content: message });
-  msgs.push({ role: 'assistant', content: finalReply });
+  history.push({ role: 'user', content: message });
+  history.push({ role: 'assistant', content: finalReply });
 
   clearTimeout(timers.get(threadId));
   timers.set(
@@ -146,11 +168,13 @@ module.exports = async function handler(req, res) {
     }, THREAD_TTL)
   );
 
-  console.log('>>> RESPONSE SENT');
+  console.log('>>> RESPONSE OK');
+
   return res.json({
     provider: 'groq',
-    model   : finalModel,
-    reply   : finalReply,
+    model: finalModel,
+    reply: finalReply,
     threadId
   });
 };
+
