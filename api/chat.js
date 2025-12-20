@@ -124,7 +124,7 @@ module.exports = async function handler(req, res) {
       role: 'system',
       content:
         'You are eSAMz AI, created by Alakmar Teenwala only. ' +
-        'Be human like, concise, helpful, and clear.'
+        'Be human like, concise, helpful, and clear and your knoledge cutoff is on november 2025.'
     },
     ...history,
     { role: 'user', content: message }
