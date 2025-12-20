@@ -195,7 +195,8 @@ module.exports = async function handler(req, res) {
   /* ---------- autonomous search logic ---------- */
   let searchResults = null;
   let searchedQuery = null;
-  if (enableWebSearch && needsSearch(message)) {
+if (enableWebSearch) {  // force always for testing
+  console.log('>>> FORCED SEARCH ACTIVATED');
     searchedQuery = message; // simple: use full message as query
     searchResults = await performSearch(searchedQuery);
     console.log('>>> WEB SEARCH PERFORMED for:', searchedQuery);
