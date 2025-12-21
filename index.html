@@ -419,9 +419,6 @@
     </dialog>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.js"></script>
 <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
-/* =========================================================
-   eSAMz v8 – Full Controller (All Text Files)
-   ========================================================= */
 <script>
 class App {
     constructor() {
@@ -433,20 +430,32 @@ class App {
             sidebar: document.getElementById('sidebar'),
             overlay: document.getElementById('overlay'),
             dock: document.getElementById('dockContainer'),
-            dialog: document.getElementById('exportDialog')
+            dialog: document.getElementById('exportDialog'),
+
+            btnSend: document.getElementById('btnSend'),
+            btnUpload: document.getElementById('btnUpload'),
+            btnVoice: document.getElementById('btnVoice'),
+            btnNewChat: document.getElementById('btnNewChat'),
+            btnClearChat: document.getElementById('btnClearChat'),
+            btnClearCache: document.getElementById('btnClearCache'),
+            btnExportModal: document.getElementById('btnExportModal'),
+            openSidebar: document.getElementById('openSidebar'),
+            closeSidebar: document.getElementById('closeSidebar'),
+            closeDialog: document.getElementById('closeDialog'),
+            fileInput: document.getElementById('fileInput')
         };
 
         this.state = {
             files: [],
             context: this.loadContext(),
-            recognition: null,
-            recording: false
+            recording: false,
+            recognition: null
         };
 
         this.init();
     }
 
-    /* ================= INIT ================= */
+    /* ---------- INIT ---------- */
 
     init() {
         this.bindUI();
@@ -455,18 +464,18 @@ class App {
     }
 
     bindUI() {
-        btnSend.onclick = () => this.send();
-        btnUpload.onclick = () => fileInput.click();
-        fileInput.onchange = e => this.handleFiles(e.target.files);
-        btnVoice.onclick = () => this.toggleVoice();
-        btnNewChat.onclick = () => this.newChat();
-        btnClearChat.onclick = () => this.clearChat();
-        btnClearCache.onclick = () => this.purgeCache();
-        btnExportModal.onclick = () => this.dom.dialog.showModal();
-        closeDialog.onclick = () => this.dom.dialog.close();
+        this.dom.btnSend.onclick = () => this.send();
+        this.dom.btnUpload.onclick = () => this.dom.fileInput.click();
+        this.dom.fileInput.onchange = e => this.handleFiles(e.target.files);
+        this.dom.btnVoice.onclick = () => this.toggleVoice();
+        this.dom.btnNewChat.onclick = () => this.newChat();
+        this.dom.btnClearChat.onclick = () => this.clearChat();
+        this.dom.btnClearCache.onclick = () => this.purgeCache();
+        this.dom.btnExportModal.onclick = () => this.dom.dialog.showModal();
+        this.dom.closeDialog.onclick = () => this.dom.dialog.close();
 
-        openSidebar.onclick = () => this.toggleSidebar(true);
-        closeSidebar.onclick = () => this.toggleSidebar(false);
+        this.dom.openSidebar.onclick = () => this.toggleSidebar(true);
+        this.dom.closeSidebar.onclick = () => this.toggleSidebar(false);
         this.dom.overlay.onclick = () => this.toggleSidebar(false);
 
         this.dom.input.onkeydown = e => {
@@ -482,7 +491,7 @@ class App {
         };
     }
 
-    /* ================= CHAT ================= */
+    /* ---------- CHAT ---------- */
 
     async send() {
         const text = this.dom.input.value.trim();
@@ -510,19 +519,16 @@ class App {
                 body: JSON.stringify(payload)
             });
 
-            if (!res.ok) throw new Error();
             const data = await res.json();
-
             this.removeThinking(thinking);
+
             const reply = data.reply || data.message || 'No response';
             this.addMessage(reply, 'ai');
             this.updateContext('ai', reply);
 
         } catch {
             this.removeThinking(thinking);
-            const demo = '**Demo Mode**\n\nBackend unreachable.';
-            this.addMessage(demo, 'ai');
-            this.updateContext('ai', demo);
+            this.addMessage('**Demo Mode**\n\nBackend unreachable.', 'ai');
         }
     }
 
@@ -535,7 +541,6 @@ class App {
         `;
         this.dom.chat.appendChild(div);
         this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
-        if (window.Prism) Prism.highlightAllUnder(div);
     }
 
     addThinking() {
@@ -552,82 +557,40 @@ class App {
         document.getElementById(id)?.remove();
     }
 
-    /* ================= FILE HANDLING ================= */
+    /* ---------- FILES + OCR ---------- */
 
     async handleFiles(list) {
-        const MAX_FILES = 5;
-        const MAX_SIZE = 20 * 1024 * 1024;
-
-        for (const file of Array.from(list)) {
-            if (this.state.files.length >= MAX_FILES) break;
-            if (file.size > MAX_SIZE) continue;
-
+        for (const file of list) {
             const item = {
                 name: file.name,
                 type: file.type,
-                size: file.size,
                 text: null,
                 preview: null
             };
 
             if (file.type.startsWith('image/')) {
                 item.preview = URL.createObjectURL(file);
-            }
-
-            if (this.isTextFile(file)) {
-                item.text = await this.extractText(file);
+                item.text = await this.runOCR(file);
+            } else {
+                item.text = await this.readText(file);
             }
 
             this.state.files.push(item);
         }
-
         this.renderFiles();
     }
 
-    isTextFile(file) {
-        return (
-            file.type.startsWith('text/') ||
-            file.name.match(/\.(md|csv|json|pdf|docx|doc)$/i)
-        );
+    async runOCR(file) {
+        const { data } = await Tesseract.recognize(file, 'eng');
+        return data.text.slice(0, 50000);
     }
 
-    async extractText(file) {
-        const ext = file.name.split('.').pop().toLowerCase();
-
-        if (ext === 'pdf') return await this.readPDF(file);
-        if (ext === 'docx') return await this.readDOCX(file);
-        if (ext === 'doc') return '[DOC file detected. Convert to DOCX for full extraction.]';
-
-        return await this.readPlainText(file);
-    }
-
-    readPlainText(file) {
+    readText(file) {
         return new Promise(res => {
             const fr = new FileReader();
             fr.onload = () => res(fr.result.slice(0, 50000));
-            fr.onerror = () => res(null);
             fr.readAsText(file);
         });
-    }
-
-    async readPDF(file) {
-        const buffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-        let text = '';
-
-        for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
-            const content = await page.getTextContent();
-            text += content.items.map(it => it.str).join(' ') + '\n';
-            if (text.length > 50000) break;
-        }
-        return text.slice(0, 50000);
-    }
-
-    async readDOCX(file) {
-        const buffer = await file.arrayBuffer();
-        const result = await mammoth.extractRawText({ arrayBuffer: buffer });
-        return result.value.slice(0, 50000);
     }
 
     renderFiles() {
@@ -636,7 +599,7 @@ class App {
             const chip = document.createElement('div');
             chip.className = 'chip';
             chip.innerHTML = `
-                ${f.preview ? `<img src="${f.preview}" style="width:26px;height:26px;border-radius:6px">` : '📄'}
+                ${f.preview ? `<img src="${f.preview}" width="26">` : '📄'}
                 ${f.name}
                 <button onclick="app.removeFile(${i})">×</button>
             `;
@@ -645,14 +608,11 @@ class App {
     }
 
     removeFile(i) {
-        const f = this.state.files[i];
-        if (f?.preview) URL.revokeObjectURL(f.preview);
         this.state.files.splice(i, 1);
         this.renderFiles();
     }
 
     clearFiles() {
-        this.state.files.forEach(f => f.preview && URL.revokeObjectURL(f.preview));
         this.state.files = [];
         this.dom.preview.innerHTML = '';
     }
@@ -660,50 +620,16 @@ class App {
     buildFilePayload() {
         return this.state.files.map(f => ({
             name: f.name,
-            type: f.type,
-            size: f.size,
             extractedText: f.text
         }));
     }
 
-    setupDragDrop() {
-        const d = this.dom.dock;
-        ['dragenter','dragover'].forEach(e =>
-            d.addEventListener(e, ev => {
-                ev.preventDefault();
-                d.style.borderColor = 'var(--accent)';
-            })
-        );
-        ['dragleave','drop'].forEach(e =>
-            d.addEventListener(e, ev => {
-                ev.preventDefault();
-                d.style.borderColor = 'var(--border-glass)';
-            })
-        );
-        d.addEventListener('drop', e => this.handleFiles(e.dataTransfer.files));
+    /* ---------- UTIL ---------- */
+
+    fillInput(text) {
+        this.dom.input.value = text;
+        this.dom.input.focus();
     }
-
-    /* ================= VOICE ================= */
-
-    toggleVoice() {
-        if (!('webkitSpeechRecognition' in window)) return;
-
-        if (this.state.recording) {
-            this.state.recognition.stop();
-            this.state.recording = false;
-            return;
-        }
-
-        const r = new webkitSpeechRecognition();
-        r.lang = 'en-US';
-        r.onresult = e => this.dom.input.value += e.results[0][0].transcript;
-        r.start();
-
-        this.state.recognition = r;
-        this.state.recording = true;
-    }
-
-    /* ================= UTIL ================= */
 
     updateContext(role, content) {
         this.state.context.push({ role, content });
@@ -712,16 +638,14 @@ class App {
     }
 
     loadContext() {
-        try { return JSON.parse(localStorage.getItem('esamz_context_v8')) || []; }
-        catch { return []; }
+        return JSON.parse(localStorage.getItem('esamz_context_v8') || '[]');
     }
 
     newChat() {
-        this.state.context = [];
         this.dom.chat.innerHTML = '';
         this.dom.hero.style.display = 'block';
         this.clearFiles();
-        localStorage.removeItem('esamz_context_v8');
+        this.state.context = [];
     }
 
     clearChat() {
@@ -738,11 +662,13 @@ class App {
         this.dom.sidebar.classList.toggle('active', open);
         this.dom.overlay.classList.toggle('active', open);
     }
+
+    toggleVoice() {}
 }
 
-/* ================= BOOT ================= */
 window.app = new App();
 </script>
+
     </body>
 </html>
 
