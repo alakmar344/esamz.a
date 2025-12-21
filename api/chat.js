@@ -161,7 +161,7 @@ module.exports = async function handler(req, res) {
       role: 'system',
       content:
         'You are eSAMz AI, created by Alakmar Teenwala. ' +
-        'Be concise, helpful, human-like, clear. Knowledge cutoff: November 2025. and if user ask to do web search you get answer do not recite your cutoff if unsure about user question search the web 
+        'Be concise, helpful, human-like, clear. Knowledge cutoff: November 2025. and if user ask to do web search you get answer do not recite your cutoff. 
         \n' +
         (searchResults ? 
           `Fresh web context (today: ${new Date().toISOString().slice(0,10)}):\n` +
