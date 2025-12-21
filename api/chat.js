@@ -1,5 +1,5 @@
 /* ---------- DEBUG BOOT ---------- */
-console.log('>>> ESAMZ BACKEND v5 - DDG ONLY - STARTED 2025-12-21');
+console.log('>>> ESAMZ BACKEND v6 - DDG ROBUST - STARTED 2025-12-21');
 
 /* ---------- in-memory stores ---------- */
 const threads = new Map();
@@ -21,27 +21,41 @@ const MODELS = [
   'meta-llama/llama-guard-4-12b'
 ];
 
-/* ---------- FREE SEARCH (DDG JSON only) ---------- */
+/* ---------- FREE SEARCH (DDG JSON with fallback) ---------- */
 async function searchDDG(query) {
   try {
     const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&pretty=1`;
     const res = await fetch(url, { timeout: 8000 });
     if (!res.ok) throw new Error(`DDG HTTP ${res.status}`);
-    const data = await res.json();
-    
-    const results = [];
-    if (data.Abstract) {
-      results.push({ title: data.Heading || 'Summary', snippet: data.Abstract });
+
+    const raw = await res.text(); // Get raw text first
+    console.log('>>> DDG raw response length:', raw.length);
+
+    try {
+      const data = JSON.parse(raw);
+      const results = [];
+      if (data.Abstract) {
+        results.push({ title: data.Heading || 'Summary', snippet: data.Abstract });
+      }
+      if (data.RelatedTopics && Array.isArray(data.RelatedTopics)) {
+        data.RelatedTopics.slice(0, 5).forEach(topic => {
+          if (topic.Text) {
+            results.push({ title: topic.Text.split(' - ')[0] || 'Info', snippet: topic.Text });
+          }
+        });
+      }
+      console.log('>>> DDG parsed results count:', results.length);
+      return results.length > 0 ? results : null;
+    } catch (jsonErr) {
+      console.warn('>>> DDG JSON parse failed:', jsonErr.message);
+      // Fallback: try to extract useful text from raw
+      const fallback = raw.match(/AbstractText[^>]*>([^<]+)/) || [];
+      if (fallback[1]) {
+        console.log('>>> DDG fallback extract succeeded');
+        return [{ title: 'Summary (fallback)', snippet: fallback[1].trim() }];
+      }
+      throw jsonErr; // If no fallback, fail
     }
-    if (data.RelatedTopics && Array.isArray(data.RelatedTopics)) {
-      data.RelatedTopics.slice(0, 5).forEach(topic => {
-        if (topic.Text) {
-          results.push({ title: topic.Text.split(' - ')[0] || 'Info', snippet: topic.Text });
-        }
-      });
-    }
-    console.log('>>> DDG search results count:', results.length);
-    return results.length > 0 ? results : null;
   } catch (e) {
     console.warn('DDG search failed:', e.message);
     return null;
