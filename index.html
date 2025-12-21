@@ -417,315 +417,332 @@
             <button class="export-btn" onclick="app.exportChat('pdf')"><span style="font-size:1.5rem">📕</span> PDF Document</button>
         </div>
     </dialog>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.js"></script>
+<script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+/* =========================================================
+   eSAMz v8 – Full Controller (All Text Files)
+   ========================================================= */
+<script>
+class App {
+    constructor() {
+        this.dom = {
+            chat: document.getElementById('chatStream'),
+            input: document.getElementById('userInput'),
+            hero: document.getElementById('heroSection'),
+            preview: document.getElementById('filePreview'),
+            sidebar: document.getElementById('sidebar'),
+            overlay: document.getElementById('overlay'),
+            dock: document.getElementById('dockContainer'),
+            dialog: document.getElementById('exportDialog')
+        };
 
-    <script>
-        /**
-         * eSAMz v8 Controller
-         */
-        class App {
-            constructor() {
-                this.dom = {
-                    chat: document.getElementById('chatStream'),
-                    input: document.getElementById('userInput'),
-                    hero: document.getElementById('heroSection'),
-                    history: document.getElementById('historyList'),
-                    preview: document.getElementById('filePreview'),
-                    sidebar: document.getElementById('sidebar'),
-                    overlay: document.getElementById('overlay'),
-                    dock: document.getElementById('dockContainer'),
-                    dialog: document.getElementById('exportDialog')
-                };
+        this.state = {
+            files: [],
+            context: this.loadContext(),
+            recognition: null,
+            recording: false
+        };
 
-                this.state = {
-                    chatId: null,
-                    files: [],
-                    isRecording: false,
-                    recognition: null,
-                    context: this.loadContext()
-                };
+        this.init();
+    }
 
-                this.init();
+    /* ================= INIT ================= */
+
+    init() {
+        this.bindUI();
+        this.setupDragDrop();
+        this.dom.input.focus();
+    }
+
+    bindUI() {
+        btnSend.onclick = () => this.send();
+        btnUpload.onclick = () => fileInput.click();
+        fileInput.onchange = e => this.handleFiles(e.target.files);
+        btnVoice.onclick = () => this.toggleVoice();
+        btnNewChat.onclick = () => this.newChat();
+        btnClearChat.onclick = () => this.clearChat();
+        btnClearCache.onclick = () => this.purgeCache();
+        btnExportModal.onclick = () => this.dom.dialog.showModal();
+        closeDialog.onclick = () => this.dom.dialog.close();
+
+        openSidebar.onclick = () => this.toggleSidebar(true);
+        closeSidebar.onclick = () => this.toggleSidebar(false);
+        this.dom.overlay.onclick = () => this.toggleSidebar(false);
+
+        this.dom.input.onkeydown = e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.send();
+            }
+        };
+
+        this.dom.input.oninput = () => {
+            this.dom.input.style.height = 'auto';
+            this.dom.input.style.height = this.dom.input.scrollHeight + 'px';
+        };
+    }
+
+    /* ================= CHAT ================= */
+
+    async send() {
+        const text = this.dom.input.value.trim();
+        if (!text && !this.state.files.length) return;
+
+        this.dom.hero.style.display = 'none';
+        this.addMessage(text, 'user');
+        this.updateContext('user', text);
+
+        const payload = {
+            message: text,
+            files: this.buildFilePayload(),
+            context: this.state.context
+        };
+
+        this.dom.input.value = '';
+        this.clearFiles();
+
+        const thinking = this.addThinking();
+
+        try {
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+
+            this.removeThinking(thinking);
+            const reply = data.reply || data.message || 'No response';
+            this.addMessage(reply, 'ai');
+            this.updateContext('ai', reply);
+
+        } catch {
+            this.removeThinking(thinking);
+            const demo = '**Demo Mode**\n\nBackend unreachable.';
+            this.addMessage(demo, 'ai');
+            this.updateContext('ai', demo);
+        }
+    }
+
+    addMessage(text, role) {
+        const div = document.createElement('div');
+        div.className = `msg-group ${role}`;
+        div.innerHTML = `
+            <div class="avatar">${role === 'user' ? 'U' : 'v8'}</div>
+            <div class="bubble">${marked.parse(text)}</div>
+        `;
+        this.dom.chat.appendChild(div);
+        this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
+        if (window.Prism) Prism.highlightAllUnder(div);
+    }
+
+    addThinking() {
+        const id = 'thinking-' + Date.now();
+        const div = document.createElement('div');
+        div.id = id;
+        div.className = 'msg-group ai';
+        div.innerHTML = `<div class="avatar">v8</div><div class="bubble">Processing…</div>`;
+        this.dom.chat.appendChild(div);
+        return id;
+    }
+
+    removeThinking(id) {
+        document.getElementById(id)?.remove();
+    }
+
+    /* ================= FILE HANDLING ================= */
+
+    async handleFiles(list) {
+        const MAX_FILES = 5;
+        const MAX_SIZE = 20 * 1024 * 1024;
+
+        for (const file of Array.from(list)) {
+            if (this.state.files.length >= MAX_FILES) break;
+            if (file.size > MAX_SIZE) continue;
+
+            const item = {
+                name: file.name,
+                type: file.type,
+                size: file.size,
+                text: null,
+                preview: null
+            };
+
+            if (file.type.startsWith('image/')) {
+                item.preview = URL.createObjectURL(file);
             }
 
-            init() {
-                this.loadHistory();
-                this.setupEventListeners();
-                this.setupDragDrop();
-                this.dom.input.focus();
+            if (this.isTextFile(file)) {
+                item.text = await this.extractText(file);
             }
 
-            setupEventListeners() {
-                const { input } = this.dom;
-                document.getElementById('btnSend').addEventListener('click', () => this.handleSend());
-                input.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.handleSend(); }
-                });
-                input.addEventListener('input', () => {
-                    input.style.height = 'auto'; input.style.height = input.scrollHeight + 'px';
-                });
-
-                document.getElementById('openSidebar').addEventListener('click', () => this.toggleSidebar(true));
-                document.getElementById('closeSidebar').addEventListener('click', () => this.toggleSidebar(false));
-                this.dom.overlay.addEventListener('click', () => this.toggleSidebar(false));
-
-                document.getElementById('btnNewChat').addEventListener('click', () => this.newChat());
-                document.getElementById('btnClearChat').addEventListener('click', () => this.clearChat());
-                document.getElementById('btnClearCache').addEventListener('click', () => this.purgeCache());
-                
-                document.getElementById('btnUpload').addEventListener('click', () => document.getElementById('fileInput').click());
-                document.getElementById('fileInput').addEventListener('change', (e) => this.handleFiles(e.target.files));
-                document.getElementById('btnVoice').addEventListener('click', () => this.toggleVoice());
-
-                document.getElementById('btnExportModal').addEventListener('click', () => this.dom.dialog.showModal());
-                document.getElementById('closeDialog').addEventListener('click', () => this.dom.dialog.close());
-            }
-
-            setupDragDrop() {
-                const dock = this.dom.dock;
-                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
-                    dock.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); });
-                });
-                dock.addEventListener('dragenter', () => dock.style.borderColor = 'var(--accent)');
-                dock.addEventListener('dragleave', () => dock.style.borderColor = 'var(--border-glass)');
-                dock.addEventListener('drop', (e) => this.handleFiles(e.dataTransfer.files));
-            }
-
-            async handleSend() {
-                const text = this.dom.input.value.trim();
-                if (!text && this.state.files.length === 0) return;
-
-                this.toggleSidebar(false);
-                if (!this.state.chatId) this.createChatSession(text);
-
-                this.dom.hero.style.display = 'none';
-
-                // User UI
-                this.addMessage(text, 'user');
-                this.updateContext('user', text);
-
-                // Prepare Payload (v7 Logic)
-                const filePayload = this.state.files.map(f => ({ name: f.name, type: f.type, size: f.size }));
-                const payload = {
-                    message: text,
-                    files: filePayload,
-                    context: this.state.context,
-                    enableWebSearch: true
-                };
-
-                // Clear Input
-                this.dom.input.value = '';
-                this.dom.input.style.height = 'auto';
-                this.state.files = [];
-                this.renderFiles();
-
-                const thinkingId = this.addThinking();
-
-                try {
-                    // --- REAL BACKEND CALL (v7 Logic) ---
-                    const res = await fetch('/api/chat', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!res.ok) throw new Error('Server error');
-                    const data = await res.json();
-
-                    // Search Indicator
-                    if (data.webSearched) {
-                        this.showSearchIndicator(data.searchQuery);
-                    }
-
-                    this.removeThinking(thinkingId);
-
-                    const reply = data.reply || data.message || 'No reply';
-                    this.addMessage(reply, 'ai');
-                    this.updateContext('ai', reply);
-
-                } catch (e) {
-                    // Fallback to demo if backend fails
-                    this.removeThinking(thinkingId);
-                    const reply = this.generateDemoResponse(text);
-                    this.addMessage(reply, 'ai');
-                    this.updateContext('ai', reply);
-                }
-            }
-
-            showSearchIndicator(query) {
-                const div = document.createElement('div');
-                div.className = 'msg-group ai';
-                div.innerHTML = `
-                    <div class="avatar">v8</div>
-                    <div class="bubble">
-                        <span>🔍 Searching for: "${query || '...'}"</span>
-                    </div>`;
-                this.dom.chat.appendChild(div);
-                this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
-                setTimeout(() => div.remove(), 2500);
-            }
-
-            generateDemoResponse(text) {
-                const responses = [
-                    `**eSAMz v8 (Demo Mode):**\n\nI couldn't reach your server at \`/api/chat\`, so here is a simulation based on "${text.slice(0,25)}...".\n\n1. Check your backend connection.\n2. Ensure the API route exists.\n\n\`\`\`javascript\nconsole.log("Backend Offline");\n\`\`\``,
-                    `> "System Alert"\n\nUnable to connect to neural backend. Displaying cached intelligence for: "${text}"`
-                ];
-                return responses[Math.floor(Math.random() * responses.length)];
-            }
-
-            addMessage(text, sender) {
-                const div = document.createElement('div');
-                div.className = `msg-group ${sender}`;
-                const avatar = sender === 'user' ? 'U' : 'v8';
-                const htmlContent = marked.parse(text);
-
-                div.innerHTML = `
-                    <div class="avatar">${avatar}</div>
-                    <div style="width:100%">
-                        <div class="bubble">${htmlContent}</div>
-                        ${sender === 'ai' ? `<div class="msg-actions"><button class="action-link" onclick="app.copyText(this)">Copy</button></div>` : ''}
-                    </div>`;
-                this.dom.chat.appendChild(div);
-                this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
-                if (window.Prism) Prism.highlightAllUnder(div);
-            }
-
-            addThinking() {
-                const id = 'thinking-' + Date.now();
-                const div = document.createElement('div');
-                div.className = 'msg-group ai';
-                div.id = id;
-                div.innerHTML = `
-                    <div class="avatar">v8</div>
-                    <div class="bubble" style="display:flex; align-items:center; gap:8px;">
-                        <span style="color:var(--accent); font-weight:600;">Processing</span>
-                        <span class="status-dot" style="background:var(--accent); animation:pulse-red 1s infinite"></span>
-                    </div>`;
-                this.dom.chat.appendChild(div);
-                this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
-                return id;
-            }
-
-            removeThinking(id) {
-                const el = document.getElementById(id);
-                if (el) el.remove();
-            }
-
-            updateContext(role, content) {
-                this.state.context.push({ role, content, ts: Date.now() });
-                if (this.state.context.length > 10) this.state.context.shift();
-                localStorage.setItem('esamz_context_v8', JSON.stringify(this.state.context));
-            }
-
-            loadContext() {
-                return JSON.parse(localStorage.getItem('esamz_context_v8') ?? '[]');
-            }
-
-            createChatSession(text) {
-                this.state.chatId = Date.now();
-                const title = text.slice(0, 20) + (text.length > 20 ? '...' : '');
-                const btn = document.createElement('button');
-                btn.className = 'nav-item';
-                btn.innerHTML = `<span>💬</span> ${title}`;
-                this.dom.history.prepend(btn);
-                this.saveHistoryDOM();
-            }
-
-            saveHistoryDOM() {
-                const items = Array.from(this.dom.history.children).map(btn => btn.innerText.replace('💬 ', ''));
-                localStorage.setItem('esamz_history_v8', JSON.stringify(items));
-            }
-
-            loadHistory() {
-                const items = JSON.parse(localStorage.getItem('esamz_history_v8') ?? '[]');
-                items.forEach(text => {
-                    const btn = document.createElement('button');
-                    btn.className = 'nav-item';
-                    btn.innerHTML = `<span>💬</span> ${text}`;
-                    this.dom.history.appendChild(btn);
-                });
-            }
-
-            fillInput(text) { this.dom.input.value = text; this.dom.input.focus(); }
-
-            newChat() {
-                this.state.chatId = null;
-                this.dom.chat.innerHTML = '';
-                this.dom.chat.appendChild(this.dom.hero);
-                this.dom.hero.style.display = 'block';
-                this.toggleSidebar(false);
-            }
-
-            clearChat() { this.newChat(); }
-            purgeCache() { if(confirm('Delete all neural memories?')) { localStorage.clear(); location.reload(); } }
-
-            toggleSidebar(open) {
-                if (open) { this.dom.sidebar.classList.add('active'); this.dom.overlay.classList.add('active'); } 
-                else { this.dom.sidebar.classList.remove('active'); this.dom.overlay.classList.remove('active'); }
-            }
-
-            handleFiles(fileList) { this.state.files = [...this.state.files, ...fileList]; this.renderFiles(); }
-
-            renderFiles() {
-                this.dom.preview.innerHTML = '';
-                this.state.files.forEach((f, idx) => {
-                    const chip = document.createElement('div');
-                    chip.className = 'chip';
-                    chip.innerHTML = `📎 ${f.name} <button onclick="app.removeFile(${idx})">×</button>`;
-                    this.dom.preview.appendChild(chip);
-                });
-            }
-
-            removeFile(idx) { this.state.files.splice(idx, 1); this.renderFiles(); }
-
-            toggleVoice() {
-                const btn = document.getElementById('btnVoice');
-                if (!this.state.recognition) {
-                    if (!('webkitSpeechRecognition' in window)) return alert('Voice API not supported');
-                    this.state.recognition = new webkitSpeechRecognition();
-                    this.state.recognition.lang = 'en-US';
-                    this.state.recognition.onresult = (e) => this.dom.input.value += e.results[0][0].transcript;
-                    this.state.recognition.onend = () => { this.state.isRecording = false; btn.classList.remove('recording'); };
-                }
-                if (this.state.isRecording) { this.state.recognition.stop(); this.state.isRecording = false; btn.classList.remove('recording'); } 
-                else { this.state.recognition.start(); this.state.isRecording = true; btn.classList.add('recording'); }
-            }
-
-            copyText(btn) {
-                const text = btn.closest('.msg-group').querySelector('.bubble').innerText;
-                navigator.clipboard.writeText(text);
-                const original = btn.innerText;
-                btn.innerText = 'Copied';
-                setTimeout(() => btn.innerText = original, 1500);
-            }
-
-            exportChat(type) {
-                const msgs = Array.from(document.querySelectorAll('.msg-group')).map(el => {
-                    const who = el.classList.contains('user') ? 'User' : 'eSAMz';
-                    const txt = el.querySelector('.bubble').innerText;
-                    return `[${who}]: ${txt}`;
-                }).join('\n\n');
-                
-                const filename = `esamz-v8-export`;
-                if (type === 'txt') this.download(filename+'.txt', msgs);
-                if (type === 'md') this.download(filename+'.md', msgs);
-                if (type === 'html') this.download(filename+'.html', `<pre>${msgs}</pre>`);
-                if (type === 'pdf') {
-                   const el = document.createElement('div');
-                   el.innerHTML = marked.parse(msgs);
-                   html2pdf().from(el).save(filename+'.pdf');
-                }
-                this.dom.dialog.close();
-            }
-
-            download(name, content) {
-                const link = document.createElement('a');
-                link.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(content);
-                link.download = name;
-                link.click();
-            }
+            this.state.files.push(item);
         }
 
-        const app = new App();
-    </script>
-</body>
+        this.renderFiles();
+    }
+
+    isTextFile(file) {
+        return (
+            file.type.startsWith('text/') ||
+            file.name.match(/\.(md|csv|json|pdf|docx|doc)$/i)
+        );
+    }
+
+    async extractText(file) {
+        const ext = file.name.split('.').pop().toLowerCase();
+
+        if (ext === 'pdf') return await this.readPDF(file);
+        if (ext === 'docx') return await this.readDOCX(file);
+        if (ext === 'doc') return '[DOC file detected. Convert to DOCX for full extraction.]';
+
+        return await this.readPlainText(file);
+    }
+
+    readPlainText(file) {
+        return new Promise(res => {
+            const fr = new FileReader();
+            fr.onload = () => res(fr.result.slice(0, 50000));
+            fr.onerror = () => res(null);
+            fr.readAsText(file);
+        });
+    }
+
+    async readPDF(file) {
+        const buffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+        let text = '';
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            text += content.items.map(it => it.str).join(' ') + '\n';
+            if (text.length > 50000) break;
+        }
+        return text.slice(0, 50000);
+    }
+
+    async readDOCX(file) {
+        const buffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+        return result.value.slice(0, 50000);
+    }
+
+    renderFiles() {
+        this.dom.preview.innerHTML = '';
+        this.state.files.forEach((f, i) => {
+            const chip = document.createElement('div');
+            chip.className = 'chip';
+            chip.innerHTML = `
+                ${f.preview ? `<img src="${f.preview}" style="width:26px;height:26px;border-radius:6px">` : '📄'}
+                ${f.name}
+                <button onclick="app.removeFile(${i})">×</button>
+            `;
+            this.dom.preview.appendChild(chip);
+        });
+    }
+
+    removeFile(i) {
+        const f = this.state.files[i];
+        if (f?.preview) URL.revokeObjectURL(f.preview);
+        this.state.files.splice(i, 1);
+        this.renderFiles();
+    }
+
+    clearFiles() {
+        this.state.files.forEach(f => f.preview && URL.revokeObjectURL(f.preview));
+        this.state.files = [];
+        this.dom.preview.innerHTML = '';
+    }
+
+    buildFilePayload() {
+        return this.state.files.map(f => ({
+            name: f.name,
+            type: f.type,
+            size: f.size,
+            extractedText: f.text
+        }));
+    }
+
+    setupDragDrop() {
+        const d = this.dom.dock;
+        ['dragenter','dragover'].forEach(e =>
+            d.addEventListener(e, ev => {
+                ev.preventDefault();
+                d.style.borderColor = 'var(--accent)';
+            })
+        );
+        ['dragleave','drop'].forEach(e =>
+            d.addEventListener(e, ev => {
+                ev.preventDefault();
+                d.style.borderColor = 'var(--border-glass)';
+            })
+        );
+        d.addEventListener('drop', e => this.handleFiles(e.dataTransfer.files));
+    }
+
+    /* ================= VOICE ================= */
+
+    toggleVoice() {
+        if (!('webkitSpeechRecognition' in window)) return;
+
+        if (this.state.recording) {
+            this.state.recognition.stop();
+            this.state.recording = false;
+            return;
+        }
+
+        const r = new webkitSpeechRecognition();
+        r.lang = 'en-US';
+        r.onresult = e => this.dom.input.value += e.results[0][0].transcript;
+        r.start();
+
+        this.state.recognition = r;
+        this.state.recording = true;
+    }
+
+    /* ================= UTIL ================= */
+
+    updateContext(role, content) {
+        this.state.context.push({ role, content });
+        if (this.state.context.length > 10) this.state.context.shift();
+        localStorage.setItem('esamz_context_v8', JSON.stringify(this.state.context));
+    }
+
+    loadContext() {
+        try { return JSON.parse(localStorage.getItem('esamz_context_v8')) || []; }
+        catch { return []; }
+    }
+
+    newChat() {
+        this.state.context = [];
+        this.dom.chat.innerHTML = '';
+        this.dom.hero.style.display = 'block';
+        this.clearFiles();
+        localStorage.removeItem('esamz_context_v8');
+    }
+
+    clearChat() {
+        this.dom.chat.innerHTML = '';
+        this.dom.hero.style.display = 'block';
+    }
+
+    purgeCache() {
+        localStorage.clear();
+        location.reload();
+    }
+
+    toggleSidebar(open) {
+        this.dom.sidebar.classList.toggle('active', open);
+        this.dom.overlay.classList.toggle('active', open);
+    }
+}
+
+/* ================= BOOT ================= */
+window.app = new App();
+</script>
+    </body>
 </html>
+
