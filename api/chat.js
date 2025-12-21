@@ -38,7 +38,7 @@ async function searchTavily(query) {
         api_key: apiKey,
         query: query,
         search_depth: 'basic',    // 'basic' or 'advanced'
-        include_answer: true,     // Get a summarized answer
+        include_answer: false,     // Get a summarized answer
         include_raw_content: false,
         max_results: 5
       }),
