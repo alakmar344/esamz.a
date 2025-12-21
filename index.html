@@ -446,20 +446,22 @@ class App {
         };
 
         this.state = {
+            messages: [],
             files: [],
             context: this.loadContext(),
-            recording: false,
-            recognition: null
+            recognition: null,
+            recording: false
         };
 
         this.init();
     }
 
-    /* ---------- INIT ---------- */
+    /* ================= INIT ================= */
 
     init() {
         this.bindUI();
         this.setupDragDrop();
+        this.restoreMessages();
         this.dom.input.focus();
     }
 
@@ -468,9 +470,11 @@ class App {
         this.dom.btnUpload.onclick = () => this.dom.fileInput.click();
         this.dom.fileInput.onchange = e => this.handleFiles(e.target.files);
         this.dom.btnVoice.onclick = () => this.toggleVoice();
+
         this.dom.btnNewChat.onclick = () => this.newChat();
         this.dom.btnClearChat.onclick = () => this.clearChat();
         this.dom.btnClearCache.onclick = () => this.purgeCache();
+
         this.dom.btnExportModal.onclick = () => this.dom.dialog.showModal();
         this.dom.closeDialog.onclick = () => this.dom.dialog.close();
 
@@ -491,54 +495,72 @@ class App {
         };
     }
 
-    /* ---------- CHAT ---------- */
+    /* ================= CHAT ================= */
 
     async send() {
         const text = this.dom.input.value.trim();
         if (!text && !this.state.files.length) return;
 
         this.dom.hero.style.display = 'none';
-        this.addMessage(text, 'user');
-        this.updateContext('user', text);
 
-        const payload = {
-            message: text,
-            files: this.buildFilePayload(),
-            context: this.state.context
-        };
-
+        this.pushMessage('user', text);
         this.dom.input.value = '';
         this.clearFiles();
 
-        const thinking = this.addThinking();
+        const thinkingId = this.addThinking();
 
         try {
             const res = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({
+                    message: text,
+                    files: this.buildFilePayload(),
+                    context: this.state.context
+                })
             });
 
             const data = await res.json();
-            this.removeThinking(thinking);
+            this.removeThinking(thinkingId);
 
             const reply = data.reply || data.message || 'No response';
-            this.addMessage(reply, 'ai');
-            this.updateContext('ai', reply);
+            this.pushMessage('ai', reply);
 
         } catch {
-            this.removeThinking(thinking);
-            this.addMessage('**Demo Mode**\n\nBackend unreachable.', 'ai');
+            this.removeThinking(thinkingId);
+            this.pushMessage('ai', '**Demo Mode**\n\nBackend unreachable.');
         }
     }
 
-    addMessage(text, role) {
+    pushMessage(role, content) {
+        const msg = {
+            id: Date.now() + Math.random(),
+            role,
+            content
+        };
+
+        this.state.messages.push(msg);
+        this.updateContext(role, content);
+        this.renderMessage(msg);
+        this.persistMessages();
+    }
+
+    renderMessage(msg) {
         const div = document.createElement('div');
-        div.className = `msg-group ${role}`;
+        div.className = `msg-group ${msg.role}`;
+        div.dataset.id = msg.id;
+
         div.innerHTML = `
-            <div class="avatar">${role === 'user' ? 'U' : 'v8'}</div>
-            <div class="bubble">${marked.parse(text)}</div>
+            <div class="avatar">${msg.role === 'user' ? 'U' : 'v8'}</div>
+            <div style="width:100%">
+                <div class="bubble">${marked.parse(msg.content)}</div>
+                <div class="msg-actions">
+                    <button class="action-link" onclick="app.copyMessage(${msg.id})">Copy</button>
+                    <button class="action-link" onclick="app.deleteMessage(${msg.id})">Delete</button>
+                </div>
+            </div>
         `;
+
         this.dom.chat.appendChild(div);
         this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
     }
@@ -548,7 +570,10 @@ class App {
         const div = document.createElement('div');
         div.id = id;
         div.className = 'msg-group ai';
-        div.innerHTML = `<div class="avatar">v8</div><div class="bubble">Processing…</div>`;
+        div.innerHTML = `
+            <div class="avatar">v8</div>
+            <div class="bubble">Processing…</div>
+        `;
         this.dom.chat.appendChild(div);
         return id;
     }
@@ -557,7 +582,29 @@ class App {
         document.getElementById(id)?.remove();
     }
 
-    /* ---------- FILES + OCR ---------- */
+    /* ================= DELETE / COPY ================= */
+
+    deleteMessage(id) {
+        this.state.messages = this.state.messages.filter(m => m.id !== id);
+        this.dom.chat.querySelector(`[data-id="${id}"]`)?.remove();
+        this.rebuildContext();
+        this.persistMessages();
+    }
+
+    copyMessage(id) {
+        const msg = this.state.messages.find(m => m.id === id);
+        if (msg) navigator.clipboard.writeText(msg.content);
+    }
+
+    rebuildContext() {
+        this.state.context = this.state.messages.map(m => ({
+            role: m.role,
+            content: m.content
+        })).slice(-10);
+        localStorage.setItem('esamz_context_v8', JSON.stringify(this.state.context));
+    }
+
+    /* ================= FILES + OCR ================= */
 
     async handleFiles(list) {
         for (const file of list) {
@@ -624,11 +671,30 @@ class App {
         }));
     }
 
-    /* ---------- UTIL ---------- */
+    setupDragDrop() {
+        const d = this.dom.dock;
+        ['dragenter','dragover'].forEach(e =>
+            d.addEventListener(e, ev => { ev.preventDefault(); })
+        );
+        d.addEventListener('drop', e => {
+            e.preventDefault();
+            this.handleFiles(e.dataTransfer.files);
+        });
+    }
 
-    fillInput(text) {
-        this.dom.input.value = text;
-        this.dom.input.focus();
+    /* ================= MEMORY ================= */
+
+    persistMessages() {
+        localStorage.setItem('esamz_messages_v8', JSON.stringify(this.state.messages));
+    }
+
+    restoreMessages() {
+        const saved = JSON.parse(localStorage.getItem('esamz_messages_v8') || '[]');
+        if (!saved.length) return;
+
+        this.state.messages = saved;
+        this.dom.hero.style.display = 'none';
+        saved.forEach(m => this.renderMessage(m));
     }
 
     updateContext(role, content) {
@@ -641,11 +707,16 @@ class App {
         return JSON.parse(localStorage.getItem('esamz_context_v8') || '[]');
     }
 
+    /* ================= UI ================= */
+
     newChat() {
+        this.state.messages = [];
+        this.state.context = [];
         this.dom.chat.innerHTML = '';
         this.dom.hero.style.display = 'block';
         this.clearFiles();
-        this.state.context = [];
+        localStorage.removeItem('esamz_messages_v8');
+        localStorage.removeItem('esamz_context_v8');
     }
 
     clearChat() {
@@ -663,11 +734,14 @@ class App {
         this.dom.overlay.classList.toggle('active', open);
     }
 
-    toggleVoice() {}
+    toggleVoice() {
+        /* optional */
+    }
 }
 
 window.app = new App();
 </script>
+
 
     </body>
 </html>
