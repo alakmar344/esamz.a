@@ -1,5 +1,5 @@
 /* ---------- DEBUG BOOT ---------- */
-console.log('>>> ESAMZ BACKEND v6 - DDG ROBUST - STARTED 2025-12-21');
+console.log('>>> ESAMZ BACKEND v9 - TAVILY SEARCH - STARTED 2025-12-21');
 
 /* ---------- in-memory stores ---------- */
 const threads = new Map();
@@ -21,49 +21,57 @@ const MODELS = [
   'meta-llama/llama-guard-4-12b'
 ];
 
-/* ---------- FREE SEARCH (DDG JSON with fallback) ---------- */
-async function searchDDG(query) {
+/* ---------- TAVILY SEARCH (free tier) ---------- */
+async function searchTavily(query) {
+  const apiKey = process.env.TAVILY_API_KEY;
+  if (!apiKey) {
+    console.warn('TAVILY_API_KEY MISSING - Skipping search');
+    return null;
+  }
+
   try {
-    const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&pretty=1`;
-    const res = await fetch(url, { timeout: 8000 });
-    if (!res.ok) throw new Error(`DDG HTTP ${res.status}`);
+    const url = 'https://api.tavily.com/search';
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: apiKey,
+        query: query,
+        search_depth: 'basic',    // 'basic' or 'advanced'
+        include_answer: true,     // Get a summarized answer
+        include_raw_content: false,
+        max_results: 5
+      }),
+      timeout: 10000
+    });
 
-    const raw = await res.text(); // Get raw text first
-    console.log('>>> DDG raw response length:', raw.length);
+    if (!res.ok) throw new Error(`Tavily HTTP ${res.status}`);
 
-    try {
-      const data = JSON.parse(raw);
-      const results = [];
-      if (data.Abstract) {
-        results.push({ title: data.Heading || 'Summary', snippet: data.Abstract });
-      }
-      if (data.RelatedTopics && Array.isArray(data.RelatedTopics)) {
-        data.RelatedTopics.slice(0, 5).forEach(topic => {
-          if (topic.Text) {
-            results.push({ title: topic.Text.split(' - ')[0] || 'Info', snippet: topic.Text });
-          }
-        });
-      }
-      console.log('>>> DDG parsed results count:', results.length);
-      return results.length > 0 ? results : null;
-    } catch (jsonErr) {
-      console.warn('>>> DDG JSON parse failed:', jsonErr.message);
-      // Fallback: try to extract useful text from raw
-      const fallback = raw.match(/AbstractText[^>]*>([^<]+)/) || [];
-      if (fallback[1]) {
-        console.log('>>> DDG fallback extract succeeded');
-        return [{ title: 'Summary (fallback)', snippet: fallback[1].trim() }];
-      }
-      throw jsonErr; // If no fallback, fail
+    const data = await res.json();
+    
+    const results = [];
+    if (data.answer) {
+      results.push({ title: 'Summary Answer', snippet: data.answer });
     }
+    if (data.results && Array.isArray(data.results)) {
+      data.results.slice(0, 5).forEach(r => {
+        results.push({
+          title: r.title || 'Untitled',
+          snippet: r.content || r.raw_content?.substring(0, 300) || 'No description'
+        });
+      });
+    }
+
+    console.log('>>> TAVILY search results count:', results.length);
+    return results.length > 0 ? results : null;
   } catch (e) {
-    console.warn('DDG search failed:', e.message);
+    console.warn('TAVILY search failed:', e.message);
     return null;
   }
 }
 
 async function performSearch(query) {
-  const results = await searchDDG(query);
+  const results = await searchTavily(query);
   if (results) return results;
   return [{ title: 'No web results', snippet: 'Using knowledge up to Nov 2025.' }];
 }
