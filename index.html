@@ -1,771 +1,731 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>eSAMz v8 – Neural Intelligence</title>
-<meta name="description" content="eSAMz AI - Advanced AI chat interface with multi-modal capabilities.">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>eSAMz v8 – Neural Intelligence</title>
+    <meta name="description" content="eSAMz AI - Advanced AI chat interface with multi-modal capabilities.">
 
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  "@id": "https://esamz.site/#organization",
-  "name": "eSAMz",
-  "legalName": "eSAMz AI",
-  "url": "https://esamz.site",
-  "logo": {
-    "@type": "ImageObject",
-    "url": "https://esamz.site/logo.png",
-    "width": "512",
-    "height": "512"
-  },
-  "description": "eSAMz AI - Intelligence Redefined. Advanced AI chat interface with multi-modal capabilities, file uploads, voice input, and seamless conversation management.",
-  "brand": {
-    "@type": "Brand",
-    "name": "eSAMz AI",
-    "slogan": "Not just responsive but supportive"
-  },
-  "foundingDate": "2024",
-  "sameAs": [
-    "https://esamz.info",
-    "https://esamz.site"
-  ],
-  "contactPoint": {
-    "@type": "ContactPoint",
-    "contactType": "Customer Support",
-    "url": "https://esamz.info"
-  }
-}
-</script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "@id": "https://esamz.site/#organization",
+      "name": "eSAMz",
+      "legalName": "eSAMz AI",
+      "url": "https://esamz.site",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://esamz.site/logo.png",
+        "width": "512",
+        "height": "512"
+      },
+      "description": "eSAMz AI - Intelligence Redefined.",
+      "brand": {
+        "@type": "Brand",
+        "name": "eSAMz AI",
+        "slogan": "Not just responsive but supportive"
+      },
+      "foundingDate": "2024",
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "Customer Support",
+        "url": "https://esamz.info"
+      }
+    }
+    </script>
 
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
 
-<style>
-:root {
-    --accent: #8b5cf6;
-    --accent-glow: rgba(139, 92, 246, 0.4);
-    --bg-dark: #050505;
-    --glass: rgba(20, 20, 20, 0.6);
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --text-main: #ffffff;
-    --text-dim: #9ca3af;
-    --radius-lg: 24px;
-    --radius-md: 16px;
-    --shadow-neural: 0 0 60px rgba(139, 92, 246, 0.15);
-}
+    <style>
+        /* --- MODERN CSS VARIABLES & RESET --- */
+        :root {
+            /* Palette */
+            --hue: 250;
+            --accent: hsl(var(--hue), 90%, 65%);
+            --accent-glow: hsla(var(--hue), 90%, 65%, 0.4);
+            --bg-dark: #050507;
+            --surface-glass: rgba(18, 18, 20, 0.65);
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --text-main: #ffffff;
+            --text-muted: #9494a0;
+            
+            /* Dimensions */
+            --sidebar-width: 300px;
+            --radius-xl: 24px;
+            --radius-md: 14px;
+            --space-container: clamp(1rem, 5vw, 15%);
+        }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body { 
+            background-color: var(--bg-dark);
+            /* Neural Mesh Gradient */
+            background-image: 
+                radial-gradient(circle at 10% 20%, hsla(var(--hue), 80%, 20%, 0.15), transparent 40%),
+                radial-gradient(circle at 90% 80%, hsla(210, 80%, 20%, 0.15), transparent 40%);
+            color: var(--text-main); 
+            font-family: 'Outfit', system-ui, sans-serif;
+            height: 100vh; 
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: var(--sidebar-width) 1fr;
+            transition: grid-template-columns 0.4s ease;
+        }
 
-body { 
-    background-color: var(--bg-dark);
-    /* Animated Neural Background */
-    background-image: 
-        radial-gradient(circle at 15% 50%, rgba(139, 92, 246, 0.08), transparent 25%), 
-        radial-gradient(circle at 85% 30%, rgba(59, 130, 246, 0.08), transparent 25%);
-    color: var(--text-main); 
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    height: 100vh; 
-    overflow: hidden;
-    display: flex;
-}
+        /* --- SIDEBAR (ASIDE) --- */
+        .sidebar { 
+            background: var(--surface-glass); 
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border-right: 1px solid var(--border-glass); 
+            display: flex; 
+            flex-direction: column; 
+            z-index: 20; 
+            height: 100%;
+            transform: translateX(0);
+            transition: transform 0.3s ease;
+        }
 
-/* --- V8 SIDEBAR (GLASSMORPHIC) --- */
-.sidebar { 
-    width: 300px; 
-    background: var(--glass); 
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-right: 1px solid var(--glass-border); 
-    display: flex; 
-    flex-direction: column; 
-    z-index: 100; 
-    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    position: relative;
-    height: 100%;
-}
+        .sidebar-header { padding: 2rem 1.5rem 1rem; }
 
-.sidebar-header { padding: 30px 24px 20px; }
+        .brand { 
+            display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2rem; 
+        }
+        
+        .brand-icon { 
+            width: 38px; height: 38px; 
+            background: linear-gradient(135deg, white, var(--accent)); 
+            border-radius: 10px; 
+            display: grid; place-items: center; 
+            color: black; font-weight: 800; font-size: 1.1rem;
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
 
-.logo-box { 
-    display: flex; 
-    align-items: center; 
-    gap: 12px; 
-    margin-bottom: 24px; 
-}
+        .btn-new { 
+            width: 100%; padding: 0.85rem; 
+            background: var(--accent); color: white; border: none;
+            border-radius: var(--radius-md); font-weight: 600; cursor: pointer; 
+            display: flex; justify-content: center; gap: 0.5rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px var(--accent-glow);
+        }
+        .btn-new:hover { transform: translateY(-2px); box-shadow: 0 8px 25px var(--accent-glow); }
 
-.logo-icon { 
-    width: 36px; height: 36px; 
-    background: linear-gradient(135deg, #fff, var(--accent)); 
-    border-radius: 10px; 
-    display: flex; align-items: center; justify-content: center; 
-    font-weight: 800; color: black; font-size: 18px;
-    box-shadow: 0 0 15px var(--accent-glow);
-}
+        .nav-scroller { flex: 1; overflow-y: auto; padding: 0.5rem 1.25rem; }
+        
+        .nav-label { 
+            font-size: 0.65rem; color: var(--text-muted); 
+            text-transform: uppercase; letter-spacing: 1.5px; 
+            margin: 1.5rem 0 0.5rem 0.25rem; font-weight: 700;
+        }
 
-.logo-text { font-weight: 700; font-size: 18px; letter-spacing: -0.5px; }
+        .nav-item { 
+            width: 100%; padding: 0.75rem 0.85rem; 
+            background: transparent; border: 1px solid transparent;
+            color: var(--text-muted); border-radius: 12px; 
+            cursor: pointer; text-align: left; margin-bottom: 0.25rem; 
+            transition: all 0.2s; display: flex; align-items: center; gap: 0.75rem; 
+            font-size: 0.85rem; font-family: inherit; text-decoration: none;
+        }
+        .nav-item:hover { background: rgba(255,255,255,0.04); color: white; }
+        .nav-item:active { transform: scale(0.98); }
 
-.new-chat-btn { 
-    width: 100%; 
-    padding: 14px; 
-    background: var(--accent); 
-    color: white; 
-    border: none;
-    border-radius: var(--radius-md); 
-    cursor: pointer; 
-    font-weight: 600;
-    font-size: 14px;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 20px var(--accent-glow);
-}
+        .sidebar-footer { 
+            padding: 1.5rem; border-top: 1px solid var(--border-glass); 
+            text-align: center; font-size: 0.7rem; color: var(--text-muted);
+        }
 
-.new-chat-btn:hover { 
-    transform: translateY(-2px);
-    box-shadow: 0 8px 30px var(--accent-glow);
-}
+        /* --- MAIN AREA --- */
+        .app-main { 
+            position: relative; 
+            display: flex; flex-direction: column; 
+            height: 100vh;
+        }
 
-.side-nav { flex: 1; overflow-y: auto; padding: 10px 20px; }
+        header { 
+            height: 64px; padding: 0 2rem; 
+            display: flex; align-items: center; justify-content: space-between; 
+            z-index: 10;
+        }
 
-.nav-label { 
-    font-size: 10px; color: var(--text-dim); 
-    text-transform: uppercase; letter-spacing: 2px; 
-    margin: 24px 0 12px 4px; display: block;
-}
+        .status-badge { 
+            display: inline-flex; align-items: center; gap: 6px; 
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; 
+            color: var(--text-muted);
+        }
+        .status-dot { width: 6px; height: 6px; background: #10b981; border-radius: 50%; box-shadow: 0 0 8px #10b981; }
 
-.side-btn { 
-    width: 100%; padding: 12px 14px; 
-    background: rgba(255,255,255,0.02); 
-    border: 1px solid transparent;
-    color: var(--text-dim); 
-    border-radius: 12px; 
-    cursor: pointer; text-align: left; 
-    margin-bottom: 6px; 
-    transition: all 0.2s; 
-    display: flex; align-items: center; gap: 10px; 
-    font-size: 13px; font-family: inherit; text-decoration: none;
-}
+        .btn-ghost { 
+            background: transparent; border: 1px solid var(--border-glass); 
+            color: var(--text-muted); padding: 0.4rem 1rem; border-radius: 20px; 
+            cursor: pointer; font-size: 0.75rem; transition: 0.2s;
+        }
+        .btn-ghost:hover { border-color: var(--accent); color: white; }
 
-.side-btn:hover { 
-    background: rgba(255,255,255,0.06); 
-    color: white; 
-}
+        /* --- CHAT STREAM --- */
+        .chat-stream { 
+            flex: 1; overflow-y: auto; 
+            padding: 1rem var(--space-container) 8rem; 
+            scroll-behavior: smooth;
+        }
 
-.side-btn.active { 
-    background: rgba(139, 92, 246, 0.1); 
-    border-color: var(--accent); 
-    color: white;
-}
+        /* Welcome Section */
+        .hero { 
+            text-align: center; margin-top: 10vh; 
+            animation: fadeIn 0.8s ease-out;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
-.sidebar-footer {
-    padding: 24px;
-    border-top: 1px solid var(--glass-border);
-    font-size: 11px; color: var(--text-dim);
-    text-align: center;
-}
+        .hero h1 { 
+            font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 800; 
+            background: linear-gradient(to bottom right, white, #a5a5b5); 
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem; letter-spacing: -1.5px;
+        }
+        .hero p { color: var(--text-muted); font-size: 1.1rem; margin-bottom: 3rem; }
 
-/* --- MAIN INTERFACE --- */
-.main { 
-    flex: 1; display: flex; flex-direction: column; 
-    position: relative; 
-    background: radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.05), transparent 50%);
-}
+        .cards-grid { 
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); 
+            gap: 1rem; max-width: 900px; margin: 0 auto; 
+        }
+        
+        .card { 
+            background: rgba(255,255,255,0.02); border: 1px solid var(--border-glass); 
+            padding: 1.5rem; border-radius: var(--radius-md); text-align: left; 
+            cursor: pointer; transition: 0.2s ease;
+        }
+        .card:hover { border-color: var(--accent); background: rgba(255,255,255,0.04); transform: translateY(-4px); }
+        .card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; color: white; }
+        .card p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; }
 
-.header { 
-    height: 60px; 
-    display: flex; align-items: center; justify-content: space-between; 
-    padding: 0 30px; 
-    z-index: 10;
-}
+        /* Messages */
+        .msg-group { 
+            display: flex; gap: 1rem; margin-bottom: 2rem; 
+            opacity: 0; animation: slideUp 0.4s forwards;
+        }
+        @keyframes slideUp { to { opacity: 1; } }
 
-.status-indicator {
-    display: flex; align-items: center; gap: 8px;
-    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
-    color: var(--text-dim);
-}
+        .msg-group.user { flex-direction: row-reverse; }
 
-.status-dot {
-    width: 6px; height: 6px; 
-    background: #10b981; border-radius: 50%; 
-    box-shadow: 0 0 10px #10b981;
-}
+        .avatar { 
+            width: 36px; height: 36px; flex-shrink: 0; border-radius: 12px; 
+            display: grid; place-items: center; font-size: 0.8rem; font-weight: 700; 
+        }
+        .user .avatar { background: var(--accent); color: white; box-shadow: 0 0 15px var(--accent-glow); }
+        .ai .avatar { background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); }
 
-.clear-btn {
-    background: none; border: 1px solid var(--glass-border);
-    color: var(--text-dim); padding: 6px 16px; border-radius: 20px;
-    cursor: pointer; transition: 0.2s; font-size: 12px;
-}
+        .bubble { 
+            max-width: 85%; padding: 1.25rem 1.5rem; 
+            border-radius: var(--radius-xl); font-size: 0.95rem; line-height: 1.6;
+        }
+        .user .bubble { 
+            background: var(--accent); color: white; 
+            border-bottom-right-radius: 4px; box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+        .ai .bubble { 
+            background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); 
+            border-bottom-left-radius: 4px; backdrop-filter: blur(10px);
+        }
+        .bubble pre { background: #000 !important; padding: 1rem; border-radius: 8px; overflow-x: auto; border: 1px solid var(--border-glass); }
+        .bubble code { font-family: 'JetBrains Mono', monospace; font-size: 0.85em; }
 
-.clear-btn:hover { border-color: var(--accent); color: white; }
+        .msg-actions { 
+            display: flex; gap: 0.5rem; margin-top: 0.5rem; opacity: 0; transition: opacity 0.2s; 
+        }
+        .msg-group:hover .msg-actions { opacity: 1; }
+        .action-link { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.75rem; }
+        .action-link:hover { color: white; text-decoration: underline; }
 
-/* --- CHAT STREAM --- */
-.chat-container { 
-    flex: 1; overflow-y: auto; 
-    padding: 20px 15% 40px; 
-    scroll-behavior: smooth;
-    mask-image: linear-gradient(to bottom, transparent, black 20px);
-}
+        /* --- INPUT DOCK --- */
+        .input-dock { 
+            position: absolute; bottom: 0; left: 0; right: 0; 
+            padding: 0 var(--space-container) 2rem;
+            background: linear-gradient(to top, var(--bg-dark) 20%, transparent);
+            z-index: 30;
+        }
 
-/* Welcome Screen V8 */
-.welcome-screen { text-align: center; margin-top: 8vh; animation: fadeIn 0.8s ease; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .dock-container { 
+            background: rgba(20, 20, 22, 0.7); 
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-glass); 
+            border-radius: 20px; padding: 0.75rem; 
+            box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .dock-container:focus-within { border-color: var(--accent); box-shadow: 0 25px 60px var(--accent-glow); }
+        
+        .file-chips { display: flex; gap: 0.5rem; padding: 0 0.5rem 0.5rem; flex-wrap: wrap; }
+        .chip { 
+            background: rgba(255,255,255,0.1); border-radius: 20px; 
+            padding: 4px 10px; font-size: 0.75rem; display: flex; align-items: center; gap: 6px; 
+        }
+        .chip button { background: none; border: none; color: inherit; cursor: pointer; font-size: 1rem; line-height: 1; }
 
-.welcome-title {
-    font-size: 48px; font-weight: 800; margin-bottom: 12px;
-    background: linear-gradient(to right, #fff, #9ca3af);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    letter-spacing: -1px;
-}
+        .input-row { display: flex; align-items: flex-end; gap: 0.5rem; }
+        
+        .btn-tool { 
+            width: 42px; height: 42px; border-radius: 50%; border: none; 
+            background: rgba(255,255,255,0.03); color: var(--text-muted); 
+            cursor: pointer; display: grid; place-items: center; font-size: 1.1rem;
+            transition: 0.2s;
+        }
+        .btn-tool:hover { background: rgba(255,255,255,0.1); color: white; }
+        .btn-send { background: white; color: black; }
+        .btn-send:hover { transform: scale(1.05); background: white; }
+        .recording { color: #ef4444; animation: pulse-red 1.5s infinite; }
+        @keyframes pulse-red { 50% { opacity: 0.5; } }
 
-.welcome-subtitle { color: var(--text-dim); font-size: 18px; margin-bottom: 40px; }
+        textarea { 
+            flex: 1; background: transparent; border: none; outline: none; 
+            color: white; padding: 0.75rem 0.5rem; font-family: inherit; 
+            font-size: 1rem; resize: none; max-height: 200px;
+        }
 
-.feature-grid { 
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; 
-    max-width: 900px; margin: 0 auto; 
-}
+        /* --- NATIVE DIALOG (MODAL) --- */
+        dialog { 
+            background: #111; color: white; border: 1px solid var(--border-glass);
+            border-radius: var(--radius-xl); padding: 0; 
+            max-width: 450px; width: 90%; 
+            backdrop-filter: blur(10px);
+            margin: auto;
+        }
+        dialog::backdrop { background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); }
+        .modal-body { padding: 2rem; }
+        .modal-header { display: flex; justify-content: space-between; margin-bottom: 1.5rem; }
+        .export-btn { 
+            display: flex; align-items: center; gap: 1rem; width: 100%; 
+            padding: 1rem; margin-bottom: 0.5rem; text-align: left;
+            background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); 
+            border-radius: 12px; color: white; cursor: pointer; transition: 0.2s;
+        }
+        .export-btn:hover { border-color: var(--accent); background: rgba(139, 92, 246, 0.1); }
 
-.feature-card { 
-    background: rgba(255,255,255,0.02); 
-    border: 1px solid var(--glass-border); 
-    padding: 24px; border-radius: var(--radius-md); 
-    cursor: pointer; transition: 0.3s; text-align: left;
-}
+        /* --- MOBILE --- */
+        .mobile-toggle, .mobile-close, .overlay { display: none; }
 
-.feature-card:hover { 
-    border-color: var(--accent); 
-    background: rgba(139, 92, 246, 0.05);
-    transform: translateY(-5px); 
-}
+        @media (max-width: 768px) {
+            body { grid-template-columns: 1fr; }
+            .sidebar { 
+                position: fixed; top: 0; left: 0; bottom: 0; width: 85%; 
+                transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            .sidebar.active { transform: translateX(0); box-shadow: 20px 0 50px rgba(0,0,0,0.5); }
+            
+            .overlay { 
+                display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.6); 
+                z-index: 15; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+            }
+            .overlay.active { opacity: 1; pointer-events: auto; }
 
-.feature-title { font-weight: 600; color: white; margin-bottom: 8px; font-size: 15px; }
-.feature-desc { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
-
-/* Messages V8 */
-.msg { margin-bottom: 30px; display: flex; gap: 18px; opacity: 0; animation: slideUp 0.4s forwards; }
-@keyframes slideUp { to { opacity: 1; } }
-
-.msg.user { flex-direction: row-reverse; }
-
-.msg-avatar { 
-    width: 36px; height: 36px; border-radius: 10px; 
-    display: flex; align-items: center; justify-content: center; 
-    font-size: 14px; font-weight: 700; flex-shrink: 0;
-}
-
-.user .msg-avatar { background: var(--accent); color: white; box-shadow: 0 0 15px var(--accent-glow); }
-.ai .msg-avatar { background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: white; }
-
-.bubble { 
-    max-width: 80%; padding: 20px 24px; 
-    border-radius: var(--radius-lg); font-size: 15px; line-height: 1.7;
-}
-
-.user .bubble { 
-    background: var(--accent); color: white; 
-    border-bottom-right-radius: 4px; 
-    box-shadow: 0 4px 20px rgba(139, 92, 246, 0.2);
-}
-
-.ai .bubble { 
-    background: rgba(255,255,255,0.03); 
-    border: 1px solid var(--glass-border); 
-    border-bottom-left-radius: 4px;
-    backdrop-filter: blur(10px);
-}
-
-/* Markdown tweaks for V8 */
-.bubble code { font-family: 'JetBrains Mono', monospace; font-size: 13px; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; }
-.bubble pre { background: #0a0a0a !important; border-radius: 12px; margin: 12px 0; border: 1px solid var(--glass-border); }
-.bubble a { color: #bfdbfe; }
-
-/* Message Actions */
-.msg-actions { margin-top: 8px; display: flex; gap: 10px; opacity: 0; transition: 0.2s; }
-.msg:hover .msg-actions { opacity: 1; }
-.action-btn { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 11px; }
-.action-btn:hover { color: white; text-decoration: underline; }
-
-/* --- INPUT HUB (FLOATING) --- */
-.input-area { 
-    padding: 0 15% 30px; 
-    background: linear-gradient(to top, var(--bg-dark), transparent);
-    z-index: 20;
-}
-
-.input-box-wrap { 
-    background: rgba(20, 20, 20, 0.8); 
-    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border); 
-    border-radius: 24px; 
-    padding: 10px; 
-    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-    transition: 0.3s;
-}
-
-.input-box-wrap:focus-within { border-color: var(--accent); box-shadow: 0 20px 50px var(--accent-glow); }
-.input-box-wrap.dragover { border-color: var(--accent); background: rgba(139, 92, 246, 0.1); }
-
-.file-preview-bar { padding: 0 10px 8px; display: flex; gap: 8px; }
-.chip { 
-    background: rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 20px; 
-    font-size: 11px; display: flex; align-items: center; gap: 6px;
-}
-.chip-close { cursor: pointer; opacity: 0.7; } .chip-close:hover { opacity: 1; }
-
-.input-row { display: flex; align-items: flex-end; gap: 8px; }
-
-textarea { 
-    flex: 1; background: transparent; border: none; color: white; 
-    resize: none; outline: none; font-size: 15px; padding: 12px 4px; 
-    max-height: 200px; font-family: inherit; line-height: 1.5;
-}
-
-textarea::placeholder { color: var(--text-dim); }
-
-.tool-btn { 
-    width: 44px; height: 44px; border-radius: 50%; border: none; 
-    background: rgba(255,255,255,0.03); color: var(--text-dim); 
-    cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; font-size: 18px;
-}
-
-.tool-btn:hover { background: rgba(255,255,255,0.1); color: white; }
-
-.send-btn { background: white !important; color: black !important; }
-.send-btn:hover { transform: scale(1.1); box-shadow: 0 0 15px white; }
-
-.recording-mic { color: #ef4444 !important; animation: pulse 1.5s infinite; }
-@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-
-/* --- MODAL V8 --- */
-.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(15px); z-index: 1000; align-items: center; justify-content: center; }
-.modal.active { display: flex; }
-.modal-content { background: #111; border: 1px solid var(--glass-border); border-radius: 24px; padding: 32px; width: 100%; max-width: 450px; }
-.modal-header { display: flex; justify-content: space-between; margin-bottom: 24px; }
-.export-option { padding: 16px; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 12px; margin-bottom: 10px; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: 0.2s; }
-.export-option:hover { background: rgba(139, 92, 246, 0.1); border-color: var(--accent); }
-
-/* --- MOBILE --- */
-.menu-toggle { display: none; background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
-.sidebar-close { display: none; background: none; border: none; color: white; font-size: 24px; position: absolute; top: 20px; right: 20px; cursor: pointer; }
-.sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 90; }
-
-@media (max-width: 768px) {
-    .sidebar { position: fixed; left: -100%; top: 0; width: 85%; }
-    .sidebar.open { left: 0; box-shadow: 50px 0 100px rgba(0,0,0,0.8); }
-    .sidebar-overlay.active { display: block; }
-    .sidebar-close { display: block; }
-    .menu-toggle { display: block; }
-    .feature-grid { grid-template-columns: 1fr; }
-    .chat-container, .input-area { padding-left: 5%; padding-right: 5%; }
-    .header { padding: 0 16px; }
-}
-
-/* Scrollbar */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-</style>
+            .mobile-toggle { display: block; background: none; border: none; color: white; font-size: 1.5rem; }
+            .mobile-close { display: block; position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: white; font-size: 2rem; }
+        }
+    </style>
 </head>
-
 <body>
-<div class="app" style="display:flex; width:100%; height:100%;">
-    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
-    
+
+    <div class="overlay" id="overlay"></div>
+
     <aside class="sidebar" id="sidebar">
-        <button class="sidebar-close" onclick="toggleSidebar()">×</button>
+        <button class="mobile-close" id="closeSidebar">&times;</button>
         <div class="sidebar-header">
-            <div class="logo-box">
-                <div class="logo-icon">v8</div>
-                <span class="logo-text">eSAMz</span>
+            <div class="brand">
+                <div class="brand-icon">v8</div>
+                <span style="font-weight: 700; font-size: 1.2rem;">eSAMz</span>
             </div>
-            <button class="new-chat-btn" onclick="newChat()">
-                <span>+</span> New Intelligence
+            <button class="btn-new" id="btnNewChat">
+                <span style="font-size:1.1em">+</span> New Intelligence
             </button>
         </div>
         
-        <div class="side-nav">
-            <span class="nav-label">Memory Threads</span>
-            <div id="chatHistory"></div>
+        <nav class="nav-scroller">
+            <div class="nav-label">Memory Threads</div>
+            <div id="historyList"></div>
 
-            <span class="nav-label">System Controls</span>
-            <button class="side-btn" onclick="openExportModal()">
-                <span>📥</span> Export Session
-            </button>
-            <button class="side-btn" onclick="clearAllHistory()">
-                <span>🗑️</span> Purge Cache
-            </button>
-            
-            <span class="nav-label">Links</span>
-            <a href="https://esamz.info" class="side-btn" target="_blank">
-                <span>🌐</span> Portal
-            </a>
-        </div>
-
+            <div class="nav-label">System</div>
+            <button class="nav-item" id="btnExportModal"><span>📥</span> Export Session</button>
+            <button class="nav-item" id="btnClearCache"><span>🗑️</span> Purge Cache</button>
+            <a href="https://esamz.info" target="_blank" class="nav-item"><span>🌐</span> Portal</a>
+        </nav>
+        
         <div class="sidebar-footer">
             eSAMz v8 Neural Engine<br>© 2025 Alakmar Teenwala
         </div>
     </aside>
 
-    <main class="main">
-        <header class="header">
-            <div style="display:flex; align-items:center; gap:16px;">
-                <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
-                <div class="status-indicator">
-                    <span class="status-dot"></span> Online
-                </div>
+    <main class="app-main">
+        <header>
+            <div style="display:flex; align-items:center; gap:1rem;">
+                <button class="mobile-toggle" id="openSidebar">☰</button>
+                <div class="status-badge"><span class="status-dot"></span> Online</div>
             </div>
-            <button class="clear-btn" onclick="clearCurrentChat()">Clear</button>
+            <button class="btn-ghost" id="btnClearChat">Clear</button>
         </header>
 
-        <div class="chat-container" id="chat" onclick="closeSidebarOnMobile()">
-            <div class="welcome-screen" id="welcomeMsg">
-                <h1 class="welcome-title">Hello, Architect.</h1>
-                <p class="welcome-subtitle">v8 Neural Interface Initialized.</p>
-                <div class="feature-grid">
-                    <div class="feature-card" onclick="fillInput('Design a scalable database schema for a SaaS app')">
-                        <div class="feature-title">🏗️ Logic Design</div>
-                        <p class="feature-desc">Generate complex code architectures.</p>
-                    </div>
-                    <div class="feature-card" onclick="fillInput('Explain quantum computing in simple terms')">
-                        <div class="feature-title">🔬 Deep Research</div>
-                        <p class="feature-desc">Analyze complex topics with context.</p>
-                    </div>
-                    <div class="feature-card" onclick="fillInput('Write a creative story about AI')">
-                        <div class="feature-title">✍️ Creative Mode</div>
-                        <p class="feature-desc">Imaginative and unrestricted writing.</p>
-                    </div>
+        <div class="chat-stream" id="chatStream">
+            <div class="hero" id="heroSection">
+                <h1>Hello, Architect.</h1>
+                <p>v8 Neural Interface Initialized.</p>
+                <div class="cards-grid">
+                    <button class="card" onclick="app.fillInput('Design a scalable database schema for a SaaS app')">
+                        <h3>🏗️ Logic Design</h3>
+                        <p>Generate complex code architectures.</p>
+                    </button>
+                    <button class="card" onclick="app.fillInput('Explain quantum computing in simple terms')">
+                        <h3>🔬 Deep Research</h3>
+                        <p>Analyze complex topics with context.</p>
+                    </button>
+                    <button class="card" onclick="app.fillInput('Write a creative story about AI')">
+                        <h3>✍️ Creative Mode</h3>
+                        <p>Imaginative and unrestricted writing.</p>
+                    </button>
                 </div>
             </div>
         </div>
 
-        <div class="input-area">
-            <div class="input-box-wrap" id="inputWrap">
-                <div class="file-preview-bar" id="filesPreview"></div>
+        <div class="input-dock">
+            <div class="dock-container" id="dockContainer">
+                <div class="file-chips" id="filePreview"></div>
                 <div class="input-row">
-                    <button class="tool-btn" title="Upload Files" onclick="document.getElementById('fileInput').click()">📎</button>
-                    <input type="file" id="fileInput" hidden multiple onchange="handleFiles(this.files)">
-                    
-                    <button class="tool-btn" id="voiceBtn" title="Voice Input" onclick="toggleVoice()">🎤</button>
-                    
-                    <textarea id="userInput" placeholder="Ask eSAMz v8..." rows="1" oninput="autoGrow(this)" onkeydown="handleKeyPress(event)"></textarea>
-                    
-                    <button class="tool-btn send-btn" id="sendBtn" onclick="sendMessage()">↑</button>
+                    <button class="btn-tool" id="btnUpload" title="Upload">📎</button>
+                    <input type="file" id="fileInput" hidden multiple>
+                    <button class="btn-tool" id="btnVoice" title="Voice Input">🎤</button>
+                    <textarea id="userInput" rows="1" placeholder="Ask eSAMz v8..."></textarea>
+                    <button class="btn-tool btn-send" id="btnSend">↑</button>
                 </div>
             </div>
         </div>
     </main>
-</div>
 
-<div class="modal" id="exportModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 style="color:white; font-weight:700;">📥 Export Data</h3>
-            <button class="clear-btn" style="border:none;" onclick="closeExportModal()">✕</button>
+    <dialog id="exportDialog">
+        <div class="modal-body">
+            <div class="modal-header">
+                <h3>📥 Export Data</h3>
+                <button class="btn-ghost" style="border:none; padding:0; font-size:1.5rem;" id="closeDialog">×</button>
+            </div>
+            <button class="export-btn" onclick="app.exportChat('txt')"><span style="font-size:1.5rem">📄</span> Plain Text</button>
+            <button class="export-btn" onclick="app.exportChat('md')"><span style="font-size:1.5rem">📝</span> Markdown</button>
+            <button class="export-btn" onclick="app.exportChat('html')"><span style="font-size:1.5rem">🌐</span> HTML File</button>
+            <button class="export-btn" onclick="app.exportChat('pdf')"><span style="font-size:1.5rem">📕</span> PDF Document</button>
         </div>
-        <div class="export-option" onclick="exportAs('txt')">
-            <span style="font-size:20px">📄</span>
-            <div><div style="color:white; font-weight:600">Plain Text</div></div>
-        </div>
-        <div class="export-option" onclick="exportAs('md')">
-            <span style="font-size:20px">📝</span>
-            <div><div style="color:white; font-weight:600">Markdown</div></div>
-        </div>
-        <div class="export-option" onclick="exportAs('html')">
-            <span style="font-size:20px">🌐</span>
-            <div><div style="color:white; font-weight:600">HTML File</div></div>
-        </div>
-        <div class="export-option" onclick="exportAs('pdf')">
-            <span style="font-size:20px">📕</span>
-            <div><div style="color:white; font-weight:600">PDF Document</div></div>
-        </div>
-    </div>
-</div>
+    </dialog>
 
-<script>
-/* ---------- LOGIC (INHERITED FROM V7) ---------- */
-const $ = id => document.getElementById(id);
-const chat = $('chat');
-const input = $('userInput');
-const historyDiv = $('chatHistory');
-const welcomeMsg = $('welcomeMsg');
-const preview = $('filesPreview');
-const sidebar = $('sidebar');
-const overlay = $('sidebarOverlay');
-const inputWrap = $('inputWrap');
+    <script>
+        /**
+         * eSAMz v8 Controller
+         */
+        class App {
+            constructor() {
+                this.dom = {
+                    chat: document.getElementById('chatStream'),
+                    input: document.getElementById('userInput'),
+                    hero: document.getElementById('heroSection'),
+                    history: document.getElementById('historyList'),
+                    preview: document.getElementById('filePreview'),
+                    sidebar: document.getElementById('sidebar'),
+                    overlay: document.getElementById('overlay'),
+                    dock: document.getElementById('dockContainer'),
+                    dialog: document.getElementById('exportDialog')
+                };
 
-let currentChatId = null;
-let uploadedFiles = [];
-let recognition = null;
-let isRecording = false;
-let conversationContext = [];
+                this.state = {
+                    chatId: null,
+                    files: [],
+                    isRecording: false,
+                    recognition: null,
+                    context: this.loadContext()
+                };
 
-function updateContext(role, content) {
-    conversationContext.push({ role, content, timestamp: Date.now() });
-    if (conversationContext.length > 10) conversationContext.shift();
-    localStorage.setItem('esamz_context', JSON.stringify(conversationContext));
-}
+                this.init();
+            }
 
-function loadContext() {
-    try {
-        const saved = JSON.parse(localStorage.getItem('esamz_context') || '[]');
-        conversationContext = saved;
-    } catch {}
-}
+            init() {
+                this.loadHistory();
+                this.setupEventListeners();
+                this.setupDragDrop();
+                this.dom.input.focus();
+            }
 
-function toggleSidebar() { 
-    sidebar.classList.toggle('open');
-    overlay.classList.toggle('active');
-}
+            setupEventListeners() {
+                const { input } = this.dom;
+                document.getElementById('btnSend').addEventListener('click', () => this.handleSend());
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.handleSend(); }
+                });
+                input.addEventListener('input', () => {
+                    input.style.height = 'auto'; input.style.height = input.scrollHeight + 'px';
+                });
 
-function closeSidebarOnMobile() { 
-    if (window.innerWidth <= 768) {
-        sidebar.classList.remove('open');
-        overlay.classList.remove('active');
-    }
-}
+                document.getElementById('openSidebar').addEventListener('click', () => this.toggleSidebar(true));
+                document.getElementById('closeSidebar').addEventListener('click', () => this.toggleSidebar(false));
+                this.dom.overlay.addEventListener('click', () => this.toggleSidebar(false));
 
-function newChat() {
-    currentChatId = null;
-    chat.innerHTML = '';
-    chat.appendChild(welcomeMsg);
-    welcomeMsg.style.display = 'block';
-    input.value = '';
-    input.style.height = 'auto';
-    preview.innerHTML = '';
-    uploadedFiles = [];
-    conversationContext = [];
-    localStorage.removeItem('esamz_context');
-    closeSidebarOnMobile();
-}
+                document.getElementById('btnNewChat').addEventListener('click', () => this.newChat());
+                document.getElementById('btnClearChat').addEventListener('click', () => this.clearChat());
+                document.getElementById('btnClearCache').addEventListener('click', () => this.purgeCache());
+                
+                document.getElementById('btnUpload').addEventListener('click', () => document.getElementById('fileInput').click());
+                document.getElementById('fileInput').addEventListener('change', (e) => this.handleFiles(e.target.files));
+                document.getElementById('btnVoice').addEventListener('click', () => this.toggleVoice());
 
-async function sendMessage() {
-    const text = input.value.trim();
-    if (!text && !uploadedFiles.length) return;
-    closeSidebarOnMobile();
-    if (!currentChatId) createChatId(text);
-    welcomeMsg.style.display = 'none';
+                document.getElementById('btnExportModal').addEventListener('click', () => this.dom.dialog.showModal());
+                document.getElementById('closeDialog').addEventListener('click', () => this.dom.dialog.close());
+            }
 
-    addMessage(text, 'user');
-    updateContext('user', text);
+            setupDragDrop() {
+                const dock = this.dom.dock;
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
+                    dock.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); });
+                });
+                dock.addEventListener('dragenter', () => dock.style.borderColor = 'var(--accent)');
+                dock.addEventListener('dragleave', () => dock.style.borderColor = 'var(--border-glass)');
+                dock.addEventListener('drop', (e) => this.handleFiles(e.dataTransfer.files));
+            }
 
-    input.value = '';
-    input.style.height = 'auto';
-    preview.innerHTML = '';
-    uploadedFiles = [];
-    
-    // v8 Thinking Indicator
-    const thinkingId = addThinking();
+            async handleSend() {
+                const text = this.dom.input.value.trim();
+                if (!text && this.state.files.length === 0) return;
 
-    // SIMULATED API CALL
-    try {
-        await new Promise(r => setTimeout(r, 1500)); // Simulate latency
-        removeThinking(thinkingId);
-        
-        // Context-aware demo response
-        const responses = [
-            `**eSAMz v8 Analysis:**\n\nI have processed "${text.slice(0,20)}..." through the neural core.\n\n1. **Observation:** This is a key query.\n2. **Action:** Retrieving optimal data.\n\n\`\`\`javascript\nconsole.log("v8 Logic Active");\n\`\`\``,
-            `Here is the information you requested regarding "${text}".\n\n> The v8 engine is designed for speed and clarity.\n\nLet me know if you need to expand on this topic!`
-        ];
-        const reply = responses[Math.floor(Math.random() * responses.length)];
-        
-        addMessage(reply, 'ai');
-        updateContext('ai', reply);
+                this.toggleSidebar(false);
+                if (!this.state.chatId) this.createChatSession(text);
 
-    } catch (e) {
-        removeThinking(thinkingId);
-        addMessage("Connection error. v8 systems offline.", 'ai');
-    }
-}
+                this.dom.hero.style.display = 'none';
 
-function addMessage(text, sender) {
-    const wrap = document.createElement('div');
-    wrap.className = 'msg ' + sender;
+                // User UI
+                this.addMessage(text, 'user');
+                this.updateContext('user', text);
 
-    const avatar = document.createElement('div');
-    avatar.className = 'msg-avatar';
-    avatar.textContent = sender === 'user' ? 'U' : 'v8';
+                // Prepare Payload (v7 Logic)
+                const filePayload = this.state.files.map(f => ({ name: f.name, type: f.type, size: f.size }));
+                const payload = {
+                    message: text,
+                    files: filePayload,
+                    context: this.state.context,
+                    enableWebSearch: true
+                };
 
-    const bubble = document.createElement('div');
-    bubble.className = 'bubble';
-    bubble.innerHTML = marked.parse(text);
+                // Clear Input
+                this.dom.input.value = '';
+                this.dom.input.style.height = 'auto';
+                this.state.files = [];
+                this.renderFiles();
 
-    const actions = document.createElement('div');
-    actions.className = 'msg-actions';
-    actions.innerHTML = `
-        <button class="action-btn" onclick="copyMessage(this)">Copy</button>
-        <button class="action-btn" onclick="regenerateMessage(this)">Regenerate</button>`;
+                const thinkingId = this.addThinking();
 
-    if(sender === 'ai') bubble.appendChild(actions);
-    
-    wrap.append(avatar, bubble);
-    chat.appendChild(wrap);
-    chat.scrollTop = chat.scrollHeight;
-    Prism.highlightAllUnder(chat);
-}
+                try {
+                    // --- REAL BACKEND CALL (v7 Logic) ---
+                    const res = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
 
-function addThinking() {
-    const id = 'thinking-' + Date.now();
-    const wrap = document.createElement('div');
-    wrap.className = 'msg ai';
-    wrap.id = id;
-    wrap.innerHTML = `
-        <div class="msg-avatar">v8</div>
-        <div class="bubble" style="display:flex; align-items:center; gap:10px;">
-            <span style="color:var(--accent);">Processing</span>
-            <span style="display:inline-block; width:6px; height:6px; background:var(--accent); border-radius:50%; animation:pulse 1s infinite;"></span>
-            <span style="display:inline-block; width:6px; height:6px; background:var(--accent); border-radius:50%; animation:pulse 1s 0.2s infinite;"></span>
-            <span style="display:inline-block; width:6px; height:6px; background:var(--accent); border-radius:50%; animation:pulse 1s 0.4s infinite;"></span>
-        </div>`;
-    chat.appendChild(wrap);
-    chat.scrollTop = chat.scrollHeight;
-    return id;
-}
+                    if (!res.ok) throw new Error('Server error');
+                    const data = await res.json();
 
-function removeThinking(id) { 
-    const t = $(id); 
-    if (t) t.remove(); 
-}
+                    // Search Indicator
+                    if (data.webSearched) {
+                        this.showSearchIndicator(data.searchQuery);
+                    }
 
-function copyMessage(btn) {
-    const bubble = btn.closest('.bubble');
-    const text = bubble.textContent.replace(/Copy|Regenerate/g, '').trim();
-    navigator.clipboard.writeText(text);
-    btn.textContent = 'Copied';
-    setTimeout(() => btn.textContent = 'Copy', 1500);
-}
+                    this.removeThinking(thinkingId);
 
-function toggleVoice() {
-    const btn = $('voiceBtn');
-    if (!recognition) {
-        const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!Speech) return alert('Voice not supported.');
-        recognition = new Speech();
-        recognition.lang = 'en-US';
-        recognition.onresult = e => input.value += e.results[0][0].transcript;
-        recognition.onend = () => { btn.classList.remove('recording-mic'); isRecording = false; };
-    }
-    if (isRecording) {
-        recognition.stop();
-        btn.classList.remove('recording-mic');
-        isRecording = false;
-    } else {
-        recognition.start();
-        btn.classList.add('recording-mic');
-        isRecording = true;
-    }
-}
+                    const reply = data.reply || data.message || 'No reply';
+                    this.addMessage(reply, 'ai');
+                    this.updateContext('ai', reply);
 
-function handleFiles(files) {
-    uploadedFiles = [...files];
-    preview.innerHTML = '';
-    uploadedFiles.forEach(f => {
-        const chip = document.createElement('div');
-        chip.className = 'chip';
-        chip.innerHTML = `📎 ${f.name} <span class="chip-close" onclick="removeFile('${f.name}')">×</span>`;
-        preview.appendChild(chip);
-    });
-}
+                } catch (e) {
+                    // Fallback to demo if backend fails
+                    this.removeThinking(thinkingId);
+                    const reply = this.generateDemoResponse(text);
+                    this.addMessage(reply, 'ai');
+                    this.updateContext('ai', reply);
+                }
+            }
 
-function removeFile(name) {
-    uploadedFiles = uploadedFiles.filter(f => f.name !== name);
-    handleFiles(uploadedFiles);
-}
+            showSearchIndicator(query) {
+                const div = document.createElement('div');
+                div.className = 'msg-group ai';
+                div.innerHTML = `
+                    <div class="avatar">v8</div>
+                    <div class="bubble">
+                        <span>🔍 Searching for: "${query || '...'}"</span>
+                    </div>`;
+                this.dom.chat.appendChild(div);
+                this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
+                setTimeout(() => div.remove(), 2500);
+            }
 
-function openExportModal() { $('exportModal').classList.add('active'); }
-function closeExportModal() { $('exportModal').classList.remove('active'); }
+            generateDemoResponse(text) {
+                const responses = [
+                    `**eSAMz v8 (Demo Mode):**\n\nI couldn't reach your server at \`/api/chat\`, so here is a simulation based on "${text.slice(0,25)}...".\n\n1. Check your backend connection.\n2. Ensure the API route exists.\n\n\`\`\`javascript\nconsole.log("Backend Offline");\n\`\`\``,
+                    `> "System Alert"\n\nUnable to connect to neural backend. Displaying cached intelligence for: "${text}"`
+                ];
+                return responses[Math.floor(Math.random() * responses.length)];
+            }
 
-function exportAs(type) {
-    const msgs = [...chat.querySelectorAll('.msg')].map(m => {
-        const who = m.classList.contains('user') ? 'User' : 'eSAMz';
-        const text = m.querySelector('.bubble').innerText.replace(/Copy|Regenerate/g, '').trim();
-        return `[${who}]: ${text}`;
-    }).join('\n\n');
-    
-    const name = `esamz-v8-export`;
-    
-    if (type === 'txt') download(`${name}.txt`, msgs);
-    else if (type === 'md') download(`${name}.md`, msgs);
-    else if (type === 'html') download(`${name}.html`, `<html><body><pre>${msgs}</pre></body></html>`);
-    else if (type === 'pdf') {
-        const el = document.createElement('div');
-        el.innerHTML = marked.parse(msgs);
-        html2pdf().from(el).save(`${name}.pdf`);
-    }
-    closeExportModal();
-}
+            addMessage(text, sender) {
+                const div = document.createElement('div');
+                div.className = `msg-group ${sender}`;
+                const avatar = sender === 'user' ? 'U' : 'v8';
+                const htmlContent = marked.parse(text);
 
-function download(filename, content) {
-    const element = document.createElement('a');
-    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(content));
-    element.setAttribute('download', filename);
-    element.style.display = 'none';
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-}
+                div.innerHTML = `
+                    <div class="avatar">${avatar}</div>
+                    <div style="width:100%">
+                        <div class="bubble">${htmlContent}</div>
+                        ${sender === 'ai' ? `<div class="msg-actions"><button class="action-link" onclick="app.copyText(this)">Copy</button></div>` : ''}
+                    </div>`;
+                this.dom.chat.appendChild(div);
+                this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
+                if (window.Prism) Prism.highlightAllUnder(div);
+            }
 
-function createChatId(text) {
-    currentChatId = Date.now().toString();
-    const btn = document.createElement('button');
-    btn.className = 'side-btn';
-    btn.innerHTML = `<span style="opacity:0.7">💬</span> ${text.slice(0, 20)}...`;
-    btn.onclick = () => loadChat(currentChatId);
-    historyDiv.prepend(btn);
-    saveHistory();
-}
+            addThinking() {
+                const id = 'thinking-' + Date.now();
+                const div = document.createElement('div');
+                div.className = 'msg-group ai';
+                div.id = id;
+                div.innerHTML = `
+                    <div class="avatar">v8</div>
+                    <div class="bubble" style="display:flex; align-items:center; gap:8px;">
+                        <span style="color:var(--accent); font-weight:600;">Processing</span>
+                        <span class="status-dot" style="background:var(--accent); animation:pulse-red 1s infinite"></span>
+                    </div>`;
+                this.dom.chat.appendChild(div);
+                this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
+                return id;
+            }
 
-function saveHistory() {
-    const history = [...historyDiv.children].map(b => b.innerText.replace('💬 ', ''));
-    localStorage.setItem('esamz_history', JSON.stringify(history));
-}
+            removeThinking(id) {
+                const el = document.getElementById(id);
+                if (el) el.remove();
+            }
 
-function loadHistory() {
-    try {
-        const saved = JSON.parse(localStorage.getItem('esamz_history') || '[]');
-        saved.forEach(text => {
-            const btn = document.createElement('button');
-            btn.className = 'side-btn';
-            btn.innerHTML = `<span style="opacity:0.7">💬</span> ${text}`;
-            historyDiv.appendChild(btn);
-        });
-    } catch {}
-}
+            updateContext(role, content) {
+                this.state.context.push({ role, content, ts: Date.now() });
+                if (this.state.context.length > 10) this.state.context.shift();
+                localStorage.setItem('esamz_context_v8', JSON.stringify(this.state.context));
+            }
 
-function clearAllHistory() {
-    if (!confirm('Purge neural cache?')) return;
-    localStorage.clear();
-    historyDiv.innerHTML = '';
-    newChat();
-}
+            loadContext() {
+                return JSON.parse(localStorage.getItem('esamz_context_v8') ?? '[]');
+            }
 
-function clearCurrentChat() {
-    chat.innerHTML = '';
-    chat.appendChild(welcomeMsg);
-    welcomeMsg.style.display = 'block';
-    conversationContext = [];
-}
+            createChatSession(text) {
+                this.state.chatId = Date.now();
+                const title = text.slice(0, 20) + (text.length > 20 ? '...' : '');
+                const btn = document.createElement('button');
+                btn.className = 'nav-item';
+                btn.innerHTML = `<span>💬</span> ${title}`;
+                this.dom.history.prepend(btn);
+                this.saveHistoryDOM();
+            }
 
-function loadChat(id) { newChat(); }
-function autoGrow(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
-function fillInput(t) { input.value = t; autoGrow(input); input.focus(); }
-function handleKeyPress(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+            saveHistoryDOM() {
+                const items = Array.from(this.dom.history.children).map(btn => btn.innerText.replace('💬 ', ''));
+                localStorage.setItem('esamz_history_v8', JSON.stringify(items));
+            }
 
-window.onload = () => {
-    loadHistory();
-    loadContext();
-    input.focus();
-};
+            loadHistory() {
+                const items = JSON.parse(localStorage.getItem('esamz_history_v8') ?? '[]');
+                items.forEach(text => {
+                    const btn = document.createElement('button');
+                    btn.className = 'nav-item';
+                    btn.innerHTML = `<span>💬</span> ${text}`;
+                    this.dom.history.appendChild(btn);
+                });
+            }
 
-/* Drag & Drop */
-['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
-    inputWrap.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); }, false);
-});
-['dragenter', 'dragover'].forEach(evt => inputWrap.classList.add('dragover'));
-['dragleave', 'drop'].forEach(evt => inputWrap.classList.remove('dragover'));
-inputWrap.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
-</script>
+            fillInput(text) { this.dom.input.value = text; this.dom.input.focus(); }
+
+            newChat() {
+                this.state.chatId = null;
+                this.dom.chat.innerHTML = '';
+                this.dom.chat.appendChild(this.dom.hero);
+                this.dom.hero.style.display = 'block';
+                this.toggleSidebar(false);
+            }
+
+            clearChat() { this.newChat(); }
+            purgeCache() { if(confirm('Delete all neural memories?')) { localStorage.clear(); location.reload(); } }
+
+            toggleSidebar(open) {
+                if (open) { this.dom.sidebar.classList.add('active'); this.dom.overlay.classList.add('active'); } 
+                else { this.dom.sidebar.classList.remove('active'); this.dom.overlay.classList.remove('active'); }
+            }
+
+            handleFiles(fileList) { this.state.files = [...this.state.files, ...fileList]; this.renderFiles(); }
+
+            renderFiles() {
+                this.dom.preview.innerHTML = '';
+                this.state.files.forEach((f, idx) => {
+                    const chip = document.createElement('div');
+                    chip.className = 'chip';
+                    chip.innerHTML = `📎 ${f.name} <button onclick="app.removeFile(${idx})">×</button>`;
+                    this.dom.preview.appendChild(chip);
+                });
+            }
+
+            removeFile(idx) { this.state.files.splice(idx, 1); this.renderFiles(); }
+
+            toggleVoice() {
+                const btn = document.getElementById('btnVoice');
+                if (!this.state.recognition) {
+                    if (!('webkitSpeechRecognition' in window)) return alert('Voice API not supported');
+                    this.state.recognition = new webkitSpeechRecognition();
+                    this.state.recognition.lang = 'en-US';
+                    this.state.recognition.onresult = (e) => this.dom.input.value += e.results[0][0].transcript;
+                    this.state.recognition.onend = () => { this.state.isRecording = false; btn.classList.remove('recording'); };
+                }
+                if (this.state.isRecording) { this.state.recognition.stop(); this.state.isRecording = false; btn.classList.remove('recording'); } 
+                else { this.state.recognition.start(); this.state.isRecording = true; btn.classList.add('recording'); }
+            }
+
+            copyText(btn) {
+                const text = btn.closest('.msg-group').querySelector('.bubble').innerText;
+                navigator.clipboard.writeText(text);
+                const original = btn.innerText;
+                btn.innerText = 'Copied';
+                setTimeout(() => btn.innerText = original, 1500);
+            }
+
+            exportChat(type) {
+                const msgs = Array.from(document.querySelectorAll('.msg-group')).map(el => {
+                    const who = el.classList.contains('user') ? 'User' : 'eSAMz';
+                    const txt = el.querySelector('.bubble').innerText;
+                    return `[${who}]: ${txt}`;
+                }).join('\n\n');
+                
+                const filename = `esamz-v8-export`;
+                if (type === 'txt') this.download(filename+'.txt', msgs);
+                if (type === 'md') this.download(filename+'.md', msgs);
+                if (type === 'html') this.download(filename+'.html', `<pre>${msgs}</pre>`);
+                if (type === 'pdf') {
+                   const el = document.createElement('div');
+                   el.innerHTML = marked.parse(msgs);
+                   html2pdf().from(el).save(filename+'.pdf');
+                }
+                this.dom.dialog.close();
+            }
+
+            download(name, content) {
+                const link = document.createElement('a');
+                link.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(content);
+                link.download = name;
+                link.click();
+            }
+        }
+
+        const app = new App();
+    </script>
 </body>
 </html>
