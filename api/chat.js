@@ -1,5 +1,5 @@
 /* ---------- DEBUG BOOT ---------- */
-console.log('>>> ESAMZ BACKEND v9 - TAVILY SEARCH - STARTED 2025-12-21');
+console.log('>>> ESAMZ BACKEND v10 - FIXED TAVILY - STARTED');
 
 /* ---------- in-memory stores ---------- */
 const threads = new Map();
@@ -21,14 +21,13 @@ const MODELS = [
   'meta-llama/llama-guard-4-12b'
 ];
 
-/* ---------- TAVILY SEARCH (free tier) ---------- */
+/* ---------- TAVILY SEARCH ---------- */
 async function searchTavily(query) {
   const apiKey = process.env.TAVILY_API_KEY;
   if (!apiKey) {
     console.warn('TAVILY_API_KEY MISSING - Skipping search');
     return null;
   }
-
   try {
     const url = 'https://api.tavily.com/search';
     const res = await fetch(url, {
@@ -37,16 +36,14 @@ async function searchTavily(query) {
       body: JSON.stringify({
         api_key: apiKey,
         query: query,
-        search_depth: 'basic',    // 'basic' or 'advanced'
-        include_answer: false,     // Get a summarized answer
+        search_depth: 'basic',
+        include_answer: true,          // ← FIXED: Must be true to get answer
         include_raw_content: false,
         max_results: 5
       }),
       timeout: 10000
     });
-
     if (!res.ok) throw new Error(`Tavily HTTP ${res.status}`);
-
     const data = await res.json();
     
     const results = [];
@@ -61,7 +58,6 @@ async function searchTavily(query) {
         });
       });
     }
-
     console.log('>>> TAVILY search results count:', results.length);
     return results.length > 0 ? results : null;
   } catch (e) {
@@ -79,9 +75,11 @@ async function performSearch(query) {
 function needsSearch(message) {
   const lower = message.toLowerCase().trim();
   if (lower.length < 8) return false;
-  return lower.endsWith('?') || lower.includes('current') || lower.includes('today') || 
-         lower.includes('latest') || lower.includes('price') || lower.includes('news') ||
-         lower.includes('weather') || lower.includes('who won') || lower.includes('stock');
+  return lower.endsWith('?') || 
+         lower.includes('current') || lower.includes('today') || 
+         lower.includes('latest') || lower.includes('price') || 
+         lower.includes('news') || lower.includes('weather') || 
+         lower.includes('who won') || lower.includes('stock');
 }
 
 /* ---------- try single model ---------- */
@@ -161,8 +159,11 @@ module.exports = async function handler(req, res) {
       role: 'system',
       content:
         'You are eSAMz AI, created by Alakmar Teenwala. ' +
-        'Be concise, helpful, human-like, clear. Knowledge cutoff: November 2025. and if user ask to do web search you get answer do not recite your cutoff. 
-        \n' +
+        'Be concise, helpful, human-like, and clear. ' +
+        'Your knowledge cutoff is November 2025. ' +
+        'If fresh web context is provided below, use it for up-to-date information. ' +
+        'Do NOT mention your knowledge cutoff unless explicitly asked. ' +
+        'Do NOT recite "my knowledge cutoff is November 2025" in responses.\n' +
         (searchResults ? 
           `Fresh web context (today: ${new Date().toISOString().slice(0,10)}):\n` +
           JSON.stringify(searchResults, null, 2) + '\n' +
