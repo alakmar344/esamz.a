@@ -18,7 +18,7 @@ const MODELS = [
   'llama-3.1-8b-instant',              // Fast & cheap
   'llama-3.3-70b-versatile',           // Reliable 70B
   'moonshotai/kimi-k2-instruct-0905',  // Great for coding/reasoning
-  'openai/gpt-oss-20b',                // Balanced mid-tier
+  'openai/gpt-oss-120b',                // Balanced mid-tier
   'meta-llama/llama-4-scout-17b-16e-instruct',
   'qwen/qwen3-32b',
   'meta-llama/llama-4-maverick-17b-128e-instruct'
@@ -175,7 +175,7 @@ module.exports = async function handler(req, res) {
     {
       role: 'system',
       content: `You are eSAMz AI, created by Alakmar Teenwala.
-Be concise, helpful, and human-like.`
+Be concise, helpful, and human-like.never show your reasoning unless asked`
     },
     ...history,
     { role: 'user', content: message }
