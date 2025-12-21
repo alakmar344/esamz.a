@@ -417,332 +417,353 @@
             <button class="export-btn" onclick="app.exportChat('pdf')"><span style="font-size:1.5rem">📕</span> PDF Document</button>
         </div>
     </dialog>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.js"></script>
-<script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
-<script>
+   <script>
+/**
+ * eSAMz v8  –  Universal File Support + OCR + Persistent Memory
+ * Drop-in replacement script
+ */
 class App {
     constructor() {
         this.dom = {
             chat: document.getElementById('chatStream'),
             input: document.getElementById('userInput'),
             hero: document.getElementById('heroSection'),
+            history: document.getElementById('historyList'),
             preview: document.getElementById('filePreview'),
             sidebar: document.getElementById('sidebar'),
             overlay: document.getElementById('overlay'),
             dock: document.getElementById('dockContainer'),
-            dialog: document.getElementById('exportDialog'),
-
-            btnSend: document.getElementById('btnSend'),
-            btnUpload: document.getElementById('btnUpload'),
-            btnVoice: document.getElementById('btnVoice'),
-            btnNewChat: document.getElementById('btnNewChat'),
-            btnClearChat: document.getElementById('btnClearChat'),
-            btnClearCache: document.getElementById('btnClearCache'),
-            btnExportModal: document.getElementById('btnExportModal'),
-            openSidebar: document.getElementById('openSidebar'),
-            closeSidebar: document.getElementById('closeSidebar'),
-            closeDialog: document.getElementById('closeDialog'),
-            fileInput: document.getElementById('fileInput')
+            dialog: document.getElementById('exportDialog')
         };
 
         this.state = {
-            messages: [],
-            files: [],
-            context: this.loadContext(),
+            chatId: null,
+            files: [],          // {file, textExtracted}
+            isRecording: false,
             recognition: null,
-            recording: false
+            context: []
         };
 
+        this.memoryKey = 'esamz_memory_v8'; // full memory array
         this.init();
     }
 
-    /* ================= INIT ================= */
-
+    /* ----------  LIFE-CYCLE  ---------- */
     init() {
-        this.bindUI();
+        this.loadMemory();
+        this.setupEventListeners();
         this.setupDragDrop();
-        this.restoreMessages();
         this.dom.input.focus();
     }
 
-    bindUI() {
-        this.dom.btnSend.onclick = () => this.send();
-        this.dom.btnUpload.onclick = () => this.dom.fileInput.click();
-        this.dom.fileInput.onchange = e => this.handleFiles(e.target.files);
-        this.dom.btnVoice.onclick = () => this.toggleVoice();
+    setupEventListeners() {
+        const { input } = this.dom;
+        document.getElementById('btnSend').addEventListener('click', () => this.handleSend());
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.handleSend(); }
+        });
+        input.addEventListener('input', () => {
+            input.style.height = 'auto'; input.style.height = input.scrollHeight + 'px';
+        });
 
-        this.dom.btnNewChat.onclick = () => this.newChat();
-        this.dom.btnClearChat.onclick = () => this.clearChat();
-        this.dom.btnClearCache.onclick = () => this.purgeCache();
+        /* sidebar */
+        document.getElementById('openSidebar').addEventListener('click', () => this.toggleSidebar(true));
+        document.getElementById('closeSidebar').addEventListener('click', () => this.toggleSidebar(false));
+        this.dom.overlay.addEventListener('click', () => this.toggleSidebar(false));
 
-        this.dom.btnExportModal.onclick = () => this.dom.dialog.showModal();
-        this.dom.closeDialog.onclick = () => this.dom.dialog.close();
+        /* nav */
+        document.getElementById('btnNewChat').addEventListener('click', () => this.newChat());
+        document.getElementById('btnClearChat').addEventListener('click', () => this.clearChat());
+        document.getElementById('btnClearCache').addEventListener('click', () => this.purgeCache());
 
-        this.dom.openSidebar.onclick = () => this.toggleSidebar(true);
-        this.dom.closeSidebar.onclick = () => this.toggleSidebar(false);
-        this.dom.overlay.onclick = () => this.toggleSidebar(false);
+        /* files */
+        document.getElementById('btnUpload').addEventListener('click', () => document.getElementById('fileInput').click());
+        document.getElementById('fileInput').addEventListener('change', e => this.handleFiles(e.target.files));
 
-        this.dom.input.onkeydown = e => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.send();
-            }
-        };
+        /* voice */
+        document.getElementById('btnVoice').addEventListener('click', () => this.toggleVoice());
 
-        this.dom.input.oninput = () => {
-            this.dom.input.style.height = 'auto';
-            this.dom.input.style.height = this.dom.input.scrollHeight + 'px';
-        };
+        /* export */
+        document.getElementById('btnExportModal').addEventListener('click', () => this.dom.dialog.showModal());
+        document.getElementById('closeDialog').addEventListener('click', () => this.dom.dialog.close());
     }
 
-    /* ================= CHAT ================= */
+    setupDragDrop() {
+        const dock = this.dom.dock;
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt =>
+            dock.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); })
+        );
+        dock.addEventListener('dragenter', () => dock.style.borderColor = 'var(--accent)');
+        dock.addEventListener('dragleave', () => dock.style.borderColor = 'var(--border-glass)');
+        dock.addEventListener('drop', e => this.handleFiles(e.dataTransfer.files));
+    }
 
-    async send() {
+    /* ----------  FILE + OCR  ---------- */
+    async handleFiles(fileList) {
+        for (const file of fileList) {
+            let text = '';
+            if (file.type.startsWith('image/')) {
+                text = await this.ocrImage(file);
+            } else {
+                text = await this.textFromFile(file);
+            }
+            this.state.files.push({ file, textExtracted: text });
+        }
+        this.renderFiles();
+    }
+
+    textFromFile(file) {
+        return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => resolve('(unable to read file)');
+            reader.readAsText(file);
+        });
+    }
+
+    async ocrImage(file) {
+        if (!('Tesseract' in window)) {
+            // load tesseract from cdn on first use
+            await import('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.esm.min.js');
+        }
+        try {
+            const { data: { text } } = await Tesseract.recognize(file, 'eng');
+            return text.trim();
+        } catch {
+            return '(OCR failed)';
+        }
+    }
+
+    renderFiles() {
+        this.dom.preview.innerHTML = '';
+        this.state.files.forEach((item, idx) => {
+            const chip = document.createElement('div');
+            chip.className = 'chip';
+            chip.innerHTML = `📎 ${item.file.name} <button onclick="app.removeFile(${idx})">×</button>`;
+            this.dom.preview.appendChild(chip);
+        });
+    }
+
+    removeFile(idx) { this.state.files.splice(idx, 1); this.renderFiles(); }
+
+    /* ----------  CHAT / MEMORY  ---------- */
+    async handleSend() {
         const text = this.dom.input.value.trim();
-        if (!text && !this.state.files.length) return;
+        if (!text && this.state.files.length === 0) return;
+
+        if (!this.state.chatId) this.createChatSession(text);
 
         this.dom.hero.style.display = 'none';
 
-        this.pushMessage('user', text);
-        this.dom.input.value = '';
-        this.clearFiles();
+        // build user message
+        let fullUser = text;
+        if (this.state.files.length) {
+            fullUser += '\n\n' + this.state.files.map(f =>
+                `**File:** ${f.file.name}\n\`\`\`\n${f.textExtracted}\n\`\`\``
+            ).join('\n');
+        }
 
+        this.addMessage(fullUser, 'user');
+        this.appendToCurrentChat('user', fullUser);
+
+        // clear input
+        this.dom.input.value = ''; this.dom.input.style.height = 'auto';
+        this.state.files = []; this.renderFiles();
+
+        // thinking
         const thinkingId = this.addThinking();
 
+        // backend call
         try {
             const res = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: text,
-                    files: this.buildFilePayload(),
-                    context: this.state.context
+                    files: this.state.files,
+                    context: this.getContext(),
+                    enableWebSearch: true
                 })
             });
-
+            if (!res.ok) throw new Error('Server error');
             const data = await res.json();
             this.removeThinking(thinkingId);
-
-            const reply = data.reply || data.message || 'No response';
-            this.pushMessage('ai', reply);
-
-        } catch {
+            const reply = data.reply || data.message || 'No reply';
+            this.addMessage(reply, 'ai');
+            this.appendToCurrentChat('ai', reply);
+        } catch (e) {
             this.removeThinking(thinkingId);
-            this.pushMessage('ai', '**Demo Mode**\n\nBackend unreachable.');
+            const reply = this.generateDemoResponse(text);
+            this.addMessage(reply, 'ai');
+            this.appendToCurrentChat('ai', reply);
         }
     }
 
-    pushMessage(role, content) {
-        const msg = {
-            id: Date.now() + Math.random(),
-            role,
-            content
-        };
-
-        this.state.messages.push(msg);
-        this.updateContext(role, content);
-        this.renderMessage(msg);
-        this.persistMessages();
-    }
-
-    renderMessage(msg) {
+    addMessage(text, sender) {
         const div = document.createElement('div');
-        div.className = `msg-group ${msg.role}`;
-        div.dataset.id = msg.id;
-
+        div.className = `msg-group ${sender}`;
+        const avatar = sender === 'user' ? 'U' : 'v8';
+        const htmlContent = marked.parse(text);
         div.innerHTML = `
-            <div class="avatar">${msg.role === 'user' ? 'U' : 'v8'}</div>
+            <div class="avatar">${avatar}</div>
             <div style="width:100%">
-                <div class="bubble">${marked.parse(msg.content)}</div>
-                <div class="msg-actions">
-                    <button class="action-link" onclick="app.copyMessage(${msg.id})">Copy</button>
-                    <button class="action-link" onclick="app.deleteMessage(${msg.id})">Delete</button>
-                </div>
-            </div>
-        `;
-
+                <div class="bubble">${htmlContent}</div>
+                ${sender === 'ai' ? `<div class="msg-actions"><button class="action-link" onclick="app.copyText(this)">Copy</button></div>` : ''}
+            </div>`;
         this.dom.chat.appendChild(div);
         this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
+        if (window.Prism) Prism.highlightAllUnder(div);
     }
 
     addThinking() {
         const id = 'thinking-' + Date.now();
         const div = document.createElement('div');
-        div.id = id;
-        div.className = 'msg-group ai';
+        div.className = 'msg-group ai'; div.id = id;
         div.innerHTML = `
             <div class="avatar">v8</div>
-            <div class="bubble">Processing…</div>
-        `;
+            <div class="bubble" style="display:flex; align-items:center; gap:8px;">
+                <span style="color:var(--accent); font-weight:600;">Processing</span>
+                <span class="status-dot" style="background:var(--accent); animation:pulse-red 1s infinite"></span>
+            </div>`;
         this.dom.chat.appendChild(div);
+        this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
         return id;
     }
 
-    removeThinking(id) {
-        document.getElementById(id)?.remove();
+    removeThinking(id) { const el = document.getElementById(id); if (el) el.remove(); }
+
+    generateDemoResponse(text) {
+        return `**eSAMz v8 (Demo Mode):**\n\nBackend unreachable. Simulating for "${text.slice(0,30)}..."\n\n\`\`\`javascript\nconsole.log("Backend Offline");\n\`\`\``;
     }
 
-    /* ================= DELETE / COPY ================= */
-
-    deleteMessage(id) {
-        this.state.messages = this.state.messages.filter(m => m.id !== id);
-        this.dom.chat.querySelector(`[data-id="${id}"]`)?.remove();
-        this.rebuildContext();
-        this.persistMessages();
+    /* ----------  MEMORY STORAGE  ---------- */
+    loadMemory() {
+        const raw = localStorage.getItem(this.memoryKey);
+        const memory = raw ? JSON.parse(raw) : [];
+        memory.forEach(chat => this.renderHistoryEntry(chat));
     }
 
-    copyMessage(id) {
-        const msg = this.state.messages.find(m => m.id === id);
-        if (msg) navigator.clipboard.writeText(msg.content);
+    renderHistoryEntry(chat) {
+        const btn = document.createElement('button');
+        btn.className = 'nav-item';
+        btn.innerHTML = `<span>💬</span> ${chat.title} <button onclick="app.deleteChat('${chat.id}')" style="margin-left:auto;background:none;border:none;color:#f87171;cursor:pointer;">🗑</button>`;
+        btn.onclick = () => this.loadChat(chat.id);
+        this.dom.history.appendChild(btn);
     }
 
-    rebuildContext() {
-        this.state.context = this.state.messages.map(m => ({
-            role: m.role,
-            content: m.content
-        })).slice(-10);
-        localStorage.setItem('esamz_context_v8', JSON.stringify(this.state.context));
+    createChatSession(firstText) {
+        this.state.chatId = Date.now().toString();
+        const title = firstText.slice(0, 30) + (firstText.length > 30 ? '…' : '');
+        const chat = { id: this.state.chatId, title, messages: [] };
+        this.saveChat(chat);
+        this.renderHistoryEntry(chat);
     }
 
-    /* ================= FILES + OCR ================= */
-
-    async handleFiles(list) {
-        for (const file of list) {
-            const item = {
-                name: file.name,
-                type: file.type,
-                text: null,
-                preview: null
-            };
-
-            if (file.type.startsWith('image/')) {
-                item.preview = URL.createObjectURL(file);
-                item.text = await this.runOCR(file);
-            } else {
-                item.text = await this.readText(file);
-            }
-
-            this.state.files.push(item);
+    appendToCurrentChat(role, content) {
+        const memory = this.getMemory();
+        const chat = memory.find(c => c.id === this.state.chatId);
+        if (chat) {
+            chat.messages.push({ role, content, ts: Date.now() });
+            this.saveMemory(memory);
         }
-        this.renderFiles();
     }
 
-    async runOCR(file) {
-        const { data } = await Tesseract.recognize(file, 'eng');
-        return data.text.slice(0, 50000);
-    }
-
-    readText(file) {
-        return new Promise(res => {
-            const fr = new FileReader();
-            fr.onload = () => res(fr.result.slice(0, 50000));
-            fr.readAsText(file);
-        });
-    }
-
-    renderFiles() {
-        this.dom.preview.innerHTML = '';
-        this.state.files.forEach((f, i) => {
-            const chip = document.createElement('div');
-            chip.className = 'chip';
-            chip.innerHTML = `
-                ${f.preview ? `<img src="${f.preview}" width="26">` : '📄'}
-                ${f.name}
-                <button onclick="app.removeFile(${i})">×</button>
-            `;
-            this.dom.preview.appendChild(chip);
-        });
-    }
-
-    removeFile(i) {
-        this.state.files.splice(i, 1);
-        this.renderFiles();
-    }
-
-    clearFiles() {
-        this.state.files = [];
-        this.dom.preview.innerHTML = '';
-    }
-
-    buildFilePayload() {
-        return this.state.files.map(f => ({
-            name: f.name,
-            extractedText: f.text
-        }));
-    }
-
-    setupDragDrop() {
-        const d = this.dom.dock;
-        ['dragenter','dragover'].forEach(e =>
-            d.addEventListener(e, ev => { ev.preventDefault(); })
-        );
-        d.addEventListener('drop', e => {
-            e.preventDefault();
-            this.handleFiles(e.dataTransfer.files);
-        });
-    }
-
-    /* ================= MEMORY ================= */
-
-    persistMessages() {
-        localStorage.setItem('esamz_messages_v8', JSON.stringify(this.state.messages));
-    }
-
-    restoreMessages() {
-        const saved = JSON.parse(localStorage.getItem('esamz_messages_v8') || '[]');
-        if (!saved.length) return;
-
-        this.state.messages = saved;
+    loadChat(chatId) {
+        const memory = this.getMemory();
+        const chat = memory.find(c => c.id === chatId);
+        if (!chat) return;
+        this.state.chatId = chatId;
+        this.dom.chat.innerHTML = '';
+        chat.messages.forEach(m => this.addMessage(m.content, m.role));
         this.dom.hero.style.display = 'none';
-        saved.forEach(m => this.renderMessage(m));
+        this.toggleSidebar(false);
     }
 
-    updateContext(role, content) {
-        this.state.context.push({ role, content });
-        if (this.state.context.length > 10) this.state.context.shift();
-        localStorage.setItem('esamz_context_v8', JSON.stringify(this.state.context));
+    deleteChat(chatId) {
+        if (!confirm('Delete this chat?')) return;
+        let memory = this.getMemory();
+        memory = memory.filter(c => c.id !== chatId);
+        this.saveMemory(memory);
+        // rebuild list
+        this.dom.history.innerHTML = '';
+        memory.forEach(c => this.renderHistoryEntry(c));
+        if (this.state.chatId === chatId) this.newChat();
     }
 
-    loadContext() {
-        return JSON.parse(localStorage.getItem('esamz_context_v8') || '[]');
+    getContext() {
+        const memory = this.getMemory();
+        const chat = memory.find(c => c.id === this.state.chatId);
+        if (!chat) return [];
+        return chat.messages.slice(-10); // last 10
     }
 
-    /* ================= UI ================= */
-
-    newChat() {
-        this.state.messages = [];
-        this.state.context = [];
-        this.dom.chat.innerHTML = '';
-        this.dom.hero.style.display = 'block';
-        this.clearFiles();
-        localStorage.removeItem('esamz_messages_v8');
-        localStorage.removeItem('esamz_context_v8');
+    getMemory() { return JSON.parse(localStorage.getItem(this.memoryKey) || '[]'); }
+    saveChat(chat) {
+        const memory = this.getMemory();
+        memory.unshift(chat);
+        this.saveMemory(memory);
     }
+    saveMemory(memory) { localStorage.setItem(this.memoryKey, JSON.stringify(memory)); }
 
-    clearChat() {
-        this.dom.chat.innerHTML = '';
-        this.dom.hero.style.display = 'block';
-    }
-
-    purgeCache() {
-        localStorage.clear();
-        location.reload();
-    }
-
+    /* ----------  UTILS  ---------- */
     toggleSidebar(open) {
-        this.dom.sidebar.classList.toggle('active', open);
-        this.dom.overlay.classList.toggle('active', open);
+        if (open) { this.dom.sidebar.classList.add('active'); this.dom.overlay.classList.add('active'); }
+        else { this.dom.sidebar.classList.remove('active'); this.dom.overlay.classList.remove('active'); }
     }
-
+    newChat() {
+        this.state.chatId = null;
+        this.dom.chat.innerHTML = '';
+        this.dom.chat.appendChild(this.dom.hero);
+        this.dom.hero.style.display = 'block';
+        this.toggleSidebar(false);
+    }
+    clearChat() { this.newChat(); }
+    purgeCache() { if (confirm('Delete ALL neural memories?')) { localStorage.clear(); location.reload(); } }
+    fillInput(text) { this.dom.input.value = text; this.dom.input.focus(); }
+    copyText(btn) {
+        const text = btn.closest('.msg-group').querySelector('.bubble').innerText;
+        navigator.clipboard.writeText(text);
+        const orig = btn.innerText; btn.innerText = 'Copied';
+        setTimeout(() => btn.innerText = orig, 1500);
+    }
     toggleVoice() {
-        /* optional */
+        const btn = document.getElementById('btnVoice');
+        if (!this.state.recognition) {
+            if (!('webkitSpeechRecognition' in window)) return alert('Voice API not supported');
+            this.state.recognition = new webkitSpeechRecognition();
+            this.state.recognition.lang = 'en-US';
+            this.state.recognition.onresult = e => this.dom.input.value += e.results[0][0].transcript;
+            this.state.recognition.onend = () => { this.state.isRecording = false; btn.classList.remove('recording'); };
+        }
+        if (this.state.isRecording) { this.state.recognition.stop(); this.state.isRecording = false; btn.classList.remove('recording'); }
+        else { this.state.recognition.start(); this.state.isRecording = true; btn.classList.add('recording'); }
+    }
+    exportChat(type) {
+        const msgs = Array.from(document.querySelectorAll('.msg-group')).map(el => {
+            const who = el.classList.contains('user') ? 'User' : 'eSAMz';
+            const txt = el.querySelector('.bubble').innerText;
+            return `[${who}]: ${txt}`;
+        }).join('\n\n');
+        const filename = `esamz-v8-export`;
+        if (type === 'txt') this.download(filename + '.txt', msgs);
+        if (type === 'md') this.download(filename + '.md', msgs);
+        if (type === 'html') this.download(filename + '.html', `<pre>${msgs}</pre>`);
+        if (type === 'pdf') {
+            const el = document.createElement('div');
+            el.innerHTML = marked.parse(msgs);
+            html2pdf().from(el).save(filename + '.pdf');
+        }
+        this.dom.dialog.close();
+    }
+    download(name, content) {
+        const link = document.createElement('a');
+        link.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(content);
+        link.download = name; link.click();
     }
 }
 
-window.app = new App();
+const app = new App();
 </script>
-
-
     </body>
 </html>
 
