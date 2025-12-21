@@ -327,6 +327,83 @@
 
             .mobile-toggle { display: block; background: none; border: none; color: white; font-size: 1.5rem; }
             .mobile-close { display: block; position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: white; font-size: 2rem; }
+
+            /* Mobile-specific fixes */
+            .chat-stream { 
+                padding: 1rem 1rem 8rem; 
+                word-wrap: break-word;
+            }
+            
+            .bubble { 
+                max-width: 100%; 
+                font-size: 0.9rem;
+            }
+            
+            .cards-grid {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+            
+            .card {
+                padding: 1rem;
+            }
+            
+            .card h3 {
+                font-size: 0.9rem;
+            }
+            
+            .card p {
+                font-size: 0.8rem;
+            }
+            
+            header {
+                padding: 0 1rem;
+            }
+            
+            .input-dock {
+                padding: 0 1rem 1rem;
+            }
+            
+            .dock-container {
+                padding: 0.5rem;
+            }
+            
+            textarea {
+                font-size: 0.9rem;
+                padding: 0.5rem;
+            }
+            
+            .btn-tool {
+                width: 38px;
+                height: 38px;
+                font-size: 1rem;
+            }
+            
+            .hero h1 {
+                font-size: clamp(2rem, 8vw, 2.5rem);
+            }
+            
+            .hero p {
+                font-size: 1rem;
+            }
+        }
+        
+        /* Extra small devices */
+        @media (max-width: 375px) {
+            .hero h1 {
+                font-size: 1.8rem;
+            }
+            
+            .bubble {
+                font-size: 0.85rem;
+                padding: 1rem;
+            }
+            
+            .avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 0.7rem;
+            }
         }
     </style>
 </head>
@@ -766,4 +843,3 @@ const app = new App();
 </script>
     </body>
 </html>
-
