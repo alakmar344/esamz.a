@@ -1,5 +1,5 @@
 /* ---------- DEBUG BOOT ---------- */
-console.log('>>> ESAMZ BACKEND v10 - FIXED TAVILY - STARTED');
+console.log('>>> ESAMZ BACKEND v10 - YOU.COM SEARCH - STARTED');
 
 /* ---------- in-memory stores ---------- */
 const threads = new Map();
@@ -21,53 +21,45 @@ const MODELS = [
   'meta-llama/llama-guard-4-12b'
 ];
 
-/* ---------- TAVILY SEARCH ---------- */
-async function searchTavily(query) {
-  const apiKey = process.env.TAVILY_API_KEY;
+/* ---------- YOU.COM SEARCH API ---------- */
+async function searchYouCom(query) {
+  const apiKey = process.env.YOU_API_KEY;
   if (!apiKey) {
-    console.warn('TAVILY_API_KEY MISSING - Skipping search');
+    console.warn('YOU_API_KEY MISSING - Skipping search');
     return null;
   }
+
   try {
-    const url = 'https://api.tavily.com/search';
+    const url = `https://api.you.com/api/ai/v1/search?query=${encodeURIComponent(query)}`;
     const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        api_key: apiKey,
-        query: query,
-        search_depth: 'basic',
-        include_answer: true,          // ← FIXED: Must be true to get answer
-        include_raw_content: false,
-        max_results: 5
-      }),
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
       timeout: 10000
     });
-    if (!res.ok) throw new Error(`Tavily HTTP ${res.status}`);
+
+    if (!res.ok) throw new Error(`You.com HTTP ${res.status}`);
+
     const data = await res.json();
-    
-    const results = [];
-    if (data.answer) {
-      results.push({ title: 'Summary Answer', snippet: data.answer });
-    }
-    if (data.results && Array.isArray(data.results)) {
-      data.results.slice(0, 5).forEach(r => {
-        results.push({
-          title: r.title || 'Untitled',
-          snippet: r.content || r.raw_content?.substring(0, 300) || 'No description'
-        });
-      });
-    }
-    console.log('>>> TAVILY search results count:', results.length);
+
+    const results = data.hits?.slice(0, 5).map(hit => ({
+      title: hit.title || 'Untitled',
+      snippet: hit.snippet || 'No description',
+      url: hit.url || ''
+    })) || [];
+
+    console.log('>>> YOU.COM search results count:', results.length);
     return results.length > 0 ? results : null;
   } catch (e) {
-    console.warn('TAVILY search failed:', e.message);
+    console.warn('YOU.COM search failed:', e.message);
     return null;
   }
 }
 
 async function performSearch(query) {
-  const results = await searchTavily(query);
+  const results = await searchYouCom(query);
   if (results) return results;
   return [{ title: 'No web results', snippet: 'Using knowledge up to Nov 2025.' }];
 }
