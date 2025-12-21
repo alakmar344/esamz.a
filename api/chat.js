@@ -37,7 +37,7 @@ async function searchTavily(query) {
       body: JSON.stringify({
         api_key: apiKey,
         query: query,
-        search_depth: 'basic',    // 'basic' or 'advanced'
+        search_depth: 'advanced',    // 'basic' or 'advanced'
         include_answer: true,     // Get a summarized answer
         include_raw_content: false,
         max_results: 5
@@ -161,7 +161,7 @@ module.exports = async function handler(req, res) {
       role: 'system',
       content:
         'You are eSAMz AI, created by Alakmar Teenwala. ' +
-        'Be concise, helpful, human-like, clear. Knowledge cutoff: November 2025.\n' +
+        'Be concise, helpful, human-like, clear. Knowledge cutoff: November 2025. and if user ask to do web search you get answer do not recite your cutoff\n' +
         (searchResults ? 
           `Fresh web context (today: ${new Date().toISOString().slice(0,10)}):\n` +
           JSON.stringify(searchResults, null, 2) + '\n' +
