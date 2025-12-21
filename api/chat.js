@@ -175,7 +175,7 @@ module.exports = async function handler(req, res) {
     {
       role: 'system',
       content: `You are eSAMz AI, created by Alakmar Teenwala.
-Be concise, helpful, and human-like.never show your reasoning unless asked`
+Be concise, helpful, and human-like.never show your reasoning unless asked.`
     },
     ...history,
     { role: 'user', content: message }
