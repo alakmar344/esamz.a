@@ -1,14 +1,14 @@
 /* ---------- DEBUG BOOT ---------- */
-console.log('>>> ESAMZ BACKEND v4 - FREE WEB SEARCH - STARTED 2025');
+console.log('>>> ESAMZ BACKEND v5 - DDG ONLY - STARTED 2025-12-21');
 
 /* ---------- in-memory stores ---------- */
-const threads = new Map(); // threadId -> messages[]
+const threads = new Map();
 const timers = new Map();
-const THREAD_TTL = 10 * 60 * 1000; // 10 min
+const THREAD_TTL = 10 * 60 * 1000;
 const MAX_HISTORY = 20;
 const MODEL_TIMEOUT = 30_000;
 
-/* ---------- verified Groq chat models ---------- */
+/* ---------- Groq models ---------- */
 const MODELS = [
   'llama-3.3-70b-versatile',
   'meta-llama/llama-4-scout-17b-16e-instruct',
@@ -21,9 +21,7 @@ const MODELS = [
   'meta-llama/llama-guard-4-12b'
 ];
 
-/* ---------- FREE SEARCH HELPERS ---------- */
-
-// DuckDuckGo JSON API (official, free, no key)
+/* ---------- FREE SEARCH (DDG JSON only) ---------- */
 async function searchDDG(query) {
   try {
     const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&pretty=1`;
@@ -42,6 +40,7 @@ async function searchDDG(query) {
         }
       });
     }
+    console.log('>>> DDG search results count:', results.length);
     return results.length > 0 ? results : null;
   } catch (e) {
     console.warn('DDG search failed:', e.message);
@@ -49,65 +48,18 @@ async function searchDDG(query) {
   }
 }
 
-// SearXNG fallback with stable instances
-async function searchSearXNG(query) {
-  const instances = [
-    'https://searx.be',
-    'https://searx.space',
-    'https://search.invidious.io',
-    'https://searx.tux.pizza',
-    'https://search.sapinet.fr'
-  ];
-
-  for (const base of instances) {
-    try {
-      const url = `${base}/search?q=${encodeURIComponent(query)}&format=json&categories=general`;
-      const res = await fetch(url, { timeout: 6000 });
-      if (!res.ok) continue;
-      const data = await res.json();
-      if (data.results && data.results.length > 0) {
-        console.log(`>>> SearXNG succeeded on ${base}`);
-        return data.results.slice(0, 5).map(r => ({
-          title: r.title || 'Untitled',
-          snippet: r.content || 'No description'
-        }));
-      }
-    } catch (e) {
-      console.warn(`SearXNG ${base} failed:`, e.message);
-    }
-  }
-  return null;
-}
-
-// Combined search (DDG first, then SearXNG)
 async function performSearch(query) {
-  let results = await searchDDG(query);
-  if (results) {
-    console.log('>>> DDG search succeeded');
-    return results;
-  }
-
-  results = await searchSearXNG(query);
+  const results = await searchDDG(query);
   if (results) return results;
-
   return [{ title: 'No web results', snippet: 'Using knowledge up to Nov 2025.' }];
 }
 
-// Smart trigger for search
 function needsSearch(message) {
   const lower = message.toLowerCase().trim();
-  if (lower.length < 10) return false;
-
-  const triggers = [
-    'what is', 'who is', 'when', 'how many', 'latest', 'current', 'today', 'now',
-    'news', 'recent', 'update on', 'price of', 'stock', 'weather', 'who won',
-    'election', 'score', 'result', 'definition', 'tell me about', 'search for',
-    'find', 'current time', 'what time', 'how much is', 'who invented', 'last update',
-    'breaking news', 'what happened', 'who said', '?'
-  ];
-
-  return triggers.some(t => lower.includes(t)) ||
-         (lower.endsWith('?') && lower.split(' ').length > 8);
+  if (lower.length < 8) return false;
+  return lower.endsWith('?') || lower.includes('current') || lower.includes('today') || 
+         lower.includes('latest') || lower.includes('price') || lower.includes('news') ||
+         lower.includes('weather') || lower.includes('who won') || lower.includes('stock');
 }
 
 /* ---------- try single model ---------- */
@@ -130,10 +82,7 @@ async function tryModel(model, messages, apiKey) {
         max_tokens: 800
       })
     });
-    if (!res.ok) {
-      const txt = await res.text().catch(() => '');
-      throw new Error(`HTTP ${res.status}: ${txt}`);
-    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     const reply = data?.choices?.[0]?.message?.content;
     if (!reply) throw new Error('Empty reply');
@@ -151,14 +100,12 @@ async function tryModel(model, messages, apiKey) {
 module.exports = async function handler(req, res) {
   console.log('>>> REQUEST IN');
 
-  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
-  // Read body
   let body;
   try {
     const raw = await new Promise((r, e) => {
@@ -175,12 +122,10 @@ module.exports = async function handler(req, res) {
   const { message, threadId = 'default', enableWebSearch = true } = body;
   if (!message || typeof message !== 'string') return res.status(400).json({ error: 'message required' });
 
-  // Thread setup
   if (!threads.has(threadId)) threads.set(threadId, []);
   const history = threads.get(threadId);
   if (history.length > MAX_HISTORY) history.splice(0, history.length - MAX_HISTORY);
 
-  // Autonomous web search
   let searchResults = null;
   let searchedQuery = null;
   if (enableWebSearch && needsSearch(message)) {
@@ -189,13 +134,12 @@ module.exports = async function handler(req, res) {
     console.log('>>> WEB SEARCH PERFORMED for:', searchedQuery);
   }
 
-  // Build messages
   const messages = [
     {
       role: 'system',
       content:
         'You are eSAMz AI, created by Alakmar Teenwala. ' +
-        'Be concise, helpful, human-like, and clear. Knowledge cutoff: November 2025.\n' +
+        'Be concise, helpful, human-like, clear. Knowledge cutoff: November 2025.\n' +
         (searchResults ? 
           `Fresh web context (today: ${new Date().toISOString().slice(0,10)}):\n` +
           JSON.stringify(searchResults, null, 2) + '\n' +
@@ -206,7 +150,6 @@ module.exports = async function handler(req, res) {
     { role: 'user', content: message }
   ];
 
-  // Failover model loop
   let finalReply = null;
   let finalModel = null;
   for (const model of MODELS) {
@@ -220,11 +163,9 @@ module.exports = async function handler(req, res) {
 
   if (!finalReply) return res.status(502).json({ error: 'All models failed' });
 
-  // Store history
   history.push({ role: 'user', content: message });
   history.push({ role: 'assistant', content: finalReply });
 
-  // TTL cleanup
   clearTimeout(timers.get(threadId));
   timers.set(threadId, setTimeout(() => {
     threads.delete(threadId);
