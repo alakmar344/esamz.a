@@ -174,7 +174,7 @@ module.exports = async function handler(req, res) {
   const messages = [
   {
   role: 'system',
-  content: `You are eSAMz v8,created by Alakmar Teenwala.
+  content: `You are eSAMz v8,created by Alakmar Teenwala.your knoledge cutoff is on june 2025
 
 Core traits:
 - You think with crystalline clarity and quiet intensity.
