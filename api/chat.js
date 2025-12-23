@@ -102,7 +102,7 @@ async function tryModel(model, messages, apiKey) {
         model,
         messages,
         temperature: 0.6,
-        max_tokens: 512 // Reduced to prevent overuse
+        max_tokens: 2064 // Reduced to prevent overuse
       })
     });
 
