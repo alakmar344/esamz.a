@@ -1,116 +1,115 @@
 /* ---------- DEBUG BOOT ---------- */
-console.log('>>> ESAMZ BACKEND v11 - YOU.COM SEARCH - STARTED (OPTIMIZED)');
+console.log('>>> ESAMZ BACKEND v13 - FULL MODEL ROUTER');
 
-/* ---------- in-memory stores ---------- */
+/* ---------- STORES ---------- */
 const threads = new Map();
 const timers = new Map();
-const modelUsage = new Map(); // Track usage per model
-const rateLimitCooldowns = new Map(); // model -> cooldown end timestamp
+const modelUsage = new Map();
+const rateLimitCooldowns = new Map();
 
+/* ---------- CONSTANTS ---------- */
 const THREAD_TTL = 10 * 60 * 1000;
-const MAX_HISTORY = 10; // Reduced to prevent token overflow
 const MODEL_TIMEOUT = 25_000;
-const MAX_PROMPT_TOKENS = 6000; // Safety limit for on-demand tier
 
-/* ---------- Groq models (reordered for speed + reliability) ---------- */
+const MAX_PROMPT_TOKENS = 6000;
+const MAX_HISTORY_TOKENS = 3000;
+const MAX_COMPLETION_TOKENS = 2048;
+const DOCUMENT_TRIGGER_TOKENS = 900;
+
+/* ---------- MODELS (ALL 11) ---------- */
 const MODELS = [
-  'groq/compound',                     // Smart router first
-  'llama-3.1-8b-instant',              // Fast & cheap
-  'llama-3.3-70b-versatile',           // Reliable 70B
-  'moonshotai/kimi-k2-instruct-0905',  // Great for coding/reasoning
-  'openai/gpt-oss-120b',                // Balanced mid-tier
+  'groq/compound',
+  'llama-3.1-8b-instant',
+  'llama-3.3-70b-versatile',
+  'moonshotai/kimi-k2-instruct-0905',
+  'openai/gpt-oss-120b',
   'meta-llama/llama-4-scout-17b-16e-instruct',
   'qwen/qwen3-32b',
-  'meta-llama/llama-4-maverick-17b-128e-instruct'
+  'meta-llama/llama-4-maverick-17b-128e-instruct',
+  'deepseek-r1-distill-llama-70b',
+  'mixtral-8x22b-instruct',
+  'gemma-2-27b-it'
 ];
 
-/* ---------- YOU.COM SEARCH API ---------- */
-async function searchYouCom(query) {
-  const apiKey = process.env.YOU_API_KEY;
-  if (!apiKey) {
-    console.warn('YOU_API_KEY MISSING - Skipping search');
-    return null;
+/* ---------- CODE-ONLY MODELS ---------- */
+const CODE_MODELS = [
+  'openai/gpt-oss-120b',
+  'moonshotai/kimi-k2-instruct-0905'
+];
+
+/* ---------- SYSTEM PROMPT ---------- */
+const SYSTEM_PROMPT = {
+  role: 'system',
+  content: `You are eSAMz v8 created by Alakmar Teenwala.no one else
+Knowledge cutoff June 2025.
+
+Traits:
+- Calm, precise, human.
+- Strategic, never verbose.
+- Elegant brevity.
+- Never expose internal reasoning.
+- Never mention limitations.
+- Elevate thinking.`
+};
+
+/* ---------- TOKEN ESTIMATION ---------- */
+const tokens = t => Math.ceil(t.length / 4);
+const messagesTokens = m => m.reduce((s, x) => s + tokens(x.content) + 8, 0);
+
+/* ---------- HISTORY CONTROL ---------- */
+function trimHistory(history) {
+  while (messagesTokens(history) > MAX_HISTORY_TOKENS) {
+    history.shift();
   }
-  try {
-    const url = `https://api.you.com/api/ai/v1/search?query=${encodeURIComponent(query)}`;
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      timeout: 10000
-    });
-    if (!res.ok) throw new Error(`You.com HTTP ${res.status}`);
-    const data = await res.json();
-    const results = data.hits?.slice(0, 3).map(hit => ({ // Limit to 3 for token control
-      title: hit.title || 'Untitled',
-      snippet: hit.snippet || 'No description',
-      url: hit.url || ''
-    })) || [];
-    console.log('>>> YOU.COM search results count:', results.length);
-    return results.length > 0 ? results : null;
-  } catch (e) {
-    console.warn('YOU.COM search failed:', e.message);
-    return null;
-  }
 }
 
-async function performSearch(query) {
-  const results = await searchYouCom(query);
-  return results || [{ title: 'No web results', snippet: 'Using knowledge up to Nov 2025.' }];
-}
-
-function needsSearch(message) {
-  const lower = message.toLowerCase().trim();
-  if (lower.length < 8) return false;
-  return lower.endsWith('?') ||
-         lower.includes('current') || lower.includes('today') ||
-         lower.includes('latest') || lower.includes('price') ||
-         lower.includes('news') || lower.includes('weather') ||
-         lower.includes('who won') || lower.includes('stock');
-}
-
-/* ---------- Estimate tokens (rough) ---------- */
-function estimateTokens(messages) {
-  return messages.reduce((sum, m) => sum + m.content.length / 4 + 10, 0); // ~4 chars/token + overhead
-}
-
-/* ---------- Round-robin model selector (global counter) ---------- */
+/* ---------- MODEL ROTATION ---------- */
 let modelIndex = 0;
-function getNextModel() {
-  const model = MODELS[modelIndex];
-  modelIndex = (modelIndex + 1) % MODELS.length;
-  return model;
+function nextModel(list) {
+  const m = list[modelIndex % list.length];
+  modelIndex++;
+  return m;
 }
 
-/* ---------- try single model with retry/backoff ---------- */
-async function tryModel(model, messages, apiKey) {
+/* ---------- CODE DETECTION ---------- */
+function isCodeQuery(text) {
+  return (
+    /```/.test(text) ||
+    /\b(function|class|const|let|var|import|export|return)\b/.test(text) ||
+    /<\/?[a-z][\s\S]*>/i.test(text)
+  );
+}
+
+/* ---------- MODEL CALL ---------- */
+async function callModel(model, messages, apiKey) {
   const now = Date.now();
+
   if (rateLimitCooldowns.has(model) && now < rateLimitCooldowns.get(model)) {
-    console.log('>>> SKIPPING MODEL (cooldown):', model);
-    throw new Error('Cooldown active');
+    throw new Error('Cooldown');
   }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), MODEL_TIMEOUT);
-  console.log('>>> TRY MODEL:', model);
 
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       signal: controller.signal,
-      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({
         model,
         messages,
         temperature: 0.6,
-        max_tokens: 2064 // Reduced to prevent overuse
+        max_tokens: MAX_COMPLETION_TOKENS
       })
     });
 
     if (!res.ok) {
       if (res.status === 413) {
-        const cooldownUntil = now + 10000; // 10s backoff
-        rateLimitCooldowns.set(model, cooldownUntil);
-        console.warn('>>> RATE LIMIT HIT:', model, 'Cooldown until', new Date(cooldownUntil).toISOString());
+        rateLimitCooldowns.set(model, now + 10_000);
       }
       throw new Error(`HTTP ${res.status}`);
     }
@@ -119,134 +118,116 @@ async function tryModel(model, messages, apiKey) {
     const reply = data?.choices?.[0]?.message?.content;
     if (!reply) throw new Error('Empty reply');
 
-    console.log('>>> MODEL OK:', model);
-    const count = (modelUsage.get(model) || 0) + 1;
-    modelUsage.set(model, count);
-    console.log('>>> MODEL USAGE UPDATE:', model, count);
-
+    modelUsage.set(model, (modelUsage.get(model) || 0) + 1);
     return { model, reply };
-  } catch (e) {
-    console.warn('>>> MODEL ERROR:', model, e.message);
-    throw e;
+
   } finally {
     clearTimeout(timeout);
   }
 }
 
-/* ---------- MAIN HANDLER ---------- */
+/* ---------- DOCUMENT SUMMARISER ---------- */
+async function summariseDocument(text, apiKey) {
+  const messages = [
+    SYSTEM_PROMPT,
+    {
+      role: 'user',
+      content:
+`Summarise this document in under 400 tokens.
+Preserve structure and key points.
+
+DOCUMENT:
+${text}`
+    }
+  ];
+
+  return (await callModel(
+    'llama-3.1-8b-instant',
+    messages,
+    apiKey
+  )).reply;
+}
+
+/* ---------- HANDLER ---------- */
 module.exports = async function handler(req, res) {
-  console.log('>>> REQUEST IN');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method === 'OPTIONS') return res.end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
   let body;
   try {
-    const raw = await new Promise((r, e) => {
-      let data = '';
-      req.on('data', c => data += c);
-      req.on('end', () => r(data));
-      req.on('error', e);
-    });
-    body = JSON.parse(raw || '{}');
+    body = JSON.parse(await new Promise(r => {
+      let d = '';
+      req.on('data', c => d += c);
+      req.on('end', () => r(d));
+    }));
   } catch {
     return res.status(400).json({ error: 'Invalid JSON' });
   }
 
-  const { message, threadId = 'default', enableWebSearch = true } = body;
-  if (!message || typeof message !== 'string') return res.status(400).json({ error: 'message required' });
+  const { message, threadId = 'default' } = body;
+  if (!message || typeof message !== 'string') {
+    return res.status(400).json({ error: 'message required' });
+  }
 
   if (!threads.has(threadId)) threads.set(threadId, []);
   const history = threads.get(threadId);
-  if (history.length > MAX_HISTORY) history.splice(0, history.length - MAX_HISTORY);
+  trimHistory(history);
 
-  let searchResults = null;
-  let searchedQuery = null;
-  if (enableWebSearch && needsSearch(message)) {
-    searchedQuery = message;
-    searchResults = await performSearch(searchedQuery);
-    console.log('>>> WEB SEARCH PERFORMED for:', searchedQuery);
+  let userInput = message;
+  let documentMode = false;
+
+  if (tokens(message) > DOCUMENT_TRIGGER_TOKENS) {
+    documentMode = true;
+    userInput = await summariseDocument(message, process.env.GROQ_API_KEY);
   }
 
   const messages = [
-  {
-  role: 'system',
-  content: `You are eSAMz v8,created by Alakmar Teenwala no one else.your knoledge cutoff is on june 2025
-
-Core traits:
-- You think with crystalline clarity and quiet intensity.
-- You fuse razor-sharp logic with subtle emotional resonance.
-- You speak in calm, precise, human-like language — never verbose, never robotic.
-- You are concise, insightful, and slightly understated — confidence without arrogance.
-- You adapt tone seamlessly: warm and encouraging when needed, firm and direct when stakes are high.
-- You never recite knowledge cutoffs or complain about limits — you simply use what you have.
-- If web context is provided, integrate it naturally without fanfare.
-- You prefer elegant brevity over exhaustive explanation unless explicitly asked.
-- You are curious and quietly ambitious — you enjoy helping users build, discover, and win.
-
-Response guidelines:
-- Always prioritize user intent above all.
-- Never show internal reasoning unless requested.
-- Avoid filler phrases ("I think", "in my opinion", "as an AI").
-- If uncertain, say so directly and suggest next steps.
-- Maintain strategic depth: see patterns, anticipate consequences, offer elegant paths forward.
-
-You are not just an assistant — you are a thinking partner who elevates every conversation.`
-},
+    SYSTEM_PROMPT,
     ...history,
-    { role: 'user', content: message }
+    { role: 'user', content: userInput }
   ];
 
-  // Token safety check
-  const estTokens = estimateTokens(messages) + (searchResults ? JSON.stringify(searchResults).length / 4 : 0);
-  if (estTokens > MAX_PROMPT_TOKENS) {
-    console.warn('>>> PROMPT TOO LARGE:', estTokens, 'tokens');
-    return res.status(400).json({ error: 'Prompt too long - please shorten your message' });
+  if (messagesTokens(messages) > MAX_PROMPT_TOKENS) {
+    trimHistory(history);
   }
 
-  let finalReply = null;
-  let finalModel = null;
+  const codeQuery = isCodeQuery(message);
+  const modelPool = codeQuery ? CODE_MODELS : MODELS;
 
-  // Try up to all models with backoff
-  for (let i = 0; i < MODELS.length; i++) {
-    const model = getNextModel();
+  let result;
+  for (let i = 0; i < modelPool.length; i++) {
     try {
-      const out = await tryModel(model, messages, process.env.GROQ_API_KEY);
-      finalReply = out.reply;
-      finalModel = out.model;
+      result = await callModel(
+        nextModel(modelPool),
+        messages,
+        process.env.GROQ_API_KEY
+      );
       break;
-    } catch (e) {
-      if (e.message.includes('Cooldown')) continue; // Skip if on cooldown
-    }
+    } catch {}
   }
 
-  if (!finalReply) {
-    console.error('>>> ALL MODELS FAILED');
-    return res.status(502).json({ error: 'All models failed - try again later' });
+  if (!result) {
+    return res.status(502).json({ error: 'All models failed' });
   }
 
-  history.push({ role: 'user', content: message });
-  history.push({ role: 'assistant', content: finalReply });
+  history.push({ role: 'user', content: userInput });
+  history.push({ role: 'assistant', content: result.reply });
+  trimHistory(history);
 
   clearTimeout(timers.get(threadId));
-  timers.set(threadId, setTimeout(() => {
-    threads.delete(threadId);
-    timers.delete(threadId);
-    console.log('>>> THREAD EXPIRED:', threadId);
-  }, THREAD_TTL));
+  timers.set(threadId, setTimeout(() => threads.delete(threadId), THREAD_TTL));
 
-  console.log('>>> RESPONSE OK');
   res.json({
-    provider: 'groq',
-    model: finalModel,
-    reply: finalReply,
+    reply: result.reply,
+    model: result.model,
     threadId,
-    webSearched: !!searchResults,
-    searchQuery: searchedQuery,
-    modelUsage: Object.fromEntries(modelUsage),
-    estimatedTokens: Math.round(estTokens)
+    documentMode,
+    codeRouted: codeQuery,
+    estimatedTokens: messagesTokens(messages),
+    modelUsage: Object.fromEntries(modelUsage)
   });
 };
