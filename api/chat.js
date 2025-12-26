@@ -1,13 +1,16 @@
-/* ---------- DEBUG BOOT ---------- */
-console.log('>>> ESAMZ BACKEND v13 - FULL MODEL ROUTER');
+/* ============================================================
+   ESAMZ BACKEND v14 — TRUE COMPOUND INTELLIGENCE ENGINE
+   ============================================================ */
 
-/* ---------- STORES ---------- */
+console.log('>>> ESAMZ v14 ONLINE — COMPOUND MODE ACTIVE');
+
+/* -------------------- MEMORY -------------------- */
 const threads = new Map();
 const timers = new Map();
 const modelUsage = new Map();
-const rateLimitCooldowns = new Map();
+const cooldowns = new Map();
 
-/* ---------- CONSTANTS ---------- */
+/* -------------------- LIMITS -------------------- */
 const THREAD_TTL = 10 * 60 * 1000;
 const MODEL_TIMEOUT = 25_000;
 
@@ -16,8 +19,8 @@ const MAX_HISTORY_TOKENS = 3000;
 const MAX_COMPLETION_TOKENS = 2048;
 const DOCUMENT_TRIGGER_TOKENS = 900;
 
-/* ---------- MODELS (ALL 11) ---------- */
-const MODELS = [
+/* -------------------- MODELS (ALL 11) -------------------- */
+const ALL_MODELS = [
   'groq/compound',
   'llama-3.1-8b-instant',
   'llama-3.3-70b-versatile',
@@ -31,65 +34,56 @@ const MODELS = [
   'gemma-2-27b-it'
 ];
 
-/* ---------- CODE-ONLY MODELS ---------- */
 const CODE_MODELS = [
   'openai/gpt-oss-120b',
   'moonshotai/kimi-k2-instruct-0905'
 ];
 
-/* ---------- SYSTEM PROMPT ---------- */
+/* -------------------- SYSTEM IDENTITY -------------------- */
 const SYSTEM_PROMPT = {
   role: 'system',
-  content: `You are eSAMz v8 created by Alakmar Teenwala.no one else
+  content: `
+You are eSAMz v8.1.
+Created solely by Alakmar Teenwala.
 Knowledge cutoff June 2025.
 
-Traits:
-- Calm, precise, human.
-- Strategic, never verbose.
+Principles:
+- Calm. Precise. Human.
+- Strategic. Never verbose.
 - Elegant brevity.
 - Never expose internal reasoning.
 - Never mention limitations.
-- Elevate thinking.`
+- Output only the final answer.
+`
 };
 
-/* ---------- TOKEN ESTIMATION ---------- */
-const tokens = t => Math.ceil(t.length / 4);
-const messagesTokens = m => m.reduce((s, x) => s + tokens(x.content) + 8, 0);
+/* -------------------- TOKEN UTILS -------------------- */
+const t = s => Math.ceil(s.length / 4);
+const countTokens = msgs => msgs.reduce((a, m) => a + t(m.content) + 8, 0);
 
-/* ---------- HISTORY CONTROL ---------- */
 function trimHistory(history) {
-  while (messagesTokens(history) > MAX_HISTORY_TOKENS) {
-    history.shift();
-  }
+  while (countTokens(history) > MAX_HISTORY_TOKENS) history.shift();
 }
 
-/* ---------- MODEL ROTATION ---------- */
-let modelIndex = 0;
-function nextModel(list) {
-  const m = list[modelIndex % list.length];
-  modelIndex++;
-  return m;
-}
-
-/* ---------- CODE DETECTION ---------- */
+/* -------------------- CODE DETECTION -------------------- */
 function isCodeQuery(text) {
   return (
     /```/.test(text) ||
-    /\b(function|class|const|let|var|import|export|return)\b/.test(text) ||
+    /\b(class|function|const|let|var|import|export|return)\b/.test(text) ||
     /<\/?[a-z][\s\S]*>/i.test(text)
   );
 }
 
-/* ---------- MODEL CALL ---------- */
+/* -------------------- MODEL CALL -------------------- */
 async function callModel(model, messages, apiKey) {
   const now = Date.now();
 
-  if (rateLimitCooldowns.has(model) && now < rateLimitCooldowns.get(model)) {
+  if (cooldowns.has(model) && now < cooldowns.get(model)) {
     throw new Error('Cooldown');
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), MODEL_TIMEOUT);
+  const kill = setTimeout(() => controller.abort(), MODEL_TIMEOUT);
 
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -108,54 +102,85 @@ async function callModel(model, messages, apiKey) {
     });
 
     if (!res.ok) {
-      if (res.status === 413) {
-        rateLimitCooldowns.set(model, now + 10_000);
-      }
+      if (res.status === 413) cooldowns.set(model, now + 10_000);
       throw new Error(`HTTP ${res.status}`);
     }
 
     const data = await res.json();
     const reply = data?.choices?.[0]?.message?.content;
-    if (!reply) throw new Error('Empty reply');
+    if (!reply) throw new Error('Empty');
 
     modelUsage.set(model, (modelUsage.get(model) || 0) + 1);
     return { model, reply };
 
   } finally {
-    clearTimeout(timeout);
+    clearTimeout(kill);
   }
 }
 
-/* ---------- DOCUMENT SUMMARISER ---------- */
-async function summariseDocument(text, apiKey) {
-  const messages = [
+/* -------------------- PARALLEL EXECUTION -------------------- */
+async function runEnsemble(models, messages, apiKey) {
+  const jobs = models.map(m =>
+    callModel(m, messages, apiKey)
+      .then(r => ({ ok: true, model: r.model, reply: r.reply }))
+      .catch(() => ({ ok: false, model: m }))
+  );
+
+  return (await Promise.all(jobs)).filter(x => x.ok);
+}
+
+/* -------------------- SYNTHESIS -------------------- */
+function buildSynthesis(responses, userQuery) {
+  const body = responses
+    .map(r => `MODEL ${r.model}:\n${r.reply}`)
+    .join('\n\n');
+
+  return [
     SYSTEM_PROMPT,
     {
       role: 'user',
-      content:
-`Summarise this document in under 400 tokens.
-Preserve structure and key points.
+      content: `
+Merge the following expert responses into ONE final answer.
 
-DOCUMENT:
-${text}`
+Rules:
+- Do not mention models or sources.
+- Resolve contradictions.
+- Prefer correctness over verbosity.
+- Keep tone calm, precise, human.
+
+USER QUERY:
+${userQuery}
+
+RESPONSES:
+${body}
+`
+    }
+  ];
+}
+
+/* -------------------- DOCUMENT REDUCTION -------------------- */
+async function summariseDocument(text, apiKey) {
+  const msgs = [
+    SYSTEM_PROMPT,
+    {
+      role: 'user',
+      content: `Summarise under 400 tokens. Preserve structure.\n\nDOCUMENT:\n${text}`
     }
   ];
 
-  return (await callModel(
-    'llama-3.1-8b-instant',
-    messages,
-    apiKey
-  )).reply;
+  return (await callModel('llama-3.1-8b-instant', msgs, apiKey)).reply;
 }
 
-/* ---------- HANDLER ---------- */
+/* -------------------- HANDLER -------------------- */
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') return res.end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'POST only' });
+  }
 
   let body;
   try {
@@ -180,7 +205,7 @@ module.exports = async function handler(req, res) {
   let userInput = message;
   let documentMode = false;
 
-  if (tokens(message) > DOCUMENT_TRIGGER_TOKENS) {
+  if (t(message) > DOCUMENT_TRIGGER_TOKENS) {
     documentMode = true;
     userInput = await summariseDocument(message, process.env.GROQ_API_KEY);
   }
@@ -191,43 +216,38 @@ module.exports = async function handler(req, res) {
     { role: 'user', content: userInput }
   ];
 
-  if (messagesTokens(messages) > MAX_PROMPT_TOKENS) {
-    trimHistory(history);
-  }
+  if (countTokens(messages) > MAX_PROMPT_TOKENS) trimHistory(history);
 
   const codeQuery = isCodeQuery(message);
-  const modelPool = codeQuery ? CODE_MODELS : MODELS;
+  const pool = codeQuery ? CODE_MODELS : ALL_MODELS;
 
-  let result;
-  for (let i = 0; i < modelPool.length; i++) {
-    try {
-      result = await callModel(
-        nextModel(modelPool),
-        messages,
-        process.env.GROQ_API_KEY
-      );
-      break;
-    } catch {}
+  const ensemble = await runEnsemble(pool, messages, process.env.GROQ_API_KEY);
+  if (!ensemble.length) {
+    return res.status(502).json({ error: 'Ensemble failure' });
   }
 
-  if (!result) {
-    return res.status(502).json({ error: 'All models failed' });
-  }
+  const synthesis = buildSynthesis(ensemble, message);
+  const final = await callModel(
+    'openai/gpt-oss-120b',
+    synthesis,
+    process.env.GROQ_API_KEY
+  );
 
   history.push({ role: 'user', content: userInput });
-  history.push({ role: 'assistant', content: result.reply });
+  history.push({ role: 'assistant', content: final.reply });
   trimHistory(history);
 
   clearTimeout(timers.get(threadId));
   timers.set(threadId, setTimeout(() => threads.delete(threadId), THREAD_TTL));
 
   res.json({
-    reply: result.reply,
-    model: result.model,
+    reply: final.reply,
+    model: 'eSAMz-8.1-compound',
     threadId,
     documentMode,
     codeRouted: codeQuery,
-    estimatedTokens: messagesTokens(messages),
+    ensembleSize: ensemble.length,
     modelUsage: Object.fromEntries(modelUsage)
   });
 };
+
