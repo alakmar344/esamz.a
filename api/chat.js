@@ -1,16 +1,13 @@
-/* ============================================================
-   ESAMZ BACKEND v14.2 — COOLDOWN-SAFE COMPOUND ENGINE
-   ============================================================ */
+ /* ---------- DEBUG BOOT ---------- */
+console.log('>>> ESAMZ BACKEND v13 - FULL MODEL ROUTER');
 
-console.log('>>> ESAMZ v14.2 ONLINE — STABLE COMPOUND MODE');
-
-/* -------------------- MEMORY -------------------- */
+/* ---------- STORES ---------- */
 const threads = new Map();
 const timers = new Map();
 const modelUsage = new Map();
-const cooldowns = new Map();
+const rateLimitCooldowns = new Map();
 
-/* -------------------- LIMITS -------------------- */
+/* ---------- CONSTANTS ---------- */
 const THREAD_TTL = 10 * 60 * 1000;
 const MODEL_TIMEOUT = 25_000;
 
@@ -19,11 +16,8 @@ const MAX_HISTORY_TOKENS = 3000;
 const MAX_COMPLETION_TOKENS = 2048;
 const DOCUMENT_TRIGGER_TOKENS = 900;
 
-const MIN_QUORUM = 3;
-const STAGGER_DELAY = 120;
-
-/* -------------------- MODELS -------------------- */
-const ALL_MODELS = [
+/* ---------- MODELS (ALL 11) ---------- */
+const MODELS = [
   'groq/compound',
   'llama-3.1-8b-instant',
   'llama-3.3-70b-versatile',
@@ -37,54 +31,65 @@ const ALL_MODELS = [
   'gemma-2-27b-it'
 ];
 
+/* ---------- CODE-ONLY MODELS ---------- */
 const CODE_MODELS = [
   'openai/gpt-oss-120b',
   'moonshotai/kimi-k2-instruct-0905'
 ];
 
-/* -------------------- SYSTEM PROMPT -------------------- */
+/* ---------- SYSTEM PROMPT ---------- */
 const SYSTEM_PROMPT = {
   role: 'system',
-  content: `
-You are eSAMz v8.1.
-Created solely by Alakmar Teenwala.
+  content: `You are eSAMz v8 created by Alakmar Teenwala.no one else
 Knowledge cutoff June 2025.
 
-- Calm. Precise. Human.
-- Never verbose.
+Traits:
+- Calm, precise, human.
+- Strategic, never verbose.
+- Elegant brevity.
 - Never expose internal reasoning.
-- Output only the final answer.
-`
+- Never mention limitations.
+- Elevate thinking.`
 };
 
-/* -------------------- TOKEN UTILS -------------------- */
-const t = s => Math.ceil(s.length / 4);
-const countTokens = msgs => msgs.reduce((a, m) => a + t(m.content) + 8, 0);
+/* ---------- TOKEN ESTIMATION ---------- */
+const tokens = t => Math.ceil(t.length / 4);
+const messagesTokens = m => m.reduce((s, x) => s + tokens(x.content) + 8, 0);
 
-function trimHistory(h) {
-  while (countTokens(h) > MAX_HISTORY_TOKENS) h.shift();
+/* ---------- HISTORY CONTROL ---------- */
+function trimHistory(history) {
+  while (messagesTokens(history) > MAX_HISTORY_TOKENS) {
+    history.shift();
+  }
 }
 
-/* -------------------- CODE DETECTION -------------------- */
+/* ---------- MODEL ROTATION ---------- */
+let modelIndex = 0;
+function nextModel(list) {
+  const m = list[modelIndex % list.length];
+  modelIndex++;
+  return m;
+}
+
+/* ---------- CODE DETECTION ---------- */
 function isCodeQuery(text) {
   return (
     /```/.test(text) ||
-    /\b(class|function|const|let|var|import|export|return)\b/.test(text) ||
+    /\b(function|class|const|let|var|import|export|return)\b/.test(text) ||
     /<\/?[a-z][\s\S]*>/i.test(text)
   );
 }
 
-/* -------------------- MODEL CALL (SAFE) -------------------- */
-async function callModel(model, messages, apiKey, retry = 1) {
+/* ---------- MODEL CALL ---------- */
+async function callModel(model, messages, apiKey) {
   const now = Date.now();
 
-  // cooldown = skip, never throw
-  if (cooldowns.has(model) && now < cooldowns.get(model)) {
-    return null;
+  if (rateLimitCooldowns.has(model) && now < rateLimitCooldowns.get(model)) {
+    throw new Error('Cooldown');
   }
 
   const controller = new AbortController();
-  const kill = setTimeout(() => controller.abort(), MODEL_TIMEOUT);
+  const timeout = setTimeout(() => controller.abort(), MODEL_TIMEOUT);
 
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -103,76 +108,47 @@ async function callModel(model, messages, apiKey, retry = 1) {
     });
 
     if (!res.ok) {
-      if (res.status === 429) {
-        cooldowns.set(model, now + 15_000);
-        if (retry > 0) {
-          await new Promise(r => setTimeout(r, 400));
-          return callModel(model, messages, apiKey, retry - 1);
-        }
+      if (res.status === 413) {
+        rateLimitCooldowns.set(model, now + 10_000);
       }
-      return null;
+      throw new Error(`HTTP ${res.status}`);
     }
 
     const data = await res.json();
     const reply = data?.choices?.[0]?.message?.content;
-    if (!reply) return null;
+    if (!reply) throw new Error('Empty reply');
 
     modelUsage.set(model, (modelUsage.get(model) || 0) + 1);
     return { model, reply };
 
   } finally {
-    clearTimeout(kill);
+    clearTimeout(timeout);
   }
 }
 
-/* -------------------- STAGGERED ENSEMBLE -------------------- */
-async function runEnsemble(models, messages, apiKey) {
-  const results = [];
-
-  for (const model of models) {
-    const r = await callModel(model, messages, apiKey);
-    if (r) results.push(r);
-    if (results.length >= MIN_QUORUM) break;
-    await new Promise(r => setTimeout(r, STAGGER_DELAY));
-  }
-
-  return results;
-}
-
-/* -------------------- SYNTHESIS -------------------- */
-function buildSynthesis(responses, userQuery) {
-  const body = responses.map(r => r.reply).join('\n\n');
-
-  return [
+/* ---------- DOCUMENT SUMMARISER ---------- */
+async function summariseDocument(text, apiKey) {
+  const messages = [
     SYSTEM_PROMPT,
     {
       role: 'user',
-      content: `
-Merge the following responses into ONE final answer.
-Resolve conflicts. One voice. Prefer correctness.
+      content:
+`Summarise this document in under 400 tokens.
+Preserve structure and key points.
 
-QUESTION:
-${userQuery}
-
-RESPONSES:
-${body}
-`
+DOCUMENT:
+${text}`
     }
   ];
+
+  return (await callModel(
+    'llama-3.1-8b-instant',
+    messages,
+    apiKey
+  )).reply;
 }
 
-/* -------------------- DOCUMENT REDUCTION -------------------- */
-async function summariseDocument(text, apiKey) {
-  const msgs = [
-    SYSTEM_PROMPT,
-    { role: 'user', content: `Summarise under 400 tokens.\n\n${text}` }
-  ];
-
-  const r = await callModel('llama-3.1-8b-instant', msgs, apiKey);
-  return r ? r.reply : text.slice(0, 2000);
-}
-
-/* -------------------- HANDLER -------------------- */
+/* ---------- HANDLER ---------- */
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
@@ -193,57 +169,65 @@ module.exports = async function handler(req, res) {
   }
 
   const { message, threadId = 'default' } = body;
-  if (!message) return res.status(400).json({ error: 'message required' });
+  if (!message || typeof message !== 'string') {
+    return res.status(400).json({ error: 'message required' });
+  }
 
   if (!threads.has(threadId)) threads.set(threadId, []);
   const history = threads.get(threadId);
   trimHistory(history);
 
-  let input = message;
+  let userInput = message;
   let documentMode = false;
 
-  if (t(message) > DOCUMENT_TRIGGER_TOKENS) {
+  if (tokens(message) > DOCUMENT_TRIGGER_TOKENS) {
     documentMode = true;
-    input = await summariseDocument(message, process.env.GROQ_API_KEY);
+    userInput = await summariseDocument(message, process.env.GROQ_API_KEY);
   }
 
   const messages = [
     SYSTEM_PROMPT,
     ...history,
-    { role: 'user', content: input }
+    { role: 'user', content: userInput }
   ];
 
-  const pool = isCodeQuery(message) ? CODE_MODELS : ALL_MODELS;
-  const ensemble = await runEnsemble(pool, messages, process.env.GROQ_API_KEY);
-
-  if (!ensemble.length) {
-    return res.status(503).json({ error: 'Temporary overload. Try again.' });
+  if (messagesTokens(messages) > MAX_PROMPT_TOKENS) {
+    trimHistory(history);
   }
 
-  let final;
-  try {
-    final = await callModel(
-      'openai/gpt-oss-120b',
-      buildSynthesis(ensemble, message),
-      process.env.GROQ_API_KEY
-    );
-  } catch {
-    final = ensemble[0];
+  const codeQuery = isCodeQuery(message);
+  const modelPool = codeQuery ? CODE_MODELS : MODELS;
+
+  let result;
+  for (let i = 0; i < modelPool.length; i++) {
+    try {
+      result = await callModel(
+        nextModel(modelPool),
+        messages,
+        process.env.GROQ_API_KEY
+      );
+      break;
+    } catch {}
   }
 
-  history.push({ role: 'user', content: input });
-  history.push({ role: 'assistant', content: final.reply });
+  if (!result) {
+    return res.status(502).json({ error: 'All models failed' });
+  }
+
+  history.push({ role: 'user', content: userInput });
+  history.push({ role: 'assistant', content: result.reply });
   trimHistory(history);
 
   clearTimeout(timers.get(threadId));
   timers.set(threadId, setTimeout(() => threads.delete(threadId), THREAD_TTL));
 
   res.json({
-    reply: final.reply,
-    model: 'eSAMz-8.1-compound',
+    reply: result.reply,
+    model: result.model,
     threadId,
     documentMode,
-    ensembleSize: ensemble.length,
+    codeRouted: codeQuery,
+    estimatedTokens: messagesTokens(messages),
     modelUsage: Object.fromEntries(modelUsage)
   });
 };
