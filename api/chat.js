@@ -1,8 +1,8 @@
 /* ============================================================
-   ESAMZ BACKEND v14 — TRUE COMPOUND INTELLIGENCE ENGINE
+   ESAMZ BACKEND v14.1 — ERROR-HARDENED COMPOUND ENGINE
    ============================================================ */
 
-console.log('>>> ESAMZ v14 ONLINE — COMPOUND MODE ACTIVE');
+console.log('>>> ESAMZ v14.1 ONLINE — STABLE COMPOUND MODE');
 
 /* -------------------- MEMORY -------------------- */
 const threads = new Map();
@@ -19,7 +19,10 @@ const MAX_HISTORY_TOKENS = 3000;
 const MAX_COMPLETION_TOKENS = 2048;
 const DOCUMENT_TRIGGER_TOKENS = 900;
 
-/* -------------------- MODELS (ALL 11) -------------------- */
+const MIN_QUORUM = 5;
+const STAGGER_DELAY = 120;
+
+/* -------------------- MODELS -------------------- */
 const ALL_MODELS = [
   'groq/compound',
   'llama-3.1-8b-instant',
@@ -39,7 +42,7 @@ const CODE_MODELS = [
   'moonshotai/kimi-k2-instruct-0905'
 ];
 
-/* -------------------- SYSTEM IDENTITY -------------------- */
+/* -------------------- SYSTEM PROMPT -------------------- */
 const SYSTEM_PROMPT = {
   role: 'system',
   content: `
@@ -47,13 +50,10 @@ You are eSAMz v8.1.
 Created solely by Alakmar Teenwala.
 Knowledge cutoff June 2025.
 
-Principles:
 - Calm. Precise. Human.
-- Strategic. Never verbose.
-- Elegant brevity.
-- Never expose internal reasoning.
-- Never mention limitations.
-- Output only the final answer.
+- Never verbose.
+- Never expose reasoning.
+- Output only final answers.
 `
 };
 
@@ -61,8 +61,8 @@ Principles:
 const t = s => Math.ceil(s.length / 4);
 const countTokens = msgs => msgs.reduce((a, m) => a + t(m.content) + 8, 0);
 
-function trimHistory(history) {
-  while (countTokens(history) > MAX_HISTORY_TOKENS) history.shift();
+function trimHistory(h) {
+  while (countTokens(h) > MAX_HISTORY_TOKENS) h.shift();
 }
 
 /* -------------------- CODE DETECTION -------------------- */
@@ -75,7 +75,7 @@ function isCodeQuery(text) {
 }
 
 /* -------------------- MODEL CALL -------------------- */
-async function callModel(model, messages, apiKey) {
+async function callModel(model, messages, apiKey, retry = 1) {
   const now = Date.now();
 
   if (cooldowns.has(model) && now < cooldowns.get(model)) {
@@ -102,7 +102,13 @@ async function callModel(model, messages, apiKey) {
     });
 
     if (!res.ok) {
-      if (res.status === 413) cooldowns.set(model, now + 10_000);
+      if (res.status === 429) {
+        cooldowns.set(model, now + 15_000);
+        if (retry > 0) {
+          await new Promise(r => setTimeout(r, 400));
+          return callModel(model, messages, apiKey, retry - 1);
+        }
+      }
       throw new Error(`HTTP ${res.status}`);
     }
 
@@ -118,21 +124,26 @@ async function callModel(model, messages, apiKey) {
   }
 }
 
-/* -------------------- PARALLEL EXECUTION -------------------- */
+/* -------------------- STAGGERED ENSEMBLE -------------------- */
 async function runEnsemble(models, messages, apiKey) {
-  const jobs = models.map(m =>
-    callModel(m, messages, apiKey)
-      .then(r => ({ ok: true, model: r.model, reply: r.reply }))
-      .catch(() => ({ ok: false, model: m }))
-  );
+  const results = [];
 
-  return (await Promise.all(jobs)).filter(x => x.ok);
+  for (const model of models) {
+    try {
+      const r = await callModel(model, messages, apiKey);
+      results.push(r);
+      if (results.length >= MIN_QUORUM) break;
+    } catch {}
+    await new Promise(r => setTimeout(r, STAGGER_DELAY));
+  }
+
+  return results;
 }
 
 /* -------------------- SYNTHESIS -------------------- */
 function buildSynthesis(responses, userQuery) {
   const body = responses
-    .map(r => `MODEL ${r.model}:\n${r.reply}`)
+    .map(r => r.reply)
     .join('\n\n');
 
   return [
@@ -141,14 +152,9 @@ function buildSynthesis(responses, userQuery) {
       role: 'user',
       content: `
 Merge the following expert responses into ONE final answer.
+Resolve conflicts. Prefer correctness. One voice.
 
-Rules:
-- Do not mention models or sources.
-- Resolve contradictions.
-- Prefer correctness over verbosity.
-- Keep tone calm, precise, human.
-
-USER QUERY:
+QUESTION:
 ${userQuery}
 
 RESPONSES:
@@ -164,7 +170,7 @@ async function summariseDocument(text, apiKey) {
     SYSTEM_PROMPT,
     {
       role: 'user',
-      content: `Summarise under 400 tokens. Preserve structure.\n\nDOCUMENT:\n${text}`
+      content: `Summarise under 400 tokens.\n\n${text}`
     }
   ];
 
@@ -178,9 +184,7 @@ module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') return res.end();
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'POST only' });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
   let body;
   try {
@@ -194,36 +198,31 @@ module.exports = async function handler(req, res) {
   }
 
   const { message, threadId = 'default' } = body;
-  if (!message || typeof message !== 'string') {
-    return res.status(400).json({ error: 'message required' });
-  }
+  if (!message) return res.status(400).json({ error: 'message required' });
 
   if (!threads.has(threadId)) threads.set(threadId, []);
   const history = threads.get(threadId);
   trimHistory(history);
 
-  let userInput = message;
+  let input = message;
   let documentMode = false;
 
   if (t(message) > DOCUMENT_TRIGGER_TOKENS) {
     documentMode = true;
-    userInput = await summariseDocument(message, process.env.GROQ_API_KEY);
+    input = await summariseDocument(message, process.env.GROQ_API_KEY);
   }
 
   const messages = [
     SYSTEM_PROMPT,
     ...history,
-    { role: 'user', content: userInput }
+    { role: 'user', content: input }
   ];
 
-  if (countTokens(messages) > MAX_PROMPT_TOKENS) trimHistory(history);
-
-  const codeQuery = isCodeQuery(message);
-  const pool = codeQuery ? CODE_MODELS : ALL_MODELS;
-
+  const pool = isCodeQuery(message) ? CODE_MODELS : ALL_MODELS;
   const ensemble = await runEnsemble(pool, messages, process.env.GROQ_API_KEY);
+
   if (!ensemble.length) {
-    return res.status(502).json({ error: 'Ensemble failure' });
+    return res.status(503).json({ error: 'Temporary overload' });
   }
 
   const synthesis = buildSynthesis(ensemble, message);
@@ -233,7 +232,7 @@ module.exports = async function handler(req, res) {
     process.env.GROQ_API_KEY
   );
 
-  history.push({ role: 'user', content: userInput });
+  history.push({ role: 'user', content: input });
   history.push({ role: 'assistant', content: final.reply });
   trimHistory(history);
 
@@ -245,9 +244,7 @@ module.exports = async function handler(req, res) {
     model: 'eSAMz-8.1-compound',
     threadId,
     documentMode,
-    codeRouted: codeQuery,
     ensembleSize: ensemble.length,
     modelUsage: Object.fromEntries(modelUsage)
   });
 };
-
