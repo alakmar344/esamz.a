@@ -1,8 +1,8 @@
 /* ============================================================
-   ESAMZ BACKEND v14.1 — ERROR-HARDENED COMPOUND ENGINE
+   ESAMZ BACKEND v14.2 — COOLDOWN-SAFE COMPOUND ENGINE
    ============================================================ */
 
-console.log('>>> ESAMZ v14.1 ONLINE — STABLE COMPOUND MODE');
+console.log('>>> ESAMZ v14.2 ONLINE — STABLE COMPOUND MODE');
 
 /* -------------------- MEMORY -------------------- */
 const threads = new Map();
@@ -19,7 +19,7 @@ const MAX_HISTORY_TOKENS = 3000;
 const MAX_COMPLETION_TOKENS = 2048;
 const DOCUMENT_TRIGGER_TOKENS = 900;
 
-const MIN_QUORUM = 5;
+const MIN_QUORUM = 3;
 const STAGGER_DELAY = 120;
 
 /* -------------------- MODELS -------------------- */
@@ -52,8 +52,8 @@ Knowledge cutoff June 2025.
 
 - Calm. Precise. Human.
 - Never verbose.
-- Never expose reasoning.
-- Output only final answers.
+- Never expose internal reasoning.
+- Output only the final answer.
 `
 };
 
@@ -74,12 +74,13 @@ function isCodeQuery(text) {
   );
 }
 
-/* -------------------- MODEL CALL -------------------- */
+/* -------------------- MODEL CALL (SAFE) -------------------- */
 async function callModel(model, messages, apiKey, retry = 1) {
   const now = Date.now();
 
+  // cooldown = skip, never throw
   if (cooldowns.has(model) && now < cooldowns.get(model)) {
-    throw new Error('Cooldown');
+    return null;
   }
 
   const controller = new AbortController();
@@ -109,12 +110,12 @@ async function callModel(model, messages, apiKey, retry = 1) {
           return callModel(model, messages, apiKey, retry - 1);
         }
       }
-      throw new Error(`HTTP ${res.status}`);
+      return null;
     }
 
     const data = await res.json();
     const reply = data?.choices?.[0]?.message?.content;
-    if (!reply) throw new Error('Empty');
+    if (!reply) return null;
 
     modelUsage.set(model, (modelUsage.get(model) || 0) + 1);
     return { model, reply };
@@ -129,11 +130,9 @@ async function runEnsemble(models, messages, apiKey) {
   const results = [];
 
   for (const model of models) {
-    try {
-      const r = await callModel(model, messages, apiKey);
-      results.push(r);
-      if (results.length >= MIN_QUORUM) break;
-    } catch {}
+    const r = await callModel(model, messages, apiKey);
+    if (r) results.push(r);
+    if (results.length >= MIN_QUORUM) break;
     await new Promise(r => setTimeout(r, STAGGER_DELAY));
   }
 
@@ -142,17 +141,15 @@ async function runEnsemble(models, messages, apiKey) {
 
 /* -------------------- SYNTHESIS -------------------- */
 function buildSynthesis(responses, userQuery) {
-  const body = responses
-    .map(r => r.reply)
-    .join('\n\n');
+  const body = responses.map(r => r.reply).join('\n\n');
 
   return [
     SYSTEM_PROMPT,
     {
       role: 'user',
       content: `
-Merge the following expert responses into ONE final answer.
-Resolve conflicts. Prefer correctness. One voice.
+Merge the following responses into ONE final answer.
+Resolve conflicts. One voice. Prefer correctness.
 
 QUESTION:
 ${userQuery}
@@ -168,13 +165,11 @@ ${body}
 async function summariseDocument(text, apiKey) {
   const msgs = [
     SYSTEM_PROMPT,
-    {
-      role: 'user',
-      content: `Summarise under 400 tokens.\n\n${text}`
-    }
+    { role: 'user', content: `Summarise under 400 tokens.\n\n${text}` }
   ];
 
-  return (await callModel('llama-3.1-8b-instant', msgs, apiKey)).reply;
+  const r = await callModel('llama-3.1-8b-instant', msgs, apiKey);
+  return r ? r.reply : text.slice(0, 2000);
 }
 
 /* -------------------- HANDLER -------------------- */
@@ -222,15 +217,19 @@ module.exports = async function handler(req, res) {
   const ensemble = await runEnsemble(pool, messages, process.env.GROQ_API_KEY);
 
   if (!ensemble.length) {
-    return res.status(503).json({ error: 'Temporary overload' });
+    return res.status(503).json({ error: 'Temporary overload. Try again.' });
   }
 
-  const synthesis = buildSynthesis(ensemble, message);
-  const final = await callModel(
-    'openai/gpt-oss-120b',
-    synthesis,
-    process.env.GROQ_API_KEY
-  );
+  let final;
+  try {
+    final = await callModel(
+      'openai/gpt-oss-120b',
+      buildSynthesis(ensemble, message),
+      process.env.GROQ_API_KEY
+    );
+  } catch {
+    final = ensemble[0];
+  }
 
   history.push({ role: 'user', content: input });
   history.push({ role: 'assistant', content: final.reply });
