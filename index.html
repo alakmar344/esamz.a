@@ -2,43 +2,14 @@
 <html lang="en">
 <head>
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-<link rel="manifest" href="/site.webmanifest">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>eSAMz v8 – Neural Intelligence</title>
     <meta name="description" content="eSAMz AI - Advanced AI chat interface with multi-modal capabilities.">
-
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      "@id": "https://esamz.site/#organization",
-      "name": "eSAMz",
-      "legalName": "eSAMz AI",
-      "url": "https://esamz.site",
-      "logo": {
-        "@type": "ImageObject",
-        "url": "https://esamz.site/logo.png",
-        "width": "512",
-        "height": "512"
-      },
-      "description": "eSAMz AI - Intelligence Redefined.",
-      "brand": {
-        "@type": "Brand",
-        "name": "eSAMz AI",
-        "slogan": "Not just responsive but supportive"
-      },
-      "foundingDate": "2024",
-      "contactPoint": {
-        "@type": "ContactPoint",
-        "contactType": "Customer Support",
-        "url": "https://esamz.info"
-      }
-    }
-    </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -49,365 +20,907 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
 
     <style>
-        /* --- MODERN CSS VARIABLES & RESET --- */
         :root {
-            /* Palette */
-            --hue: 250;
-            --accent: hsl(var(--hue), 90%, 65%);
-            --accent-glow: hsla(var(--hue), 90%, 65%, 0.4);
-            --bg-dark: #050507;
-            --surface-glass: rgba(18, 18, 20, 0.65);
-            --border-glass: rgba(255, 255, 255, 0.08);
+            --hue: 180;
+            --accent: hsl(var(--hue), 70%, 55%);
+            --accent-secondary: hsl(270, 70%, 65%);
+            --accent-glow: hsla(var(--hue), 70%, 55%, 0.3);
+            --bg-dark: #0a0e1a;
+            --surface-glass: rgba(20, 25, 40, 0.75);
+            --surface-elevated: rgba(30, 35, 50, 0.9);
+            --border-glass: rgba(255, 255, 255, 0.1);
+            --border-subtle: rgba(255, 255, 255, 0.05);
             --text-main: #ffffff;
-            --text-muted: #9494a0;
+            --text-muted: #a1a8c0;
+            --text-dimmed: #6b7280;
             
-            /* Dimensions */
-            --sidebar-width: 300px;
-            --radius-xl: 24px;
-            --radius-md: 14px;
-            --space-container: clamp(1rem, 5vw, 15%);
+            --sidebar-width: 320px;
+            --radius-xl: 20px;
+            --radius-lg: 16px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+            --space-container: clamp(1.5rem, 5vw, 3rem);
+            
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.2);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.3);
+            --shadow-glow: 0 0 20px var(--accent-glow);
         }
 
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
         
         body { 
-            background-color: var(--bg-dark);
-            /* Neural Mesh Gradient */
-            background-image: 
-                radial-gradient(circle at 10% 20%, hsla(var(--hue), 80%, 20%, 0.15), transparent 40%),
-                radial-gradient(circle at 90% 80%, hsla(210, 80%, 20%, 0.15), transparent 40%);
+            background: linear-gradient(135deg, #0a0e1a 0%, #1a1f35 100%);
+            background-attachment: fixed;
             color: var(--text-main); 
-            font-family: 'Outfit', system-ui, sans-serif;
+            font-family: 'Outfit', system-ui, -apple-system, sans-serif;
             height: 100vh; 
             overflow: hidden;
             display: grid;
             grid-template-columns: var(--sidebar-width) 1fr;
-            transition: grid-template-columns 0.4s ease;
+            transition: grid-template-columns 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* --- SIDEBAR (ASIDE) --- */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: 
+                radial-gradient(circle at 15% 25%, hsla(var(--hue), 70%, 30%, 0.15), transparent 50%),
+                radial-gradient(circle at 85% 75%, hsla(270, 70%, 30%, 0.15), transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* SIDEBAR */
         .sidebar { 
             background: var(--surface-glass); 
-            backdrop-filter: blur(25px);
-            -webkit-backdrop-filter: blur(25px);
+            backdrop-filter: blur(30px) saturate(180%);
+            -webkit-backdrop-filter: blur(30px) saturate(180%);
             border-right: 1px solid var(--border-glass); 
             display: flex; 
             flex-direction: column; 
             z-index: 20; 
-            height: 100%;
+            height: 100vh;
+            position: relative;
             transform: translateX(0);
-            transition: transform 0.3s ease;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .sidebar-header { padding: 2rem 1.5rem 1rem; }
+        .sidebar-header { 
+            padding: 2rem 1.5rem 1.5rem;
+            border-bottom: 1px solid var(--border-subtle);
+        }
 
         .brand { 
-            display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2rem; 
+            display: flex; 
+            align-items: center; 
+            gap: 1rem; 
+            margin-bottom: 1.5rem;
         }
         
-        .brand-icon { 
-            width: 38px; height: 38px; 
-            background: linear-gradient(135deg, white, var(--accent)); 
-            border-radius: 10px; 
-            display: grid; place-items: center; 
-            color: black; font-weight: 800; font-size: 1.1rem;
-            box-shadow: 0 0 20px var(--accent-glow);
+        .logo-container {
+            width: 48px;
+            height: 48px;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .logo-svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 0 12px var(--accent-glow));
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-4px); }
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .brand-name {
+            font-weight: 700;
+            font-size: 1.3rem;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .brand-tagline {
+            font-size: 0.65rem;
+            color: var(--text-dimmed);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .btn-new { 
-            width: 100%; padding: 0.85rem; 
-            background: var(--accent); color: white; border: none;
-            border-radius: var(--radius-md); font-weight: 600; cursor: pointer; 
-            display: flex; justify-content: center; gap: 0.5rem;
-            transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 4px 15px var(--accent-glow);
+            width: 100%; 
+            padding: 1rem;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-secondary) 100%);
+            color: white; 
+            border: none;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer; 
+            display: flex; 
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: var(--shadow-md), var(--shadow-glow);
+            position: relative;
+            overflow: hidden;
         }
-        .btn-new:hover { transform: translateY(-2px); box-shadow: 0 8px 25px var(--accent-glow); }
 
-        .nav-scroller { flex: 1; overflow-y: auto; padding: 0.5rem 1.25rem; }
+        .btn-new::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%);
+            transform: translateX(-100%);
+            transition: transform 0.6s;
+        }
+
+        .btn-new:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg), 0 0 30px var(--accent-glow);
+        }
+
+        .btn-new:hover::before {
+            transform: translateX(100%);
+        }
+
+        .btn-new:active {
+            transform: translateY(0);
+        }
+
+        .nav-scroller { 
+            flex: 1; 
+            overflow-y: auto; 
+            padding: 1rem 1.25rem;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-glass) transparent;
+        }
+
+        .nav-scroller::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .nav-scroller::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .nav-scroller::-webkit-scrollbar-thumb {
+            background: var(--border-glass);
+            border-radius: 3px;
+        }
         
         .nav-label { 
-            font-size: 0.65rem; color: var(--text-muted); 
-            text-transform: uppercase; letter-spacing: 1.5px; 
-            margin: 1.5rem 0 0.5rem 0.25rem; font-weight: 700;
+            font-size: 0.65rem; 
+            color: var(--text-dimmed); 
+            text-transform: uppercase; 
+            letter-spacing: 1.5px; 
+            margin: 1.5rem 0 0.75rem 0.5rem; 
+            font-weight: 700;
         }
 
         .nav-item { 
-            width: 100%; padding: 0.75rem 0.85rem; 
-            background: transparent; border: 1px solid transparent;
-            color: var(--text-muted); border-radius: 12px; 
-            cursor: pointer; text-align: left; margin-bottom: 0.25rem; 
-            transition: all 0.2s; display: flex; align-items: center; gap: 0.75rem; 
-            font-size: 0.85rem; font-family: inherit; text-decoration: none;
+            width: 100%; 
+            padding: 0.85rem 1rem;
+            background: transparent; 
+            border: 1px solid transparent;
+            color: var(--text-muted); 
+            border-radius: var(--radius-md);
+            cursor: pointer; 
+            text-align: left; 
+            margin-bottom: 0.35rem;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; 
+            align-items: center; 
+            gap: 0.75rem;
+            font-size: 0.9rem;
+            font-family: inherit;
+            text-decoration: none;
+            position: relative;
         }
-        .nav-item:hover { background: rgba(255,255,255,0.04); color: white; }
-        .nav-item:active { transform: scale(0.98); }
+
+        .nav-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 0;
+            background: var(--accent);
+            border-radius: 0 3px 3px 0;
+            transition: height 0.3s;
+        }
+
+        .nav-item:hover {
+            background: var(--surface-elevated);
+            color: white;
+            border-color: var(--border-glass);
+            transform: translateX(4px);
+        }
+
+        .nav-item:hover::before {
+            height: 60%;
+        }
+
+        .nav-item:active {
+            transform: translateX(2px) scale(0.98);
+        }
+
+        .nav-item-delete {
+            margin-left: auto;
+            background: none;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-size: 1rem;
+            padding: 0.25rem;
+            border-radius: 4px;
+        }
+
+        .nav-item:hover .nav-item-delete {
+            opacity: 1;
+        }
+
+        .nav-item-delete:hover {
+            background: rgba(239, 68, 68, 0.1);
+        }
 
         .sidebar-footer { 
-            padding: 1.5rem; border-top: 1px solid var(--border-glass); 
-            text-align: center; font-size: 0.7rem; color: var(--text-muted);
+            padding: 1.5rem;
+            border-top: 1px solid var(--border-subtle);
+            text-align: center;
+            font-size: 0.7rem;
+            color: var(--text-dimmed);
+            line-height: 1.6;
         }
 
-        /* --- MAIN AREA --- */
+        /* MAIN AREA */
         .app-main { 
             position: relative; 
-            display: flex; flex-direction: column; 
+            display: flex; 
+            flex-direction: column;
             height: 100vh;
+            z-index: 1;
         }
 
         header { 
-            height: 64px; padding: 0 2rem; 
-            display: flex; align-items: center; justify-content: space-between; 
+            height: 70px;
+            padding: 0 var(--space-container);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--surface-glass);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-subtle);
             z-index: 10;
         }
 
         .status-badge { 
-            display: inline-flex; align-items: center; gap: 6px; 
-            font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; 
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
             color: var(--text-muted);
+            padding: 0.5rem 1rem;
+            background: var(--surface-elevated);
+            border-radius: 20px;
+            border: 1px solid var(--border-glass);
         }
-        .status-dot { width: 6px; height: 6px; background: #10b981; border-radius: 50%; box-shadow: 0 0 8px #10b981; }
+
+        .status-dot { 
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            box-shadow: 0 0 12px #10b981;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
 
         .btn-ghost { 
-            background: transparent; border: 1px solid var(--border-glass); 
-            color: var(--text-muted); padding: 0.4rem 1rem; border-radius: 20px; 
-            cursor: pointer; font-size: 0.75rem; transition: 0.2s;
+            background: transparent;
+            border: 1px solid var(--border-glass);
+            color: var(--text-muted);
+            padding: 0.5rem 1.25rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 500;
+            transition: all 0.25s;
         }
-        .btn-ghost:hover { border-color: var(--accent); color: white; }
 
-        /* --- CHAT STREAM --- */
+        .btn-ghost:hover {
+            border-color: var(--accent);
+            color: white;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* CHAT STREAM */
         .chat-stream { 
-            flex: 1; overflow-y: auto; 
-            padding: 1rem var(--space-container) 8rem; 
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem var(--space-container) 10rem;
             scroll-behavior: smooth;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-glass) transparent;
         }
 
-        /* Welcome Section */
-        .hero { 
-            text-align: center; margin-top: 10vh; 
-            animation: fadeIn 0.8s ease-out;
+        .chat-stream::-webkit-scrollbar {
+            width: 8px;
         }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        .chat-stream::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-stream::-webkit-scrollbar-thumb {
+            background: var(--border-glass);
+            border-radius: 4px;
+        }
+
+        /* HERO */
+        .hero { 
+            text-align: center;
+            margin-top: 8vh;
+            animation: fadeIn 1s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hero-logo {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 2rem;
+            filter: drop-shadow(0 0 30px var(--accent-glow));
+        }
 
         .hero h1 { 
-            font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 800; 
-            background: linear-gradient(to bottom right, white, #a5a5b5); 
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            margin-bottom: 0.5rem; letter-spacing: -1.5px;
+            font-size: clamp(2.5rem, 5vw, 4.5rem);
+            font-weight: 800;
+            background: linear-gradient(135deg, white 0%, var(--accent) 50%, var(--accent-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+            letter-spacing: -2px;
+            line-height: 1.1;
         }
-        .hero p { color: var(--text-muted); font-size: 1.1rem; margin-bottom: 3rem; }
+
+        .hero p {
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            margin-bottom: 4rem;
+            font-weight: 400;
+        }
 
         .cards-grid { 
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); 
-            gap: 1rem; max-width: 900px; margin: 0 auto; 
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.25rem;
+            max-width: 1000px;
+            margin: 0 auto;
         }
         
         .card { 
-            background: rgba(255,255,255,0.02); border: 1px solid var(--border-glass); 
-            padding: 1.5rem; border-radius: var(--radius-md); text-align: left; 
-            cursor: pointer; transition: 0.2s ease;
+            background: var(--surface-glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-glass);
+            padding: 2rem;
+            border-radius: var(--radius-lg);
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
         }
-        .card:hover { border-color: var(--accent); background: rgba(255,255,255,0.04); transform: translateY(-4px); }
-        .card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; color: white; }
-        .card p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; }
 
-        /* Messages */
+        .card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, var(--accent-glow), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .card:hover {
+            border-color: var(--accent);
+            transform: translateY(-6px);
+            box-shadow: var(--shadow-lg), var(--shadow-glow);
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .card-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .card h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: white;
+        }
+
+        .card p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        /* MESSAGES */
         .msg-group { 
-            display: flex; gap: 1rem; margin-bottom: 2rem; 
-            opacity: 0; animation: slideUp 0.4s forwards;
+            display: flex;
+            gap: 1.25rem;
+            margin-bottom: 2.5rem;
+            opacity: 0;
+            animation: slideUp 0.5s forwards;
         }
-        @keyframes slideUp { to { opacity: 1; } }
 
-        .msg-group.user { flex-direction: row-reverse; }
+        @keyframes slideUp {
+            to { opacity: 1; }
+        }
+
+        .msg-group.user {
+            flex-direction: row-reverse;
+        }
 
         .avatar { 
-            width: 36px; height: 36px; flex-shrink: 0; border-radius: 12px; 
-            display: grid; place-items: center; font-size: 0.8rem; font-weight: 700; 
+            width: 42px;
+            height: 42px;
+            flex-shrink: 0;
+            border-radius: var(--radius-md);
+            display: grid;
+            place-items: center;
+            font-size: 0.85rem;
+            font-weight: 700;
+            position: relative;
         }
-        .user .avatar { background: var(--accent); color: white; box-shadow: 0 0 15px var(--accent-glow); }
-        .ai .avatar { background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); }
+
+        .user .avatar {
+            background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+            color: white;
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .ai .avatar {
+            background: var(--surface-elevated);
+            border: 1px solid var(--border-glass);
+        }
 
         .bubble { 
-            max-width: 85%; padding: 1.25rem 1.5rem; 
-            border-radius: var(--radius-xl); font-size: 0.95rem; line-height: 1.6;
+            max-width: 75%;
+            padding: 1.5rem 1.75rem;
+            border-radius: var(--radius-xl);
+            font-size: 0.95rem;
+            line-height: 1.7;
+            position: relative;
         }
+
         .user .bubble { 
-            background: var(--accent); color: white; 
-            border-bottom-right-radius: 4px; box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-secondary) 100%);
+            color: white;
+            border-bottom-right-radius: 6px;
+            box-shadow: var(--shadow-md);
         }
+
         .ai .bubble { 
-            background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); 
-            border-bottom-left-radius: 4px; backdrop-filter: blur(10px);
+            background: var(--surface-glass);
+            border: 1px solid var(--border-glass);
+            border-bottom-left-radius: 6px;
+            backdrop-filter: blur(20px);
         }
-        .bubble pre { background: #000 !important; padding: 1rem; border-radius: 8px; overflow-x: auto; border: 1px solid var(--border-glass); }
-        .bubble code { font-family: 'JetBrains Mono', monospace; font-size: 0.85em; }
+
+        .bubble pre {
+            background: #000 !important;
+            padding: 1.25rem;
+            border-radius: var(--radius-sm);
+            overflow-x: auto;
+            border: 1px solid var(--border-glass);
+            margin: 1rem 0;
+        }
+
+        .bubble code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85em;
+        }
 
         .msg-actions { 
-            display: flex; gap: 0.5rem; margin-top: 0.5rem; opacity: 0; transition: opacity 0.2s; 
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+            opacity: 0;
+            transition: opacity 0.3s;
         }
-        .msg-group:hover .msg-actions { opacity: 1; }
-        .action-link { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.75rem; }
-        .action-link:hover { color: white; text-decoration: underline; }
 
-        /* --- INPUT DOCK --- */
+        .msg-group:hover .msg-actions {
+            opacity: 1;
+        }
+
+        .action-link {
+            background: var(--surface-elevated);
+            border: 1px solid var(--border-glass);
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.75rem;
+            padding: 0.35rem 0.85rem;
+            border-radius: 12px;
+            transition: all 0.2s;
+        }
+
+        .action-link:hover {
+            color: white;
+            border-color: var(--accent);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* INPUT DOCK */
         .input-dock { 
-            position: absolute; bottom: 0; left: 0; right: 0; 
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
             padding: 0 var(--space-container) 2rem;
-            background: linear-gradient(to top, var(--bg-dark) 20%, transparent);
+            background: linear-gradient(to top, var(--bg-dark) 30%, transparent);
             z-index: 30;
+            pointer-events: none;
         }
 
         .dock-container { 
-            background: rgba(20, 20, 22, 0.7); 
-            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--border-glass); 
-            border-radius: 20px; padding: 0.75rem; 
-            box-shadow: 0 25px 60px rgba(0,0,0,0.6);
-            transition: border-color 0.2s, box-shadow 0.2s;
+            background: var(--surface-elevated);
+            backdrop-filter: blur(30px) saturate(180%);
+            -webkit-backdrop-filter: blur(30px) saturate(180%);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-xl);
+            padding: 1rem;
+            box-shadow: var(--shadow-lg);
+            transition: all 0.3s;
+            pointer-events: auto;
         }
-        .dock-container:focus-within { border-color: var(--accent); box-shadow: 0 25px 60px var(--accent-glow); }
-        
-        .file-chips { display: flex; gap: 0.5rem; padding: 0 0.5rem 0.5rem; flex-wrap: wrap; }
-        .chip { 
-            background: rgba(255,255,255,0.1); border-radius: 20px; 
-            padding: 4px 10px; font-size: 0.75rem; display: flex; align-items: center; gap: 6px; 
-        }
-        .chip button { background: none; border: none; color: inherit; cursor: pointer; font-size: 1rem; line-height: 1; }
 
-        .input-row { display: flex; align-items: flex-end; gap: 0.5rem; }
+        .dock-container:focus-within {
+            border-color: var(--accent);
+            box-shadow: var(--shadow-lg), 0 0 40px var(--accent-glow);
+        }
+        
+        .file-chips {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0 0.5rem 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .chip { 
+            background: var(--surface-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 20px;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+
+        .chip:hover {
+            border-color: var(--accent);
+        }
+
+        .chip button {
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            font-size: 1rem;
+            line-height: 1;
+            padding: 0;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .chip button:hover {
+            opacity: 1;
+        }
+
+        .input-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 0.75rem;
+        }
         
         .btn-tool { 
-            width: 42px; height: 42px; border-radius: 50%; border: none; 
-            background: rgba(255,255,255,0.03); color: var(--text-muted); 
-            cursor: pointer; display: grid; place-items: center; font-size: 1.1rem;
-            transition: 0.2s;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: none;
+            background: var(--surface-glass);
+            color: var(--text-muted);
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            font-size: 1.1rem;
+            transition: all 0.25s;
+            flex-shrink: 0;
         }
-        .btn-tool:hover { background: rgba(255,255,255,0.1); color: white; }
-        .btn-send { background: white; color: black; }
-        .btn-send:hover { transform: scale(1.05); background: white; }
-        .recording { color: #ef4444; animation: pulse-red 1.5s infinite; }
-        @keyframes pulse-red { 50% { opacity: 0.5; } }
+
+        .btn-tool:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .btn-send {
+            background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+            color: white;
+        }
+
+        .btn-send:hover {
+            transform: scale(1.08);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .recording {
+            color: #ef4444;
+            animation: pulse-red 1.5s infinite;
+        }
+
+        @keyframes pulse-red {
+            50% { opacity: 0.5; }
+        }
 
         textarea { 
-            flex: 1; background: transparent; border: none; outline: none; 
-            color: white; padding: 0.75rem 0.5rem; font-family: inherit; 
-            font-size: 1rem; resize: none; max-height: 200px;
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: white;
+            padding: 0.75rem 0.5rem;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: none;
+            max-height: 200px;
+            line-height: 1.5;
         }
 
-        /* --- NATIVE DIALOG (MODAL) --- */
+        textarea::placeholder {
+            color: var(--text-dimmed);
+        }
+
+        /* DIALOG */
         dialog { 
-            background: #111; color: white; border: 1px solid var(--border-glass);
-            border-radius: var(--radius-xl); padding: 0; 
-            max-width: 450px; width: 90%; 
-            backdrop-filter: blur(10px);
-            margin: auto;
+            background: var(--surface-elevated);
+            color: white;
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-xl);
+            padding: 0;
+            max-width: 480px;
+            width: 90%;
+            backdrop-filter: blur(30px);
+            box-shadow: var(--shadow-lg);
         }
-        dialog::backdrop { background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); }
-        .modal-body { padding: 2rem; }
-        .modal-header { display: flex; justify-content: space-between; margin-bottom: 1.5rem; }
-        .export-btn { 
-            display: flex; align-items: center; gap: 1rem; width: 100%; 
-            padding: 1rem; margin-bottom: 0.5rem; text-align: left;
-            background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); 
-            border-radius: 12px; color: white; cursor: pointer; transition: 0.2s;
-        }
-        .export-btn:hover { border-color: var(--accent); background: rgba(139, 92, 246, 0.1); }
 
-        /* --- MOBILE --- */
-        .mobile-toggle, .mobile-close, .overlay { display: none; }
+        dialog::backdrop {
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+        }
+
+        .modal-body {
+            padding: 2.5rem;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .modal-header h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .export-btn { 
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            width: 100%;
+            padding: 1.25rem;
+            margin-bottom: 0.75rem;
+            text-align: left;
+            background: var(--surface-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            color: white;
+            cursor: pointer;
+            transition: all 0.25s;
+            font-family: inherit;
+            font-size: 0.95rem;
+        }
+
+        .export-btn:hover {
+            border-color: var(--accent);
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateX(4px);
+        }
+
+        .export-icon {
+            font-size: 1.75rem;
+        }
+
+        /* MOBILE */
+        .mobile-toggle,
+        .mobile-close,
+        .overlay {
+            display: none;
+        }
 
         @media (max-width: 768px) {
-            body { grid-template-columns: 1fr; }
-            .sidebar { 
-                position: fixed; top: 0; left: 0; bottom: 0; width: 85%; 
-                transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            body {
+                grid-template-columns: 1fr;
             }
-            .sidebar.active { transform: translateX(0); box-shadow: 20px 0 50px rgba(0,0,0,0.5); }
+
+            .sidebar { 
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                width: 85%;
+                max-width: 320px;
+                transform: translateX(-100%);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: none;
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+                box-shadow: 20px 0 50px rgba(0, 0, 0, 0.5);
+            }
             
             .overlay { 
-                display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.6); 
-                z-index: 15; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+                display: block;
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.7);
+                z-index: 15;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.3s;
+                backdrop-filter: blur(4px);
             }
-            .overlay.active { opacity: 1; pointer-events: auto; }
 
-            .mobile-toggle { display: block; background: none; border: none; color: white; font-size: 1.5rem; }
-            .mobile-close { display: block; position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: white; font-size: 2rem; }
-
-            /* Mobile-specific fixes */
-            .chat-stream { 
-                padding: 1rem 1rem 8rem; 
-                word-wrap: break-word;
+            .overlay.active {
+                opacity: 1;
+                pointer-events: auto;
             }
-            
-            .bubble { 
-                max-width: 100%; 
+
+            .mobile-toggle {
+                display: block;
+                background: none;
+                border: none;
+                color: white;
+                font-size: 1.5rem;
+                cursor: pointer;
+                padding: 0.5rem;
+            }
+
+            .mobile-close {
+                display: block;
+                position: absolute;
+                top: 1.5rem;
+                right: 1.5rem;
+                background: none;
+                border: none;
+                color: white;
+                font-size: 2rem;
+                cursor: pointer;
+                z-index: 10;
+            }
+
+            .chat-stream {
+                padding: 1.5rem 1rem 8rem;
+            }
+
+            .bubble {
+                max-width: 90%;
                 font-size: 0.9rem;
+                padding: 1.25rem 1.5rem;
             }
-            
+
             .cards-grid {
                 grid-template-columns: 1fr;
-                gap: 0.75rem;
+                gap: 1rem;
             }
-            
+
             .card {
-                padding: 1rem;
+                padding: 1.5rem;
             }
-            
-            .card h3 {
-                font-size: 0.9rem;
-            }
-            
-            .card p {
-                font-size: 0.8rem;
-            }
-            
+
             header {
                 padding: 0 1rem;
+                height: 60px;
             }
-            
+
             .input-dock {
-                padding: 0 1rem 1rem;
+                padding: 0 1rem 1.5rem;
             }
-            
-            .dock-container {
-                padding: 0.5rem;
+
+            .hero-logo {
+                width: 90px;
+                height: 90px;
+                margin-bottom: 1.5rem;
             }
-            
-            textarea {
-                font-size: 0.9rem;
-                padding: 0.5rem;
-            }
-            
-            .btn-tool {
-                width: 38px;
-                height: 38px;
-                font-size: 1rem;
-            }
-            
+
             .hero h1 {
                 font-size: clamp(2rem, 8vw, 2.5rem);
             }
-            
+
             .hero p {
                 font-size: 1rem;
             }
         }
-        
-        /* Extra small devices */
+
         @media (max-width: 375px) {
             .hero h1 {
                 font-size: 1.8rem;
             }
-            
+
             .bubble {
                 font-size: 0.85rem;
                 padding: 1rem;
             }
-            
+
             .avatar {
-                width: 32px;
-                height: 32px;
-                font-size: 0.7rem;
+                width: 36px;
+                height: 36px;
             }
         }
     </style>
@@ -420,11 +933,25 @@
         <button class="mobile-close" id="closeSidebar">&times;</button>
         <div class="sidebar-header">
             <div class="brand">
-                <div class="brand-icon">v8</div>
-                <span style="font-weight: 700; font-size: 1.2rem;">eSAMz</span>
+                <div class="logo-container">
+                    <svg class="logo-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:rgb(94,234,212);stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:rgb(167,139,250);stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <ellipse cx="85" cy="90" rx="45" ry="60" fill="url(#grad1)" opacity="0.8"/>
+                        <ellipse cx="115" cy="110" rx="45" ry="60" fill="url(#grad1)" opacity="0.6"/>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-name">eSAMz AI</span>
+                    <span class="brand-tagline">Neural Intelligence</span>
+                </div>
             </div>
             <button class="btn-new" id="btnNewChat">
-                <span style="font-size:1.1em">+</span> New Intelligence
+                <span style="font-size:1.2em">+</span> New Intelligence
             </button>
         </div>
         
@@ -433,14 +960,23 @@
             <div id="historyList"></div>
 
             <div class="nav-label">System</div>
-            <button class="nav-item" id="btnExportModal"><span>📥</span> Export Session</button>
-            <button class="nav-item" id="btnClearCache"><span>🗑️</span> Purge Cache</button>
-            <a href="https://esamz.info" target="_blank" class="nav-item"><span>🌐</span> Portal</a>
-              <a href="https://forms.gle/HUrbqLp3YFdHUxyd8" target="_blank" class="nav-item"><span>💯</span>place your valuable feedback here</a>
+            <button class="nav-item" id="btnExportModal">
+                <span>📥</span> Export Session
+            </button>
+            <button class="nav-item" id="btnClearCache">
+                <span>🗑️</span> Purge Cache
+            </button>
+            <a href="https://esamz.info" target="_blank" class="nav-item">
+                <span>🌐</span> Portal
+            </a>
+            <a href="https://forms.gle/HUrbqLp3YFdHUxyd8" target="_blank" class="nav-item">
+                <span>💯</span> Feedback
+            </a>
         </nav>
         
         <div class="sidebar-footer">
-            eSAMz v8 Neural Engine<br>© 2025 Alakmar Teenwala
+            eSAMz v8 Neural Engine<br>
+            © 2025 Alakmar Teenwala
         </div>
     </aside>
 
@@ -448,27 +984,48 @@
         <header>
             <div style="display:flex; align-items:center; gap:1rem;">
                 <button class="mobile-toggle" id="openSidebar">☰</button>
-                <div class="status-badge"><span class="status-dot"></span> Online</div>
+                <div class="status-badge">
+                    <span class="status-dot"></span> Online
+                </div>
             </div>
             <button class="btn-ghost" id="btnClearChat">Clear</button>
         </header>
 
         <div class="chat-stream" id="chatStream">
             <div class="hero" id="heroSection">
+                <svg class="hero-logo" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:rgb(94,234,212);stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:rgb(167,139,250);stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <ellipse cx="85" cy="90" rx="45" ry="60" fill="url(#heroGrad)" opacity="0.8"/>
+                    <ellipse cx="115" cy="110" rx="45" ry="60" fill="url(#heroGrad)" opacity="0.6"/>
+                </svg>
                 <h1>Hello, Architect.</h1>
                 <p>v8 Neural Interface Initialized.</p>
                 <div class="cards-grid">
                     <button class="card" onclick="app.fillInput('Design a scalable database schema for a SaaS app')">
-                        <h3>🏗️ Logic Design</h3>
-                        <p>Generate complex code architectures.</p>
+                        <div class="card-content">
+                            <span class="card-icon">🏗️</span>
+                            <h3>Logic Design</h3>
+                            <p>Generate complex code architectures and system designs.</p>
+                        </div>
                     </button>
                     <button class="card" onclick="app.fillInput('Explain quantum computing in simple terms')">
-                        <h3>🔬 Deep Research</h3>
-                        <p>Analyze complex topics with context.</p>
+                        <div class="card-content">
+                            <span class="card-icon">🔬</span>
+                            <h3>Deep Research</h3>
+                            <p>Analyze complex topics with comprehensive context.</p>
+                        </div>
                     </button>
                     <button class="card" onclick="app.fillInput('Write a creative story about AI')">
-                        <h3>✍️ Creative Mode</h3>
-                        <p>Imaginative and unrestricted writing.</p>
+                        <div class="card-content">
+                            <span class="card-icon">✍️</span>
+                            <h3>Creative Mode</h3>
+                            <p>Imaginative and unrestricted creative writing.</p>
+                        </div>
                     </button>
                 </div>
             </div>
@@ -492,19 +1049,28 @@
         <div class="modal-body">
             <div class="modal-header">
                 <h3>📥 Export Data</h3>
-                <button class="btn-ghost" style="border:none; padding:0; font-size:1.5rem;" id="closeDialog">×</button>
+                <button class="btn-ghost" style="border:none; padding:0.5rem; font-size:1.5rem;" id="closeDialog">×</button>
             </div>
-            <button class="export-btn" onclick="app.exportChat('txt')"><span style="font-size:1.5rem">📄</span> Plain Text</button>
-            <button class="export-btn" onclick="app.exportChat('md')"><span style="font-size:1.5rem">📝</span> Markdown</button>
-            <button class="export-btn" onclick="app.exportChat('html')"><span style="font-size:1.5rem">🌐</span> HTML File</button>
-            <button class="export-btn" onclick="app.exportChat('pdf')"><span style="font-size:1.5rem">📕</span> PDF Document</button>
+            <button class="export-btn" onclick="app.exportChat('txt')">
+                <span class="export-icon">📄</span>
+                <span>Plain Text</span>
+            </button>
+            <button class="export-btn" onclick="app.exportChat('md')">
+                <span class="export-icon">📝</span>
+                <span>Markdown</span>
+            </button>
+            <button class="export-btn" onclick="app.exportChat('html')">
+                <span class="export-icon">🌐</span>
+                <span>HTML File</span>
+            </button>
+            <button class="export-btn" onclick="app.exportChat('pdf')">
+                <span class="export-icon">📕</span>
+                <span>PDF Document</span>
+            </button>
         </div>
     </dialog>
-   <script>
-/**
- * eSAMz v8  –  Universal File Support + OCR + Persistent Memory
- * Drop-in replacement script
- */
+
+    <script>
 class App {
     constructor() {
         this.dom = {
@@ -521,17 +1087,16 @@ class App {
 
         this.state = {
             chatId: null,
-            files: [],          // {file, textExtracted}
+            files: [],
             isRecording: false,
             recognition: null,
             context: []
         };
 
-        this.memoryKey = 'esamz_memory_v8'; // full memory array
+        this.memoryKey = 'esamz_memory_v8';
         this.init();
     }
 
-    /* ----------  LIFE-CYCLE  ---------- */
     init() {
         this.loadMemory();
         this.setupEventListeners();
@@ -541,47 +1106,56 @@ class App {
 
     setupEventListeners() {
         const { input } = this.dom;
+        
         document.getElementById('btnSend').addEventListener('click', () => this.handleSend());
+        
         input.addEventListener('keydown', e => {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.handleSend(); }
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.handleSend();
+            }
         });
+        
         input.addEventListener('input', () => {
-            input.style.height = 'auto'; input.style.height = input.scrollHeight + 'px';
+            input.style.height = 'auto';
+            input.style.height = input.scrollHeight + 'px';
         });
 
-        /* sidebar */
         document.getElementById('openSidebar').addEventListener('click', () => this.toggleSidebar(true));
         document.getElementById('closeSidebar').addEventListener('click', () => this.toggleSidebar(false));
         this.dom.overlay.addEventListener('click', () => this.toggleSidebar(false));
 
-        /* nav */
         document.getElementById('btnNewChat').addEventListener('click', () => this.newChat());
         document.getElementById('btnClearChat').addEventListener('click', () => this.clearChat());
         document.getElementById('btnClearCache').addEventListener('click', () => this.purgeCache());
 
-        /* files */
         document.getElementById('btnUpload').addEventListener('click', () => document.getElementById('fileInput').click());
         document.getElementById('fileInput').addEventListener('change', e => this.handleFiles(e.target.files));
 
-        /* voice */
         document.getElementById('btnVoice').addEventListener('click', () => this.toggleVoice());
 
-        /* export */
         document.getElementById('btnExportModal').addEventListener('click', () => this.dom.dialog.showModal());
         document.getElementById('closeDialog').addEventListener('click', () => this.dom.dialog.close());
     }
 
     setupDragDrop() {
         const dock = this.dom.dock;
+        
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt =>
-            dock.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); })
+            dock.addEventListener(evt, e => {
+                e.preventDefault();
+                e.stopPropagation();
+            })
         );
+        
         dock.addEventListener('dragenter', () => dock.style.borderColor = 'var(--accent)');
         dock.addEventListener('dragleave', () => dock.style.borderColor = 'var(--border-glass)');
-        dock.addEventListener('drop', e => this.handleFiles(e.dataTransfer.files));
+        dock.addEventListener('drop', e => {
+            dock.style.borderColor = 'var(--border-glass)';
+            this.handleFiles(e.dataTransfer.files);
+        });
     }
 
-    /* ----------  FILE + OCR  ---------- */
     async handleFiles(fileList) {
         for (const file of fileList) {
             let text = '';
@@ -606,8 +1180,11 @@ class App {
 
     async ocrImage(file) {
         if (!('Tesseract' in window)) {
-            // load tesseract from cdn on first use
-            await import('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.esm.min.js');
+            try {
+                await import('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.esm.min.js');
+            } catch {
+                return '(OCR library unavailable)';
+            }
         }
         try {
             const { data: { text } } = await Tesseract.recognize(file, 'eng');
@@ -627,9 +1204,11 @@ class App {
         });
     }
 
-    removeFile(idx) { this.state.files.splice(idx, 1); this.renderFiles(); }
+    removeFile(idx) {
+        this.state.files.splice(idx, 1);
+        this.renderFiles();
+    }
 
-    /* ----------  CHAT / MEMORY  ---------- */
     async handleSend() {
         const text = this.dom.input.value.trim();
         if (!text && this.state.files.length === 0) return;
@@ -638,7 +1217,6 @@ class App {
 
         this.dom.hero.style.display = 'none';
 
-        // build user message
         let fullUser = text;
         if (this.state.files.length) {
             fullUser += '\n\n' + this.state.files.map(f =>
@@ -649,14 +1227,13 @@ class App {
         this.addMessage(fullUser, 'user');
         this.appendToCurrentChat('user', fullUser);
 
-        // clear input
-        this.dom.input.value = ''; this.dom.input.style.height = 'auto';
-        this.state.files = []; this.renderFiles();
+        this.dom.input.value = '';
+        this.dom.input.style.height = 'auto';
+        this.state.files = [];
+        this.renderFiles();
 
-        // thinking
         const thinkingId = this.addThinking();
 
-        // backend call
         try {
             const res = await fetch('/api/chat', {
                 method: 'POST',
@@ -668,7 +1245,9 @@ class App {
                     enableWebSearch: true
                 })
             });
+            
             if (!res.ok) throw new Error('Server error');
+            
             const data = await res.json();
             this.removeThinking(thinkingId);
             const reply = data.reply || data.message || 'No reply';
@@ -687,39 +1266,46 @@ class App {
         div.className = `msg-group ${sender}`;
         const avatar = sender === 'user' ? 'U' : 'v8';
         const htmlContent = marked.parse(text);
+        
         div.innerHTML = `
             <div class="avatar">${avatar}</div>
             <div style="width:100%">
                 <div class="bubble">${htmlContent}</div>
                 ${sender === 'ai' ? `<div class="msg-actions"><button class="action-link" onclick="app.copyText(this)">Copy</button></div>` : ''}
             </div>`;
+        
         this.dom.chat.appendChild(div);
         this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
+        
         if (window.Prism) Prism.highlightAllUnder(div);
     }
 
     addThinking() {
         const id = 'thinking-' + Date.now();
         const div = document.createElement('div');
-        div.className = 'msg-group ai'; div.id = id;
+        div.className = 'msg-group ai';
+        div.id = id;
         div.innerHTML = `
             <div class="avatar">v8</div>
-            <div class="bubble" style="display:flex; align-items:center; gap:8px;">
+            <div class="bubble" style="display:flex; align-items:center; gap:10px;">
                 <span style="color:var(--accent); font-weight:600;">Processing</span>
-                <span class="status-dot" style="background:var(--accent); animation:pulse-red 1s infinite"></span>
+                <span class="status-dot" style="background:var(--accent); animation:pulse 1.5s infinite"></span>
             </div>`;
+        
         this.dom.chat.appendChild(div);
         this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
         return id;
     }
 
-    removeThinking(id) { const el = document.getElementById(id); if (el) el.remove(); }
-
-    generateDemoResponse(text) {
-        return `**eSAMz v8 (Demo Mode):**\n\nBackend unreachable. Simulating for "${text.slice(0,30)}..."\n\n\`\`\`javascript\nconsole.log("Backend Offline");\n\`\`\``;
+    removeThinking(id) {
+        const el = document.getElementById(id);
+        if (el) el.remove();
     }
 
-    /* ----------  MEMORY STORAGE  ---------- */
+    generateDemoResponse(text) {
+        return `**eSAMz v8 (Demo Mode):**\n\nBackend service is currently unavailable. This is a simulated response for your query: "${text.slice(0, 40)}..."\n\n\`\`\`javascript\nconsole.log("Backend service offline - Demo mode active");\n\`\`\`\n\nAll features remain functional in offline mode with local storage.`;
+    }
+
     loadMemory() {
         const raw = localStorage.getItem(this.memoryKey);
         const memory = raw ? JSON.parse(raw) : [];
@@ -729,14 +1315,18 @@ class App {
     renderHistoryEntry(chat) {
         const btn = document.createElement('button');
         btn.className = 'nav-item';
-        btn.innerHTML = `<span>💬</span> ${chat.title} <button onclick="app.deleteChat('${chat.id}')" style="margin-left:auto;background:none;border:none;color:#f87171;cursor:pointer;">🗑</button>`;
+        btn.innerHTML = `
+            <span>💬</span> 
+            ${chat.title}
+            <button class="nav-item-delete" onclick="event.stopPropagation(); app.deleteChat('${chat.id}')">🗑</button>
+        `;
         btn.onclick = () => this.loadChat(chat.id);
         this.dom.history.appendChild(btn);
     }
 
     createChatSession(firstText) {
         this.state.chatId = Date.now().toString();
-        const title = firstText.slice(0, 30) + (firstText.length > 30 ? '…' : '');
+        const title = firstText.slice(0, 35) + (firstText.length > 35 ? '…' : '');
         const chat = { id: this.state.chatId, title, messages: [] };
         this.saveChat(chat);
         this.renderHistoryEntry(chat);
@@ -755,6 +1345,7 @@ class App {
         const memory = this.getMemory();
         const chat = memory.find(c => c.id === chatId);
         if (!chat) return;
+        
         this.state.chatId = chatId;
         this.dom.chat.innerHTML = '';
         chat.messages.forEach(m => this.addMessage(m.content, m.role));
@@ -763,13 +1354,15 @@ class App {
     }
 
     deleteChat(chatId) {
-        if (!confirm('Delete this chat?')) return;
+        if (!confirm('Delete this conversation thread?')) return;
+        
         let memory = this.getMemory();
         memory = memory.filter(c => c.id !== chatId);
         this.saveMemory(memory);
-        // rebuild list
+        
         this.dom.history.innerHTML = '';
         memory.forEach(c => this.renderHistoryEntry(c));
+        
         if (this.state.chatId === chatId) this.newChat();
     }
 
@@ -777,22 +1370,33 @@ class App {
         const memory = this.getMemory();
         const chat = memory.find(c => c.id === this.state.chatId);
         if (!chat) return [];
-        return chat.messages.slice(-10); // last 10
+        return chat.messages.slice(-10);
     }
 
-    getMemory() { return JSON.parse(localStorage.getItem(this.memoryKey) || '[]'); }
+    getMemory() {
+        return JSON.parse(localStorage.getItem(this.memoryKey) || '[]');
+    }
+
     saveChat(chat) {
         const memory = this.getMemory();
         memory.unshift(chat);
         this.saveMemory(memory);
     }
-    saveMemory(memory) { localStorage.setItem(this.memoryKey, JSON.stringify(memory)); }
 
-    /* ----------  UTILS  ---------- */
-    toggleSidebar(open) {
-        if (open) { this.dom.sidebar.classList.add('active'); this.dom.overlay.classList.add('active'); }
-        else { this.dom.sidebar.classList.remove('active'); this.dom.overlay.classList.remove('active'); }
+    saveMemory(memory) {
+        localStorage.setItem(this.memoryKey, JSON.stringify(memory));
     }
+
+    toggleSidebar(open) {
+        if (open) {
+            this.dom.sidebar.classList.add('active');
+            this.dom.overlay.classList.add('active');
+        } else {
+            this.dom.sidebar.classList.remove('active');
+            this.dom.overlay.classList.remove('active');
+        }
+    }
+
     newChat() {
         this.state.chatId = null;
         this.dom.chat.innerHTML = '';
@@ -800,52 +1404,99 @@ class App {
         this.dom.hero.style.display = 'block';
         this.toggleSidebar(false);
     }
-    clearChat() { this.newChat(); }
-    purgeCache() { if (confirm('Delete ALL neural memories?')) { localStorage.clear(); location.reload(); } }
-    fillInput(text) { this.dom.input.value = text; this.dom.input.focus(); }
+
+    clearChat() {
+        this.newChat();
+    }
+
+    purgeCache() {
+        if (confirm('Delete ALL conversation history? This cannot be undone.')) {
+            localStorage.clear();
+            location.reload();
+        }
+    }
+
+    fillInput(text) {
+        this.dom.input.value = text;
+        this.dom.input.focus();
+    }
+
     copyText(btn) {
         const text = btn.closest('.msg-group').querySelector('.bubble').innerText;
         navigator.clipboard.writeText(text);
-        const orig = btn.innerText; btn.innerText = 'Copied';
-        setTimeout(() => btn.innerText = orig, 1500);
+        const orig = btn.innerText;
+        btn.innerText = 'Copied!';
+        setTimeout(() => btn.innerText = orig, 2000);
     }
+
     toggleVoice() {
         const btn = document.getElementById('btnVoice');
+        
         if (!this.state.recognition) {
-            if (!('webkitSpeechRecognition' in window)) return alert('Voice API not supported');
+            if (!('webkitSpeechRecognition' in window)) {
+                return alert('Voice recognition is not supported in your browser');
+            }
+            
             this.state.recognition = new webkitSpeechRecognition();
             this.state.recognition.lang = 'en-US';
-            this.state.recognition.onresult = e => this.dom.input.value += e.results[0][0].transcript;
-            this.state.recognition.onend = () => { this.state.isRecording = false; btn.classList.remove('recording'); };
+            this.state.recognition.continuous = false;
+            
+            this.state.recognition.onresult = e => {
+                this.dom.input.value += e.results[0][0].transcript;
+                this.dom.input.dispatchEvent(new Event('input'));
+            };
+            
+            this.state.recognition.onend = () => {
+                this.state.isRecording = false;
+                btn.classList.remove('recording');
+            };
         }
-        if (this.state.isRecording) { this.state.recognition.stop(); this.state.isRecording = false; btn.classList.remove('recording'); }
-        else { this.state.recognition.start(); this.state.isRecording = true; btn.classList.add('recording'); }
+        
+        if (this.state.isRecording) {
+            this.state.recognition.stop();
+            this.state.isRecording = false;
+            btn.classList.remove('recording');
+        } else {
+            this.state.recognition.start();
+            this.state.isRecording = true;
+            btn.classList.add('recording');
+        }
     }
+
     exportChat(type) {
         const msgs = Array.from(document.querySelectorAll('.msg-group')).map(el => {
             const who = el.classList.contains('user') ? 'User' : 'eSAMz';
             const txt = el.querySelector('.bubble').innerText;
             return `[${who}]: ${txt}`;
         }).join('\n\n');
-        const filename = `esamz-v8-export`;
+        
+        const filename = `esamz-v8-export-${Date.now()}`;
+        
         if (type === 'txt') this.download(filename + '.txt', msgs);
         if (type === 'md') this.download(filename + '.md', msgs);
-        if (type === 'html') this.download(filename + '.html', `<pre>${msgs}</pre>`);
+        if (type === 'html') {
+            const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>eSAMz Export</title><style>body{font-family:sans-serif;max-width:800px;margin:2rem auto;padding:2rem;background:#0a0e1a;color:#fff;}pre{background:#000;padding:1rem;border-radius:8px;overflow-x:auto;}</style></head><body><pre>${msgs}</pre></body></html>`;
+            this.download(filename + '.html', html);
+        }
         if (type === 'pdf') {
             const el = document.createElement('div');
             el.innerHTML = marked.parse(msgs);
+            el.style.padding = '20px';
             html2pdf().from(el).save(filename + '.pdf');
         }
+        
         this.dom.dialog.close();
     }
+
     download(name, content) {
         const link = document.createElement('a');
         link.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(content);
-        link.download = name; link.click();
+        link.download = name;
+        link.click();
     }
 }
 
 const app = new App();
-</script>
-    </body>
+    </script>
+</body>
 </html>
