@@ -269,8 +269,41 @@
             transition: transform 0.3s ease;
         }
 
-        .sidebar.hidden {
+        .sidebar-toggle-btn {
+            position: absolute;
+            right: -40px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 32px;
+            height: 64px;
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid var(--border-glass);
+            border-left: none;
+            border-radius: 0 8px 8px 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            font-size: 18px;
+            transition: all var(--transition);
+            z-index: 101;
+        }
+
+        .sidebar-toggle-btn:hover {
+            background: var(--bg-glass-hover);
+            color: var(--text-primary);
+            width: 36px;
+        }
+
+        .sidebar.collapsed {
             transform: translateX(calc(-1 * var(--sidebar-width)));
+        }
+
+        .sidebar.collapsed .sidebar-toggle-btn {
+            right: -40px;
+            transform: translateY(-50%) translateX(calc(var(--sidebar-width)));
         }
 
         .sidebar-header { 
@@ -471,7 +504,7 @@
             transition: margin-left 0.3s ease;
         }
 
-        .main-content.expanded {
+        .main-content.sidebar-collapsed {
             margin-left: calc(-1 * var(--sidebar-width));
         }
 
@@ -975,9 +1008,17 @@
                 z-index: 200;
             }
 
-            .sidebar.active {
+            .sidebar.mobile-open {
                 transform: translateX(0);
                 box-shadow: 20px 0 50px rgba(0, 0, 0, 0.7);
+            }
+
+            .sidebar.collapsed {
+                transform: translateX(-100%);
+            }
+
+            .sidebar-toggle-btn {
+                display: none;
             }
             
             .overlay { 
@@ -1049,12 +1090,8 @@
                 font-size: 28px;
             }
 
-            .main-content.expanded {
+            .main-content.sidebar-collapsed {
                 margin-left: 0;
-            }
-
-            .sidebar.hidden {
-                transform: translateX(-100%);
             }
         }
     </style>
@@ -1064,6 +1101,7 @@
     <div class="overlay" id="overlay"></div>
 
     <aside class="sidebar" id="sidebar">
+        <button class="sidebar-toggle-btn" id="sidebarToggle">‹</button>
         <button class="mobile-close" id="closeSidebar">×</button>
         <div class="sidebar-header">
             <div class="brand">
@@ -1234,7 +1272,9 @@ class App {
             isRecording: false,
             recognition: null,
             messageCount: 0,
-            maxChars: 4000
+            maxChars: 4000,
+            isMobile: window.innerWidth <= 768,
+            sidebarCollapsed: false
         };
 
         this.storageKey = 'esamz_conversations_v8';
@@ -1247,6 +1287,23 @@ class App {
         this.setupEvents();
         this.setupDragDrop();
         this.dom.welcomeInput.focus();
+        
+        // Check if mobile on resize
+        window.addEventListener('resize', () => {
+            const wasMobile = this.state.isMobile;
+            this.state.isMobile = window.innerWidth <= 768;
+            
+            // Reset sidebar state when switching between mobile and desktop
+            if (wasMobile !== this.state.isMobile) {
+                if (this.state.isMobile) {
+                    this.dom.sidebar.classList.remove('collapsed');
+                    this.dom.mainContent.classList.remove('sidebar-collapsed');
+                } else {
+                    this.dom.sidebar.classList.remove('mobile-open');
+                    this.dom.overlay.classList.remove('active');
+                }
+            }
+        });
     }
 
     setupEvents() {
@@ -1283,6 +1340,7 @@ class App {
         });
 
         // Sidebar events
+        document.getElementById('sidebarToggle').addEventListener('click', () => this.toggleSidebarCollapse());
         document.getElementById('openSidebar').addEventListener('click', () => this.toggleSidebar(true));
         document.getElementById('closeSidebar').addEventListener('click', () => this.toggleSidebar(false));
         this.dom.overlay.addEventListener('click', () => this.toggleSidebar(false));
@@ -1411,11 +1469,14 @@ class App {
             return;
         }
 
-        // Hide sidebar and welcome, show chat interface
-        this.dom.sidebar.classList.add('hidden');
-        this.dom.mainContent.classList.add('expanded');
+        // Hide welcome, show chat interface
         this.dom.welcome.style.display = 'none';
         this.dom.chatInputContainer.style.display = 'block';
+
+        // On mobile, close sidebar after first message
+        if (this.state.isMobile) {
+            this.toggleSidebar(false);
+        }
 
         // Transfer files from welcome to chat
         this.state.files = [...this.state.welcomeFiles];
@@ -1651,8 +1712,6 @@ class App {
         this.state.messageCount = chat.messages.length;
         
         // Show chat interface
-        this.dom.sidebar.classList.add('hidden');
-        this.dom.mainContent.classList.add('expanded');
         this.dom.welcome.style.display = 'none';
         this.dom.chatInputContainer.style.display = 'block';
         
@@ -1757,24 +1816,34 @@ class App {
         }
     }
 
-    toggleSidebar(open) {
-        if (window.innerWidth <= 768) {
-            if (open) {
-                this.dom.sidebar.classList.add('active');
-                this.dom.sidebar.classList.remove('hidden');
-                this.dom.overlay.classList.add('active');
-            } else {
-                this.dom.sidebar.classList.remove('active');
-                this.dom.overlay.classList.remove('active');
-            }
+    toggleSidebarCollapse() {
+        // Desktop only - toggle collapse/expand
+        if (this.state.isMobile) return;
+        
+        this.state.sidebarCollapsed = !this.state.sidebarCollapsed;
+        const toggleBtn = document.getElementById('sidebarToggle');
+        
+        if (this.state.sidebarCollapsed) {
+            this.dom.sidebar.classList.add('collapsed');
+            this.dom.mainContent.classList.add('sidebar-collapsed');
+            toggleBtn.innerHTML = '›';
         } else {
-            if (open) {
-                this.dom.sidebar.classList.remove('hidden');
-                this.dom.mainContent.classList.remove('expanded');
-            } else {
-                this.dom.sidebar.classList.add('hidden');
-                this.dom.mainContent.classList.add('expanded');
-            }
+            this.dom.sidebar.classList.remove('collapsed');
+            this.dom.mainContent.classList.remove('sidebar-collapsed');
+            toggleBtn.innerHTML = '‹';
+        }
+    }
+
+    toggleSidebar(open) {
+        // Mobile only - overlay toggle
+        if (!this.state.isMobile) return;
+        
+        if (open) {
+            this.dom.sidebar.classList.add('mobile-open');
+            this.dom.overlay.classList.add('active');
+        } else {
+            this.dom.sidebar.classList.remove('mobile-open');
+            this.dom.overlay.classList.remove('active');
         }
     }
 
