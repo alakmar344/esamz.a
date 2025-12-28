@@ -66,7 +66,7 @@ const CODE_MODELS = [
 const SYSTEM_PROMPT = {
   role: 'system',
   content: `You are eSAMz v8.2 created by Alakmar Teenwala.
-Knowledge cutoff: December 2025.
+Knowledge cutoff: july 2025.
 Be calm, precise, human-like, and insightful.`
 };
 
