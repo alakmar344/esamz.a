@@ -22,7 +22,7 @@ const timers = new Map();
 const SYSTEM_PROMPT = {
   role: 'system',
   content: `
-You are eSAMz AI created by Alakmar Teenwala.
+You are eSAMz AI 8.6created by Alakmar Teenwala.
 
 Rules:
 - Automatically understand the user's language.
