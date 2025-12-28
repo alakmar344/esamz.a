@@ -1,17 +1,18 @@
 /* ============================================
-   eSAMz v8.4 Backend – Sarvam + Web Search
+   eSAMz v9.0 Backend – Sarvam + YOU.com
    Created by Alakmar Teenwala
    Updated: December 2025
    ============================================ */
 
-console.log('>>> eSAMz v8.4 - Sarvam + Web Intelligence Online');
+console.log('>>> eSAMz v9.0 booting');
 
 /* ---------- CONFIG ---------- */
 const CONFIG = {
   THREAD_TTL: 10 * 60 * 1000,
   MAX_HISTORY_TOKENS: 3000,
   MAX_PROMPT_TOKENS: 6000,
-  MODEL_TIMEOUT: 30_000
+  MODEL_TIMEOUT: 30_000,
+  MAX_WEB_RESULTS: 5
 };
 
 /* ---------- STATE ---------- */
@@ -21,19 +22,25 @@ const timers = new Map();
 /* ---------- SYSTEM PROMPT ---------- */
 const SYSTEM_PROMPT = {
   role: 'system',
-  content: `You are eSAMz AI created by Alakmar Teenwala.
-Be calm, precise, human-like.
-Use web information only if provided.
-If unsure, say you are unsure.`
+  content: `
+You are eSAMz AI v8.5 created by Alakmar Teenwala.
+Be calm, accurate, and human-like.
+Use web information ONLY if provided.
+If you do not know something, say so honestly.
+Adapt naturally to the user's language.
+`.trim()
 };
 
-/* ---------- HELPERS ---------- */
+/* ---------- UTILS ---------- */
 function estimateTokens(text = '') {
   return Math.ceil(text.length / 4);
 }
 
 function messagesTokens(messages) {
-  return messages.reduce((t, m) => t + estimateTokens(m.content) + 8, 0);
+  return messages.reduce(
+    (sum, m) => sum + estimateTokens(m.content) + 8,
+    0
+  );
 }
 
 function trimHistory(history) {
@@ -50,52 +57,65 @@ function sanitize(messages) {
 }
 
 function needsWebSearch(text) {
-  return /\b(latest|today|current|news|price|recent|who is|when did)\b/i.test(text);
+  return /\b(latest|today|current|news|recent|price|who is|when did|update|score)\b/i.test(
+    text
+  );
 }
 
 /* ---------- SARVAM: LANGUAGE DETECTION ---------- */
-async function detectLanguage(text, apiKey) {
+async function detectLanguage(text) {
   const res = await fetch('https://api.sarvam.ai/v1/language-detection', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
+      Authorization: `Bearer ${process.env.SARVAM_API_KEY}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({ text })
   });
 
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Language detection failed: ${err}`);
+  }
+
   const data = await res.json();
   return data?.language || 'en';
 }
 
-/* ---------- WEB SEARCH ---------- */
-async function webSearch(query) {
-  const res = await fetch('https://google.serper.dev/search', {
+/* ---------- YOU.COM WEB SEARCH ---------- */
+async function webSearchYou(query) {
+  const res = await fetch('https://api.you.com/search', {
     method: 'POST',
     headers: {
-      'X-API-KEY': process.env.SERPER_API_KEY,
+      Authorization: `Bearer ${process.env.YOU_API_KEY}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      q: query,
-      num: 5
+      query,
+      source: 'web',
+      n_tokens: 2048
     })
   });
 
-  if (!res.ok) throw new Error('Web search failed');
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`You.com search failed: ${err}`);
+  }
 
   const data = await res.json();
-  return (data.organic || [])
+
+  return (data?.results || [])
+    .slice(0, CONFIG.MAX_WEB_RESULTS)
     .map(r => `• ${r.title}: ${r.snippet}`)
     .join('\n');
 }
 
-/* ---------- SARVAM CHAT ---------- */
-async function chatWithSarvam(messages, apiKey) {
+/* ---------- SARVAM CHAT (FREE) ---------- */
+async function chatWithSarvam(messages) {
   const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
+      Authorization: `Bearer ${process.env.SARVAM_API_KEY}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
@@ -106,8 +126,16 @@ async function chatWithSarvam(messages, apiKey) {
     })
   });
 
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Sarvam chat failed: ${err}`);
+  }
+
   const data = await res.json();
-  return data?.choices?.[0]?.message?.content;
+  const reply = data?.choices?.[0]?.message?.content;
+  if (!reply) throw new Error('Empty Sarvam response');
+
+  return reply;
 }
 
 /* ---------- MAIN HANDLER ---------- */
@@ -115,43 +143,61 @@ module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method !== 'POST') return res.status(405).end();
+  if (req.method !== 'POST') {
+    return res.status(405).end();
+  }
 
-  const sarvamKey = process.env.SARVAM_API_KEY;
-  if (!sarvamKey) return res.status(500).json({ error: 'SARVAM_API_KEY missing' });
+  if (!process.env.SARVAM_API_KEY) {
+    return res.status(500).json({ error: 'SARVAM_API_KEY missing' });
+  }
+
+  if (!process.env.YOU_API_KEY) {
+    return res.status(500).json({ error: 'YOU_API_KEY missing' });
+  }
 
   let body;
   try {
-    body = JSON.parse(await new Promise(r => {
-      let d = '';
-      req.on('data', c => d += c);
-      req.on('end', () => r(d));
-    }));
+    body = JSON.parse(
+      await new Promise(resolve => {
+        let d = '';
+        req.on('data', c => (d += c));
+        req.on('end', () => resolve(d));
+      })
+    );
   } catch {
     return res.status(400).json({ error: 'Invalid JSON' });
   }
 
   const { message, threadId = 'default' } = body;
-  if (!message?.trim()) return res.status(400).json({ error: 'Message required' });
+  if (!message?.trim()) {
+    return res.status(400).json({ error: 'Message required' });
+  }
 
   try {
     if (!threads.has(threadId)) threads.set(threadId, []);
     const history = threads.get(threadId);
 
-    const language = await detectLanguage(message, sarvamKey);
+    /* --- LANGUAGE DETECTION --- */
+    const language = await detectLanguage(message);
 
+    /* --- WEB SEARCH (CONDITIONAL) --- */
     let webContext = '';
-    if (needsWebSearch(message) && process.env.SERPER_API_KEY) {
-      webContext = await webSearch(message);
+    if (needsWebSearch(message)) {
+      webContext = await webSearchYou(message);
     }
 
+    /* --- BUILD PROMPT --- */
     const messages = [
       SYSTEM_PROMPT,
       ...history,
-      ...(webContext ? [{
-        role: 'system',
-        content: `Web results:\n${webContext}`
-      }] : []),
+      ...(webContext
+        ? [
+            {
+              role: 'system',
+              content: `Web search results (you.com):\n${webContext}`
+            }
+          ]
+        : []),
       { role: 'user', content: message }
     ];
 
@@ -159,26 +205,32 @@ module.exports = async function handler(req, res) {
       trimHistory(history);
     }
 
-    const reply = await chatWithSarvam(messages, sarvamKey);
+    /* --- CHAT --- */
+    const reply = await chatWithSarvam(messages);
 
+    /* --- SAVE HISTORY --- */
     history.push({ role: 'user', content: message });
     history.push({ role: 'assistant', content: reply });
     trimHistory(history);
 
     clearTimeout(timers.get(threadId));
-    timers.set(threadId, setTimeout(() => threads.delete(threadId), CONFIG.THREAD_TTL));
+    timers.set(
+      threadId,
+      setTimeout(() => threads.delete(threadId), CONFIG.THREAD_TTL)
+    );
 
-    res.json({
+    res.status(200).json({
       reply,
       language,
       webUsed: Boolean(webContext),
       provider: 'sarvam',
-      version: 'v8.4-dec2025'
+      search: webContext ? 'you.com' : 'none',
+      version: 'v9.0-dec2025'
     });
-
   } catch (err) {
+    console.error('[ERROR]', err.message);
     res.status(502).json({
-      error: 'Failed',
+      error: 'Failed to generate response',
       details: err.message
     });
   }
@@ -189,9 +241,9 @@ module.exports.health = (_, res) => {
   res.json({
     status: 'healthy',
     provider: 'sarvam',
-    web: 'enabled',
-    version: 'v8.4-dec2025'
+    webSearch: 'you.com',
+    version: 'v9.0-dec2025'
   });
 };
 
-console.log('>>> eSAMz v8.4 ready (Sarvam + Web Search)');
+console.log('>>> eSAMz v9.0 ready (Sarvam + YOU.com)');
