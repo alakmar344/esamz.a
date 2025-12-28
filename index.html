@@ -4,7 +4,8 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-    <link rel="manifest" href="/site.webmanifest"><script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4596710157872091"
+    <link rel="manifest" href="/site.webmanifest">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4596710157872091"
      crossorigin="anonymous"></script>
 
     <meta charset="UTF-8">
@@ -181,25 +182,29 @@
 
     <style>
         :root {
-            --primary: #3b82f6;
-            --primary-hover: #2563eb;
-            --primary-light: rgba(59, 130, 246, 0.15);
-            --primary-glow: rgba(59, 130, 246, 0.3);
+            --primary: #e5e7eb;
+            --primary-hover: #f3f4f6;
+            --primary-light: rgba(229, 231, 235, 0.1);
+            --primary-glow: rgba(229, 231, 235, 0.2);
             
-            --bg-main: #0a0f1a;
-            --bg-secondary: #0d1117;
-            --bg-glass: rgba(15, 23, 42, 0.7);
-            --bg-glass-hover: rgba(20, 28, 50, 0.8);
-            --bg-elevated: rgba(30, 41, 59, 0.6);
+            --accent: #9ca3af;
+            --accent-hover: #d1d5db;
+            --accent-light: rgba(156, 163, 175, 0.1);
             
-            --border-glass: rgba(59, 130, 246, 0.15);
-            --border-subtle: rgba(148, 163, 184, 0.1);
+            --bg-main: #000000;
+            --bg-secondary: #0a0a0a;
+            --bg-glass: rgba(10, 10, 10, 0.8);
+            --bg-glass-hover: rgba(20, 20, 20, 0.9);
+            --bg-elevated: rgba(30, 30, 30, 0.7);
             
-            --text-primary: #f1f5f9;
-            --text-secondary: #94a3b8;
-            --text-tertiary: #64748b;
+            --border-glass: rgba(75, 85, 99, 0.3);
+            --border-subtle: rgba(55, 65, 81, 0.2);
             
-            --success: #10b981;
+            --text-primary: #f9fafb;
+            --text-secondary: #d1d5db;
+            --text-tertiary: #9ca3af;
+            
+            --success: #9ca3af;
             --danger: #ef4444;
             
             --sidebar-width: 280px;
@@ -225,7 +230,7 @@
         }
         
         body { 
-            background: linear-gradient(135deg, #0a0f1a 0%, #1a1f35 100%);
+            background: #000000;
             background-attachment: fixed;
             color: var(--text-primary); 
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -244,8 +249,8 @@
             position: fixed;
             inset: 0;
             background: 
-                radial-gradient(circle at 20% 30%, rgba(59, 130, 246, 0.08), transparent 50%),
-                radial-gradient(circle at 80% 70%, rgba(139, 92, 246, 0.06), transparent 50%);
+                radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.02), transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.01), transparent 50%);
             pointer-events: none;
             z-index: 0;
         }
@@ -261,6 +266,11 @@
             height: 100vh;
             position: relative;
             z-index: 100;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.hidden {
+            transform: translateX(calc(-1 * var(--sidebar-width)));
         }
 
         .sidebar-header { 
@@ -309,9 +319,9 @@
         .btn-new { 
             width: 100%; 
             height: 40px;
-            background: linear-gradient(135deg, var(--primary) 0%, #6366f1 100%);
-            color: white; 
-            border: none;
+            background: linear-gradient(135deg, #1f1f1f 0%, #2a2a2a 100%);
+            color: var(--text-primary); 
+            border: 1px solid var(--border-glass);
             border-radius: var(--radius-md);
             font-weight: 500;
             font-size: 14px;
@@ -322,12 +332,14 @@
             gap: 8px;
             transition: all var(--transition);
             font-family: inherit;
-            box-shadow: var(--shadow-md), var(--shadow-glow);
+            box-shadow: var(--shadow-md);
         }
 
         .btn-new:hover {
             transform: translateY(-1px);
-            box-shadow: var(--shadow-lg), 0 0 35px var(--primary-glow);
+            background: linear-gradient(135deg, #2a2a2a 0%, #353535 100%);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--primary);
         }
 
         .btn-new:active {
@@ -456,6 +468,11 @@
             flex-direction: column;
             height: 100vh;
             background: transparent;
+            transition: margin-left 0.3s ease;
+        }
+
+        .main-content.expanded {
+            margin-left: calc(-1 * var(--sidebar-width));
         }
 
         header { 
@@ -530,6 +547,8 @@
             overflow-y: auto;
             padding: 24px;
             scroll-behavior: smooth;
+            display: flex;
+            flex-direction: column;
         }
 
         .chat-container::-webkit-scrollbar {
@@ -545,10 +564,16 @@
             border-radius: 3px;
         }
 
-        /* WELCOME SCREEN */
+        /* WELCOME SCREEN - CENTERED */
         .welcome { 
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
             max-width: 800px;
-            margin: 60px auto 0;
+            margin: 0 auto;
+            width: 100%;
             text-align: center;
             animation: fadeIn 0.6s ease-out;
         }
@@ -588,46 +613,12 @@
         .welcome p {
             color: var(--text-secondary);
             font-size: 15px;
-            margin-bottom: 48px;
+            margin-bottom: 32px;
         }
 
-        .suggestions { 
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 12px;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        
-        .suggestion-card { 
-            background: var(--bg-glass);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--border-glass);
-            padding: 20px;
-            border-radius: var(--radius-lg);
-            text-align: left;
-            cursor: pointer;
-            transition: all var(--transition);
-        }
-
-        .suggestion-card:hover {
-            border-color: var(--primary);
-            background: var(--bg-glass-hover);
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-md), 0 0 20px var(--primary-glow);
-        }
-
-        .suggestion-card h3 {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 6px;
-            color: var(--text-primary);
-        }
-
-        .suggestion-card p {
-            font-size: 13px;
-            color: var(--text-secondary);
-            line-height: 1.5;
+        .welcome-input-wrapper {
+            width: 100%;
+            max-width: 700px;
         }
 
         /* MESSAGES */
@@ -665,10 +656,10 @@
         }
 
         .message.user .message-avatar {
-            background: linear-gradient(135deg, var(--primary) 0%, #6366f1 100%);
-            border: none;
-            color: white;
-            box-shadow: 0 0 20px var(--primary-glow);
+            background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+            border: 1px solid var(--border-glass);
+            color: var(--text-primary);
+            box-shadow: var(--shadow-md);
         }
 
         .message-content { 
@@ -685,9 +676,10 @@
         }
 
         .message.user .message-bubble { 
-            background: linear-gradient(135deg, var(--primary) 0%, #6366f1 100%);
-            color: white;
-            box-shadow: var(--shadow-md), 0 0 20px var(--primary-glow);
+            background: linear-gradient(135deg, #1f1f1f 0%, #2a2a2a 100%);
+            color: var(--text-primary);
+            border: 1px solid var(--border-glass);
+            box-shadow: var(--shadow-md);
         }
 
         .message.ai .message-bubble { 
@@ -740,6 +732,11 @@
             color: var(--text-primary);
             border-color: var(--primary);
             background: var(--primary-light);
+        }
+
+        .action-btn.regenerate:hover {
+            border-color: var(--text-secondary);
+            background: rgba(156, 163, 175, 0.1);
         }
 
         /* INPUT AREA */
@@ -828,14 +825,22 @@
         }
 
         .input-btn.primary {
-            background: linear-gradient(135deg, var(--primary) 0%, #6366f1 100%);
-            color: white;
-            box-shadow: 0 0 15px var(--primary-glow);
+            background: linear-gradient(135deg, #1f1f1f 0%, #2a2a2a 100%);
+            color: var(--text-primary);
+            border: 1px solid var(--border-glass);
+            box-shadow: var(--shadow-md);
         }
 
         .input-btn.primary:hover {
             transform: scale(1.05);
-            box-shadow: 0 0 25px var(--primary-glow);
+            background: linear-gradient(135deg, #2a2a2a 0%, #353535 100%);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .input-btn.primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .input-btn.recording {
@@ -863,6 +868,21 @@
 
         textarea::placeholder {
             color: var(--text-tertiary);
+        }
+
+        .char-counter {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            padding: 4px 8px;
+            text-align: right;
+        }
+
+        .char-counter.warning {
+            color: #f59e0b;
+        }
+
+        .char-counter.danger {
+            color: var(--danger);
         }
 
         /* MODAL */
@@ -1009,11 +1029,7 @@
             }
 
             .welcome {
-                margin-top: 40px;
-            }
-
-            .suggestions {
-                grid-template-columns: 1fr;
+                margin-top: 0;
             }
 
             header {
@@ -1027,11 +1043,18 @@
             .welcome-logo {
                 width: 64px;
                 height: 64px;
-                font-size: 28px;
             }
 
             .welcome h1 {
                 font-size: 28px;
+            }
+
+            .main-content.expanded {
+                margin-left: 0;
+            }
+
+            .sidebar.hidden {
+                transform: translateX(-100%);
             }
         }
     </style>
@@ -1048,8 +1071,8 @@
                     <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
                         <defs>
                             <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
-                                <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+                                <stop offset="0%" style="stop-color:#d1d5db;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#9ca3af;stop-opacity:1" />
                             </linearGradient>
                         </defs>
                         <ellipse cx="85" cy="90" rx="45" ry="60" fill="url(#grad1)" opacity="0.8"/>
@@ -1090,7 +1113,6 @@
             <div class="footer-ad">
                 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7184475263017731"
                      crossorigin="anonymous"></script>
-                <!-- ad1 -->
                 <ins class="adsbygoogle"
                      style="display:inline-block;width:320px;height:50px"
                      data-ad-client="ca-pub-7184475263017731"
@@ -1122,43 +1144,42 @@
                     <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
                         <defs>
                             <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
-                                <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+                                <stop offset="0%" style="stop-color:#d1d5db;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#9ca3af;stop-opacity:1" />
                             </linearGradient>
                         </defs>
                         <ellipse cx="85" cy="90" rx="45" ry="60" fill="url(#heroGrad)" opacity="0.8"/>
                         <ellipse cx="115" cy="110" rx="45" ry="60" fill="url(#heroGrad)" opacity="0.6"/>
                     </svg>
                 </div>
-                <h1>Welcome to eSAMz AI</h1>
-                <p>Start a conversation or choose a suggestion below</p>
-                <div class="suggestions">
-                    <button class="suggestion-card" onclick="app.fillInput('Design a scalable database schema for a SaaS application')">
-                        <h3>Database Architecture</h3>
-                        <p>Design scalable database schemas and system architectures</p>
-                    </button>
-                    <button class="suggestion-card" onclick="app.fillInput('Explain quantum computing concepts')">
-                        <h3>Technical Explanations</h3>
-                        <p>Get clear explanations of complex technical concepts</p>
-                    </button>
-                    <button class="suggestion-card" onclick="app.fillInput('Write a creative story about artificial intelligence')">
-                        <h3>Creative Writing</h3>
-                        <p>Generate creative content and compelling narratives</p>
-                    </button>
+                <h1>Hello, Architect</h1>
+                <p>What do you want to build?</p>
+                <div class="welcome-input-wrapper">
+                    <div class="input-wrapper" id="welcomeInputWrapper">
+                        <div class="file-preview" id="welcomeFilePreview"></div>
+                        <div class="input-row">
+                            <button class="input-btn" id="btnWelcomeUpload" title="Upload files">📎</button>
+                            <button class="input-btn" id="btnWelcomeVoice" title="Voice input">🎤</button>
+                            <textarea id="welcomeInput" rows="1" placeholder="Describe your vision..."></textarea>
+                            <button class="input-btn primary" id="btnWelcomeSend">→</button>
+                        </div>
+                        <div class="char-counter" id="welcomeCharCounter">0 / 4000</div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="input-container">
+        <div class="input-container" id="chatInputContainer" style="display: none;">
             <div class="input-wrapper" id="inputWrapper">
                 <div class="file-preview" id="filePreview"></div>
                 <div class="input-row">
                     <button class="input-btn" id="btnUpload" title="Upload files">📎</button>
-                    <input type="file" id="fileInput" hidden multiple>
+                    <input type="file" id="fileInput" hidden multiple accept=".txt,.pdf,.doc,.docx,.jpg,.jpeg,.png,.gif">
                     <button class="input-btn" id="btnVoice" title="Voice input">🎤</button>
                     <textarea id="userInput" rows="1" placeholder="Type your message..."></textarea>
                     <button class="input-btn primary" id="btnSend">→</button>
                 </div>
+                <div class="char-counter" id="charCounter">0 / 4000</div>
             </div>
         </div>
     </main>
@@ -1190,23 +1211,34 @@ class App {
         this.dom = {
             chat: document.getElementById('chatContainer'),
             input: document.getElementById('userInput'),
+            welcomeInput: document.getElementById('welcomeInput'),
             welcome: document.getElementById('welcomeScreen'),
             history: document.getElementById('historyList'),
             preview: document.getElementById('filePreview'),
+            welcomePreview: document.getElementById('welcomeFilePreview'),
             sidebar: document.getElementById('sidebar'),
             overlay: document.getElementById('overlay'),
             wrapper: document.getElementById('inputWrapper'),
-            dialog: document.getElementById('exportDialog')
+            welcomeWrapper: document.getElementById('welcomeInputWrapper'),
+            dialog: document.getElementById('exportDialog'),
+            chatInputContainer: document.getElementById('chatInputContainer'),
+            mainContent: document.querySelector('.main-content'),
+            charCounter: document.getElementById('charCounter'),
+            welcomeCharCounter: document.getElementById('welcomeCharCounter')
         };
 
         this.state = {
             chatId: null,
             files: [],
+            welcomeFiles: [],
             isRecording: false,
-            recognition: null
+            recognition: null,
+            messageCount: 0,
+            maxChars: 4000
         };
 
         this.storageKey = 'esamz_conversations_v8';
+        this.maxStorageSize = 5 * 1024 * 1024; // 5MB limit
         this.init();
     }
 
@@ -1214,10 +1246,28 @@ class App {
         this.loadHistory();
         this.setupEvents();
         this.setupDragDrop();
-        this.dom.input.focus();
+        this.dom.welcomeInput.focus();
     }
 
     setupEvents() {
+        // Welcome screen events
+        document.getElementById('btnWelcomeSend').addEventListener('click', () => this.handleWelcomeSend());
+        document.getElementById('btnWelcomeUpload').addEventListener('click', () => document.getElementById('fileInput').click());
+        document.getElementById('btnWelcomeVoice').addEventListener('click', () => this.toggleVoice(true));
+        
+        this.dom.welcomeInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.handleWelcomeSend();
+            }
+        });
+        
+        this.dom.welcomeInput.addEventListener('input', () => {
+            this.autoResize(this.dom.welcomeInput);
+            this.updateCharCounter(this.dom.welcomeInput, this.dom.welcomeCharCounter);
+        });
+
+        // Chat input events
         document.getElementById('btnSend').addEventListener('click', () => this.handleSend());
         
         this.dom.input.addEventListener('keydown', e => {
@@ -1228,106 +1278,178 @@ class App {
         });
         
         this.dom.input.addEventListener('input', () => {
-            this.dom.input.style.height = 'auto';
-            this.dom.input.style.height = this.dom.input.scrollHeight + 'px';
+            this.autoResize(this.dom.input);
+            this.updateCharCounter(this.dom.input, this.dom.charCounter);
         });
 
+        // Sidebar events
         document.getElementById('openSidebar').addEventListener('click', () => this.toggleSidebar(true));
         document.getElementById('closeSidebar').addEventListener('click', () => this.toggleSidebar(false));
         this.dom.overlay.addEventListener('click', () => this.toggleSidebar(false));
 
+        // Action buttons
         document.getElementById('btnNewChat').addEventListener('click', () => this.newChat());
         document.getElementById('btnClearChat').addEventListener('click', () => this.clearChat());
         document.getElementById('btnClearCache').addEventListener('click', () => this.clearAllData());
 
+        // File upload
         document.getElementById('btnUpload').addEventListener('click', () => document.getElementById('fileInput').click());
-        document.getElementById('fileInput').addEventListener('change', e => this.handleFiles(e.target.files));
+        document.getElementById('fileInput').addEventListener('change', e => this.handleFiles(e.target.files, false));
 
-        document.getElementById('btnVoice').addEventListener('click', () => this.toggleVoice());
+        // Voice
+        document.getElementById('btnVoice').addEventListener('click', () => this.toggleVoice(false));
 
+        // Export modal
         document.getElementById('btnExportModal').addEventListener('click', () => this.dom.dialog.showModal());
         document.getElementById('closeDialog').addEventListener('click', () => this.dom.dialog.close());
     }
 
     setupDragDrop() {
-        const wrapper = this.dom.wrapper;
-        
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt =>
-            wrapper.addEventListener(evt, e => {
-                e.preventDefault();
-                e.stopPropagation();
-            })
-        );
-        
-        wrapper.addEventListener('dragenter', () => wrapper.style.borderColor = 'var(--primary)');
-        wrapper.addEventListener('dragleave', () => wrapper.style.borderColor = 'var(--border-glass)');
-        wrapper.addEventListener('drop', e => {
-            wrapper.style.borderColor = 'var(--border-glass)';
-            this.handleFiles(e.dataTransfer.files);
+        [this.dom.wrapper, this.dom.welcomeWrapper].forEach(wrapper => {
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt =>
+                wrapper.addEventListener(evt, e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                })
+            );
+            
+            wrapper.addEventListener('dragenter', () => wrapper.style.borderColor = 'var(--primary)');
+            wrapper.addEventListener('dragleave', () => wrapper.style.borderColor = 'var(--border-glass)');
+            wrapper.addEventListener('drop', e => {
+                wrapper.style.borderColor = 'var(--border-glass)';
+                const isWelcome = wrapper === this.dom.welcomeWrapper;
+                this.handleFiles(e.dataTransfer.files, isWelcome);
+            });
         });
     }
 
-    async handleFiles(fileList) {
+    autoResize(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+    }
+
+    updateCharCounter(textarea, counter) {
+        const length = textarea.value.length;
+        counter.textContent = `${length} / ${this.state.maxChars}`;
+        
+        if (length > this.state.maxChars) {
+            counter.classList.add('danger');
+            counter.classList.remove('warning');
+        } else if (length > this.state.maxChars * 0.9) {
+            counter.classList.add('warning');
+            counter.classList.remove('danger');
+        } else {
+            counter.classList.remove('warning', 'danger');
+        }
+    }
+
+    async handleFiles(fileList, isWelcome) {
+        const files = isWelcome ? this.state.welcomeFiles : this.state.files;
+        const preview = isWelcome ? this.dom.welcomePreview : this.dom.preview;
+        
         for (const file of fileList) {
+            // Check file size (10MB max per file)
+            if (file.size > 10 * 1024 * 1024) {
+                alert(`File "${file.name}" is too large. Maximum size is 10MB.`);
+                continue;
+            }
+
             let text = '';
             if (file.type.startsWith('image/')) {
-                text = await this.ocrImage(file);
+                text = `[Image: ${file.name}]`;
+            } else if (file.type === 'application/pdf') {
+                text = `[PDF: ${file.name}]`;
             } else {
-                text = await this.readTextFile(file);
+                try {
+                    text = await this.readTextFile(file);
+                } catch {
+                    text = `[Unable to read: ${file.name}]`;
+                }
             }
-            this.state.files.push({ file, textExtracted: text });
+            
+            files.push({ file, textExtracted: text });
         }
-        this.renderFiles();
+        
+        this.renderFiles(files, preview, isWelcome);
     }
 
     readTextFile(file) {
-        return new Promise(resolve => {
+        return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => resolve(reader.result);
-            reader.onerror = () => resolve('(unable to read file)');
+            reader.onerror = () => reject(new Error('Failed to read file'));
             reader.readAsText(file);
         });
     }
 
-    async ocrImage(file) {
-        if (!('Tesseract' in window)) {
-            try {
-                await import('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.esm.min.js');
-            } catch {
-                return '(OCR library unavailable)';
-            }
-        }
-        try {
-            const { data: { text } } = await Tesseract.recognize(file, 'eng');
-            return text.trim();
-        } catch {
-            return '(OCR failed)';
-        }
-    }
-
-    renderFiles() {
-        this.dom.preview.innerHTML = '';
-        this.state.files.forEach((item, idx) => {
+    renderFiles(files, preview, isWelcome) {
+        preview.innerHTML = '';
+        files.forEach((item, idx) => {
             const chip = document.createElement('div');
             chip.className = 'file-chip';
-            chip.innerHTML = `📎 ${item.file.name} <button onclick="app.removeFile(${idx})">×</button>`;
-            this.dom.preview.appendChild(chip);
+            chip.innerHTML = `📎 ${item.file.name} <button onclick="app.removeFile(${idx}, ${isWelcome})">×</button>`;
+            preview.appendChild(chip);
         });
     }
 
-    removeFile(idx) {
-        this.state.files.splice(idx, 1);
-        this.renderFiles();
+    removeFile(idx, isWelcome) {
+        if (isWelcome) {
+            this.state.welcomeFiles.splice(idx, 1);
+            this.renderFiles(this.state.welcomeFiles, this.dom.welcomePreview, true);
+        } else {
+            this.state.files.splice(idx, 1);
+            this.renderFiles(this.state.files, this.dom.preview, false);
+        }
+    }
+
+    async handleWelcomeSend() {
+        const text = this.dom.welcomeInput.value.trim();
+        if (!text && this.state.welcomeFiles.length === 0) return;
+        
+        if (text.length > this.state.maxChars) {
+            alert(`Message is too long. Maximum ${this.state.maxChars} characters allowed.`);
+            return;
+        }
+
+        // Hide sidebar and welcome, show chat interface
+        this.dom.sidebar.classList.add('hidden');
+        this.dom.mainContent.classList.add('expanded');
+        this.dom.welcome.style.display = 'none';
+        this.dom.chatInputContainer.style.display = 'block';
+
+        // Transfer files from welcome to chat
+        this.state.files = [...this.state.welcomeFiles];
+        this.state.welcomeFiles = [];
+        
+        // Create new chat session
+        this.createChatSession(text);
+        
+        await this.sendMessage(text);
+        
+        // Clear welcome input
+        this.dom.welcomeInput.value = '';
+        this.dom.welcomeInput.style.height = 'auto';
+        this.dom.welcomePreview.innerHTML = '';
+        this.updateCharCounter(this.dom.welcomeInput, this.dom.welcomeCharCounter);
     }
 
     async handleSend() {
         const text = this.dom.input.value.trim();
         if (!text && this.state.files.length === 0) return;
+        
+        if (text.length > this.state.maxChars) {
+            alert(`Message is too long. Maximum ${this.state.maxChars} characters allowed.`);
+            return;
+        }
 
-        if (!this.state.chatId) this.createChatSession(text);
+        await this.sendMessage(text);
 
-        this.dom.welcome.style.display = 'none';
+        this.dom.input.value = '';
+        this.dom.input.style.height = 'auto';
+        this.updateCharCounter(this.dom.input, this.dom.charCounter);
+    }
 
+    async sendMessage(text) {
         let fullMessage = text;
         if (this.state.files.length) {
             fullMessage += '\n\n' + this.state.files.map(f =>
@@ -1337,11 +1459,10 @@ class App {
 
         this.addMessage(fullMessage, 'user');
         this.appendToHistory('user', fullMessage);
+        this.state.messageCount++;
 
-        this.dom.input.value = '';
-        this.dom.input.style.height = 'auto';
         this.state.files = [];
-        this.renderFiles();
+        this.renderFiles(this.state.files, this.dom.preview, false);
 
         const thinkingId = this.addThinking();
 
@@ -1351,7 +1472,6 @@ class App {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: text,
-                    files: this.state.files,
                     context: this.getContext()
                 })
             });
@@ -1361,27 +1481,34 @@ class App {
             const data = await res.json();
             this.removeThinking(thinkingId);
             const reply = data.reply || data.message || 'No response';
-            this.addMessage(reply, 'ai');
+            this.addMessage(reply, 'ai', true);
             this.appendToHistory('ai', reply);
         } catch (e) {
             this.removeThinking(thinkingId);
-            const reply = this.generateDemoResponse(text);
-            this.addMessage(reply, 'ai');
+            const reply = this.generateSmartResponse(text);
+            this.addMessage(reply, 'ai', true);
             this.appendToHistory('ai', reply);
         }
+        
+        this.checkStorageSize();
     }
 
-    addMessage(text, sender) {
+    addMessage(text, sender, showRegenerate = false) {
         const div = document.createElement('div');
         div.className = `message ${sender}`;
         const avatar = sender === 'user' ? 'U' : 'eS';
         const htmlContent = marked.parse(text);
         
+        const regenerateBtn = showRegenerate ? '<button class="action-btn regenerate" onclick="app.regenerateResponse(this)">Regenerate</button>' : '';
+        
         div.innerHTML = `
             <div class="message-avatar">${avatar}</div>
             <div class="message-content">
                 <div class="message-bubble">${htmlContent}</div>
-                ${sender === 'ai' ? `<div class="message-actions"><button class="action-btn" onclick="app.copyText(this)">Copy</button></div>` : ''}
+                ${sender === 'ai' ? `<div class="message-actions">
+                    <button class="action-btn" onclick="app.copyText(this)">Copy</button>
+                    ${regenerateBtn}
+                </div>` : ''}
             </div>`;
         
         this.dom.chat.appendChild(div);
@@ -1414,14 +1541,65 @@ class App {
         if (el) el.remove();
     }
 
-    generateDemoResponse(text) {
-        return `**eSAMz AI (Demo Mode):**\n\nBackend service is currently unavailable. This is a simulated response for: "${text.slice(0, 50)}..."\n\n\`\`\`javascript\nconsole.log("Demo mode - Backend offline");\n\`\`\`\n\nAll features remain functional with local storage.`;
+    generateSmartResponse(text) {
+        const responses = [
+            `I understand you're asking about "${text.slice(0, 50)}${text.length > 50 ? '...' : ''}"\n\n**Demo Mode Active:** The backend service is currently unavailable. In production, I would provide a detailed, contextual response based on your query.\n\n**Key Points:**\n- All features remain functional with local storage\n- Your conversation history is preserved\n- File uploads and voice input work locally\n\nWould you like to explore other features?`,
+            
+            `**Analysis of your request:**\n\n"${text.slice(0, 100)}${text.length > 100 ? '...' : ''}"\n\n*Note: Running in demo mode*\n\nBased on your input, here's what I can help you with:\n\n1. **Code Generation** - I can help structure your ideas\n2. **Problem Solving** - Breaking down complex challenges\n3. **Creative Writing** - Developing narratives and content\n\nThe full AI backend will provide more detailed, context-aware responses.`,
+            
+            `**eSAMz AI Response (Demo):**\n\nI've received your message about: "${text.slice(0, 70)}${text.length > 70 ? '...' : ''}"\n\n\`\`\`\nStatus: Demo Mode\nBackend: Offline\nLocal Features: Active\n\`\`\`\n\nWhile the AI service is unavailable, I'm maintaining:\n- ✓ Conversation history\n- ✓ Export functionality\n- ✓ File handling\n- ✓ Voice input\n\nYour data is safe and ready for when the backend reconnects.`
+        ];
+        
+        return responses[Math.floor(Math.random() * responses.length)];
+    }
+
+    async regenerateResponse(btn) {
+        const messageEl = btn.closest('.message');
+        const messages = Array.from(this.dom.chat.querySelectorAll('.message'));
+        const index = messages.indexOf(messageEl);
+        
+        if (index > 0) {
+            const userMessageEl = messages[index - 1];
+            const userText = userMessageEl.querySelector('.message-bubble').innerText;
+            
+            messageEl.remove();
+            
+            const thinkingId = this.addThinking();
+            
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: userText,
+                        context: this.getContext(),
+                        regenerate: true
+                    })
+                });
+                
+                if (!res.ok) throw new Error('Server error');
+                
+                const data = await res.json();
+                this.removeThinking(thinkingId);
+                const reply = data.reply || data.message || 'No response';
+                this.addMessage(reply, 'ai', true);
+            } catch (e) {
+                this.removeThinking(thinkingId);
+                const reply = this.generateSmartResponse(userText);
+                this.addMessage(reply, 'ai', true);
+            }
+        }
     }
 
     loadHistory() {
-        const raw = localStorage.getItem(this.storageKey);
-        const history = raw ? JSON.parse(raw) : [];
-        history.forEach(chat => this.renderHistoryItem(chat));
+        try {
+            const raw = localStorage.getItem(this.storageKey);
+            const history = raw ? JSON.parse(raw) : [];
+            history.slice(0, 50).forEach(chat => this.renderHistoryItem(chat));
+        } catch (e) {
+            console.error('Failed to load history:', e);
+            localStorage.removeItem(this.storageKey);
+        }
     }
 
     renderHistoryItem(chat) {
@@ -1429,27 +1607,38 @@ class App {
         btn.className = 'nav-item';
         btn.innerHTML = `
             <span class="icon">💬</span> 
-            ${chat.title}
+            ${this.escapeHtml(chat.title)}
             <button class="nav-item-delete" onclick="event.stopPropagation(); app.deleteChat('${chat.id}')">×</button>
         `;
         btn.onclick = () => this.loadChat(chat.id);
         this.dom.history.appendChild(btn);
     }
 
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
     createChatSession(firstText) {
         this.state.chatId = Date.now().toString();
         const title = firstText.slice(0, 35) + (firstText.length > 35 ? '…' : '');
-        const chat = { id: this.state.chatId, title, messages: [] };
+        const chat = { id: this.state.chatId, title, messages: [], created: Date.now() };
         this.saveChat(chat);
         this.renderHistoryItem(chat);
     }
 
     appendToHistory(role, content) {
-        const history = this.getHistory();
-        const chat = history.find(c => c.id === this.state.chatId);
-        if (chat) {
-            chat.messages.push({ role, content, ts: Date.now() });
-            this.saveHistory(history);
+        try {
+            const history = this.getHistory();
+            const chat = history.find(c => c.id === this.state.chatId);
+            if (chat) {
+                chat.messages.push({ role, content, ts: Date.now() });
+                chat.updated = Date.now();
+                this.saveHistory(history);
+            }
+        } catch (e) {
+            console.error('Failed to save message:', e);
         }
     }
 
@@ -1459,23 +1648,59 @@ class App {
         if (!chat) return;
         
         this.state.chatId = chatId;
-        this.dom.chat.innerHTML = '';
-        chat.messages.forEach(m => this.addMessage(m.content, m.role));
+        this.state.messageCount = chat.messages.length;
+        
+        // Show chat interface
+        this.dom.sidebar.classList.add('hidden');
+        this.dom.mainContent.classList.add('expanded');
         this.dom.welcome.style.display = 'none';
+        this.dom.chatInputContainer.style.display = 'block';
+        
+        // Clear and load messages
+        const messagesContainer = document.createElement('div');
+        chat.messages.forEach(m => {
+            const div = document.createElement('div');
+            div.className = `message ${m.role}`;
+            const avatar = m.role === 'user' ? 'U' : 'eS';
+            const htmlContent = marked.parse(m.content);
+            const isLastAI = m.role === 'ai' && chat.messages.indexOf(m) === chat.messages.length - 1;
+            
+            div.innerHTML = `
+                <div class="message-avatar">${avatar}</div>
+                <div class="message-content">
+                    <div class="message-bubble">${htmlContent}</div>
+                    ${m.role === 'ai' ? `<div class="message-actions">
+                        <button class="action-btn" onclick="app.copyText(this)">Copy</button>
+                        ${isLastAI ? '<button class="action-btn regenerate" onclick="app.regenerateResponse(this)">Regenerate</button>' : ''}
+                    </div>` : ''}
+                </div>`;
+            messagesContainer.appendChild(div);
+        });
+        
+        this.dom.chat.innerHTML = '';
+        this.dom.chat.appendChild(messagesContainer);
+        this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
+        
+        if (window.Prism) Prism.highlightAll();
+        
         this.toggleSidebar(false);
     }
 
     deleteChat(chatId) {
         if (!confirm('Delete this conversation?')) return;
         
-        let history = this.getHistory();
-        history = history.filter(c => c.id !== chatId);
-        this.saveHistory(history);
-        
-        this.dom.history.innerHTML = '';
-        history.forEach(c => this.renderHistoryItem(c));
-        
-        if (this.state.chatId === chatId) this.newChat();
+        try {
+            let history = this.getHistory();
+            history = history.filter(c => c.id !== chatId);
+            this.saveHistory(history);
+            
+            this.dom.history.innerHTML = '';
+            history.forEach(c => this.renderHistoryItem(c));
+            
+            if (this.state.chatId === chatId) this.newChat();
+        } catch (e) {
+            console.error('Failed to delete chat:', e);
+        }
     }
 
     getContext() {
@@ -1486,76 +1711,154 @@ class App {
     }
 
     getHistory() {
-        return JSON.parse(localStorage.getItem(this.storageKey) || '[]');
+        try {
+            return JSON.parse(localStorage.getItem(this.storageKey) || '[]');
+        } catch (e) {
+            console.error('Failed to parse history:', e);
+            return [];
+        }
     }
 
     saveChat(chat) {
         const history = this.getHistory();
         history.unshift(chat);
+        // Keep only last 100 conversations
+        if (history.length > 100) {
+            history.splice(100);
+        }
         this.saveHistory(history);
     }
 
     saveHistory(history) {
-        localStorage.setItem(this.storageKey, JSON.stringify(history));
+        try {
+            const data = JSON.stringify(history);
+            if (data.length > this.maxStorageSize) {
+                // Remove oldest chats if storage is too large
+                history.sort((a, b) => (b.updated || b.created) - (a.updated || a.created));
+                history.splice(50);
+                localStorage.setItem(this.storageKey, JSON.stringify(history));
+            } else {
+                localStorage.setItem(this.storageKey, data);
+            }
+        } catch (e) {
+            console.error('Failed to save history:', e);
+            alert('Storage limit reached. Please clear some history.');
+        }
+    }
+
+    checkStorageSize() {
+        try {
+            const data = localStorage.getItem(this.storageKey);
+            if (data && data.length > this.maxStorageSize * 0.9) {
+                console.warn('Storage is near limit. Consider clearing old conversations.');
+            }
+        } catch (e) {
+            console.error('Storage check failed:', e);
+        }
     }
 
     toggleSidebar(open) {
-        if (open) {
-            this.dom.sidebar.classList.add('active');
-            this.dom.overlay.classList.add('active');
+        if (window.innerWidth <= 768) {
+            if (open) {
+                this.dom.sidebar.classList.add('active');
+                this.dom.sidebar.classList.remove('hidden');
+                this.dom.overlay.classList.add('active');
+            } else {
+                this.dom.sidebar.classList.remove('active');
+                this.dom.overlay.classList.remove('active');
+            }
         } else {
-            this.dom.sidebar.classList.remove('active');
-            this.dom.overlay.classList.remove('active');
+            if (open) {
+                this.dom.sidebar.classList.remove('hidden');
+                this.dom.mainContent.classList.remove('expanded');
+            } else {
+                this.dom.sidebar.classList.add('hidden');
+                this.dom.mainContent.classList.add('expanded');
+            }
         }
     }
 
     newChat() {
         this.state.chatId = null;
+        this.state.messageCount = 0;
+        this.state.files = [];
+        this.state.welcomeFiles = [];
+        
+        // Reset to welcome screen
+        this.dom.sidebar.classList.remove('hidden');
+        this.dom.mainContent.classList.remove('expanded');
+        this.dom.chatInputContainer.style.display = 'none';
         this.dom.chat.innerHTML = '';
         this.dom.chat.appendChild(this.dom.welcome);
-        this.dom.welcome.style.display = 'block';
+        this.dom.welcome.style.display = 'flex';
+        
+        this.dom.welcomeInput.value = '';
+        this.dom.welcomeInput.style.height = 'auto';
+        this.dom.welcomePreview.innerHTML = '';
+        this.updateCharCounter(this.dom.welcomeInput, this.dom.welcomeCharCounter);
+        
         this.toggleSidebar(false);
+        this.dom.welcomeInput.focus();
     }
 
     clearChat() {
+        if (this.state.messageCount > 0 && !confirm('Clear current conversation?')) return;
         this.newChat();
     }
 
     clearAllData() {
         if (confirm('Delete ALL conversation history? This cannot be undone.')) {
-            localStorage.clear();
-            location.reload();
+            try {
+                localStorage.clear();
+                location.reload();
+            } catch (e) {
+                console.error('Failed to clear storage:', e);
+            }
         }
-    }
-
-    fillInput(text) {
-        this.dom.input.value = text;
-        this.dom.input.focus();
     }
 
     copyText(btn) {
         const text = btn.closest('.message').querySelector('.message-bubble').innerText;
-        navigator.clipboard.writeText(text);
-        const orig = btn.innerText;
-        btn.innerText = 'Copied!';
-        setTimeout(() => btn.innerText = orig, 2000);
+        navigator.clipboard.writeText(text).then(() => {
+            const orig = btn.innerText;
+            btn.innerText = 'Copied!';
+            setTimeout(() => btn.innerText = orig, 2000);
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+        });
     }
 
-    toggleVoice() {
-        const btn = document.getElementById('btnVoice');
+    toggleVoice(isWelcome) {
+        const btn = isWelcome ? document.getElementById('btnWelcomeVoice') : document.getElementById('btnVoice');
+        const input = isWelcome ? this.dom.welcomeInput : this.dom.input;
         
         if (!this.state.recognition) {
-            if (!('webkitSpeechRecognition' in window)) {
-                return alert('Voice recognition is not supported in your browser');
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert('Voice recognition is not supported in your browser. Please try Chrome, Edge, or Safari.');
+                return;
             }
             
-            this.state.recognition = new webkitSpeechRecognition();
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            this.state.recognition = new SpeechRecognition();
             this.state.recognition.lang = 'en-US';
             this.state.recognition.continuous = false;
+            this.state.recognition.interimResults = false;
             
             this.state.recognition.onresult = e => {
-                this.dom.input.value += e.results[0][0].transcript;
-                this.dom.input.dispatchEvent(new Event('input'));
+                const transcript = e.results[0][0].transcript;
+                input.value += (input.value ? ' ' : '') + transcript;
+                this.autoResize(input);
+                const counter = isWelcome ? this.dom.welcomeCharCounter : this.dom.charCounter;
+                this.updateCharCounter(input, counter);
+            };
+            
+            this.state.recognition.onerror = e => {
+                console.error('Speech recognition error:', e.error);
+                this.state.isRecording = false;
+                btn.classList.remove('recording');
+                if (e.error !== 'no-speech') {
+                    alert(`Voice recognition error: ${e.error}`);
+                }
             };
             
             this.state.recognition.onend = () => {
@@ -1569,14 +1872,25 @@ class App {
             this.state.isRecording = false;
             btn.classList.remove('recording');
         } else {
-            this.state.recognition.start();
-            this.state.isRecording = true;
-            btn.classList.add('recording');
+            try {
+                this.state.recognition.start();
+                this.state.isRecording = true;
+                btn.classList.add('recording');
+            } catch (e) {
+                console.error('Failed to start recognition:', e);
+            }
         }
     }
 
     exportChat(type) {
-        const msgs = Array.from(document.querySelectorAll('.message')).map(el => {
+        const messages = Array.from(document.querySelectorAll('.message')).filter(el => !el.id.startsWith('thinking'));
+        
+        if (messages.length === 0) {
+            alert('No conversation to export');
+            return;
+        }
+        
+        const msgs = messages.map(el => {
             const who = el.classList.contains('user') ? 'User' : 'eSAMz AI';
             const txt = el.querySelector('.message-bubble').innerText;
             return `[${who}]: ${txt}`;
@@ -1584,10 +1898,89 @@ class App {
         
         const filename = `esamz-export-${Date.now()}`;
         
-        if (type === 'txt') this.download(filename + '.txt', msgs);
-        if (type === 'md') this.download(filename + '.md', msgs);
-        if (type === 'html') {
-            const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>eSAMz Export</title><style>body{font-family:sans-serif;max-width:800px;margin:2rem auto;padding:2rem;background:#0a0f1a;color:#f1f5f9;}pre{background:#000;padding:1rem;border-radius:8px;overflow-x:auto;}</style></head><body><pre>${msgs}</pre></body></html>`;
+        if (type === 'txt') {
+            this.download(filename + '.txt', msgs);
+        } else if (type === 'md') {
+            const markdown = messages.map(el => {
+                const who = el.classList.contains('user') ? '**You**' : '**eSAMz AI**';
+                const txt = el.querySelector('.message-bubble').innerText;
+                return `${who}\n\n${txt}`;
+            }).join('\n\n---\n\n');
+            this.download(filename + '.md', markdown);
+        } else if (type === 'html') {
+            const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eSAMz AI Conversation Export</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: #0a0f1a;
+            color: #f1f5f9;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #d1d5db;
+            border-bottom: 2px solid #4b5563;
+            padding-bottom: 0.5rem;
+        }
+        .message {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: rgba(15, 23, 42, 0.7);
+            border-radius: 12px;
+            border: 1px solid rgba(100, 116, 139, 0.2);
+        }
+        .message-header {
+            font-weight: 600;
+            color: #d1d5db;
+            margin-bottom: 0.5rem;
+        }
+        .user .message-header {
+            color: #9ca3af;
+        }
+        pre {
+            background: #000;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9em;
+        }
+        .footer {
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(100, 116, 139, 0.2);
+            text-align: center;
+            color: #64748b;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>eSAMz AI Conversation</h1>
+    <p style="color: #94a3b8;">Exported on ${new Date().toLocaleString()}</p>
+    ${messages.map(el => {
+        const who = el.classList.contains('user') ? 'You' : 'eSAMz AI';
+        const cls = el.classList.contains('user') ? 'user' : 'ai';
+        const content = el.querySelector('.message-bubble').innerHTML;
+        return `<div class="message ${cls}">
+            <div class="message-header">${who}</div>
+            <div>${content}</div>
+        </div>`;
+    }).join('')}
+    <div class="footer">
+        Exported from eSAMz AI &copy; 2025
+    </div>
+</body>
+</html>`;
             this.download(filename + '.html', html);
         }
         
@@ -1595,13 +1988,24 @@ class App {
     }
 
     download(name, content) {
-        const link = document.createElement('a');
-        link.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(content);
-        link.download = name;
-        link.click();
+        try {
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = name;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            console.error('Download failed:', e);
+            alert('Failed to download file');
+        }
     }
 }
 
+// Initialize app
 const app = new App();
     </script>
 </body>
