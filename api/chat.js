@@ -62,15 +62,17 @@ function needsWebSearch(text) {
   );
 }
 
-/* ---------- SARVAM: LANGUAGE DETECTION ---------- */
+/* ---------- SARVAM: LANGUAGE DETECTION (FIXED) ---------- */
 async function detectLanguage(text) {
-  const res = await fetch('https://api.sarvam.ai/v1/language-detection', {
+  const res = await fetch('https://api.sarvam.ai/v1/language/identify', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${process.env.SARVAM_API_KEY}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ text })
+    body: JSON.stringify({
+      texts: [text]
+    })
   });
 
   if (!res.ok) {
@@ -79,8 +81,11 @@ async function detectLanguage(text) {
   }
 
   const data = await res.json();
-  return data?.language || 'en';
+
+  // Sarvam returns array
+  return data?.languages?.[0] || 'en';
 }
+
 
 /* ---------- YOU.COM WEB SEARCH ---------- */
 async function webSearchYou(query) {
