@@ -65,32 +65,30 @@ function needsWebSearch(text) {
 
 /* ---------- YOU.COM WEB SEARCH ---------- */
 async function webSearchYou(query) {
-  const res = await fetch('https://api.you.com/search', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.YOU_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      query,
-      source: 'web',
-      n_tokens: 2048
-    })
-  });
+  try {
+    const res = await fetch('https://api.ydc-index.io/search', {
+      method: 'GET',
+      headers: {
+        'X-API-Key': process.env.YOU_API_KEY
+      }
+    });
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`You.com search failed: ${err}`);
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`You.com search failed: ${err}`);
+    }
+
+    const data = await res.json();
+
+    return (data?.hits || [])
+      .slice(0, CONFIG.MAX_WEB_RESULTS)
+      .map(r => `• ${r.title || 'No title'}: ${r.description || r.snippet || ''}`)
+      .join('\n');
+  } catch (error) {
+    console.error('[WEB SEARCH ERROR]', error.message);
+    return ''; // Return empty string if search fails
   }
-
-  const data = await res.json();
-
-  return (data?.results || [])
-    .slice(0, CONFIG.MAX_WEB_RESULTS)
-    .map(r => `• ${r.title}: ${r.snippet}`)
-    .join('\n');
 }
-
 /* ---------- SARVAM CHAT (FREE) ---------- */
 async function chatWithSarvam(messages) {
   const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
