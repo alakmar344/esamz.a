@@ -1,10 +1,10 @@
 /* ============================================
-   eSAMz v8.7 Backend – File Upload + Compression
+   eSAMz v8.7 Backend – Voice + 1-Min Rate Limit
    Created by Alakmar Teenwala
    Updated: December 2025
    ============================================ */
 
-console.log('>>> eSAMz v8.7 starting');
+console.log('>>> eSAMz v8.7 Voice Edition starting');
 
 const formidable = require('formidable');
 const fs = require('fs').promises;
@@ -16,13 +16,17 @@ const CONFIG = {
   MAX_HISTORY_TOKENS: 4000,
   MAX_PROMPT_TOKENS: 8000,
   FILE_SUMMARY_TOKENS: 500,
-  MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
-  MAX_WEB_RESULTS: 5
+  MAX_FILE_SIZE: 10 * 1024 * 1024,
+  MAX_WEB_RESULTS: 5,
+  VOICE_RATE_LIMIT_SECONDS: 60, // 1 minute per user per day
+  RATE_LIMIT_WINDOW: 24 * 60 * 60 * 1000, // 24 hours
+  CREDITS_AVAILABLE: 1500
 };
 
 /* ---------- STATE ---------- */
 const threads = new Map();
 const timers = new Map();
+const voiceUsage = new Map(); // { userId: { totalSeconds: 60, resetAt: timestamp } }
 
 /* ---------- SYSTEM PROMPT ---------- */
 const SYSTEM_PROMPT = {
@@ -76,6 +80,60 @@ function needsWebSearch(text) {
   return /\b(latest|today|current|now|news|recent|price|stock|weather|score|update|who is currently|what happened)\b/i.test(text);
 }
 
+/* ---------- VOICE RATE LIMITING ---------- */
+function checkVoiceLimit(userId, requestedSeconds) {
+  const now = Date.now();
+  
+  if (!voiceUsage.has(userId)) {
+    voiceUsage.set(userId, {
+      totalSeconds: 0,
+      resetAt: now + CONFIG.RATE_LIMIT_WINDOW
+    });
+  }
+  
+  const usage = voiceUsage.get(userId);
+  
+  // Reset if window expired
+  if (now >= usage.resetAt) {
+    usage.totalSeconds = 0;
+    usage.resetAt = now + CONFIG.RATE_LIMIT_WINDOW;
+  }
+  
+  const remainingSeconds = CONFIG.VOICE_RATE_LIMIT_SECONDS - usage.totalSeconds;
+  
+  if (remainingSeconds <= 0) {
+    const resetIn = Math.ceil((usage.resetAt - now) / 1000 / 60); // minutes
+    return {
+      allowed: false,
+      remaining: 0,
+      resetIn,
+      message: `Voice limit reached. You can use voice again in ${resetIn} minutes.`
+    };
+  }
+  
+  if (requestedSeconds > remainingSeconds) {
+    return {
+      allowed: false,
+      remaining: remainingSeconds,
+      resetIn: Math.ceil((usage.resetAt - now) / 1000 / 60),
+      message: `Only ${remainingSeconds} seconds remaining today. Request was for ${requestedSeconds} seconds.`
+    };
+  }
+  
+  return {
+    allowed: true,
+    remaining: remainingSeconds,
+    resetIn: Math.ceil((usage.resetAt - now) / 1000 / 60)
+  };
+}
+
+function updateVoiceUsage(userId, usedSeconds) {
+  const usage = voiceUsage.get(userId);
+  if (usage) {
+    usage.totalSeconds += usedSeconds;
+  }
+}
+
 /* ---------- FILE PROCESSING ---------- */
 async function extractTextFromFile(filepath, mimetype) {
   try {
@@ -102,17 +160,14 @@ function compressText(text, targetTokens = CONFIG.FILE_SUMMARY_TOKENS) {
   
   if (tokens <= targetTokens) return text;
 
-  // Intelligent compression
   const lines = text.split('\n').filter(l => l.trim());
   const targetChars = targetTokens * 4;
   
-  // Try to keep first and last parts, compress middle
   const firstPart = lines.slice(0, Math.floor(lines.length * 0.3)).join('\n');
   const lastPart = lines.slice(-Math.floor(lines.length * 0.2)).join('\n');
   
   let compressed = firstPart + '\n\n[... content compressed ...]\n\n' + lastPart;
   
-  // If still too long, truncate
   if (compressed.length > targetChars) {
     compressed = compressed.substring(0, targetChars) + '\n\n[... content truncated for efficiency ...]';
   }
@@ -121,7 +176,7 @@ function compressText(text, targetTokens = CONFIG.FILE_SUMMARY_TOKENS) {
 }
 
 async function summarizeWithSarvam(text) {
-  const compressed = compressText(text, 400); // Leave room for summary prompt
+  const compressed = compressText(text, 400);
   
   const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
     method: 'POST',
@@ -157,14 +212,12 @@ async function summarizeWithSarvam(text) {
 
 /* ---------- WEB SEARCH (FIXED) ---------- */
 async function webSearchYou(query) {
-  // Gracefully skip if no API key
   if (!process.env.YOU_API_KEY) {
     console.log('[WEB SEARCH] Skipped - YOU_API_KEY not configured');
     return '';
   }
 
   try {
-    // Correct You.com RAG API endpoint
     const res = await fetch('https://api.ydc-index.io/rag', {
       method: 'POST',
       headers: {
@@ -184,7 +237,6 @@ async function webSearchYou(query) {
 
     const data = await res.json();
     
-    // Extract search results
     const results = (data?.search_results || [])
       .slice(0, CONFIG.MAX_WEB_RESULTS)
       .map(r => `• ${r.name || r.title}: ${r.snippet || r.description || ''}`)
@@ -225,6 +277,269 @@ async function chatWithSarvam(messages) {
   return reply;
 }
 
+/* ---------- SARVAM SPEECH-TO-TEXT ---------- */
+async function transcribeAudio(audioBuffer, language = 'hi-IN') {
+  const formData = new FormData();
+  const audioBlob = new Blob([audioBuffer], { type: 'audio/wav' });
+  formData.append('file', audioBlob, 'audio.wav');
+  formData.append('language_code', language);
+
+  const res = await fetch('https://api.sarvam.ai/speech-to-text', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.SARVAM_API_KEY}`
+    },
+    body: formData
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`STT failed: ${err}`);
+  }
+
+  const data = await res.json();
+  return {
+    text: data.transcript || '',
+    duration: data.duration || 0
+  };
+}
+
+/* ---------- SARVAM TEXT-TO-SPEECH ---------- */
+async function synthesizeSpeech(text, language = 'hi-IN') {
+  const res = await fetch('https://api.sarvam.ai/text-to-speech', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.SARVAM_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      inputs: [text],
+      target_language_code: language,
+      speaker: 'meera', // Female voice, can be 'arvind' for male
+      pitch: 0,
+      pace: 1.0,
+      loudness: 1.5,
+      speech_sample_rate: 8000,
+      enable_preprocessing: true,
+      model: 'bulbul:v1'
+    })
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`TTS failed: ${err}`);
+  }
+
+  const data = await res.json();
+  return data.audios?.[0] || ''; // Base64 audio
+}
+
+/* ---------- VOICE HANDLER ---------- */
+async function handleVoiceRequest(req, res) {
+  const form = formidable({
+    maxFileSize: 5 * 1024 * 1024 // 5MB max for audio
+  });
+
+  const [fields, files] = await new Promise((resolve, reject) => {
+    form.parse(req, (err, fields, files) => {
+      if (err) reject(err);
+      else resolve([fields, files]);
+    });
+  });
+
+  const userId = fields.userId?.[0] || fields.userId || 'anonymous';
+  const threadId = fields.threadId?.[0] || fields.threadId || 'default';
+  const language = fields.language?.[0] || fields.language || 'hi-IN';
+
+  if (!files.audio) {
+    return res.status(400).json({ error: 'Audio file required' });
+  }
+
+  const audioFile = Array.isArray(files.audio) ? files.audio[0] : files.audio;
+  
+  // Estimate audio duration (rough: file size / 16KB per second for 8kHz)
+  const estimatedDuration = Math.ceil(audioFile.size / 16000);
+  
+  // Check rate limit
+  const limitCheck = checkVoiceLimit(userId, estimatedDuration);
+  if (!limitCheck.allowed) {
+    await fs.unlink(audioFile.filepath).catch(() => {});
+    return res.status(429).json({
+      error: 'Rate limit exceeded',
+      message: limitCheck.message,
+      remainingSeconds: limitCheck.remaining,
+      resetInMinutes: limitCheck.resetIn
+    });
+  }
+
+  try {
+    // Read audio file
+    const audioBuffer = await fs.readFile(audioFile.filepath);
+    
+    // Transcribe
+    const { text: transcript, duration } = await transcribeAudio(audioBuffer, language);
+    
+    // Update usage with actual duration
+    updateVoiceUsage(userId, Math.ceil(duration));
+    
+    // Get thread history
+    if (!threads.has(threadId)) threads.set(threadId, []);
+    const history = threads.get(threadId);
+    
+    // Web search if needed
+    let webContext = '';
+    if (needsWebSearch(transcript)) {
+      webContext = await webSearchYou(transcript);
+    }
+    
+    // Build messages
+    const messages = [
+      SYSTEM_PROMPT,
+      ...history,
+      ...(webContext ? [{ role: 'system', content: `Web search results:\n${webContext}` }] : []),
+      { role: 'user', content: transcript }
+    ];
+    
+    if (messagesTokens(messages) > CONFIG.MAX_PROMPT_TOKENS) {
+      trimHistory(history);
+    }
+    
+    // Get response
+    const reply = await chatWithSarvam(messages);
+    
+    // Synthesize speech
+    const audioBase64 = await synthesizeSpeech(reply, language);
+    
+    // Save to history
+    history.push({ role: 'user', content: transcript });
+    history.push({ role: 'assistant', content: reply });
+    trimHistory(history);
+    
+    // Reset thread timer
+    clearTimeout(timers.get(threadId));
+    timers.set(
+      threadId,
+      setTimeout(() => threads.delete(threadId), CONFIG.THREAD_TTL)
+    );
+    
+    // Clean up
+    await fs.unlink(audioFile.filepath).catch(() => {});
+    
+    const updatedLimit = checkVoiceLimit(userId, 0);
+    
+    res.status(200).json({
+      transcript,
+      reply,
+      audio: audioBase64,
+      voiceUsage: {
+        usedSeconds: Math.ceil(duration),
+        remainingSeconds: updatedLimit.remaining,
+        resetInMinutes: updatedLimit.resetIn
+      },
+      webUsed: Boolean(webContext),
+      version: 'v8.7-dec2025'
+    });
+    
+  } catch (err) {
+    await fs.unlink(audioFile.filepath).catch(() => {});
+    console.error('[VOICE ERROR]', err.message);
+    res.status(502).json({
+      error: 'Voice processing failed',
+      details: err.message
+    });
+  }
+}
+
+/* ---------- TEXT CHAT HANDLER ---------- */
+async function handleTextRequest(req, res) {
+  const form = formidable({
+    maxFileSize: CONFIG.MAX_FILE_SIZE
+  });
+
+  const [fields, files] = await new Promise((resolve, reject) => {
+    form.parse(req, (err, fields, files) => {
+      if (err) reject(err);
+      else resolve([fields, files]);
+    });
+  });
+
+  const message = fields.message?.[0] || fields.message;
+  const threadId = fields.threadId?.[0] || fields.threadId || 'default';
+
+  if (!message?.trim()) {
+    return res.status(400).json({ error: 'Message required' });
+  }
+
+  try {
+    if (!threads.has(threadId)) threads.set(threadId, []);
+    const history = threads.get(threadId);
+
+    // Process file if present
+    let fileContext = '';
+    if (files.file) {
+      const file = Array.isArray(files.file) ? files.file[0] : files.file;
+      console.log('[FILE UPLOAD]', file.originalFilename, file.mimetype);
+
+      const text = await extractTextFromFile(file.filepath, file.mimetype);
+      const summary = await summarizeWithSarvam(text);
+      
+      fileContext = `File "${file.originalFilename}" (${file.mimetype}):\n${summary}`;
+      
+      await fs.unlink(file.filepath).catch(() => {});
+    }
+
+    // Web search if needed
+    let webContext = '';
+    if (needsWebSearch(message)) {
+      webContext = await webSearchYou(message);
+    }
+
+    // Build messages
+    const messages = [
+      SYSTEM_PROMPT,
+      ...history,
+      ...(fileContext ? [{ role: 'system', content: fileContext }] : []),
+      ...(webContext ? [{ role: 'system', content: `Web search results:\n${webContext}` }] : []),
+      { role: 'user', content: message }
+    ];
+
+    if (messagesTokens(messages) > CONFIG.MAX_PROMPT_TOKENS) {
+      trimHistory(history);
+    }
+
+    // Get response
+    const reply = await chatWithSarvam(messages);
+
+    // Save to history
+    history.push({ role: 'user', content: message });
+    history.push({ role: 'assistant', content: reply });
+    trimHistory(history);
+
+    // Reset thread timer
+    clearTimeout(timers.get(threadId));
+    timers.set(
+      threadId,
+      setTimeout(() => threads.delete(threadId), CONFIG.THREAD_TTL)
+    );
+
+    res.status(200).json({
+      reply,
+      fileProcessed: Boolean(fileContext),
+      webUsed: Boolean(webContext),
+      provider: 'sarvam',
+      model: 'sarvam-2b',
+      version: 'v8.7-dec2025'
+    });
+
+  } catch (err) {
+    console.error('[TEXT ERROR]', err.message);
+    res.status(502).json({
+      error: 'Failed to generate response',
+      details: err.message
+    });
+  }
+}
+
 /* ---------- MAIN HANDLER ---------- */
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -244,96 +559,26 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    // Parse multipart/form-data for file uploads
-    const form = formidable({
-      maxFileSize: CONFIG.MAX_FILE_SIZE,
-      allowEmptyFiles: false
-    });
-
-    const [fields, files] = await new Promise((resolve, reject) => {
-      form.parse(req, (err, fields, files) => {
-        if (err) reject(err);
-        else resolve([fields, files]);
-      });
-    });
-
-    const message = fields.message?.[0] || fields.message;
-    const threadId = fields.threadId?.[0] || fields.threadId || 'default';
-
-    if (!message?.trim()) {
-      return res.status(400).json({ error: 'Message required' });
-    }
-
-    // Initialize thread
-    if (!threads.has(threadId)) threads.set(threadId, []);
-    const history = threads.get(threadId);
-
-    // Process uploaded file if present
-    let fileContext = '';
-    if (files.file) {
-      const file = Array.isArray(files.file) ? files.file[0] : files.file;
-      console.log('[FILE UPLOAD]', file.originalFilename, file.mimetype);
-
-      const text = await extractTextFromFile(file.filepath, file.mimetype);
-      const summary = await summarizeWithSarvam(text);
+    // Determine if voice or text request by content-type
+    const contentType = req.headers['content-type'] || '';
+    
+    if (contentType.includes('multipart/form-data')) {
+      // Check if it's a voice request (has audio file)
+      const hasAudio = contentType.includes('audio') || req.url.includes('/voice');
       
-      fileContext = `File "${file.originalFilename}" (${file.mimetype}):\n${summary}`;
-      
-      // Clean up temp file
-      await fs.unlink(file.filepath).catch(() => {});
+      if (hasAudio) {
+        return await handleVoiceRequest(req, res);
+      } else {
+        return await handleTextRequest(req, res);
+      }
+    } else {
+      return res.status(400).json({ error: 'Invalid content type' });
     }
-
-    // Web search if needed
-    let webContext = '';
-    if (needsWebSearch(message)) {
-      webContext = await webSearchYou(message);
-    }
-
-    // Build messages
-    const messages = [
-      SYSTEM_PROMPT,
-      ...history,
-      ...(fileContext ? [{ role: 'system', content: fileContext }] : []),
-      ...(webContext ? [{ role: 'system', content: `Web search results:\n${webContext}` }] : []),
-      { role: 'user', content: message }
-    ];
-
-    // Trim if needed
-    if (messagesTokens(messages) > CONFIG.MAX_PROMPT_TOKENS) {
-      trimHistory(history);
-    }
-
-    // Get response
-    const reply = await chatWithSarvam(messages);
-
-    // Save to history
-    history.push({ role: 'user', content: message });
-    history.push({ role: 'assistant', content: reply });
-    trimHistory(history);
-
-    // Reset thread timer
-    clearTimeout(timers.get(threadId));
-    timers.set(
-      threadId,
-      setTimeout(() => {
-        threads.delete(threadId);
-        console.log(`[THREAD EXPIRED] ${threadId}`);
-      }, CONFIG.THREAD_TTL)
-    );
-
-    res.status(200).json({
-      reply,
-      fileProcessed: Boolean(fileContext),
-      webUsed: Boolean(webContext),
-      provider: 'sarvam',
-      model: 'sarvam-2b',
-      version: 'v8.7-dec2025'
-    });
 
   } catch (err) {
     console.error('[ERROR]', err.message);
     res.status(502).json({
-      error: 'Failed to generate response',
+      error: 'Request failed',
       details: err.message
     });
   }
@@ -348,14 +593,19 @@ module.exports.health = (_, res) => {
     creator: 'Alakmar Teenwala',
     cutoff: 'July 2025',
     features: {
-      chat: true,
+      textChat: true,
+      voiceChat: true,
       fileUpload: true,
       webSearch: !!process.env.YOU_API_KEY,
-      compression: true,
-      summarization: true
+      stt: true,
+      tts: true,
+      rateLimits: {
+        voicePerDay: `${CONFIG.VOICE_RATE_LIMIT_SECONDS} seconds`
+      }
     },
-    provider: 'sarvam-2b'
+    provider: 'sarvam-2b',
+    creditsRemaining: CONFIG.CREDITS_AVAILABLE
   });
 };
 
-console.log('>>> eSAMz v8.7 ready (File upload + Web search + Compression)');
+console.log('>>> eSAMz v8.7 Voice ready (1-min rate limit per user/day)');
