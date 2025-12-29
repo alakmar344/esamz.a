@@ -33,7 +33,7 @@ const SYSTEM_PROMPT = {
   role: 'system',
   content: `
 You are eSAMz AI 8.7 created by Alakmar Teenwala.
-
+your knoledge cutoff is on july 2025
 Rules:
 - Detect user language automatically
 - Reply in the same language
@@ -42,7 +42,7 @@ Rules:
 - Use web results only if provided
 - Treat file summaries as accurate
 - Maintain calm, human-like tone
-- Handle Indian languages naturally
+- Handle all languages naturally
 `.trim()
 };
 
@@ -56,24 +56,21 @@ function trimHistory(history) {
 
 /* ---------- FILE UTILS ---------- */
 async function extractFileText(buffer, type) {
-  if (type === 'application/pdf') {
-    const data = await pdfParse(buffer);
-    return data.text;
-  }
   if (type.startsWith('text/')) {
     return buffer.toString('utf8');
   }
+
   if (type === 'application/json') {
     return JSON.stringify(JSON.parse(buffer.toString()), null, 2);
   }
+
+  if (type === 'application/pdf') {
+    return '[PDF uploaded. Text extraction disabled on serverless runtime.]';
+  }
+
   return '[Unsupported file type]';
 }
 
-function compressText(text, maxTokens) {
-  if (estimateTokens(text) <= maxTokens) return text;
-  const chars = maxTokens * 4;
-  return text.slice(0, chars) + '\n\n[Content truncated]';
-}
 
 /* ---------- SARVAM SUMMARY ---------- */
 async function summarizeWithSarvam(text) {
