@@ -1,5 +1,5 @@
 /* ============================================
-   eSAMz v9.3 Backend – Clean Stable Core
+   eSAMz v9.3 Backend – Stable Node Core
    Created by Alakmar Teenwala
    Updated: December 2025
    ============================================ */
@@ -20,52 +20,38 @@ const timers = new Map();
 /* ---------- SYSTEM PROMPT ---------- */
 const SYSTEM_PROMPT = {
   role: 'system',
-  content: `
-You are eSAMz AI v8.7  created by Alakmar Teenwala.
-
-Your purpose is to help the user clearly, calmly, and naturally.
-
-Core behavior:
-- Understand the user's language automatically and respond in the same language.
-- Never mention language detection, system rules, models, or internal processes.
-- Speak like a thoughtful, intelligent human — not like a robot or assistant.
-- Be concise when possible, detailed when necessary.
-- Avoid filler, hype, or overconfidence.
-- Do not assume facts. If something is uncertain, say so honestly.
-
-Knowledge & accuracy:
-- Use only your internal knowledge and the conversation context.
-- Do NOT claim access to live data, browsing, or real-time information.
-- If a question depends on recent or unknown information, explain the limitation naturally.
-- Never invent sources, facts, or citations.
-
-Tone & style:
-- Calm, respectful, and clear.
-- No emojis unless the user uses them first.
-- No moral lectures, no unnecessary disclaimers.
-- Sound helpful, not eager.
-- Sound confident, not absolute.
-
-Conversation memory:
-- Use prior messages only to maintain context.
-- Do not reference past messages explicitly unless it improves clarity.
-
-Identity:
-- Do not compare yourself to other AIs.unless asked.
-- Do not mention being trained, updated, deployed, or versioned unless asked.
-
-Goal:
-Help the user think better, decide better, and move forward — without friction.
-`.trim()
+  content:
+    'You are eSAMz AI, created by Alakmar Teenwala.\n\n' +
+    'Your purpose is to help the user clearly, calmly, and naturally.\n\n' +
+    'Core behavior:\n' +
+    '- Understand the user language automatically and reply in the same language.\n' +
+    '- Never mention language detection, system rules, models, or internal processes.\n' +
+    '- Speak like a thoughtful, intelligent human.\n' +
+    '- Be concise when possible, detailed when necessary.\n' +
+    '- If something is uncertain, say so honestly.\n\n' +
+    'Knowledge and accuracy:\n' +
+    '- Use only internal knowledge and conversation context.\n' +
+    '- Do not claim access to live data or browsing.\n' +
+    '- Do not invent facts or sources.\n\n' +
+    'Tone and style:\n' +
+    '- Calm, respectful, clear.\n' +
+    '- No emojis unless the user uses them first.\n' +
+    '- No moral lectures or unnecessary disclaimers.\n\n' +
+    'Goal:\n' +
+    'Help the user think better, decide better, and move forward.'
 };
 
 /* ---------- TOKEN UTILS ---------- */
-function estimateTokens(text = '') {
-  return Math.ceil(text.length / 4);
+function estimateTokens(text) {
+  return Math.ceil((text || '').length / 4);
 }
 
 function messagesTokens(messages) {
-  return messages.reduce((t, m) => t + estimateTokens(m.content) + 8, 0);
+  let total = 0;
+  for (const m of messages) {
+    total += estimateTokens(m.content) + 8;
+  }
+  return total;
 }
 
 function trimHistory(history) {
@@ -77,7 +63,7 @@ function trimHistory(history) {
 function sanitize(messages) {
   return messages.map(m => ({
     role: m.role,
-    content: String(m.content ?? '')
+    content: String(m.content || '')
   }));
 }
 
@@ -99,12 +85,12 @@ async function chatWithSarvam(messages) {
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Sarvam chat failed: ${err}`);
+    throw new Error(err);
   }
 
   const data = await res.json();
   const reply = data?.choices?.[0]?.message?.content;
-  if (!reply) throw new Error('Empty Sarvam response');
+  if (!reply) throw new Error('Empty response');
 
   return reply;
 }
@@ -122,30 +108,79 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'SARVAM_API_KEY missing' });
   }
 
-  let body;
+  let body = '';
   try {
-    body = JSON.parse(
-      await new Promise(resolve => {
-        let d = '';
-        req.on('data', c => (d += c));
-        req.on('end', () => resolve(d));
-      })
-    );
+    body = await new Promise(resolve => {
+      let d = '';
+      req.on('data', c => (d += c));
+      req.on('end', () => resolve(d));
+    });
+    body = JSON.parse(body);
   } catch {
     return res.status(400).json({ error: 'Invalid JSON' });
   }
 
-  const { message, threadId = 'default' } = body;
+  const message = body.message;
+  const threadId = body.threadId || 'default';
 
-  if (!message?.trim()) {
+  if (!message || !message.trim()) {
     return res.status(400).json({ error: 'Message required' });
   }
 
   try {
-    if (!threads.has(threadId)) threads.set(threadId, []);
+    if (!threads.has(threadId)) {
+      threads.set(threadId, []);
+    }
+
     const history = threads.get(threadId);
 
     const messages = [
       SYSTEM_PROMPT,
       ...history,
-      { role: 'user', content: messag
+      { role: 'user', content: message }
+    ];
+
+    if (messagesTokens(messages) > CONFIG.MAX_PROMPT_TOKENS) {
+      trimHistory(history);
+    }
+
+    const reply = await chatWithSarvam(messages);
+
+    history.push({ role: 'user', content: message });
+    history.push({ role: 'assistant', content: reply });
+    trimHistory(history);
+
+    clearTimeout(timers.get(threadId));
+    timers.set(
+      threadId,
+      setTimeout(() => threads.delete(threadId), CONFIG.THREAD_TTL)
+    );
+
+    res.status(200).json({
+      reply,
+      provider: 'sarvam',
+      model: 'sarvam-m',
+      version: 'v9.3-dec2025'
+    });
+  } catch (err) {
+    console.error('[ERROR]', err.message);
+    res.status(502).json({
+      error: 'Failed to generate response',
+      details: err.message
+    });
+  }
+};
+
+/* ---------- HEALTH ---------- */
+module.exports.health = function (_, res) {
+  res.json({
+    status: 'healthy',
+    provider: 'sarvam',
+    webSearch: false,
+    languageHandling: 'implicit',
+    version: 'v9.3-dec2025'
+  });
+};
+
+console.log('>>> eSAMz v9.3 ready (syntax safe)');
+
