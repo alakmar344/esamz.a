@@ -2363,6 +2363,19 @@ class App {
         this.state.welcomeFiles = [];
         this.state.threadId = `thread_${Date.now()}`;
         this.stopAudio();
+        this.stopVoiceListening();
+        
+        // Don't exit voice mode, just reset the UI
+        if (this.state.voiceModeActive) {
+            this.dom.voiceTranscript.innerHTML = '<span style="color: var(--text-tertiary);">New conversation started. Tap to speak...</span>';
+            this.dom.voiceOrb.className = 'voice-orb';
+            this.dom.voiceStatusText.textContent = 'Tap to speak';
+            this.dom.voiceStatusSubtext.textContent = 'New conversation';
+            
+            setTimeout(() => {
+                this.startVoiceListening();
+            }, 1000);
+        }
         
         this.dom.sidebar.classList.remove('hidden');
         this.dom.mainContent.classList.remove('expanded');
@@ -2376,8 +2389,10 @@ class App {
         this.dom.welcomePreview.innerHTML = '';
         this.updateCharCounter(this.dom.welcomeInput, this.dom.welcomeCharCounter);
         
-        this.toggleSidebar(false);
-        this.dom.welcomeInput.focus();
+        if (!this.state.voiceModeActive) {
+            this.toggleSidebar(false);
+            this.dom.welcomeInput.focus();
+        }
     }
 
     clearChat() {
