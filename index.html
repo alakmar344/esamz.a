@@ -10,8 +10,8 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>eSAMz AI - Intelligent Assistant</title>
-    <meta name="description" content="Advanced AI assistant with multi-modal capabilities">
+    <title>eSAMz AI - Intelligent Assistant with Voice</title>
+    <meta name="description" content="Advanced AI assistant with multi-modal capabilities and voice interaction">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,167 +19,6 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Organization",
-      "@id": "https://esamz.site/#organization",
-      "name": "esamz AI",
-      "alternateName": "eSAMz",
-      "url": "https://esamz.site",
-      "logo": {
-        "@type": "ImageObject",
-        "url": "https://esamz.site/logo.png",
-        "width": 512,
-        "height": 512
-      },
-      "founder": {
-        "@type": "Person",
-        "name": "Alakmar"
-      },
-      "foundingDate": "2024",
-      "sameAs": [
-        "https://www.linkedin.com/company/esamz-ai",
-        "https://twitter.com/esamz_ai",
-        "https://instagram.com/esamz.ai"
-      ],
-      "description": "esamz AI is a fast, human like artificial intelligence platform designed to share knowledge, assist users, and deliver intelligent responses without unnecessary complexity.",
-      "knowsAbout": [
-        "Artificial Intelligence",
-        "Conversational AI",
-        "Large Language Models",
-        "AI Assistants",
-        "Human Like AI",
-        "Productivity Tools",
-        "Automation",
-        "Education AI",
-        "Creative AI"
-      ]
-    },
-
-    {
-      "@type": "SoftwareApplication",
-      "@id": "https://esamz.site/#software",
-      "name": "esamz AI",
-      "operatingSystem": "Web",
-      "applicationCategory": "AIApplication",
-      "applicationSubCategory": "Conversational AI",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD",
-        "availability": "https://schema.org/InStock"
-      },
-      "description": "esamz AI is a fast, privacy focused, human like AI assistant that shares information instead of merely answering questions.",
-      "publisher": {
-        "@id": "https://esamz.site/#organization"
-      },
-      "featureList": [
-        "Fast AI responses",
-        "Human like conversation",
-        "Multi model intelligence",
-        "Developer friendly",
-        "Education support",
-        "Creative assistance",
-        "Privacy aware AI"
-      ],
-      "keywords": "esamz, esamz ai, ai assistant, fast ai, human like ai, free ai, chat ai, smart ai"
-    },
-
-    {
-      "@type": "WebSite",
-      "@id": "https://esamz.site/#website",
-      "url": "https://esamz.site",
-      "name": "esamz AI",
-      "publisher": {
-        "@id": "https://esamz.site/#organization"
-      },
-      "potentialAction": {
-        "@type": "SearchAction",
-        "target": "https://esamz.site/?q={search_term_string}",
-        "query-input": "required name=search_term_string"
-      }
-    },
-
-    {
-      "@type": "WebPage",
-      "@id": "https://esamz.site/#homepage",
-      "url": "https://esamz.site",
-      "name": "esamz AI – Fast Human Like Artificial Intelligence",
-      "isPartOf": {
-        "@id": "https://esamz.site/#website"
-      },
-      "about": {
-        "@id": "https://esamz.site/#software"
-      },
-      "primaryImageOfPage": {
-        "@type": "ImageObject",
-        "url": "https://esamz.site/cover.png"
-      },
-      "datePublished": "2024-01-01",
-      "dateModified": "2025-01-01",
-      "description": "esamz AI is a next generation artificial intelligence platform built for speed, clarity, and human like interaction.",
-      "keywords": [
-        "esamz",
-        "esamz ai",
-        "ai chatbot",
-        "fast ai",
-        "human like ai",
-        "free ai assistant",
-        "smart ai platform",
-        "ai for everyone"
-      ]
-    },
-
-    {
-      "@type": "FAQPage",
-      "@id": "https://esamz.site/#faq",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "What is esamz AI?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "esamz AI is a fast, human like artificial intelligence platform designed to share knowledge and assist users intelligently."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is esamz AI free to use?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes, esamz AI offers free access with optional premium features."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "What makes esamz AI different?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "esamz AI focuses on speed, clarity, and sharing meaningful information instead of robotic answers."
-          }
-        }
-      ]
-    },
-
-    {
-      "@type": "BreadcrumbList",
-      "@id": "https://esamz.site/#breadcrumbs",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Home",
-          "item": "https://esamz.site"
-        }
-      ]
-    }
-  ]
-}
-</script>
-
 
     <style>
         :root {
@@ -207,6 +46,7 @@
             
             --success: #9ca3af;
             --danger: #ef4444;
+            --voice-active: #10b981;
             
             --sidebar-width: 280px;
             --header-height: 64px;
@@ -466,85 +306,91 @@
             background: rgba(239, 68, 68, 0.1);
         }
 
-        /* SLIDER CONTROL */
-        .slider-control {
+        /* VOICE SETTINGS */
+        .voice-settings {
             padding: 16px 8px;
             margin: 8px 0;
+            background: var(--bg-elevated);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-glass);
         }
 
-        .slider-label {
+        .voice-toggle-btn {
+            width: 100%;
+            height: 36px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
-            font-size: 12px;
+            justify-content: space-between;
+            padding: 0 12px;
+            background: transparent;
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-sm);
             color: var(--text-secondary);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all var(--transition);
+            font-family: inherit;
+            margin-bottom: 12px;
+        }
+
+        .voice-toggle-btn:hover {
+            background: var(--bg-glass-hover);
+            border-color: var(--primary);
+        }
+
+        .voice-toggle-btn.active {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: var(--voice-active);
+            color: var(--voice-active);
+        }
+
+        .voice-toggle-btn .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-tertiary);
+            transition: all var(--transition);
+        }
+
+        .voice-toggle-btn.active .status-indicator {
+            background: var(--voice-active);
+            box-shadow: 0 0 10px var(--voice-active);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .voice-select {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 12px;
+            font-family: inherit;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .voice-select:hover {
+            border-color: var(--primary);
+        }
+
+        .voice-select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .voice-label {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            margin-bottom: 4px;
             font-weight: 500;
         }
 
-        .slider-value {
-            background: var(--bg-elevated);
-            padding: 2px 8px;
-            border-radius: 4px;
-            color: var(--text-primary);
-            font-weight: 600;
-        }
-
-        .slider {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 100%;
-            height: 6px;
-            background: var(--bg-elevated);
-            border-radius: 3px;
-            outline: none;
-            opacity: 0.9;
-            transition: opacity 0.2s;
-        }
-
-        .slider:hover {
-            opacity: 1;
-        }
-
-        .slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 18px;
-            height: 18px;
-            background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%);
-            cursor: pointer;
-            border-radius: 50%;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-            transition: all var(--transition);
-        }
-
-        .slider::-webkit-slider-thumb:hover {
-            transform: scale(1.2);
-            box-shadow: 0 0 12px var(--primary-glow);
-        }
-
-        .slider::-moz-range-thumb {
-            width: 18px;
-            height: 18px;
-            background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%);
-            cursor: pointer;
-            border-radius: 50%;
-            border: none;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-            transition: all var(--transition);
-        }
-
-        .slider::-moz-range-thumb:hover {
-            transform: scale(1.2);
-            box-shadow: 0 0 12px var(--primary-glow);
-        }
-
-        .slider-marks {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 6px;
-            font-size: 10px;
-            color: var(--text-tertiary);
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
         }
 
         .sidebar-footer { 
@@ -628,11 +474,6 @@
             border-radius: 50%;
             box-shadow: 0 0 10px var(--success);
             animation: pulse 2s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
         }
 
         .btn-secondary { 
@@ -1233,7 +1074,7 @@
                 </div>
                 <div class="brand-text">
                     <div class="brand-name">eSAMz AI</div>
-                    <div class="brand-version">Version 8.0</div>
+                    <div class="brand-version">Version 9.7 Voice</div>
                 </div>
             </div>
             <button class="btn-new" id="btnNewChat">
@@ -1242,6 +1083,36 @@
         </div>
         
         <div class="nav-section">
+            <!-- Voice Settings -->
+            <div class="nav-label">Voice Settings</div>
+            <div class="voice-settings">
+                <button class="voice-toggle-btn" id="voiceToggle">
+                    <span>Voice Responses</span>
+                    <span class="status-indicator"></span>
+                </button>
+                
+                <div class="voice-label">Language</div>
+                <select class="voice-select" id="voiceLanguage">
+                    <option value="hi-IN">Hindi (हिन्दी)</option>
+                    <option value="en-IN">English (India)</option>
+                    <option value="ta-IN">Tamil (தமிழ்)</option>
+                    <option value="te-IN">Telugu (తెలుగు)</option>
+                    <option value="kn-IN">Kannada (ಕನ್ನಡ)</option>
+                    <option value="ml-IN">Malayalam (മലയാളം)</option>
+                    <option value="mr-IN">Marathi (मराठी)</option>
+                    <option value="gu-IN">Gujarati (ગુજરાતી)</option>
+                    <option value="bn-IN">Bengali (বাংলা)</option>
+                    <option value="or-IN">Odia (ଓଡ଼ିଆ)</option>
+                    <option value="pa-IN">Punjabi (ਪੰਜਾਬੀ)</option>
+                </select>
+                
+                <div class="voice-label">Voice</div>
+                <select class="voice-select" id="voiceSpeaker">
+                    <option value="meera">Meera (Female)</option>
+                    <option value="arvind">Arvind (Male)</option>
+                </select>
+            </div>
+
             <div class="nav-label">Recent Conversations</div>
             <div id="historyList"></div>
 
@@ -1395,8 +1266,9 @@ class App {
             mainContent: document.querySelector('.main-content'),
             charCounter: document.getElementById('charCounter'),
             welcomeCharCounter: document.getElementById('welcomeCharCounter'),
-            slider: document.getElementById('responseSlider'),
-            sliderValue: document.getElementById('sliderValue')
+            voiceToggle: document.getElementById('voiceToggle'),
+            voiceLanguage: document.getElementById('voiceLanguage'),
+            voiceSpeaker: document.getElementById('voiceSpeaker')
         };
 
         this.state = {
@@ -1409,7 +1281,11 @@ class App {
             maxChars: 4000,
             isMobile: window.innerWidth <= 768,
             sidebarCollapsed: false,
-            responseLevel: 2
+            voiceEnabled: false,
+            voiceLanguage: 'hi-IN',
+            voiceSpeaker: 'meera',
+            currentAudio: null,
+            threadId: `thread_${Date.now()}`
         };
 
         this.storageKey = 'esamz_conversations_v8';
@@ -1419,10 +1295,10 @@ class App {
 
     init() {
         this.loadHistory();
+        this.loadVoiceSettings();
         this.setupEvents();
         this.setupDragDrop();
         this.dom.welcomeInput.focus();
-        this.loadSliderValue();
         
         window.addEventListener('resize', () => {
             const wasMobile = this.state.isMobile;
@@ -1440,7 +1316,58 @@ class App {
         });
     }
 
+    loadVoiceSettings() {
+        const saved = localStorage.getItem('esamz_voice_settings');
+        if (saved) {
+            try {
+                const settings = JSON.parse(saved);
+                this.state.voiceEnabled = settings.enabled || false;
+                this.state.voiceLanguage = settings.language || 'hi-IN';
+                this.state.voiceSpeaker = settings.speaker || 'meera';
+                
+                this.dom.voiceLanguage.value = this.state.voiceLanguage;
+                this.dom.voiceSpeaker.value = this.state.voiceSpeaker;
+                this.updateVoiceUI();
+            } catch (e) {
+                console.error('Failed to load voice settings:', e);
+            }
+        }
+    }
+
+    saveVoiceSettings() {
+        localStorage.setItem('esamz_voice_settings', JSON.stringify({
+            enabled: this.state.voiceEnabled,
+            language: this.state.voiceLanguage,
+            speaker: this.state.voiceSpeaker
+        }));
+    }
+
+    updateVoiceUI() {
+        if (this.state.voiceEnabled) {
+            this.dom.voiceToggle.classList.add('active');
+        } else {
+            this.dom.voiceToggle.classList.remove('active');
+        }
+    }
+
     setupEvents() {
+        // Voice toggle
+        this.dom.voiceToggle.addEventListener('click', () => {
+            this.state.voiceEnabled = !this.state.voiceEnabled;
+            this.updateVoiceUI();
+            this.saveVoiceSettings();
+        });
+
+        this.dom.voiceLanguage.addEventListener('change', (e) => {
+            this.state.voiceLanguage = e.target.value;
+            this.saveVoiceSettings();
+        });
+
+        this.dom.voiceSpeaker.addEventListener('change', (e) => {
+            this.state.voiceSpeaker = e.target.value;
+            this.saveVoiceSettings();
+        });
+
         document.getElementById('btnWelcomeSend').addEventListener('click', () => this.handleWelcomeSend());
         document.getElementById('btnWelcomeUpload').addEventListener('click', () => document.getElementById('fileInput').click());
         document.getElementById('btnWelcomeVoice').addEventListener('click', () => this.toggleVoice(true));
@@ -1487,8 +1414,6 @@ class App {
 
         document.getElementById('btnExportModal').addEventListener('click', () => this.dom.dialog.showModal());
         document.getElementById('closeDialog').addEventListener('click', () => this.dom.dialog.close());
-
-        this.dom.slider.addEventListener('input', (e) => this.updateSlider(e.target.value));
     }
 
     setupDragDrop() {
@@ -1508,21 +1433,6 @@ class App {
                 this.handleFiles(e.dataTransfer.files, isWelcome);
             });
         });
-    }
-
-    updateSlider(value) {
-        this.state.responseLevel = parseInt(value);
-        const labels = ['Brief', 'Medium', 'Detailed'];
-        this.dom.sliderValue.textContent = labels[value - 1];
-        localStorage.setItem('esamz_response_level', value);
-    }
-
-    loadSliderValue() {
-        const saved = localStorage.getItem('esamz_response_level');
-        if (saved) {
-            this.dom.slider.value = saved;
-            this.updateSlider(saved);
-        }
     }
 
     autoResize(textarea) {
@@ -1670,8 +1580,11 @@ class App {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: text,
-                    context: this.getContext(),
-                    responseLevel: this.state.responseLevel
+                    threadId: this.state.threadId,
+                    mode: 'default',
+                    enableVoice: this.state.voiceEnabled,
+                    voiceLanguage: this.state.voiceLanguage,
+                    voiceSpeaker: this.state.voiceSpeaker
                 })
             });
             
@@ -1682,6 +1595,11 @@ class App {
             const reply = data.reply || data.message || 'No response';
             this.addMessage(reply, 'ai', true);
             this.appendToHistory('ai', reply);
+            
+            // Play audio if available
+            if (data.audio && this.state.voiceEnabled) {
+                this.playAudio(data.audio);
+            }
         } catch (e) {
             this.removeThinking(thinkingId);
             const reply = this.generateSmartResponse(text);
@@ -1690,6 +1608,38 @@ class App {
         }
         
         this.checkStorageSize();
+    }
+
+    playAudio(base64Audio) {
+        try {
+            // Stop any currently playing audio
+            if (this.state.currentAudio) {
+                this.state.currentAudio.pause();
+                this.state.currentAudio = null;
+            }
+
+            // Create and play new audio
+            const audio = new Audio(`data:audio/wav;base64,${base64Audio}`);
+            this.state.currentAudio = audio;
+            
+            audio.play().catch(err => {
+                console.error('Audio playback failed:', err);
+            });
+
+            audio.onended = () => {
+                this.state.currentAudio = null;
+            };
+        } catch (err) {
+            console.error('Failed to play audio:', err);
+        }
+    }
+
+    stopAudio() {
+        if (this.state.currentAudio) {
+            this.state.currentAudio.pause();
+            this.state.currentAudio.currentTime = 0;
+            this.state.currentAudio = null;
+        }
     }
 
     addMessage(text, sender, showRegenerate = false) {
@@ -1771,9 +1721,11 @@ class App {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         message: userText,
-                        context: this.getContext(),
-                        regenerate: true,
-                        responseLevel: this.state.responseLevel
+                        threadId: this.state.threadId,
+                        mode: 'default',
+                        enableVoice: this.state.voiceEnabled,
+                        voiceLanguage: this.state.voiceLanguage,
+                        voiceSpeaker: this.state.voiceSpeaker
                     })
                 });
                 
@@ -1783,6 +1735,10 @@ class App {
                 this.removeThinking(thinkingId);
                 const reply = data.reply || data.message || 'No response';
                 this.addMessage(reply, 'ai', true);
+                
+                if (data.audio && this.state.voiceEnabled) {
+                    this.playAudio(data.audio);
+                }
             } catch (e) {
                 this.removeThinking(thinkingId);
                 const reply = this.generateSmartResponse(userText);
@@ -1899,13 +1855,6 @@ class App {
         }
     }
 
-    getContext() {
-        const history = this.getHistory();
-        const chat = history.find(c => c.id === this.state.chatId);
-        if (!chat) return [];
-        return chat.messages.slice(-10);
-    }
-
     getHistory() {
         try {
             return JSON.parse(localStorage.getItem(this.storageKey) || '[]');
@@ -1985,6 +1934,8 @@ class App {
         this.state.messageCount = 0;
         this.state.files = [];
         this.state.welcomeFiles = [];
+        this.state.threadId = `thread_${Date.now()}`;
+        this.stopAudio();
         
         this.dom.sidebar.classList.remove('hidden');
         this.dom.mainContent.classList.remove('expanded');
