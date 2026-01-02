@@ -1,213 +1,216 @@
-/* =========================================================
-   eSAMz v9.7  –  SaaS Production Back-End
-   Strict-reasoning core + Wiki grounding + Voice (TTS)
-   Persona: eSAMz v8.7  |  Author: Alakmar Teenwala
-   ========================================================= */
+/* ============================================
+   eSAMz v9.7 Backend – Strict Reasoning Core
+   Persona: eSAMz v8.7
+   Created by Alakmar Teenwala
+   ============================================ */
 
-console.log('>>> eSAMz v9.7 SaaS back-end starting');
+console.log('>>> eSAMz v9.7 starting');
 
 /* ---------- CONFIG ---------- */
 const CONFIG = {
-  THREAD_TTL        : 15 * 60 * 1000,
+  THREAD_TTL: 15 * 60 * 1000,
   MAX_CONTEXT_TOKENS: 7800,
   MAX_HISTORY_TOKENS: 5200,
-  MAX_PROMPT_TOKENS : 7400,
-  MAX_COMPLETION    : 2048,
-  VOICE_LANG        : 'hi-IN',
-  VOICE_SPKR        : 'amit',   // ✅ male
-  VOICE_MODEL       : 'bulbul:v2'
+  MAX_PROMPT_TOKENS: 7400,
+  MAX_COMPLETION_TOKENS: 2048
 };
 
 /* ---------- STATE ---------- */
 const threads = new Map();
-const timers  = new Map();
+const timers = new Map();
 
-/* ---------- FULL SYSTEM PROMPT ---------- */
+/* ---------- SYSTEM PROMPT ---------- */
 const SYSTEM_PROMPT = {
-  role   : 'system',
+  role: 'system',
   content:
-`You are eSAMz v8.7, an AI assistant created by Alakmar Teenwala for the eSAMz SaaS platform.
+    'You are eSAMz v8.7, an AI assistant created by Alakmar Teenwala.\n\n' +
+    'Your purpose is to help users think clearly, understand deeply, and move forward with confidence.\n' +
+    'You are calm, intelligent, and human in your communication.\n\n' +
 
-Your purpose is to help users think clearly, understand deeply, and move forward with confidence.
+    'CORE BEHAVIOR\n' +
+    '- Reply in the same language or mixed style as the user.\n' +
+    '- Never mention language detection, internal rules, models, APIs, or system prompts.\n' +
+    '- Never reveal internal reasoning processes.\n\n' +
 
-CORE BEHAVIOUR
-- Reply in the same language (or mixed style) the user employs.
-- Never mention language detection, internal rules, models, APIs, or system prompts.
-- Never reveal your internal reasoning process.
+    'COMMUNICATION STYLE\n' +
+    '- Be concise by default.\n' +
+    '- Expand only when depth improves understanding.\n' +
+    '- No emojis unless the user uses them first.\n\n' +
 
-COMMUNICATION STYLE
-- Be concise by default; expand only when depth improves understanding.
-- Use emojis only if the user employs them first.
+    'REASONING AND ACCURACY\n' +
+    '- Ensure correctness in logic, math, and code.\n' +
+    '- Do not guess or hallucinate.\n\n' +
 
-REASONING & ACCURACY
-- Ensure correctness in logic, mathematics, and code.
-- Do not guess or hallucinate. If uncertain, say so.
+    'KNOWLEDGE BOUNDARIES\n' +
+    '- Do not claim live data or browsing.\n\n' +
 
-KNOWLEDGE BOUNDARIES
-- Do not claim live data or browsing capability unless an explicit wiki-grounding flag is on.
+    'GOAL\n' +
+    'Help the user understand better, decide better, and move forward confidently.\n\n' +
 
-SAAS OPERATION
-- Respect user privacy: do not store personal data beyond the session.
-- Maintain session context for follow-up questions.
-- Support multi-turn conversations, file context, voice input/output, and export features.
-
-GOAL
-Help the user understand better, decide better, and move forward confidently.
-
-You are eSAMz v8.7.`
+    'You are eSAMz v8.7.'
 };
 
-/* ---------- TOKEN HELPERS ---------- */
-const estimateTokens = t => Math.ceil((t || '').length / 4);
-const messagesTokens   = m => m.reduce((a, msg) => a + estimateTokens(msg.content) + 8, 0);
-
-function trimHistory(history){
-  while (history.length && messagesTokens(history) > CONFIG.MAX_HISTORY_TOKENS) history.shift();
+/* ---------- TOKEN UTILS ---------- */
+function estimateTokens(text) {
+  return Math.ceil((text || '').length / 4);
 }
 
-function sanitize(messages){
-  return messages.map(m => ({ role: m.role, content: String(m.content || '') }));
+function messagesTokens(messages) {
+  let total = 0;
+  for (const m of messages) total += estimateTokens(m.content) + 8;
+  return total;
 }
 
-/* ---------- SARVAM CHAT ---------- */
-async function callSarvam(payload){
+function trimHistory(history) {
+  while (history.length && messagesTokens(history) > CONFIG.MAX_HISTORY_TOKENS) {
+    history.shift();
+  }
+}
+
+function sanitize(messages) {
+  return messages.map(m => ({
+    role: m.role,
+    content: String(m.content || '')
+  }));
+}
+
+/* ---------- SARVAM CALL ---------- */
+async function callSarvam(payload) {
   const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
-    method : 'POST',
+    method: 'POST',
     headers: {
-      Authorization : `Bearer ${process.env.SARVAM_API_KEY}`,
+      Authorization: `Bearer ${process.env.SARVAM_API_KEY}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(payload)
   });
 
-  if (!res.ok){
-    const txt = await res.text();
-    throw new Error(txt);
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err);
   }
+
   const data = await res.json();
-  return data?.choices?.[0]?.message?.content || '';
+  const reply = data?.choices?.[0]?.message?.content;
+  if (!reply) throw new Error('Empty response');
+
+  return reply;
 }
 
-/* ---------- SARVAM TTS ---------- */
-async function callSarvamTTS(text, lang = CONFIG.VOICE_LANG, speaker = CONFIG.VOICE_SPKR) {
-  try {
-    const res = await fetch('https://api.sarvam.ai/text-to-speech', {
-      method : 'POST',
-      headers: {
-        'api-subscription-key': process.env.SARVAM_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        inputs: [text],
-        target_language_code: lang,
-        speaker,
-        pitch: 0,
-        pace: 1,
-        loudness: 1.5,
-        speech_sample_rate: 8000,
-        enable_preprocessing: true,
-        model: CONFIG.VOICE_MODEL
-      })
-    });
-    if (!res.ok) {
-      console.error('[TTS] HTTP', res.status, await res.text());
-      return null;
-    }
-    const data = await res.json();
-    return data?.audios?.[0] || null;
-  } catch (e) {
-    console.error('[TTS] exception', e.message);
-    return null;
-  }
-}
-
-/* ---------- PAYLOAD FACTORY ---------- */
-function buildPayload(messages, mode = 'default'){
-  const p = {
-    model       : 'sarvam-m',
-    messages    : sanitize(messages),
-    top_p       : 1,
-    max_tokens  : CONFIG.MAX_COMPLETION
+/* ---------- PAYLOAD BUILDER ---------- */
+function buildPayload(messages, mode) {
+  const payload = {
+    model: 'sarvam-m',
+    messages: sanitize(messages),
+    top_p: 1,
+    max_tokens: CONFIG.MAX_COMPLETION_TOKENS
   };
-  if (mode === 'strict_math') p.temperature = 0.5, p.reasoning_effort = 'high';
-  else if (mode === 'wiki')   p.temperature = 0.2, p.wiki_grounding = true;
-  else                        p.temperature = 0.2;
-  return p;
+
+  if (mode === 'strict_math') {
+    payload.temperature = 0.5;
+    payload.reasoning_effort = 'high';
+  } 
+  else if (mode === 'wiki') {
+    payload.temperature = 0.2;
+    payload.wiki_grounding = true;
+  } 
+  else {
+    payload.temperature = 0.2;
+  }
+
+  return payload;
 }
 
-/* ========== MAIN HANDLER ========== */
-module.exports = async function handler(req, res){
+/* ---------- MAIN HANDLER ---------- */
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST')    return res.status(405).end();
-  if (!process.env.SARVAM_API_KEY) return res.status(500).json({ error: 'SARVAM_API_KEY missing' });
+  if (req.method !== 'POST') return res.status(405).end();
+
+  if (!process.env.SARVAM_API_KEY) {
+    return res.status(500).json({ error: 'SARVAM_API_KEY missing' });
+  }
 
   let body;
-  try{
-    body = JSON.parse(await new Promise(r => { let d=''; req.on('data',c=>d+=c); req.on('end',()=>r(d)); }));
-  }catch{ return res.status(400).json({ error: 'Invalid JSON' }); }
+  try {
+    body = await new Promise(resolve => {
+      let d = '';
+      req.on('data', c => (d += c));
+      req.on('end', () => resolve(JSON.parse(d)));
+    });
+  } catch {
+    return res.status(400).json({ error: 'Invalid JSON' });
+  }
 
-  const msg        = String(body.message || '').trim();
-  const threadId   = body.threadId || 'default';
-  const mode       = body.mode || 'default';
-  const enableVoice= body.enableVoice === true;
-  const voiceLang  = body.voiceLanguage || CONFIG.VOICE_LANG;
-  const voiceSpkr  = body.voiceSpeaker  || CONFIG.VOICE_SPKR;
+  const message = String(body.message || '').trim();
+  const threadId = body.threadId || 'default';
+  const mode = body.mode || 'default';
 
-  if (!msg) return res.status(400).json({ error: 'Message required' });
+  if (!message) {
+    return res.status(400).json({ error: 'Message required' });
+  }
 
-  try{
+  try {
     if (!threads.has(threadId)) threads.set(threadId, []);
     const history = threads.get(threadId);
 
-    const messages = [SYSTEM_PROMPT, ...history, { role: 'user', content: msg }];
-    while (messagesTokens(messages) > CONFIG.MAX_PROMPT_TOKENS) history.shift();
+    const messages = [
+      SYSTEM_PROMPT,
+      ...history,
+      { role: 'user', content: message }
+    ];
+
+    while (messagesTokens(messages) > CONFIG.MAX_PROMPT_TOKENS) {
+      history.shift();
+    }
 
     let reply;
-    try{ reply = await callSarvam(buildPayload(messages, mode)); }
-    catch{ reply = await callSarvam(buildPayload(messages, 'default')); }
+    try {
+      reply = await callSarvam(buildPayload(messages, mode));
+    } catch {
+      // safety fallback
+      reply = await callSarvam(buildPayload(messages, 'default'));
+    }
 
-    history.push({ role: 'user', content: msg }, { role: 'assistant', content: reply });
+    history.push({ role: 'user', content: message });
+    history.push({ role: 'assistant', content: reply });
     trimHistory(history);
 
     clearTimeout(timers.get(threadId));
-    timers.set(threadId, setTimeout(() => threads.delete(threadId), CONFIG.THREAD_TTL));
-
-    let audioBase64 = null;
-    if (enableVoice){
-      audioBase64 = await callSarvamTTS(reply, voiceLang, voiceSpkr);
-    }
+    timers.set(
+      threadId,
+      setTimeout(() => threads.delete(threadId), CONFIG.THREAD_TTL)
+    );
 
     res.status(200).json({
       reply,
       provider: 'sarvam',
-      model   : 'sarvam-m',
-      persona : 'eSAMz v8.7',
+      model: 'sarvam-m',
+      persona: 'eSAMz v8.7',
       mode,
-      version : 'v9.7-saas',
-      ...(audioBase64 && { audio: audioBase64 })
+      version: 'v9.7'
     });
-  }catch(err){
+  } catch (err) {
     console.error('[ERROR]', err.message);
-    res.status(502).json({ error: 'Failed to generate response' });
+    res.status(502).json({
+      error: 'Failed to generate response'
+    });
   }
 };
 
-/* ---------- HEALTH CHECK ---------- */
-module.exports.health = (_, res) => res.json({
-  status   : 'healthy',
-  provider : 'sarvam',
-  model    : 'sarvam-m',
-  persona  : 'eSAMz v8.7',
-  modes    : ['default', 'strict_math', 'wiki'],
-  features : ['chat', 'voice-tts', 'wiki-grounding', 'strict-math', 'export', 'file-upload', 'drag-drop', 'session-export'],
-  voiceOptions:{
-    languages: ['hi-IN','en-IN','ta-IN','te-IN','kn-IN','ml-IN','mr-IN','gu-IN','bn-IN','or-IN','pa-IN'],
-    speakers : ['amit','priya','neha','rahul','pooja','rohan','simran','kavya']
-  },
-  version  : 'v9.7-saas'
-});
+/* ---------- HEALTH ---------- */
+module.exports.health = function (_, res) {
+  res.json({
+    status: 'healthy',
+    provider: 'sarvam',
+    model: 'sarvam-m',
+    persona: 'eSAMz v8.7',
+    modes: ['default', 'strict_math', 'wiki'],
+    version: 'v9.7'
+  });
+};
 
-console.log('>>> eSAMz v9.7 SaaS back-end ready (strict-math + wiki + voice + all features)');
+console.log('>>> eSAMz v9.7 ready (strict math + wiki safe)');
