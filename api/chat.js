@@ -12,7 +12,10 @@ const CONFIG = {
   MAX_CONTEXT_TOKENS: 7800,
   MAX_HISTORY_TOKENS: 5200,
   MAX_PROMPT_TOKENS : 7400,
-  MAX_COMPLETION    : 2048
+  MAX_COMPLETION    : 2048,
+  VOICE_LANG        : 'hi-IN',
+  VOICE_SPKR        : 'amit',   // valid per bulbul:v2
+  VOICE_MODEL       : 'bulbul:v2'
 };
 
 /* ---------- STATE ---------- */
@@ -86,7 +89,7 @@ async function callSarvam(payload){
 }
 
 /* ---------- SARVAM TTS ---------- */
-async function callSarvamTTS(text, lang = 'hi-IN', speaker = 'meera') {
+async function callSarvamTTS(text, lang = CONFIG.VOICE_LANG, speaker = CONFIG.VOICE_SPKR) {
   try {
     const res = await fetch('https://api.sarvam.ai/text-to-speech', {
       method : 'POST',
@@ -103,7 +106,7 @@ async function callSarvamTTS(text, lang = 'hi-IN', speaker = 'meera') {
         loudness: 1.5,
         speech_sample_rate: 8000,
         enable_preprocessing: true,
-        model: 'bulbul:v1'
+        model: CONFIG.VOICE_MODEL
       })
     });
     if (!res.ok) {
@@ -150,8 +153,8 @@ module.exports = async function handler(req, res){
   const threadId   = body.threadId || 'default';
   const mode       = body.mode || 'default';
   const enableVoice= body.enableVoice === true;
-  const voiceLang  = body.voiceLanguage || 'hi-IN';
-  const voiceSpkr  = body.voiceSpeaker  || 'meera';
+  const voiceLang  = body.voiceLanguage || CONFIG.VOICE_LANG;
+  const voiceSpkr  = body.voiceSpeaker  || CONFIG.VOICE_SPKR;
 
   if (!msg) return res.status(400).json({ error: 'Message required' });
 
@@ -202,7 +205,7 @@ module.exports.health = (_, res) => res.json({
   features : ['chat', 'voice-tts', 'wiki-grounding', 'strict-math', 'export', 'file-upload', 'drag-drop', 'session-export'],
   voiceOptions:{
     languages: ['hi-IN','en-IN','ta-IN','te-IN','kn-IN','ml-IN','mr-IN','gu-IN','bn-IN','or-IN','pa-IN'],
-    speakers : ['meera','arvind']
+    speakers : ['amit','priya','neha','rahul','pooja','rohan','simran','kavya']
   },
   version  : 'v9.7-saas'
 });
