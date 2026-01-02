@@ -86,8 +86,8 @@ async function callSarvam(payload){
 }
 
 /* ---------- SARVAM TTS ---------- */
-async function callSarvamTTS(text, lang = 'hi-IN', speaker = 'meera'){
-  try{
+async function callSarvamTTS(text, lang = 'hi-IN', speaker = 'meera') {
+  try {
     const res = await fetch('https://api.sarvam.ai/text-to-speech', {
       method : 'POST',
       headers: {
@@ -106,12 +106,17 @@ async function callSarvamTTS(text, lang = 'hi-IN', speaker = 'meera'){
         model: 'bulbul:v1'
       })
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error('[TTS] HTTP', res.status, await res.text());
+      return null;
+    }
     const data = await res.json();
     return data?.audios?.[0] || null;
-  }catch{ return null; }
+  } catch (e) {
+    console.error('[TTS] exception', e.message);
+    return null;
+  }
 }
-
 /* ---------- PAYLOAD FACTORY ---------- */
 function buildPayload(messages, mode = 'default'){
   const p = {
