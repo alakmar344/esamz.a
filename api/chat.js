@@ -91,9 +91,8 @@ async function callSarvamTTS(text, lang = 'hi-IN', speaker = 'meera') {
     const res = await fetch('https://api.sarvam.ai/text-to-speech', {
       method : 'POST',
       headers: {
-  'api-subscription-key': process.env.SARVAM_API_KEY,
-  'Content-Type': 'application/json'
-}
+        'api-subscription-key': process.env.SARVAM_API_KEY,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         inputs: [text],
@@ -118,6 +117,7 @@ async function callSarvamTTS(text, lang = 'hi-IN', speaker = 'meera') {
     return null;
   }
 }
+
 /* ---------- PAYLOAD FACTORY ---------- */
 function buildPayload(messages, mode = 'default'){
   const p = {
