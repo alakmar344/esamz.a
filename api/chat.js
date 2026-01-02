@@ -91,8 +91,9 @@ async function callSarvamTTS(text, lang = 'hi-IN', speaker = 'meera') {
     const res = await fetch('https://api.sarvam.ai/text-to-speech', {
       method : 'POST',
       headers: {
-        Authorization : `Bearer ${process.env.SARVAM_API_KEY}`,
-        'Content-Type': 'application/json'
+  'api-subscription-key': process.env.SARVAM_API_KEY,
+  'Content-Type': 'application/json'
+}
       },
       body: JSON.stringify({
         inputs: [text],
