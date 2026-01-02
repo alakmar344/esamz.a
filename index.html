@@ -10,8 +10,8 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>eSAMz AI - Intelligent Assistant with Voice</title>
-    <meta name="description" content="Advanced AI assistant with multi-modal capabilities and voice interaction">
+    <title>eSAMz AI - Intelligent Assistant</title>
+    <meta name="description" content="Advanced AI assistant with multi-modal capabilities">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,6 +19,167 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://esamz.site/#organization",
+      "name": "esamz AI",
+      "alternateName": "eSAMz",
+      "url": "https://esamz.site",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://esamz.site/logo.png",
+        "width": 512,
+        "height": 512
+      },
+      "founder": {
+        "@type": "Person",
+        "name": "Alakmar"
+      },
+      "foundingDate": "2024",
+      "sameAs": [
+        "https://www.linkedin.com/company/esamz-ai",
+        "https://twitter.com/esamz_ai",
+        "https://instagram.com/esamz.ai"
+      ],
+      "description": "esamz AI is a fast, human like artificial intelligence platform designed to share knowledge, assist users, and deliver intelligent responses without unnecessary complexity.",
+      "knowsAbout": [
+        "Artificial Intelligence",
+        "Conversational AI",
+        "Large Language Models",
+        "AI Assistants",
+        "Human Like AI",
+        "Productivity Tools",
+        "Automation",
+        "Education AI",
+        "Creative AI"
+      ]
+    },
+
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://esamz.site/#software",
+      "name": "esamz AI",
+      "operatingSystem": "Web",
+      "applicationCategory": "AIApplication",
+      "applicationSubCategory": "Conversational AI",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock"
+      },
+      "description": "esamz AI is a fast, privacy focused, human like AI assistant that shares information instead of merely answering questions.",
+      "publisher": {
+        "@id": "https://esamz.site/#organization"
+      },
+      "featureList": [
+        "Fast AI responses",
+        "Human like conversation",
+        "Multi model intelligence",
+        "Developer friendly",
+        "Education support",
+        "Creative assistance",
+        "Privacy aware AI"
+      ],
+      "keywords": "esamz, esamz ai, ai assistant, fast ai, human like ai, free ai, chat ai, smart ai"
+    },
+
+    {
+      "@type": "WebSite",
+      "@id": "https://esamz.site/#website",
+      "url": "https://esamz.site",
+      "name": "esamz AI",
+      "publisher": {
+        "@id": "https://esamz.site/#organization"
+      },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://esamz.site/?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    },
+
+    {
+      "@type": "WebPage",
+      "@id": "https://esamz.site/#homepage",
+      "url": "https://esamz.site",
+      "name": "esamz AI – Fast Human Like Artificial Intelligence",
+      "isPartOf": {
+        "@id": "https://esamz.site/#website"
+      },
+      "about": {
+        "@id": "https://esamz.site/#software"
+      },
+      "primaryImageOfPage": {
+        "@type": "ImageObject",
+        "url": "https://esamz.site/cover.png"
+      },
+      "datePublished": "2024-01-01",
+      "dateModified": "2025-01-01",
+      "description": "esamz AI is a next generation artificial intelligence platform built for speed, clarity, and human like interaction.",
+      "keywords": [
+        "esamz",
+        "esamz ai",
+        "ai chatbot",
+        "fast ai",
+        "human like ai",
+        "free ai assistant",
+        "smart ai platform",
+        "ai for everyone"
+      ]
+    },
+
+    {
+      "@type": "FAQPage",
+      "@id": "https://esamz.site/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is esamz AI?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "esamz AI is a fast, human like artificial intelligence platform designed to share knowledge and assist users intelligently."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is esamz AI free to use?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, esamz AI offers free access with optional premium features."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What makes esamz AI different?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "esamz AI focuses on speed, clarity, and sharing meaningful information instead of robotic answers."
+          }
+        }
+      ]
+    },
+
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://esamz.site/#breadcrumbs",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://esamz.site"
+        }
+      ]
+    }
+  ]
+}
+</script>
+
 
     <style>
         :root {
@@ -46,7 +207,6 @@
             
             --success: #9ca3af;
             --danger: #ef4444;
-            --voice-active: #10b981;
             
             --sidebar-width: 280px;
             --header-height: 64px;
@@ -306,238 +466,85 @@
             background: rgba(239, 68, 68, 0.1);
         }
 
-        /* VOICE SETTINGS */
-        .voice-settings {
+        /* SLIDER CONTROL */
+        .slider-control {
             padding: 16px 8px;
             margin: 8px 0;
-            background: var(--bg-elevated);
-            border-radius: var(--radius-md);
-            border: 1px solid var(--border-glass);
         }
 
-        .voice-toggle-btn {
-            width: 100%;
-            height: 36px;
+        .slider-label {
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            padding: 0 12px;
-            background: transparent;
-            border: 1px solid var(--border-glass);
-            border-radius: var(--radius-sm);
-            color: var(--text-secondary);
-            font-size: 13px;
-            cursor: pointer;
-            transition: all var(--transition);
-            font-family: inherit;
-            margin-bottom: 12px;
-        }
-
-        .voice-toggle-btn:hover {
-            background: var(--bg-glass-hover);
-            border-color: var(--primary);
-        }
-
-        .voice-toggle-btn.active {
-            background: rgba(16, 185, 129, 0.1);
-            border-color: var(--voice-active);
-            color: var(--voice-active);
-        }
-
-        .voice-toggle-btn .status-indicator {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--text-tertiary);
-            transition: all var(--transition);
-        }
-
-        .voice-toggle-btn.active .status-indicator {
-            background: var(--voice-active);
-            box-shadow: 0 0 10px var(--voice-active);
-            animation: pulse 2s ease-in-out infinite;
-        }
-
-        /* VOICE MODE OVERLAY */
-        .voice-mode-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.95);
-            backdrop-filter: blur(20px);
-            display: none;
-            justify-content: center;
             align-items: center;
-            z-index: 1000;
-            animation: fadeIn 0.3s ease;
-        }
-
-        .voice-mode-overlay.active {
-            display: flex;
-        }
-
-        .voice-mode-content {
-            text-align: center;
-            padding: 40px;
-        }
-
-        .voice-orb {
-            width: 200px;
-            height: 200px;
-            margin: 0 auto 30px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(16, 185, 129, 0.3), transparent);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            transition: all 0.3s ease;
-        }
-
-        .voice-orb::before {
-            content: '';
-            position: absolute;
-            inset: 20px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(16, 185, 129, 0.5), transparent);
-            animation: pulse-slow 2s ease-in-out infinite;
-        }
-
-        .voice-orb.listening {
-            background: radial-gradient(circle, rgba(239, 68, 68, 0.3), transparent);
-            animation: pulse-fast 0.8s ease-in-out infinite;
-        }
-
-        .voice-orb.listening::before {
-            background: radial-gradient(circle, rgba(239, 68, 68, 0.5), transparent);
-        }
-
-        .voice-orb.speaking {
-            background: radial-gradient(circle, rgba(16, 185, 129, 0.4), transparent);
-            animation: pulse-speak 0.5s ease-in-out infinite;
-        }
-
-        .voice-orb.speaking::before {
-            background: radial-gradient(circle, rgba(16, 185, 129, 0.6), transparent);
-        }
-
-        @keyframes pulse-slow {
-            0%, 100% { transform: scale(1); opacity: 0.5; }
-            50% { transform: scale(1.1); opacity: 0.8; }
-        }
-
-        @keyframes pulse-fast {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.15); }
-        }
-
-        @keyframes pulse-speak {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.08); }
-        }
-
-        .voice-orb-icon {
-            font-size: 80px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .voice-status-text {
-            font-size: 24px;
-            font-weight: 600;
-            color: var(--text-primary);
             margin-bottom: 10px;
-        }
-
-        .voice-status-subtext {
-            font-size: 14px;
-            color: var(--text-secondary);
-            margin-bottom: 30px;
-        }
-
-        .voice-transcript {
-            max-width: 600px;
-            margin: 20px auto;
-            padding: 16px 20px;
-            background: var(--bg-elevated);
-            border-radius: var(--radius-lg);
-            border: 1px solid var(--border-glass);
-            font-size: 16px;
-            color: var(--text-primary);
-            min-height: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .voice-controls {
-            display: flex;
-            gap: 16px;
-            justify-content: center;
-            margin-top: 30px;
-        }
-
-        .voice-control-btn {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            border: 2px solid var(--border-glass);
-            background: var(--bg-elevated);
-            color: var(--text-primary);
-            font-size: 24px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all var(--transition);
-        }
-
-        .voice-control-btn:hover {
-            transform: scale(1.1);
-            border-color: var(--primary);
-        }
-
-        .voice-control-btn.stop {
-            background: rgba(239, 68, 68, 0.2);
-            border-color: var(--danger);
-        }
-
-        .voice-control-btn.stop:hover {
-            background: rgba(239, 68, 68, 0.3);
-        }
-
-        .voice-select {
-            width: 100%;
-            padding: 8px 12px;
-            background: var(--bg-glass);
-            border: 1px solid var(--border-glass);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
             font-size: 12px;
-            font-family: inherit;
-            margin-bottom: 8px;
-            cursor: pointer;
-            transition: all var(--transition);
-        }
-
-        .voice-select:hover {
-            border-color: var(--primary);
-        }
-
-        .voice-select:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        .voice-label {
-            font-size: 11px;
-            color: var(--text-tertiary);
-            margin-bottom: 4px;
+            color: var(--text-secondary);
             font-weight: 500;
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
+        .slider-value {
+            background: var(--bg-elevated);
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            background: var(--bg-elevated);
+            border-radius: 3px;
+            outline: none;
+            opacity: 0.9;
+            transition: opacity 0.2s;
+        }
+
+        .slider:hover {
+            opacity: 1;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%);
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            transition: all var(--transition);
+        }
+
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 12px var(--primary-glow);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%);
+            cursor: pointer;
+            border-radius: 50%;
+            border: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            transition: all var(--transition);
+        }
+
+        .slider::-moz-range-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 12px var(--primary-glow);
+        }
+
+        .slider-marks {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 6px;
+            font-size: 10px;
+            color: var(--text-tertiary);
         }
 
         .sidebar-footer { 
@@ -621,6 +628,11 @@
             border-radius: 50%;
             box-shadow: 0 0 10px var(--success);
             animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
         }
 
         .btn-secondary { 
@@ -1221,7 +1233,7 @@
                 </div>
                 <div class="brand-text">
                     <div class="brand-name">eSAMz AI</div>
-                    <div class="brand-version">Version 9.7 Voice</div>
+                    <div class="brand-version">Version 8.0</div>
                 </div>
             </div>
             <button class="btn-new" id="btnNewChat">
@@ -1230,36 +1242,6 @@
         </div>
         
         <div class="nav-section">
-            <!-- Voice Settings -->
-            <div class="nav-label">Voice Settings</div>
-            <div class="voice-settings">
-                <button class="voice-toggle-btn" id="voiceToggle">
-                    <span>Voice Responses</span>
-                    <span class="status-indicator"></span>
-                </button>
-                
-                <div class="voice-label">Language</div>
-                <select class="voice-select" id="voiceLanguage">
-                    <option value="hi-IN">Hindi (हिन्दी)</option>
-                    <option value="en-IN">English (India)</option>
-                    <option value="ta-IN">Tamil (தமிழ்)</option>
-                    <option value="te-IN">Telugu (తెలుగు)</option>
-                    <option value="kn-IN">Kannada (ಕನ್ನಡ)</option>
-                    <option value="ml-IN">Malayalam (മലയാളം)</option>
-                    <option value="mr-IN">Marathi (मराठी)</option>
-                    <option value="gu-IN">Gujarati (ગુજરાતી)</option>
-                    <option value="bn-IN">Bengali (বাংলা)</option>
-                    <option value="or-IN">Odia (ଓଡ଼ିଆ)</option>
-                    <option value="pa-IN">Punjabi (ਪੰਜਾਬੀ)</option>
-                </select>
-                
-                <div class="voice-label">Voice</div>
-                <select class="voice-select" id="voiceSpeaker">
-                    <option value="meera">Meera (Female)</option>
-                    <option value="arvind">Arvind (Male)</option>
-                </select>
-            </div>
-
             <div class="nav-label">Recent Conversations</div>
             <div id="historyList"></div>
 
@@ -1308,24 +1290,6 @@
     </aside>
 
     <button class="sidebar-toggle-btn" id="sidebarToggle">‹</button>
-
-    <!-- Voice Mode Overlay -->
-    <div class="voice-mode-overlay" id="voiceModeOverlay">
-        <div class="voice-mode-content">
-            <div class="voice-orb" id="voiceOrb">
-                <div class="voice-orb-icon">🎙️</div>
-            </div>
-            <div class="voice-status-text" id="voiceStatusText">Tap to speak</div>
-            <div class="voice-status-subtext" id="voiceStatusSubtext">Voice mode ready</div>
-            <div class="voice-transcript" id="voiceTranscript">
-                <span style="color: var(--text-tertiary);">Your message will appear here...</span>
-            </div>
-            <div class="voice-controls">
-                <button class="voice-control-btn stop" id="voiceExitBtn" title="Exit voice mode">✕</button>
-                <button class="voice-control-btn" id="voiceMuteBtn" title="Mute/Unmute">🔊</button>
-            </div>
-        </div>
-    </div>
 
     <main class="main-content">
         <header>
@@ -1431,16 +1395,8 @@ class App {
             mainContent: document.querySelector('.main-content'),
             charCounter: document.getElementById('charCounter'),
             welcomeCharCounter: document.getElementById('welcomeCharCounter'),
-            voiceToggle: document.getElementById('voiceToggle'),
-            voiceLanguage: document.getElementById('voiceLanguage'),
-            voiceSpeaker: document.getElementById('voiceSpeaker'),
-            voiceModeOverlay: document.getElementById('voiceModeOverlay'),
-            voiceOrb: document.getElementById('voiceOrb'),
-            voiceStatusText: document.getElementById('voiceStatusText'),
-            voiceStatusSubtext: document.getElementById('voiceStatusSubtext'),
-            voiceTranscript: document.getElementById('voiceTranscript'),
-            voiceExitBtn: document.getElementById('voiceExitBtn'),
-            voiceMuteBtn: document.getElementById('voiceMuteBtn')
+            slider: document.getElementById('responseSlider'),
+            sliderValue: document.getElementById('sliderValue')
         };
 
         this.state = {
@@ -1453,16 +1409,7 @@ class App {
             maxChars: 4000,
             isMobile: window.innerWidth <= 768,
             sidebarCollapsed: false,
-            voiceEnabled: false,
-            voiceLanguage: 'hi-IN',
-            voiceSpeaker: 'meera',
-            currentAudio: null,
-            threadId: `thread_${Date.now()}`,
-            voiceModeActive: false,
-            isListeningVoice: false,
-            isSpeakingVoice: false,
-            voiceMuted: false,
-            autoListen: true
+            responseLevel: 2
         };
 
         this.storageKey = 'esamz_conversations_v8';
@@ -1472,10 +1419,10 @@ class App {
 
     init() {
         this.loadHistory();
-        this.loadVoiceSettings();
         this.setupEvents();
         this.setupDragDrop();
         this.dom.welcomeInput.focus();
+        this.loadSliderValue();
         
         window.addEventListener('resize', () => {
             const wasMobile = this.state.isMobile;
@@ -1493,81 +1440,7 @@ class App {
         });
     }
 
-    loadVoiceSettings() {
-        const saved = localStorage.getItem('esamz_voice_settings');
-        if (saved) {
-            try {
-                const settings = JSON.parse(saved);
-                this.state.voiceEnabled = settings.enabled || false;
-                this.state.voiceLanguage = settings.language || 'hi-IN';
-                this.state.voiceSpeaker = settings.speaker || 'meera';
-                
-                this.dom.voiceLanguage.value = this.state.voiceLanguage;
-                this.dom.voiceSpeaker.value = this.state.voiceSpeaker;
-                this.updateVoiceUI();
-            } catch (e) {
-                console.error('Failed to load voice settings:', e);
-            }
-        }
-    }
-
-    saveVoiceSettings() {
-        localStorage.setItem('esamz_voice_settings', JSON.stringify({
-            enabled: this.state.voiceEnabled,
-            language: this.state.voiceLanguage,
-            speaker: this.state.voiceSpeaker
-        }));
-    }
-
-    updateVoiceUI() {
-        if (this.state.voiceEnabled) {
-            this.dom.voiceToggle.classList.add('active');
-        } else {
-            this.dom.voiceToggle.classList.remove('active');
-        }
-    }
-
     setupEvents() {
-        // Voice toggle - Now enters voice mode
-        this.dom.voiceToggle.addEventListener('click', () => {
-            this.state.voiceEnabled = !this.state.voiceEnabled;
-            this.updateVoiceUI();
-            this.saveVoiceSettings();
-            
-            if (this.state.voiceEnabled) {
-                this.enterVoiceMode();
-            }
-        });
-
-        // Voice mode controls
-        this.dom.voiceOrb.addEventListener('click', () => {
-            if (this.state.isSpeakingVoice) {
-                this.stopAudio();
-            } else {
-                this.startVoiceListening();
-            }
-        });
-
-        this.dom.voiceExitBtn.addEventListener('click', () => this.exitVoiceMode());
-        
-        this.dom.voiceMuteBtn.addEventListener('click', () => {
-            this.state.voiceMuted = !this.state.voiceMuted;
-            this.dom.voiceMuteBtn.textContent = this.state.voiceMuted ? '🔇' : '🔊';
-            if (this.state.voiceMuted && this.state.currentAudio) {
-                this.stopAudio();
-            }
-        });
-
-        this.dom.voiceLanguage.addEventListener('change', (e) => {
-            this.state.voiceLanguage = e.target.value;
-            this.saveVoiceSettings();
-        });
-
-        this.dom.voiceSpeaker.addEventListener('change', (e) => {
-            this.state.voiceSpeaker = e.target.value;
-            this.saveVoiceSettings();
-        });
-
         document.getElementById('btnWelcomeSend').addEventListener('click', () => this.handleWelcomeSend());
         document.getElementById('btnWelcomeUpload').addEventListener('click', () => document.getElementById('fileInput').click());
         document.getElementById('btnWelcomeVoice').addEventListener('click', () => this.toggleVoice(true));
@@ -1614,6 +1487,8 @@ class App {
 
         document.getElementById('btnExportModal').addEventListener('click', () => this.dom.dialog.showModal());
         document.getElementById('closeDialog').addEventListener('click', () => this.dom.dialog.close());
+
+        this.dom.slider.addEventListener('input', (e) => this.updateSlider(e.target.value));
     }
 
     setupDragDrop() {
@@ -1633,6 +1508,21 @@ class App {
                 this.handleFiles(e.dataTransfer.files, isWelcome);
             });
         });
+    }
+
+    updateSlider(value) {
+        this.state.responseLevel = parseInt(value);
+        const labels = ['Brief', 'Medium', 'Detailed'];
+        this.dom.sliderValue.textContent = labels[value - 1];
+        localStorage.setItem('esamz_response_level', value);
+    }
+
+    loadSliderValue() {
+        const saved = localStorage.getItem('esamz_response_level');
+        if (saved) {
+            this.dom.slider.value = saved;
+            this.updateSlider(saved);
+        }
     }
 
     autoResize(textarea) {
@@ -1780,11 +1670,8 @@ class App {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: text,
-                    threadId: this.state.threadId,
-                    mode: 'default',
-                    enableVoice: this.state.voiceEnabled,
-                    voiceLanguage: this.state.voiceLanguage,
-                    voiceSpeaker: this.state.voiceSpeaker
+                    context: this.getContext(),
+                    responseLevel: this.state.responseLevel
                 })
             });
             
@@ -1795,275 +1682,11 @@ class App {
             const reply = data.reply || data.message || 'No response';
             this.addMessage(reply, 'ai', true);
             this.appendToHistory('ai', reply);
-            
-            // Play audio if available
-            if (data.audio && this.state.voiceEnabled) {
-                this.playAudio(data.audio);
-            }
         } catch (e) {
             this.removeThinking(thinkingId);
             const reply = this.generateSmartResponse(text);
             this.addMessage(reply, 'ai', true);
             this.appendToHistory('ai', reply);
-        }
-        
-        this.checkStorageSize();
-    }
-
-    playAudio(base64Audio) {
-        try {
-            // Stop any currently playing audio
-            if (this.state.currentAudio) {
-                this.state.currentAudio.pause();
-                this.state.currentAudio = null;
-            }
-
-            // Don't play if muted
-            if (this.state.voiceMuted) return;
-
-            // Update UI for speaking
-            this.state.isSpeakingVoice = true;
-            if (this.state.voiceModeActive) {
-                this.dom.voiceOrb.className = 'voice-orb speaking';
-                this.dom.voiceStatusText.textContent = 'Speaking...';
-                this.dom.voiceStatusSubtext.textContent = 'Tap to stop';
-            }
-
-            // Create and play new audio
-            const audio = new Audio(`data:audio/wav;base64,${base64Audio}`);
-            this.state.currentAudio = audio;
-            
-            audio.play().catch(err => {
-                console.error('Audio playback failed:', err);
-                this.state.isSpeakingVoice = false;
-            });
-
-            audio.onended = () => {
-                this.state.currentAudio = null;
-                this.state.isSpeakingVoice = false;
-                
-                // Auto-listen again if in voice mode
-                if (this.state.voiceModeActive && this.state.autoListen) {
-                    setTimeout(() => {
-                        this.startVoiceListening();
-                    }, 500);
-                } else if (this.state.voiceModeActive) {
-                    this.dom.voiceOrb.className = 'voice-orb';
-                    this.dom.voiceStatusText.textContent = 'Tap to speak';
-                    this.dom.voiceStatusSubtext.textContent = 'Voice mode ready';
-                }
-            };
-        } catch (err) {
-            console.error('Failed to play audio:', err);
-            this.state.isSpeakingVoice = false;
-        }
-    }
-
-    stopAudio() {
-        if (this.state.currentAudio) {
-            this.state.currentAudio.pause();
-            this.state.currentAudio.currentTime = 0;
-            this.state.currentAudio = null;
-            this.state.isSpeakingVoice = false;
-            
-            if (this.state.voiceModeActive) {
-                this.dom.voiceOrb.className = 'voice-orb';
-                this.dom.voiceStatusText.textContent = 'Tap to speak';
-                this.dom.voiceStatusSubtext.textContent = 'Voice mode ready';
-            }
-        }
-    }
-
-    // Voice Mode Functions
-    enterVoiceMode() {
-        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-            alert('Voice recognition not supported. Use Chrome, Edge, or Safari.');
-            this.state.voiceEnabled = false;
-            this.updateVoiceUI();
-            return;
-        }
-
-        this.state.voiceModeActive = true;
-        this.dom.voiceModeOverlay.classList.add('active');
-        this.dom.voiceTranscript.innerHTML = '<span style="color: var(--text-tertiary);">Tap the orb to speak...</span>';
-        
-        // Initialize recognition if not already
-        if (!this.state.recognition) {
-            this.initializeVoiceRecognition();
-        }
-        
-        // Start listening automatically
-        setTimeout(() => {
-            this.startVoiceListening();
-        }, 500);
-    }
-
-    exitVoiceMode() {
-        this.state.voiceModeActive = false;
-        this.state.voiceEnabled = false;
-        this.dom.voiceModeOverlay.classList.remove('active');
-        this.stopVoiceListening();
-        this.stopAudio();
-        this.updateVoiceUI();
-    }
-
-    initializeVoiceRecognition() {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        this.state.recognition = new SpeechRecognition();
-        this.state.recognition.lang = 'en-US';
-        this.state.recognition.continuous = false;
-        this.state.recognition.interimResults = true;
-        
-        this.state.recognition.onstart = () => {
-            this.state.isListeningVoice = true;
-            this.dom.voiceOrb.className = 'voice-orb listening';
-            this.dom.voiceStatusText.textContent = 'Listening...';
-            this.dom.voiceStatusSubtext.textContent = 'Speak now';
-        };
-        
-        this.state.recognition.onresult = (e) => {
-            let interim = '';
-            let final = '';
-            
-            for (let i = 0; i < e.results.length; i++) {
-                if (e.results[i].isFinal) {
-                    final += e.results[i][0].transcript;
-                } else {
-                    interim += e.results[i][0].transcript;
-                }
-            }
-            
-            const display = final || interim;
-            if (display) {
-                this.dom.voiceTranscript.textContent = display;
-            }
-            
-            if (final) {
-                this.handleVoiceMessage(final);
-            }
-        };
-        
-        this.state.recognition.onerror = (e) => {
-            console.error('Speech recognition error:', e.error);
-            this.state.isListeningVoice = false;
-            
-            if (e.error === 'no-speech') {
-                this.dom.voiceStatusSubtext.textContent = 'No speech detected, try again';
-                setTimeout(() => {
-                    if (this.state.voiceModeActive && this.state.autoListen) {
-                        this.startVoiceListening();
-                    }
-                }, 1500);
-            } else {
-                this.dom.voiceStatusSubtext.textContent = `Error: ${e.error}`;
-            }
-            
-            this.dom.voiceOrb.className = 'voice-orb';
-        };
-        
-        this.state.recognition.onend = () => {
-            this.state.isListeningVoice = false;
-            if (this.state.voiceModeActive && !this.state.isSpeakingVoice) {
-                this.dom.voiceOrb.className = 'voice-orb';
-                this.dom.voiceStatusText.textContent = 'Processing...';
-            }
-        };
-    }
-
-    startVoiceListening() {
-        if (!this.state.recognition) {
-            this.initializeVoiceRecognition();
-        }
-        
-        if (this.state.isListeningVoice || this.state.isSpeakingVoice) return;
-        
-        try {
-            this.state.recognition.start();
-            this.dom.voiceTranscript.innerHTML = '<span style="color: var(--text-tertiary);">Listening...</span>';
-        } catch (e) {
-            console.error('Failed to start recognition:', e);
-        }
-    }
-
-    stopVoiceListening() {
-        if (this.state.recognition && this.state.isListeningVoice) {
-            try {
-                this.state.recognition.stop();
-            } catch (e) {
-                console.error('Failed to stop recognition:', e);
-            }
-        }
-    }
-
-    async handleVoiceMessage(text) {
-        if (!text.trim()) return;
-        
-        this.dom.voiceStatusText.textContent = 'Thinking...';
-        this.dom.voiceStatusSubtext.textContent = 'Processing your request';
-        this.dom.voiceTranscript.textContent = text;
-
-        // Ensure chat is visible
-        if (this.dom.welcome.style.display !== 'none') {
-            this.dom.welcome.style.display = 'none';
-            this.dom.chatInputContainer.style.display = 'block';
-            if (!this.state.chatId) {
-                this.createChatSession(text);
-            }
-        }
-
-        // Add message to chat
-        this.addMessage(text, 'user');
-        this.appendToHistory('user', text);
-        this.state.messageCount++;
-
-        try {
-            const res = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: text,
-                    threadId: this.state.threadId,
-                    mode: 'default',
-                    enableVoice: true,
-                    voiceLanguage: this.state.voiceLanguage,
-                    voiceSpeaker: this.state.voiceSpeaker
-                })
-            });
-            
-            if (!res.ok) throw new Error('Server error');
-            
-            const data = await res.json();
-            const reply = data.reply || data.message || 'No response';
-            
-            this.addMessage(reply, 'ai', true);
-            this.appendToHistory('ai', reply);
-            
-            // Play audio response
-            if (data.audio) {
-                this.playAudio(data.audio);
-            } else {
-                // If no audio, go back to listening
-                if (this.state.voiceModeActive && this.state.autoListen) {
-                    setTimeout(() => {
-                        this.startVoiceListening();
-                    }, 500);
-                }
-            }
-        } catch (e) {
-            console.error('Voice message error:', e);
-            const reply = this.generateSmartResponse(text);
-            this.addMessage(reply, 'ai', true);
-            this.appendToHistory('ai', reply);
-            
-            // Go back to listening
-            if (this.state.voiceModeActive && this.state.autoListen) {
-                setTimeout(() => {
-                    this.dom.voiceOrb.className = 'voice-orb';
-                    this.dom.voiceStatusText.textContent = 'Tap to speak';
-                    this.dom.voiceStatusSubtext.textContent = 'Ready';
-                    this.startVoiceListening();
-                }, 1500);
-            }
         }
         
         this.checkStorageSize();
@@ -2148,11 +1771,9 @@ class App {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         message: userText,
-                        threadId: this.state.threadId,
-                        mode: 'default',
-                        enableVoice: this.state.voiceEnabled,
-                        voiceLanguage: this.state.voiceLanguage,
-                        voiceSpeaker: this.state.voiceSpeaker
+                        context: this.getContext(),
+                        regenerate: true,
+                        responseLevel: this.state.responseLevel
                     })
                 });
                 
@@ -2162,10 +1783,6 @@ class App {
                 this.removeThinking(thinkingId);
                 const reply = data.reply || data.message || 'No response';
                 this.addMessage(reply, 'ai', true);
-                
-                if (data.audio && this.state.voiceEnabled) {
-                    this.playAudio(data.audio);
-                }
             } catch (e) {
                 this.removeThinking(thinkingId);
                 const reply = this.generateSmartResponse(userText);
@@ -2282,6 +1899,13 @@ class App {
         }
     }
 
+    getContext() {
+        const history = this.getHistory();
+        const chat = history.find(c => c.id === this.state.chatId);
+        if (!chat) return [];
+        return chat.messages.slice(-10);
+    }
+
     getHistory() {
         try {
             return JSON.parse(localStorage.getItem(this.storageKey) || '[]');
@@ -2361,21 +1985,6 @@ class App {
         this.state.messageCount = 0;
         this.state.files = [];
         this.state.welcomeFiles = [];
-        this.state.threadId = `thread_${Date.now()}`;
-        this.stopAudio();
-        this.stopVoiceListening();
-        
-        // Don't exit voice mode, just reset the UI
-        if (this.state.voiceModeActive) {
-            this.dom.voiceTranscript.innerHTML = '<span style="color: var(--text-tertiary);">New conversation started. Tap to speak...</span>';
-            this.dom.voiceOrb.className = 'voice-orb';
-            this.dom.voiceStatusText.textContent = 'Tap to speak';
-            this.dom.voiceStatusSubtext.textContent = 'New conversation';
-            
-            setTimeout(() => {
-                this.startVoiceListening();
-            }, 1000);
-        }
         
         this.dom.sidebar.classList.remove('hidden');
         this.dom.mainContent.classList.remove('expanded');
@@ -2389,10 +1998,8 @@ class App {
         this.dom.welcomePreview.innerHTML = '';
         this.updateCharCounter(this.dom.welcomeInput, this.dom.welcomeCharCounter);
         
-        if (!this.state.voiceModeActive) {
-            this.toggleSidebar(false);
-            this.dom.welcomeInput.focus();
-        }
+        this.toggleSidebar(false);
+        this.dom.welcomeInput.focus();
     }
 
     clearChat() {
