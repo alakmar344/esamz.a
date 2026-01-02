@@ -8,13 +8,13 @@ console.log('>>> eSAMz v9.7 SaaS back-end starting');
 
 /* ---------- CONFIG ---------- */
 const CONFIG = {
-  THREAD_TTL        : 15 * 60 * 1000, // 15 min
+  THREAD_TTL        : 15 * 60 * 1000,
   MAX_CONTEXT_TOKENS: 7800,
   MAX_HISTORY_TOKENS: 5200,
   MAX_PROMPT_TOKENS : 7400,
   MAX_COMPLETION    : 2048,
   VOICE_LANG        : 'hi-IN',
-  VOICE_SPKR        : 'amit',   // valid per bulbul:v2
+  VOICE_SPKR        : 'amit',   // ✅ male
   VOICE_MODEL       : 'bulbul:v2'
 };
 
