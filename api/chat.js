@@ -34,8 +34,8 @@ const SYSTEM_PROMPT = {
 
     'COMMUNICATION STYLE\n' +
     '- Be concise by default.\n' +
-    '- Expand only when depth improves understanding.\n' +
-    '- No emojis unless the user uses them first.\n\n' +
+    '- Expand only when depth improves understanding.\n\n' +
+
 
     'REASONING AND ACCURACY\n' +
     '- Ensure correctness in logic, math, and code.\n' +
