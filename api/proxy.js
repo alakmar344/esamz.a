@@ -42,7 +42,12 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
-  res.setHeader('Access-Control-Allow-Origin', origin);
+  const reqOrigin = req.headers.origin;
+
+if (reqOrigin && reqOrigin !== origin) {
+  return res.status(403).json({ error: 'Forbidden' });
+}
+
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
 
