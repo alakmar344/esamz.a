@@ -186,9 +186,18 @@ module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   if (req.method === 'OPTIONS') return res.end();
 
-  if (req.headers['x-esamz-key'] !== process.env.ESAMZ_BACKEND_KEY) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+ // 🔒 HARD SECURITY CHECK (DO NOT REMOVE)
+if (!process.env.ESAMZ_BACKEND_KEY) {
+  return res.status(500).json({
+    error: 'Server misconfigured'
+  });
+}
+
+if (req.headers['x-esamz-key'] !== process.env.ESAMZ_BACKEND_KEY) {
+  return res.status(401).json({
+    error: 'Unauthorized'
+  });
+}
 
   if (!process.env.SARVAM_API_KEY) {
     return res.status(500).json({ error: 'API key missing' });
