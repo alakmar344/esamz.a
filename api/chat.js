@@ -13,12 +13,27 @@ const CONFIG = {
   MAX_HISTORY_TOKENS: 5200,
   MAX_PROMPT_TOKENS: 7400,
   MAX_COMPLETION_TOKENS: 2048,
-  MAX_TTS_CHARS: 500
+  MAX_TTS_CHARS: 500,
+  DEFAULT_SPEAKER: 'priya'
 };
 
 /* ---------- STATE ---------- */
 const threads = new Map();
 const timers = new Map();
+
+/* ---------- VALID BULBUL V3 SPEAKERS ---------- */
+const BULBUL_V3_SPEAKERS = new Set([
+  'aditya','ritu','ashutosh','priya','neha','rahul','pooja','rohan',
+  'simran','kavya','amit','dev','ishita','shreya','ratan','varun',
+  'manan','sumit','roopa','kabir','aayan','shubh','advait',
+  'amelia','sophia'
+]);
+
+function resolveSpeaker(requested) {
+  if (BULBUL_V3_SPEAKERS.has(requested)) return requested;
+  console.warn(`[VOICE] Invalid speaker "${requested}", fallback to ${CONFIG.DEFAULT_SPEAKER}`);
+  return CONFIG.DEFAULT_SPEAKER;
+}
 
 /* ---------- ORIGINAL SYSTEM PROMPT (UNCHANGED) ---------- */
 const SYSTEM_PROMPT = {
@@ -73,7 +88,7 @@ function sanitize(messages) {
   }));
 }
 
-/* ---------- SARVAM CHAT CALL ---------- */
+/* ---------- SARVAM CHAT ---------- */
 async function callSarvam(payload) {
   const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
     method: 'POST',
@@ -94,7 +109,7 @@ async function callSarvam(payload) {
 }
 
 /* ---------- SARVAM TTS (BULBUL V3 SAFE) ---------- */
-async function callSarvamTTS(text, language = 'hi-IN', speaker = 'anushka') {
+async function callSarvamTTS(text, language, speaker) {
   try {
     if (!text) return null;
 
@@ -102,6 +117,8 @@ async function callSarvamTTS(text, language = 'hi-IN', speaker = 'anushka') {
       text.length > CONFIG.MAX_TTS_CHARS
         ? text.slice(0, CONFIG.MAX_TTS_CHARS)
         : text;
+
+    const resolvedSpeaker = resolveSpeaker(speaker);
 
     const res = await fetch('https://api.sarvam.ai/text-to-speech', {
       method: 'POST',
@@ -112,7 +129,7 @@ async function callSarvamTTS(text, language = 'hi-IN', speaker = 'anushka') {
       body: JSON.stringify({
         inputs: [safeText],
         target_language_code: language,
-        speaker,
+        speaker: resolvedSpeaker,
         speech_sample_rate: 8000,
         enable_preprocessing: true,
         model: 'bulbul:v3-beta'
@@ -147,7 +164,6 @@ function buildPayload(messages, mode) {
     payload.temperature = 0.5;
     payload.reasoning_effort = 'high';
   } else if (mode === 'wiki') {
-    payload.temperature = 0.2;
     payload.wiki_grounding = true;
   }
 
@@ -186,7 +202,7 @@ module.exports = async function handler(req, res) {
 
   const enableVoice = body.enableVoice === true;
   const voiceLanguage = body.voiceLanguage || 'hi-IN';
-  const voiceSpeaker = body.voiceSpeaker || 'anushka';
+  const voiceSpeaker = body.voiceSpeaker || CONFIG.DEFAULT_SPEAKER;
 
   try {
     if (!threads.has(threadId)) threads.set(threadId, []);
@@ -249,4 +265,5 @@ module.exports.health = function (_, res) {
   });
 };
 
-console.log('>>> eSAMz v9.7 ready (original prompt + fixed voice)');
+console.log('>>> eSAMz v9.7 ready (Bulbul v3 compliant)');
+
