@@ -5,7 +5,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
     <link rel="manifest" href="/site.webmanifest">
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4596710157872091 "
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7184475263017731"
      crossorigin="anonymous"></script>
 
     <meta charset="UTF-8">
@@ -1689,22 +1689,6 @@ class App {
             voiceMicToggle: document.getElementById('voiceMicToggle'),
             voiceSpeaker: document.getElementById('voiceSpeaker')
         };
-updateVoiceQuotaBadge(remaining) {
-  const badge = document.getElementById('voiceQuotaBadge');
-  if (!badge || typeof remaining !== 'number') return;
-
-  badge.textContent = `Voice ${remaining}/3`;
-
-  if (remaining <= 0) {
-    badge.style.background = 'rgba(239,68,68,0.15)';
-    badge.style.color = '#ef4444';
-    badge.style.borderColor = 'rgba(239,68,68,0.4)';
-  } else {
-    badge.style.background = 'rgba(16,185,129,0.12)';
-    badge.style.color = '#10b981';
-    badge.style.borderColor = 'rgba(75,85,99,0.4)';
-  }
-}
 
         this.state = {
             chatId: null,
