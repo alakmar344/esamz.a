@@ -586,6 +586,18 @@
             background: rgba(239, 68, 68, 0.3);
         }
 
+        .voice-control-btn.active {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: var(--voice-active);
+            color: var(--voice-active);
+        }
+
+        .voice-control-btn.muted {
+            background: rgba(156, 163, 175, 0.2);
+            border-color: var(--accent);
+            opacity: 0.6;
+        }
+
         .voice-select {
             width: 100%;
             padding: 8px 12px;
@@ -1311,45 +1323,6 @@
         </div>
         
         <div class="nav-section">
-            <!-- Voice Settings -->
-            <div class="nav-label">Voice Settings</div>
-            <div class="voice-settings">
-                <button class="voice-toggle-btn" id="voiceToggle">
-                    <span>Voice Responses</span>
-                    <span class="status-indicator"></span>
-                </button>
-                
-                <div class="voice-label">Language</div>
-                <select class="voice-select" id="voiceLanguage">
-                    <option value="hi-IN">Hindi (हिन्दी)</option>
-                    <option value="en-IN">English (India)</option>
-                    <option value="ta-IN">Tamil (தமிழ்)</option>
-                    <option value="te-IN">Telugu (తెలుగు)</option>
-                    <option value="kn-IN">Kannada (ಕನ್ನಡ)</option>
-                    <option value="ml-IN">Malayalam (മലയാളം)</option>
-                    <option value="mr-IN">Marathi (मराठी)</option>
-                    <option value="gu-IN">Gujarati (ગુજરાતી)</option>
-                    <option value="bn-IN">Bengali (বাংলা)</option>
-                    <option value="or-IN">Odia (ଓଡ଼ିଆ)</option>
-                    <option value="pa-IN">Punjabi (ਪੰਜਾਬੀ)</option>
-                </select>
-                
-                <div class="voice-label">Voice</div>
-                <select class="voice-select" id="voiceSpeaker">
-                    <optgroup label="Female Voices">
-                        <option value="anushka">Anushka (Female)</option>
-                        <option value="manisha">Manisha (Female)</option>
-                        <option value="vidya">Vidya (Female)</option>
-                        <option value="arya">Arya (Female)</option>
-                    </optgroup>
-                    <optgroup label="Male Voices">
-                        <option value="abhilash">Abhilash (Male)</option>
-                        <option value="karun">Karun (Male)</option>
-                        <option value="hitesh">Hitesh (Male)</option>
-                    </optgroup>
-                </select>
-            </div>
-
             <div class="nav-label">Recent Conversations</div>
             <div id="historyList"></div>
 
@@ -1408,9 +1381,28 @@
                     <div class="liquid" id="liquidLevel"></div>
                 </div>
             </div>
+            
+            <!-- Voice Settings in Voice Mode -->
+            <div class="voice-settings" style="max-width: 400px; margin: 30px auto 20px;">
+                <div class="voice-label">Voice</div>
+                <select class="voice-select" id="voiceSpeaker">
+                    <optgroup label="Female Voices">
+                        <option value="anushka">Anushka (Female)</option>
+                        <option value="manisha">Manisha (Female)</option>
+                        <option value="vidya">Vidya (Female)</option>
+                        <option value="arya">Arya (Female)</option>
+                    </optgroup>
+                    <optgroup label="Male Voices">
+                        <option value="abhilash">Abhilash (Male)</option>
+                        <option value="karun">Karun (Male)</option>
+                        <option value="hitesh">Hitesh (Male)</option>
+                    </optgroup>
+                </select>
+            </div>
+            
             <div class="voice-controls">
+                <button class="voice-control-btn" id="voiceMicToggle" title="Toggle microphone">🎤</button>
                 <button class="voice-control-btn stop" id="voiceExitBtn" title="Exit voice mode">✕</button>
-                <button class="voice-control-btn" id="voiceMuteBtn" title="Mute/Unmute">🔊</button>
             </div>
         </div>
     </div>
@@ -1519,14 +1511,12 @@ class App {
             mainContent: document.querySelector('.main-content'),
             charCounter: document.getElementById('charCounter'),
             welcomeCharCounter: document.getElementById('welcomeCharCounter'),
-            voiceToggle: document.getElementById('voiceToggle'),
-            voiceLanguage: document.getElementById('voiceLanguage'),
-            voiceSpeaker: document.getElementById('voiceSpeaker'),
             voiceModeOverlay: document.getElementById('voiceModeOverlay'),
             voiceOrb: document.getElementById('voiceOrb'),
             liquidLevel: document.getElementById('liquidLevel'),
             voiceExitBtn: document.getElementById('voiceExitBtn'),
-            voiceMuteBtn: document.getElementById('voiceMuteBtn')
+            voiceMicToggle: document.getElementById('voiceMicToggle'),
+            voiceSpeaker: document.getElementById('voiceSpeaker')
         };
 
         this.state = {
@@ -1540,14 +1530,14 @@ class App {
             isMobile: window.innerWidth <= 768,
             sidebarCollapsed: false,
             voiceEnabled: false,
-            voiceLanguage: 'hi-IN',
+            voiceLanguage: 'en-IN',
             voiceSpeaker: 'anushka',
             currentAudio: null,
             threadId: `thread_${Date.now()}`,
             voiceModeActive: false,
             isListeningVoice: false,
             isSpeakingVoice: false,
-            voiceMuted: false,
+            micEnabled: true,
             autoListen: true,
             audioContext: null,
             analyser: null,
@@ -1587,13 +1577,8 @@ class App {
         if (saved) {
             try {
                 const settings = JSON.parse(saved);
-                this.state.voiceEnabled = settings.enabled || false;
-                this.state.voiceLanguage = settings.language || 'hi-IN';
                 this.state.voiceSpeaker = settings.speaker || 'anushka';
-                
-                this.dom.voiceLanguage.value = this.state.voiceLanguage;
                 this.dom.voiceSpeaker.value = this.state.voiceSpeaker;
-                this.updateVoiceUI();
             } catch (e) {
                 console.error('Failed to load voice settings:', e);
             }
@@ -1602,54 +1587,40 @@ class App {
 
     saveVoiceSettings() {
         localStorage.setItem('esamz_voice_settings', JSON.stringify({
-            enabled: this.state.voiceEnabled,
-            language: this.state.voiceLanguage,
             speaker: this.state.voiceSpeaker
         }));
     }
 
     updateVoiceUI() {
-        if (this.state.voiceEnabled) {
-            this.dom.voiceToggle.classList.add('active');
+        // Update mic button state
+        if (this.state.micEnabled) {
+            this.dom.voiceMicToggle.classList.add('active');
         } else {
-            this.dom.voiceToggle.classList.remove('active');
+            this.dom.voiceMicToggle.classList.remove('active');
         }
     }
 
     setupEvents() {
-        // Voice toggle - Now enters voice mode
-        this.dom.voiceToggle.addEventListener('click', () => {
-            this.state.voiceEnabled = !this.state.voiceEnabled;
-            this.updateVoiceUI();
-            this.saveVoiceSettings();
-            
-            if (this.state.voiceEnabled) {
-                this.enterVoiceMode();
-            }
-        });
-
         // Voice mode controls
         this.dom.voiceOrb.addEventListener('click', () => {
             if (this.state.isSpeakingVoice) {
                 this.stopAudio();
-            } else {
+            } else if (this.state.micEnabled) {
                 this.startVoiceListening();
             }
         });
 
         this.dom.voiceExitBtn.addEventListener('click', () => this.exitVoiceMode());
         
-        this.dom.voiceMuteBtn.addEventListener('click', () => {
-            this.state.voiceMuted = !this.state.voiceMuted;
-            this.dom.voiceMuteBtn.textContent = this.state.voiceMuted ? '🔇' : '🔊';
-            if (this.state.voiceMuted && this.state.currentAudio) {
-                this.stopAudio();
+        this.dom.voiceMicToggle.addEventListener('click', () => {
+            this.state.micEnabled = !this.state.micEnabled;
+            this.updateVoiceUI();
+            
+            if (!this.state.micEnabled) {
+                this.stopVoiceListening();
+            } else if (this.state.voiceModeActive && !this.state.isSpeakingVoice) {
+                this.startVoiceListening();
             }
-        });
-
-        this.dom.voiceLanguage.addEventListener('change', (e) => {
-            this.state.voiceLanguage = e.target.value;
-            this.saveVoiceSettings();
         });
 
         this.dom.voiceSpeaker.addEventListener('change', (e) => {
@@ -1907,9 +1878,6 @@ class App {
                 this.state.currentAudio = null;
             }
 
-            // Don't play if muted
-            if (this.state.voiceMuted) return;
-
             // Update UI for speaking
             this.state.isSpeakingVoice = true;
             if (this.state.voiceModeActive) {
@@ -1940,8 +1908,8 @@ class App {
                     this.dom.liquidLevel.style.height = '30%';
                 }
                 
-                // Auto-listen again if in voice mode
-                if (this.state.voiceModeActive && this.state.autoListen) {
+                // Auto-listen again if in voice mode and mic enabled
+                if (this.state.voiceModeActive && this.state.autoListen && this.state.micEnabled) {
                     setTimeout(() => {
                         this.startVoiceListening();
                     }, 500);
@@ -2049,14 +2017,15 @@ class App {
     enterVoiceMode() {
         if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
             alert('Voice recognition not supported. Use Chrome, Edge, or Safari.');
-            this.state.voiceEnabled = false;
-            this.updateVoiceUI();
             return;
         }
 
+        this.state.voiceEnabled = true;
         this.state.voiceModeActive = true;
+        this.state.micEnabled = true;
         this.dom.voiceModeOverlay.classList.add('active');
         this.dom.liquidLevel.style.height = '30%';
+        this.updateVoiceUI();
         
         // Initialize recognition if not already
         if (!this.state.recognition) {
@@ -2076,7 +2045,6 @@ class App {
         this.stopVoiceListening();
         this.stopAudio();
         this.stopVisualization();
-        this.updateVoiceUI();
     }
 
     initializeVoiceRecognition() {
@@ -2606,57 +2574,8 @@ class App {
     }
 
     toggleVoice(isWelcome) {
-        const btn = isWelcome ? document.getElementById('btnWelcomeVoice') : document.getElementById('btnVoice');
-        const input = isWelcome ? this.dom.welcomeInput : this.dom.input;
-        
-        if (!this.state.recognition) {
-            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                alert('Voice recognition is not supported in your browser. Please try Chrome, Edge, or Safari.');
-                return;
-            }
-            
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            this.state.recognition = new SpeechRecognition();
-            this.state.recognition.lang = 'en-US';
-            this.state.recognition.continuous = false;
-            this.state.recognition.interimResults = false;
-            
-            this.state.recognition.onresult = e => {
-                const transcript = e.results[0][0].transcript;
-                input.value += (input.value ? ' ' : '') + transcript;
-                this.autoResize(input);
-                const counter = isWelcome ? this.dom.welcomeCharCounter : this.dom.charCounter;
-                this.updateCharCounter(input, counter);
-            };
-            
-            this.state.recognition.onerror = e => {
-                console.error('Speech recognition error:', e.error);
-                this.state.isRecording = false;
-                btn.classList.remove('recording');
-                if (e.error !== 'no-speech') {
-                    alert(`Voice recognition error: ${e.error}`);
-                }
-            };
-            
-            this.state.recognition.onend = () => {
-                this.state.isRecording = false;
-                btn.classList.remove('recording');
-            };
-        }
-        
-        if (this.state.isRecording) {
-            this.state.recognition.stop();
-            this.state.isRecording = false;
-            btn.classList.remove('recording');
-        } else {
-            try {
-                this.state.recognition.start();
-                this.state.isRecording = true;
-                btn.classList.add('recording');
-            } catch (e) {
-                console.error('Failed to start recognition:', e);
-            }
-        }
+        // Now just enters voice mode
+        this.enterVoiceMode();
     }
 
     exportChat(type) {
