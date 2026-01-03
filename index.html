@@ -874,7 +874,7 @@
             box-shadow: 0 0 10px var(--success);
             animation: pulse 2s ease-in-out infinite;
         }
-
+  
         .btn-secondary { 
             background: transparent;
             border: 1px solid var(--border-glass);
@@ -1573,6 +1573,18 @@
             </div>
             <button class="btn-secondary" id="btnClearChat">Clear Chat</button>
         </header>
+  <div id="voiceQuotaBadge" style="
+  margin-left: 12px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid rgba(75,85,99,0.4);
+  background: rgba(16,185,129,0.12);
+  color: #10b981;
+">
+  Voice 3/3
+</div>
 
         <div class="chat-container" id="chatContainer">
             <div class="welcome" id="welcomeScreen">
@@ -1677,6 +1689,22 @@ class App {
             voiceMicToggle: document.getElementById('voiceMicToggle'),
             voiceSpeaker: document.getElementById('voiceSpeaker')
         };
+updateVoiceQuotaBadge(remaining) {
+  const badge = document.getElementById('voiceQuotaBadge');
+  if (!badge || typeof remaining !== 'number') return;
+
+  badge.textContent = `Voice ${remaining}/3`;
+
+  if (remaining <= 0) {
+    badge.style.background = 'rgba(239,68,68,0.15)';
+    badge.style.color = '#ef4444';
+    badge.style.borderColor = 'rgba(239,68,68,0.4)';
+  } else {
+    badge.style.background = 'rgba(16,185,129,0.12)';
+    badge.style.color = '#10b981';
+    badge.style.borderColor = 'rgba(75,85,99,0.4)';
+  }
+}
 
         this.state = {
             chatId: null,
