@@ -1,53 +1,57 @@
 /* ============================================
-   eSAMz Proxy API – Rate Limited Gateway
-   10 req/min per IP + threadId
+   eSAMz Proxy API – SaaS Secure Gateway
    ============================================ */
 
 const RATE_LIMIT = 5;
 const WINDOW_MS = 60 * 1000;
 
-// In-memory rate store
+// sessionId -> { count, reset }
 const rateStore = new Map();
 
-function rateKey(ip, threadId) {
-  return `${ip}|${threadId || 'default'}`;
+function rateKey(sessionId, ip) {
+  return sessionId || ip;
 }
 
-function isRateLimited(ip, threadId) {
-  const key = rateKey(ip, threadId);
+function checkRateLimit(key) {
   const now = Date.now();
-
-  if (!rateStore.has(key)) {
-    rateStore.set(key, { count: 1, start: now });
-    return false;
-  }
-
   const entry = rateStore.get(key);
 
-  if (now - entry.start > WINDOW_MS) {
-    // Reset window
-    rateStore.set(key, { count: 1, start: now });
-    return false;
-  }
-
-  if (entry.count >= RATE_LIMIT) {
+  if (!entry || now > entry.reset) {
+    rateStore.set(key, {
+      count: 1,
+      reset: now + WINDOW_MS
+    });
     return true;
   }
 
+  if (entry.count >= RATE_LIMIT) return false;
+
   entry.count++;
-  return false;
+  return true;
 }
 
 export default async function handler(req, res) {
+  /* METHOD */
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  /* CORS */
+  const origin = process.env.ESAMZ_ORIGIN;
+  if (req.headers.origin !== origin) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+
+  /* CONFIG */
   if (!process.env.ESAMZ_BACKEND_KEY) {
     return res.status(500).json({ error: 'Server misconfigured' });
   }
 
-  // Read body
+  /* BODY */
   let body = '';
   for await (const chunk of req) body += chunk;
 
@@ -58,16 +62,28 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid JSON' });
   }
 
-  const threadId = data.threadId || 'default';
+  /* INPUT SANITIZATION */
+  const payload = {
+    message: typeof data.message === 'string' ? data.message : '',
+    sessionId: typeof data.sessionId === 'string' ? data.sessionId : undefined,
+    enableVoice: data.enableVoice === true,
+    voiceLanguage: typeof data.voiceLanguage === 'string' ? data.voiceLanguage : undefined,
+    voiceSpeaker: typeof data.voiceSpeaker === 'string' ? data.voiceSpeaker : undefined
+  };
 
-  // Get user IP (Vercel-safe)
+  if (!payload.message.trim()) {
+    return res.status(400).json({ error: 'Message required' });
+  }
+
+  /* IP */
   const ip =
     req.headers['x-forwarded-for']?.split(',')[0] ||
     req.socket?.remoteAddress ||
     'unknown';
 
-  // Rate limit check
-  if (isRateLimited(ip, threadId)) {
+  /* RATE LIMIT */
+  const key = rateKey(payload.sessionId, ip);
+  if (!checkRateLimit(key)) {
     return res.status(429).json({
       error: 'Rate limit exceeded',
       limit: RATE_LIMIT,
@@ -75,22 +91,20 @@ export default async function handler(req, res) {
     });
   }
 
+  /* FORWARD */
   try {
-    const response = await fetch('https://esamz.site/api/chat', {
+    const upstream = await fetch(`${origin}/api/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-
-        // 🔒 INTERNAL KEY (SERVER ONLY)
         'x-esamz-key': process.env.ESAMZ_BACKEND_KEY
       },
-      body: JSON.stringify(data)
+      body: JSON.stringify(payload)
     });
 
-    const text = await response.text();
-    res.status(response.status).send(text);
-  } catch (e) {
-    res.status(500).json({ error: 'Proxy failed' });
+    const text = await upstream.text();
+    res.status(upstream.status).send(text);
+  } catch {
+    res.status(502).json({ error: 'Upstream unavailable' });
   }
 }
-
