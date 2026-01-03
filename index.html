@@ -1491,7 +1491,20 @@
     </dialog>
 
     <script>
-class App {
+class App { getSessionId() {
+    return localStorage.getItem('esamz_session_id');
+}
+
+setSessionId(id) {
+    if (id) {
+        localStorage.setItem('esamz_session_id', id);
+    }
+}
+
+clearSessionId() {
+    localStorage.removeItem('esamz_session_id');
+}
+
     constructor() {
         this.dom = {
             chat: document.getElementById('chatContainer'),
@@ -1855,24 +1868,29 @@ class App {
         const thinkingId = this.addThinking();
 
         try {
-            const res = await fetch('/api/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: text,
-                    threadId: this.state.threadId,
-                    mode: 'default',
-                    enableVoice: this.state.voiceEnabled,
-                    voiceLanguage: this.state.voiceLanguage,
-                    voiceSpeaker: this.state.voiceSpeaker
-                })
-            });
+const res = await fetch('/api/proxy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        message: text,
+        sessionId: this.getSessionId(),
+        enableVoice: this.state.voiceEnabled,
+        voiceLanguage: this.state.voiceLanguage,
+        voiceSpeaker: this.state.voiceSpeaker
+    })
+});
+
             
             if (!res.ok) throw new Error('Server error');
             
             const data = await res.json();
             this.removeThinking(thinkingId);
-            const reply = data.reply || data.message || 'No response';
+           if (data.sessionId) {
+    this.setSessionId(data.sessionId);
+}
+
+const reply = data.reply || data.message || 'No response';
+
             this.addMessage(reply, 'ai', true);
             this.appendToHistory('ai', reply);
             
@@ -2192,18 +2210,18 @@ class App {
         this.state.messageCount++;
 
         try {
-            const res = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: text,
-                    threadId: this.state.threadId,
-                    mode: 'default',
-                    enableVoice: true,
-                    voiceLanguage: this.state.voiceLanguage,
-                    voiceSpeaker: this.state.voiceSpeaker
-                })
-            });
+         const res = await fetch('/api/proxy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        message: text,
+        sessionId: this.getSessionId(),
+        enableVoice: true,
+        voiceLanguage: this.state.voiceLanguage,
+        voiceSpeaker: this.state.voiceSpeaker
+    })
+});
+
             
             if (!res.ok) throw new Error('Server error');
             
@@ -2316,7 +2334,7 @@ class App {
             const thinkingId = this.addThinking();
             
             try {
-                const res = await fetch('/api/chat', {
+                const res = await fetch('/api/proxy', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -2530,6 +2548,7 @@ class App {
     }
 
     newChat() {
+        this.clearSessionId();
         this.state.chatId = null;
         this.state.messageCount = 0;
         this.state.files = [];
