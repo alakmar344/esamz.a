@@ -1855,7 +1855,7 @@ class App {
         const thinkingId = this.addThinking();
 
         try {
-            const res = await fetch('/api/chat', {
+            const res = await fetch('/api/proxy', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
