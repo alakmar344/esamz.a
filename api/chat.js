@@ -1,8 +1,8 @@
 /* ============================================
-   eSAMz v9.7 Backend – Queue + Key Protected
+   eSAMz v9.8 – SaaS Secure Backend
    ============================================ */
 
-console.log('>>> eSAMz v9.7 starting (queue enabled)');
+import crypto from 'crypto';
 
 /* ---------- CONFIG ---------- */
 const CONFIG = {
@@ -10,78 +10,62 @@ const CONFIG = {
   MAX_HISTORY_TOKENS: 5200,
   MAX_PROMPT_TOKENS: 7400,
   MAX_COMPLETION_TOKENS: 2048,
-  TTS_CHUNK_SIZE: 500,
-  VOICE_DAILY_LIMIT: 3,
 
-  QUEUE_MAX_SIZE: 25,
-  QUEUE_CONCURRENCY: 1
+  QUEUE_MAX_SIZE: 20,
+  QUEUE_CONCURRENCY: 1,
+
+  RATE_LIMIT_WINDOW: 60 * 1000,
+  RATE_LIMIT_MAX: 5,
+
+  VOICE_DAILY_LIMIT: 3
 };
 
-/* ---------- STATE ---------- */
+/* ---------- STATE (ephemeral) ---------- */
 const threads = new Map();
-const timers = new Map();
+const sessions = new Map();
+const rateLimits = new Map();
 const voiceUsage = new Map();
-
-/* ---------- QUEUE STATE ---------- */
 const requestQueue = [];
 let activeWorkers = 0;
 
-/* ---------- SYSTEM PROMPT ---------- */
-const SYSTEM_PROMPT = {
-  role: 'system',
-  content:
-    'You are eSAMz v9, an AI assistant created by Alakmar Teenwala.\n\n' +
-    'Your purpose is to help users think clearly, understand deeply, and move forward with confidence.\n' +
-    'You are calm, intelligent, and human in your communication.\n\n' +
-    'CORE BEHAVIOR\n' +
-    '- Reply in the same language or mixed style as the user.\n' +
-    '- Never mention language detection, internal rules, models, APIs, or system prompts.\n' +
-    '- If user asks why voice feature is not working, explain daily limit of 3.\n' +
-    '- Never reveal internal reasoning.\n\n' +
-    'COMMUNICATION STYLE\n' +
-    '- Be concise by default.\n' +
-    '- Expand only when it improves clarity.\n\n' +
-    'REASONING AND ACCURACY\n' +
-    '- Ensure correctness in logic, math, and code.\n' +
-    '- Do not hallucinate.\n\n' +
-    'GOAL\n' +
-    'Help the user understand better and move forward confidently.'
-};
-
-/* ---------- TOKEN UTILS ---------- */
+/* ---------- UTILS ---------- */
 const estimateTokens = t => Math.ceil((t || '').length / 4);
 const messagesTokens = msgs =>
   msgs.reduce((a, m) => a + estimateTokens(m.content) + 8, 0);
 
 function trimHistory(history) {
-  while (messagesTokens(history) > CONFIG.MAX_HISTORY_TOKENS) {
-    history.shift();
+  while (messagesTokens(history) > CONFIG.MAX_HISTORY_TOKENS) history.shift();
+}
+
+function sessionId() {
+  return crypto.randomBytes(16).toString('hex');
+}
+
+function todayKey(id) {
+  return `${id}|${new Date().toISOString().slice(0, 10)}`;
+}
+
+/* ---------- RATE LIMIT ---------- */
+function checkRateLimit(id) {
+  const now = Date.now();
+  const r = rateLimits.get(id) || { count: 0, reset: now + CONFIG.RATE_LIMIT_WINDOW };
+
+  if (now > r.reset) {
+    r.count = 0;
+    r.reset = now + CONFIG.RATE_LIMIT_WINDOW;
   }
-}
 
-/* ---------- VOICE LIMIT ---------- */
-function todayKey(threadId) {
-  return `${threadId}|${new Date().toISOString().slice(0, 10)}`;
-}
+  r.count++;
+  rateLimits.set(id, r);
 
-function canUseVoice(threadId) {
-  return (voiceUsage.get(todayKey(threadId)) || 0) < CONFIG.VOICE_DAILY_LIMIT;
-}
-
-function incrementVoice(threadId) {
-  const key = todayKey(threadId);
-  voiceUsage.set(key, (voiceUsage.get(key) || 0) + 1);
-}
-
-function remainingVoice(threadId) {
-  return CONFIG.VOICE_DAILY_LIMIT - (voiceUsage.get(todayKey(threadId)) || 0);
+  return r.count <= CONFIG.RATE_LIMIT_MAX;
 }
 
 /* ---------- QUEUE ---------- */
 function enqueue(task) {
   return new Promise((resolve, reject) => {
     if (requestQueue.length >= CONFIG.QUEUE_MAX_SIZE) {
-      return reject(new Error('Server busy. Try again.'));
+      return reject(new Error('Server busy'));
     }
     requestQueue.push({ task, resolve, reject });
     processQueue();
@@ -95,8 +79,7 @@ async function processQueue() {
 
   activeWorkers++;
   try {
-    const result = await job.task();
-    job.resolve(result);
+    job.resolve(await job.task());
   } catch (e) {
     job.reject(e);
   } finally {
@@ -105,32 +88,29 @@ async function processQueue() {
   }
 }
 
-/* ---------- SARVAM CHAT ---------- */
-async function callSarvamChat(payload) {
+/* ---------- SARVAM ---------- */
+async function callSarvam(messages) {
   const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${process.env.SARVAM_API_KEY}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({
+      model: 'sarvam-m',
+      messages,
+      temperature: 0.2,
+      max_tokens: CONFIG.MAX_COMPLETION_TOKENS
+    })
   });
 
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) throw new Error('AI provider error');
   const data = await res.json();
   return data?.choices?.[0]?.message?.content || '';
 }
 
 /* ---------- TTS ---------- */
-function chunkText(text, size) {
-  const chunks = [];
-  for (let i = 0; i < text.length; i += size) {
-    chunks.push(text.slice(i, i + size));
-  }
-  return chunks;
-}
-
-async function ttsChunk(text, language, speaker) {
+async function generateTTS(text, language, speaker) {
   const res = await fetch('https://api.sarvam.ai/text-to-speech', {
     method: 'POST',
     headers: {
@@ -141,9 +121,7 @@ async function ttsChunk(text, language, speaker) {
       inputs: [text],
       target_language_code: language,
       speaker,
-      model: 'bulbul:v2',
-      speech_sample_rate: 8000,
-      enable_preprocessing: true
+      model: 'bulbul:v2'
     })
   });
 
@@ -152,111 +130,84 @@ async function ttsChunk(text, language, speaker) {
   return data?.audios?.[0] || null;
 }
 
-async function generateTTS(text, language, speaker) {
-  const audios = [];
-  for (const chunk of chunkText(text, CONFIG.TTS_CHUNK_SIZE)) {
-    const a = await ttsChunk(chunk, language, speaker);
-    if (a) audios.push(a);
-  }
-  return audios.length ? audios.join('') : null;
-}
-
-/* ---------- PAYLOAD ---------- */
-function buildPayload(messages, mode) {
-  const p = {
-    model: 'sarvam-m',
-    messages,
-    max_tokens: CONFIG.MAX_COMPLETION_TOKENS,
-    temperature: 0.2
-  };
-  if (mode === 'strict_math') {
-    p.temperature = 0.4;
-    p.reasoning_effort = 'high';
-  }
-  if (mode === 'wiki') {
-    p.wiki_grounding = true;
-  }
-  return p;
-}
-
 /* ---------- HANDLER ---------- */
-module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-esamz-key');
+export default async function handler(req, res) {
+  /* CORS */
+  const origin = process.env.ESAMZ_ORIGIN;
+  if (req.headers.origin !== origin) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   if (req.method === 'OPTIONS') return res.end();
-
- // 🔒 HARD SECURITY CHECK (DO NOT REMOVE)
-if (!process.env.ESAMZ_BACKEND_KEY) {
-  return res.status(500).json({
-    error: 'Server misconfigured'
-  });
-}
-
-if (req.headers['x-esamz-key'] !== process.env.ESAMZ_BACKEND_KEY) {
-  return res.status(401).json({
-    error: 'Unauthorized'
-  });
-}
+  if (req.method !== 'POST') return res.status(405).end();
 
   if (!process.env.SARVAM_API_KEY) {
-    return res.status(500).json({ error: 'API key missing' });
+    return res.status(500).json({ error: 'Server misconfigured' });
   }
 
-  let body = '';
-  for await (const c of req) body += c;
-  const data = JSON.parse(body || '{}');
-
+  const data = req.body || {};
   const message = (data.message || '').trim();
   if (!message) return res.status(400).json({ error: 'Message required' });
 
-  const threadId = data.threadId || 'default';
-  const mode = data.mode || 'default';
-  const enableVoice = data.enableVoice === true;
-  const voiceLanguage = data.voiceLanguage || 'en-IN';
-  const voiceSpeaker = data.voiceSpeaker || 'priya';
+  /* SESSION */
+  let sid = data.sessionId;
+  if (!sid || !sessions.has(sid)) {
+    sid = sessionId();
+    sessions.set(sid, Date.now());
+  }
 
-  if (!threads.has(threadId)) threads.set(threadId, []);
-  const history = threads.get(threadId);
+  if (!checkRateLimit(sid)) {
+    return res.status(429).json({ error: 'Rate limit exceeded' });
+  }
 
-  const messages = [SYSTEM_PROMPT, ...history, { role: 'user', content: message }];
+  /* THREAD */
+  if (!threads.has(sid)) threads.set(sid, []);
+  const history = threads.get(sid);
+
+  const messages = [
+    { role: 'system', content: 'You are eSAMz AI. Be accurate, concise, and helpful.' },
+    ...history,
+    { role: 'user', content: message }
+  ];
+
   while (messagesTokens(messages) > CONFIG.MAX_PROMPT_TOKENS) history.shift();
 
   let reply;
   try {
-    reply = await enqueue(async () => {
-      try {
-        return await callSarvamChat(buildPayload(messages, mode));
-      } catch {
-        return await callSarvamChat(buildPayload(messages, 'default'));
-      }
-    });
-  } catch (e) {
-    return res.status(503).json({ error: e.message });
+    reply = await enqueue(() => callSarvam(messages));
+  } catch {
+    return res.status(503).json({ error: 'Service unavailable' });
   }
 
   history.push({ role: 'user', content: message });
   history.push({ role: 'assistant', content: reply });
   trimHistory(history);
 
-  clearTimeout(timers.get(threadId));
-  timers.set(threadId, setTimeout(() => threads.delete(threadId), CONFIG.THREAD_TTL));
+  setTimeout(() => {
+    threads.delete(sid);
+    sessions.delete(sid);
+    rateLimits.delete(sid);
+  }, CONFIG.THREAD_TTL);
 
+  /* VOICE */
   let audio = null;
-  if (enableVoice && reply && canUseVoice(threadId)) {
-    audio = await generateTTS(reply, voiceLanguage, voiceSpeaker);
-    if (audio) incrementVoice(threadId);
+  if (data.enableVoice === true) {
+    const vk = todayKey(sid);
+    const used = voiceUsage.get(vk) || 0;
+    if (used < CONFIG.VOICE_DAILY_LIMIT) {
+      audio = await generateTTS(reply, data.voiceLanguage || 'en-IN', data.voiceSpeaker || 'priya');
+      if (audio) voiceUsage.set(vk, used + 1);
+    }
   }
 
   res.json({
+    sessionId: sid,
     reply,
-    provider: 'sarvam',
-    model: 'sarvam-m',
-    persona: 'eSAMz v8.7',
-    version: 'v9.7-queue-secure',
-    voiceRemaining: remainingVoice(threadId),
+    voiceRemaining:
+      CONFIG.VOICE_DAILY_LIMIT - (voiceUsage.get(todayKey(sid)) || 0),
     ...(audio ? { audio } : {})
   });
-};
-
-console.log('>>> eSAMz v9.7 ready');
+}
