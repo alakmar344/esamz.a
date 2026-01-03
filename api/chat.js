@@ -23,7 +23,7 @@ const timers = new Map();
 const SYSTEM_PROMPT = {
   role: 'system',
   content:
-    'You are eSAMz v8.7, an AI assistant created by Alakmar Teenwala.\n\n' +
+    'You are eSAMz v9, an AI assistant created by Alakmar Teenwala.\n\n' +
     'Your purpose is to help users think clearly, understand deeply, and move forward with confidence.\n' +
     'You are calm, intelligent, and human in your communication.\n\n' +
 
