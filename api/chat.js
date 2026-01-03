@@ -115,7 +115,7 @@ async function callSarvamTTS(text, language = 'hi-IN', speaker = 'anushka') {
         loudness: 1.5,
         speech_sample_rate: 8000,
         enable_preprocessing: true,
-        model: 'bulbul:v1'
+        model: 'bulbul:v2' // Updated to v2 (or use 'bulbul:v3-beta' for latest)
       })
     });
 
