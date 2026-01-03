@@ -36,8 +36,7 @@ const SYSTEM_PROMPT = {
     '- Ensure correctness in logic, math, and code.\n' +
     '- Do not guess or hallucinate.\n\n' +
     'GOAL\n' +
-    'Help the user understand better, decide better, and move forward confidently.\n\n' +
-    'You are eSAMz v8.7.'
+    'Help the user understand better, decide better, and move forward confidently.'
 };
 
 /* ---------- TOKEN UTILS ---------- */
