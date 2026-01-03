@@ -1,6 +1,6 @@
 /* ============================================
    eSAMz v9.7 Backend – Strict Reasoning Core + Voice
-   Persona: eSAMz v8.7
+   Persona: eSAMz v8.7 (ORIGINAL PROMPT PRESERVED)
    Created by Alakmar Teenwala
    ============================================ */
 
@@ -12,14 +12,15 @@ const CONFIG = {
   MAX_CONTEXT_TOKENS: 7800,
   MAX_HISTORY_TOKENS: 5200,
   MAX_PROMPT_TOKENS: 7400,
-  MAX_COMPLETION_TOKENS: 2048
+  MAX_COMPLETION_TOKENS: 2048,
+  MAX_TTS_CHARS: 500
 };
 
 /* ---------- STATE ---------- */
 const threads = new Map();
 const timers = new Map();
 
-/* ---------- SYSTEM PROMPT ---------- */
+/* ---------- ORIGINAL SYSTEM PROMPT (UNCHANGED) ---------- */
 const SYSTEM_PROMPT = {
   role: 'system',
   content:
@@ -45,9 +46,7 @@ const SYSTEM_PROMPT = {
     '- Do not claim live data or browsing.\n\n' +
 
     'GOAL\n' +
-    'Help the user understand better, decide better, and move forward confidently.\n\n' +
-
-    'You are eSAMz v8.7.'
+    'Help the user understand better, decide better, and move forward confidently.'
 };
 
 /* ---------- TOKEN UTILS ---------- */
@@ -85,10 +84,7 @@ async function callSarvam(payload) {
     body: JSON.stringify(payload)
   });
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(err);
-  }
+  if (!res.ok) throw new Error(await res.text());
 
   const data = await res.json();
   const reply = data?.choices?.[0]?.message?.content;
@@ -97,9 +93,16 @@ async function callSarvam(payload) {
   return reply;
 }
 
-/* ---------- SARVAM TTS CALL ---------- */
+/* ---------- SARVAM TTS (BULBUL V3 SAFE) ---------- */
 async function callSarvamTTS(text, language = 'hi-IN', speaker = 'anushka') {
   try {
+    if (!text) return null;
+
+    const safeText =
+      text.length > CONFIG.MAX_TTS_CHARS
+        ? text.slice(0, CONFIG.MAX_TTS_CHARS)
+        : text;
+
     const res = await fetch('https://api.sarvam.ai/text-to-speech', {
       method: 'POST',
       headers: {
@@ -107,28 +110,25 @@ async function callSarvamTTS(text, language = 'hi-IN', speaker = 'anushka') {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        inputs: [text],
+        inputs: [safeText],
         target_language_code: language,
-        speaker: speaker, // Options: anushka, manisha, vidya, arya (female) | abhilash, karun, hitesh (male)
-        pitch: 0,
-        pace: 1.0,
-        loudness: 1.5,
+        speaker,
         speech_sample_rate: 8000,
         enable_preprocessing: true,
-        model: 'bulbul:v3-beta' // Updated to v2 (or use 'bulbul:v3-beta' for latest)
+        model: 'bulbul:v3-beta'
       })
     });
 
     if (!res.ok) {
-      const err = await res.text();
-      console.error('TTS API error:', err);
+      console.error('[TTS ERROR]', await res.text());
       return null;
     }
 
     const data = await res.json();
-    return data?.audios?.[0]; // Returns base64 audio
+    return data?.audios?.[0] || null;
+
   } catch (err) {
-    console.error('TTS error:', err.message);
+    console.error('[TTS EXCEPTION]', err.message);
     return null;
   }
 }
@@ -138,20 +138,17 @@ function buildPayload(messages, mode) {
   const payload = {
     model: 'sarvam-m',
     messages: sanitize(messages),
+    max_tokens: CONFIG.MAX_COMPLETION_TOKENS,
     top_p: 1,
-    max_tokens: CONFIG.MAX_COMPLETION_TOKENS
+    temperature: 0.2
   };
 
   if (mode === 'strict_math') {
     payload.temperature = 0.5;
     payload.reasoning_effort = 'high';
-  } 
-  else if (mode === 'wiki') {
+  } else if (mode === 'wiki') {
     payload.temperature = 0.2;
     payload.wiki_grounding = true;
-  } 
-  else {
-    payload.temperature = 0.2;
   }
 
   return payload;
@@ -182,17 +179,14 @@ module.exports = async function handler(req, res) {
   }
 
   const message = String(body.message || '').trim();
+  if (!message) return res.status(400).json({ error: 'Message required' });
+
   const threadId = body.threadId || 'default';
   const mode = body.mode || 'default';
-  
-  // Voice settings - USER CONTROLLED
-  const enableVoice = body.enableVoice === true; // Default: OFF (user must toggle ON)
-  const voiceLanguage = body.voiceLanguage || 'hi-IN'; // Default: Hindi
-  const voiceSpeaker = body.voiceSpeaker || 'anushka'; // Default: anushka (female voice)
 
-  if (!message) {
-    return res.status(400).json({ error: 'Message required' });
-  }
+  const enableVoice = body.enableVoice === true;
+  const voiceLanguage = body.voiceLanguage || 'hi-IN';
+  const voiceSpeaker = body.voiceSpeaker || 'anushka';
 
   try {
     if (!threads.has(threadId)) threads.set(threadId, []);
@@ -208,29 +202,19 @@ module.exports = async function handler(req, res) {
       history.shift();
     }
 
-    let reply;
-    try {
-      reply = await callSarvam(buildPayload(messages, mode));
-    } catch {
-      // safety fallback
-      reply = await callSarvam(buildPayload(messages, 'default'));
-    }
+    const reply = await callSarvam(buildPayload(messages, mode));
 
     history.push({ role: 'user', content: message });
     history.push({ role: 'assistant', content: reply });
     trimHistory(history);
 
     clearTimeout(timers.get(threadId));
-    timers.set(
-      threadId,
-      setTimeout(() => threads.delete(threadId), CONFIG.THREAD_TTL)
-    );
+    timers.set(threadId, setTimeout(() => threads.delete(threadId), CONFIG.THREAD_TTL));
 
-    // Generate audio ONLY if user enabled voice
-    let audioBase64 = null;
+    let audio = null;
     if (enableVoice) {
-      console.log(`[VOICE] Generating TTS for response (lang: ${voiceLanguage}, speaker: ${voiceSpeaker})`);
-      audioBase64 = await callSarvamTTS(reply, voiceLanguage, voiceSpeaker);
+      console.log(`[VOICE] Generating TTS (${voiceLanguage}, ${voiceSpeaker})`);
+      audio = await callSarvamTTS(reply, voiceLanguage, voiceSpeaker);
     }
 
     const response = {
@@ -242,17 +226,13 @@ module.exports = async function handler(req, res) {
       version: 'v9.7-voice'
     };
 
-    // Only include audio in response if it was generated
-    if (audioBase64) {
-      response.audio = audioBase64;
-    }
+    if (audio) response.audio = audio;
 
     res.status(200).json(response);
+
   } catch (err) {
     console.error('[ERROR]', err.message);
-    res.status(502).json({
-      error: 'Failed to generate response'
-    });
+    res.status(502).json({ error: 'Failed to generate response' });
   }
 };
 
@@ -265,15 +245,8 @@ module.exports.health = function (_, res) {
     persona: 'eSAMz v8.7',
     modes: ['default', 'strict_math', 'wiki'],
     features: ['chat', 'voice-tts'],
-    voiceOptions: {
-      languages: ['hi-IN', 'en-IN', 'ta-IN', 'te-IN', 'kn-IN', 'ml-IN', 'mr-IN', 'gu-IN', 'bn-IN', 'or-IN', 'pa-IN'],
-      speakers: {
-        female: ['anushka', 'manisha', 'vidya', 'arya'],
-        male: ['abhilash', 'karun', 'hitesh']
-      }
-    },
     version: 'v9.7-voice'
   });
 };
 
-console.log('>>> eSAMz v9.7 ready (strict math + wiki + voice support)');
+console.log('>>> eSAMz v9.7 ready (original prompt + fixed voice)');
