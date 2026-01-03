@@ -1576,17 +1576,15 @@ class App {
     }
 
     setupVoicePermissions() {
-        // Check if permissions API is available
         if ('permissions' in navigator) {
             navigator.permissions.query({ name: 'microphone' })
                 .then(result => {
                     this.state.micPermission = result.state;
-                    console.log('Microphone permission:', result.state);
+                    this.updatePermissionUI('microphone', result.state);
                 })
                 .catch(err => console.log('Permission query failed:', err));
         }
         
-        // Check if audio context is supported
         if (window.AudioContext || window.webkitAudioContext) {
             this.state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
         }
@@ -1594,7 +1592,6 @@ class App {
 
     async requestMicrophonePermission() {
         try {
-            // Request microphone permission
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 audio: {
                     echoCancellation: true,
@@ -1603,60 +1600,23 @@ class App {
                 } 
             });
             
-            // Stop the stream immediately - we just needed permission
             stream.getTracks().forEach(track => track.stop());
             
             this.state.micPermission = 'granted';
-            console.log('Microphone permission granted');
-            
-            // Update UI to show permission granted
-            this.updatePermissionUI('granted');
-            
+            this.updatePermissionUI('microphone', 'granted');
             return true;
         } catch (error) {
-            console.error('Microphone permission denied:', error);
             this.state.micPermission = 'denied';
+            this.updatePermissionUI('microphone', 'denied');
             
-            // Update UI to show permission denied
-            this.updatePermissionUI('denied');
-            
-            // Show user-friendly message
             if (error.name === 'NotAllowedError') {
-                alert('Microphone access was denied. Please allow microphone access in your browser settings to use voice features.');
+                alert('Microphone access was denied. Please allow microphone access in your browser settings.');
             } else if (error.name === 'NotFoundError') {
-                alert('No microphone found. Please connect a microphone to use voice features.');
+                alert('No microphone found. Please connect a microphone.');
             } else {
-                alert('Unable to access microphone. Please check your device settings.');
+                alert('Unable to access microphone. Check device settings.');
             }
             
-            return false;
-        }
-    }
-
-    async requestAudioPermission() {
-        try {
-            // Request audio output permission if available
-            if ('permissions' in navigator) {
-                const result = await navigator.permissions.query({ name: 'speaker-selection' });
-                this.state.audioPermission = result.state;
-                console.log('Audio permission:', result.state);
-                this.updatePermissionUI('audio', result.state);
-                return result.state === 'granted';
-            }
-            
-            // Fallback: try to play a silent audio to trigger permission
-            const audio = new Audio();
-            audio.volume = 0;
-            await audio.play();
-            audio.pause();
-            
-            this.state.audioPermission = 'granted';
-            this.updatePermissionUI('audio', 'granted');
-            return true;
-        } catch (error) {
-            console.error('Audio permission error:', error);
-            this.state.audioPermission = 'denied';
-            this.updatePermissionUI('audio', 'denied');
             return false;
         }
     }
@@ -1685,22 +1645,6 @@ class App {
         }
     }
 
-    async handleVoicePermissionRequest() {
-        // Request both microphone and audio permissions
-        const micGranted = await this.requestMicrophonePermission();
-        const audioGranted = await this.requestAudioPermission();
-        
-        if (micGranted) {
-            // Initialize voice recognition
-            this.initializeVoiceRecognition();
-            
-            // Enter voice mode
-            this.enterVoiceMode();
-        } else {
-            console.log('Voice features disabled due to permission denial');
-        }
-    }
-
     loadVoiceSettings() {
         const saved = localStorage.getItem('esamz_voice_settings');
         if (saved) {
@@ -1720,16 +1664,8 @@ class App {
         }));
     }
 
-    updateVoiceUI() {
-        if (this.state.micEnabled) {
-            this.dom.voiceMicToggle.classList.add('active');
-        } else {
-            this.dom.voiceMicToggle.classList.remove('active');
-        }
-    }
-
     setupEvents() {
-        // Voice mode controls
+        // Voice permission and mode controls
         this.dom.voiceOrb.addEventListener('click', () => {
             if (this.state.isSpeakingVoice) {
                 this.stopAudio();
@@ -1756,7 +1692,7 @@ class App {
             this.saveVoiceSettings();
         });
 
-        // Welcome screen events
+        // Welcome screen
         document.getElementById('btnWelcomeSend').addEventListener('click', () => this.handleWelcomeSend());
         document.getElementById('btnWelcomeUpload').addEventListener('click', () => document.getElementById('fileInput').click());
         document.getElementById('btnWelcomeVoice').addEventListener('click', () => this.handleVoicePermissionRequest());
@@ -1773,7 +1709,7 @@ class App {
             this.updateCharCounter(this.dom.welcomeInput, this.dom.welcomeCharCounter);
         });
 
-        // Main chat events
+        // Main chat
         document.getElementById('btnSend').addEventListener('click', () => this.handleSend());
         
         this.dom.input.addEventListener('keydown', e => {
@@ -1788,13 +1724,13 @@ class App {
             this.updateCharCounter(this.dom.input, this.dom.charCounter);
         });
 
-        // Sidebar events
+        // Sidebar
         document.getElementById('sidebarToggle').addEventListener('click', () => this.toggleSidebarCollapse());
         document.getElementById('openSidebar').addEventListener('click', () => this.toggleSidebar(true));
         document.getElementById('closeSidebar').addEventListener('click', () => this.toggleSidebar(false));
         this.dom.overlay.addEventListener('click', () => this.toggleSidebar(false));
 
-        // Utility events
+        // Utilities
         document.getElementById('btnNewChat').addEventListener('click', () => this.newChat());
         document.getElementById('btnClearChat').addEventListener('click', () => this.clearChat());
         document.getElementById('btnClearCache').addEventListener('click', () => this.clearAllData());
@@ -1988,7 +1924,6 @@ class App {
             this.addMessage(reply, 'ai', true);
             this.appendToHistory('ai', reply);
             
-            // Play audio if available
             if (data.audio && this.state.voiceEnabled) {
                 this.playAudio(data.audio);
             }
@@ -2004,23 +1939,19 @@ class App {
 
     playAudio(base64Audio) {
         try {
-            // Stop any currently playing audio
             if (this.state.currentAudio) {
                 this.state.currentAudio.pause();
                 this.state.currentAudio = null;
             }
 
-            // Update UI for speaking
             this.state.isSpeakingVoice = true;
             if (this.state.voiceModeActive) {
                 this.dom.voiceOrb.className = 'voice-orb speaking';
             }
 
-            // Create and play new audio
             const audio = new Audio(`data:audio/wav;base64,${base64Audio}`);
             this.state.currentAudio = audio;
             
-            // Setup audio visualization
             if (this.state.voiceModeActive) {
                 this.setupAudioVisualization(audio);
             }
@@ -2035,12 +1966,10 @@ class App {
                 this.state.isSpeakingVoice = false;
                 this.stopVisualization();
                 
-                // Reset liquid to base level
                 if (this.state.voiceModeActive) {
                     this.dom.liquidLevel.style.height = '30%';
                 }
                 
-                // Auto-listen again if in voice mode and mic enabled
                 if (this.state.voiceModeActive && this.state.autoListen && this.state.micEnabled) {
                     setTimeout(() => {
                         this.startVoiceListening();
@@ -2084,18 +2013,15 @@ class App {
             
             this.state.analyser.getByteFrequencyData(dataArray);
             
-            // Calculate average volume
             const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
             const normalizedVolume = average / 255;
             
-            // Map volume to liquid height (30% to 85%)
             const minHeight = 30;
             const maxHeight = 85;
             const height = minHeight + (normalizedVolume * (maxHeight - minHeight));
             
             this.dom.liquidLevel.style.height = `${height}%`;
             
-            // Create bubbles on high volume
             if (normalizedVolume > 0.3 && Math.random() > 0.7) {
                 this.createBubble();
             }
@@ -2145,14 +2071,23 @@ class App {
         }
     }
 
-    // Voice Mode Functions
+    // Enhanced Voice Mode Functions
+    async handleVoicePermissionRequest() {
+        const micGranted = await this.requestMicrophonePermission();
+        const audioGranted = await this.requestAudioPermission();
+        
+        if (micGranted) {
+            this.initializeVoiceRecognition();
+            this.enterVoiceMode();
+        } else {
+            console.log('Voice features disabled due to permission denial');
+        }
+    }
+
     async enterVoiceMode() {
-        // Check permissions first
         if (this.state.micPermission !== 'granted') {
             const granted = await this.requestMicrophonePermission();
-            if (!granted) {
-                return; // Don't enter voice mode if permission denied
-            }
+            if (!granted) return;
         }
 
         if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -2167,12 +2102,10 @@ class App {
         this.dom.liquidLevel.style.height = '30%';
         this.updateVoiceUI();
         
-        // Initialize recognition if not already
         if (!this.state.recognition) {
             this.initializeVoiceRecognition();
         }
         
-        // Start listening automatically
         setTimeout(() => {
             this.startVoiceListening();
         }, 500);
@@ -2243,14 +2176,12 @@ class App {
         const animate = () => {
             if (!this.state.isListeningVoice) return;
             
-            // Simulate listening with random liquid movement
             const baseHeight = 50;
             const variation = 15;
             const height = baseHeight + Math.sin(Date.now() / 200) * variation + Math.random() * 10;
             
             this.dom.liquidLevel.style.height = `${height}%`;
             
-            // Random bubbles
             if (Math.random() > 0.8) {
                 this.createBubble();
             }
@@ -2297,7 +2228,9 @@ class App {
     async handleVoiceMessage(text) {
         if (!text.trim()) return;
 
-        // Ensure chat is visible
+        console.log('Voice message received:', text);
+
+        // Ensure chat is visible and initialized
         if (this.dom.welcome.style.display !== 'none') {
             this.dom.welcome.style.display = 'none';
             this.dom.chatInputContainer.style.display = 'block';
@@ -2310,6 +2243,8 @@ class App {
         this.addMessage(text, 'user');
         this.appendToHistory('user', text);
         this.state.messageCount++;
+
+        console.log('Sending voice message to API...');
 
         try {
             const res = await fetch('/api/chat', {
@@ -2325,18 +2260,26 @@ class App {
                 })
             });
             
-            if (!res.ok) throw new Error('Server error');
+            if (!res.ok) {
+                console.error('API response error:', res.status, res.statusText);
+                throw new Error(`Server error: ${res.status}`);
+            }
             
             const data = await res.json();
+            console.log('API response received:', data);
+            
             const reply = data.reply || data.message || 'No response';
             
+            // Add AI response to chat
             this.addMessage(reply, 'ai', true);
             this.appendToHistory('ai', reply);
             
             // Play audio response
             if (data.audio) {
+                console.log('Playing audio response...');
                 this.playAudio(data.audio);
             } else {
+                console.log('No audio in response, going back to listening');
                 // If no audio, go back to listening
                 if (this.state.voiceModeActive && this.state.autoListen) {
                     setTimeout(() => {
@@ -2345,7 +2288,9 @@ class App {
                 }
             }
         } catch (e) {
-            console.error('Voice message error:', e);
+            console.error('Voice message API error:', e);
+            
+            // Fallback response
             const reply = this.generateSmartResponse(text);
             this.addMessage(reply, 'ai', true);
             this.appendToHistory('ai', reply);
@@ -2362,10 +2307,18 @@ class App {
         this.checkStorageSize();
     }
 
+    updateVoiceUI() {
+        if (this.state.micEnabled) {
+            this.dom.voiceMicToggle.classList.add('active');
+        } else {
+            this.dom.voiceMicToggle.classList.remove('active');
+        }
+    }
+
     addMessage(text, sender, showRegenerate = false) {
         const div = document.createElement('div');
         div.className = `message ${sender}`;
-        const avatar = sender === 'user' ? 'U' : 'esamz';
+        const avatar = sender === 'user' ? 'U' : 'eS';
         const htmlContent = marked.parse(text);
         
         const regenerateBtn = showRegenerate ? '<button class="action-btn regenerate" onclick="app.regenerateResponse(this)">Regenerate</button>' : '';
@@ -2658,7 +2611,6 @@ class App {
         this.stopAudio();
         this.stopVoiceListening();
         
-        // Don't exit voice mode, just reset the UI
         if (this.state.voiceModeActive) {
             this.dom.liquidLevel.style.height = '30%';
             this.dom.voiceOrb.className = 'voice-orb';
