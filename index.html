@@ -1546,19 +1546,15 @@
                 <div class="voice-label">Voice</div>
                 <select class="voice-select" id="voiceSpeaker">
                     <optgroup label="Female Voices">
-                      <option value="priya">Priya</option>
-<option value="neha">Neha</option>
-<option value="kavya">Kavya</option>
-<option value="shreya">Shreya</option>
-<option value="pooja">Pooja</option>
-<option value="simran">Simran</option>
-<option value="aditya">Aditya</option>
-<option value="rahul">Rahul</option>
-<option value="rohan">Rohan</option>
-<option value="varun">Varun</option>
-<option value="amit">Amit</option>
-<option value="kabir">Kabir</option>
-
+                        <option value="anushka">Anushka (Female)</option>
+                        <option value="manisha">Manisha (Female)</option>
+                        <option value="vidya">Vidya (Female)</option>
+                        <option value="arya">Arya (Female)</option>
+                    </optgroup>
+                    <optgroup label="Male Voices">
+                        <option value="abhilash">Abhilash (Male)</option>
+                        <option value="karun">Karun (Male)</option>
+                        <option value="hitesh">Hitesh (Male)</option>
                     </optgroup>
                 </select>
             </div>
@@ -1694,7 +1690,7 @@ class App {
             sidebarCollapsed: false,
             voiceEnabled: false,
             voiceLanguage: 'en-IN',
-            voiceSpeaker: 'priya',
+            voiceSpeaker: 'anushka',
             currentAudio: null,
             threadId: `thread_${Date.now()}`,
             voiceModeActive: false,
@@ -1736,47 +1732,23 @@ class App {
     }
 
     loadVoiceSettings() {
-  const VALID = new Set([
-    'aditya','ritu','ashutosh','priya','neha','rahul','pooja','rohan',
-    'simran','kavya','amit','dev','ishita','shreya','ratan','varun',
-    'manan','sumit','roopa','kabir','aayan','shubh','advait',
-    'amelia','sophia'
-  ]);
-
-  try {
-    const raw = localStorage.getItem('esamz_voice_settings');
-    if (!raw) throw 0;
-
-    const data = JSON.parse(raw);
-    if (VALID.has(data.speaker)) {
-      this.state.voiceSpeaker = data.speaker;
-    } else {
-      this.state.voiceSpeaker = 'priya';
-      localStorage.setItem(
-        'esamz_voice_settings',
-        JSON.stringify({ speaker: 'priya' })
-      );
+        const saved = localStorage.getItem('esamz_voice_settings');
+        if (saved) {
+            try {
+                const settings = JSON.parse(saved);
+                this.state.voiceSpeaker = settings.speaker || 'anushka';
+                this.dom.voiceSpeaker.value = this.state.voiceSpeaker;
+            } catch (e) {
+                console.error('Failed to load voice settings:', e);
+            }
+        }
     }
-  } catch {
-    this.state.voiceSpeaker = 'priya';
-  }
 
-  this.dom.voiceSpeaker.value = this.state.voiceSpeaker;
-}
-async ensureMicPermission() {
-  if (!navigator.mediaDevices?.getUserMedia) {
-    alert('Microphone not supported');
-    return false;
-  }
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    stream.getTracks().forEach(t => t.stop());
-    return true;
-  } catch {
-    alert('Microphone permission denied');
-    return false;
-  }
-}
+    saveVoiceSettings() {
+        localStorage.setItem('esamz_voice_settings', JSON.stringify({
+            speaker: this.state.voiceSpeaker
+        }));
+    }
 
     updateVoiceUI() {
         // Update mic button state
