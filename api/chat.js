@@ -1,17 +1,17 @@
 /* ============================================
-   eSAMz v9.7 Backend – Strict Reasoning Core
-   Persona: eSAMz v8.7
+   eSAMz v9.8 Backend – Auto Reasoning Core
+   Persona: eSAMz v8.7 (UNCHANGED)
    Created by Alakmar Teenwala
    ============================================ */
 
-console.log('>>> eSAMz v9.7 starting');
+console.log('>>> eSAMz v9.8 starting');
 
 /* ---------- CONFIG ---------- */
 const CONFIG = {
   THREAD_TTL: 15 * 60 * 1000,
-  MAX_CONTEXT_TOKENS: 7800,
-  MAX_HISTORY_TOKENS: 5200,
-  MAX_PROMPT_TOKENS: 7400,
+  MAX_CONTEXT_TOKENS: 8000,
+  MAX_HISTORY_TOKENS: 5400,
+  MAX_PROMPT_TOKENS: 7600,
   MAX_COMPLETION_TOKENS: 2048
 };
 
@@ -19,7 +19,7 @@ const CONFIG = {
 const threads = new Map();
 const timers = new Map();
 
-/* ---------- SYSTEM PROMPT ---------- */
+/* ---------- SYSTEM PROMPT (DO NOT TOUCH) ---------- */
 const SYSTEM_PROMPT = {
   role: 'system',
   content:
@@ -35,7 +35,6 @@ const SYSTEM_PROMPT = {
     'COMMUNICATION STYLE\n' +
     '- Be concise by default.\n' +
     '- Expand only when depth improves understanding.\n\n' +
-
 
     'REASONING AND ACCURACY\n' +
     '- Ensure correctness in logic, math, and code.\n' +
@@ -74,6 +73,21 @@ function sanitize(messages) {
   }));
 }
 
+/* ---------- MODE AUTO-DETECT ---------- */
+function autoDetectMode(text) {
+  const lower = text.toLowerCase();
+
+  const mathLike =
+    /(\bsolve\b|\bcalculate\b|\bprove\b|\bderive\b|\bfind\b|\d+\s*[\+\-\*\/=]|\bmath\b)/.test(lower);
+
+  const factualLike =
+    /(\bwho\b|\bwhen\b|\bwhere\b|\bcapital\b|\bfounded\b|\bdefine\b|\bmeaning\b)/.test(lower);
+
+  if (mathLike) return 'strict_math';
+  if (factualLike) return 'wiki';
+  return 'default';
+}
+
 /* ---------- SARVAM CALL ---------- */
 async function callSarvam(payload) {
   const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
@@ -92,8 +106,8 @@ async function callSarvam(payload) {
 
   const data = await res.json();
   const reply = data?.choices?.[0]?.message?.content;
-  if (!reply) throw new Error('Empty response');
 
+  if (!reply) throw new Error('Empty response');
   return reply;
 }
 
@@ -109,12 +123,10 @@ function buildPayload(messages, mode) {
   if (mode === 'strict_math') {
     payload.temperature = 0.5;
     payload.reasoning_effort = 'high';
-  } 
-  else if (mode === 'wiki') {
+  } else if (mode === 'wiki') {
     payload.temperature = 0.2;
     payload.wiki_grounding = true;
-  } 
-  else {
+  } else {
     payload.temperature = 0.2;
   }
 
@@ -147,7 +159,7 @@ module.exports = async function handler(req, res) {
 
   const message = String(body.message || '').trim();
   const threadId = body.threadId || 'default';
-  const mode = body.mode || 'default';
+  let mode = body.mode || 'auto';
 
   if (!message) {
     return res.status(400).json({ error: 'Message required' });
@@ -157,21 +169,28 @@ module.exports = async function handler(req, res) {
     if (!threads.has(threadId)) threads.set(threadId, []);
     const history = threads.get(threadId);
 
+    if (mode === 'auto') {
+      mode = autoDetectMode(message);
+    }
+
+    while (
+      messagesTokens([SYSTEM_PROMPT, ...history, { role: 'user', content: message }]) >
+      CONFIG.MAX_PROMPT_TOKENS
+    ) {
+      history.shift();
+    }
+
     const messages = [
       SYSTEM_PROMPT,
       ...history,
       { role: 'user', content: message }
     ];
 
-    while (messagesTokens(messages) > CONFIG.MAX_PROMPT_TOKENS) {
-      history.shift();
-    }
-
     let reply;
     try {
       reply = await callSarvam(buildPayload(messages, mode));
-    } catch {
-      // safety fallback
+    } catch (e) {
+      console.warn('[SARVAM FAIL]', e.message);
       reply = await callSarvam(buildPayload(messages, 'default'));
     }
 
@@ -191,13 +210,11 @@ module.exports = async function handler(req, res) {
       model: 'sarvam-m',
       persona: 'eSAMz v8.7',
       mode,
-      version: 'v9.7'
+      version: 'v9.8'
     });
   } catch (err) {
     console.error('[ERROR]', err.message);
-    res.status(502).json({
-      error: 'Failed to generate response'
-    });
+    res.status(502).json({ error: 'Failed to generate response' });
   }
 };
 
@@ -208,9 +225,9 @@ module.exports.health = function (_, res) {
     provider: 'sarvam',
     model: 'sarvam-m',
     persona: 'eSAMz v8.7',
-    modes: ['default', 'strict_math', 'wiki'],
-    version: 'v9.7'
+    modes: ['auto', 'default', 'strict_math', 'wiki'],
+    version: 'v9.8'
   });
 };
 
-console.log('>>> eSAMz v9.7 ready (strict math + wiki safe)');
+console.log('>>> eSAMz v9.8 ready (auto reasoning + strict math + wiki)');
