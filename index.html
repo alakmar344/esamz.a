@@ -1541,7 +1541,9 @@ class App {
             autoListen: true,
             audioContext: null,
             analyser: null,
-            animationFrame: null
+            animationFrame: null,
+            micPermission: null,
+            audioPermission: null
         };
 
         this.storageKey = 'esamz_conversations_v8';
@@ -1554,6 +1556,7 @@ class App {
         this.loadVoiceSettings();
         this.setupEvents();
         this.setupDragDrop();
+        this.setupVoicePermissions();
         this.dom.welcomeInput.focus();
         
         window.addEventListener('resize', () => {
@@ -1570,6 +1573,132 @@ class App {
                 }
             }
         });
+    }
+
+    setupVoicePermissions() {
+        // Check if permissions API is available
+        if ('permissions' in navigator) {
+            navigator.permissions.query({ name: 'microphone' })
+                .then(result => {
+                    this.state.micPermission = result.state;
+                    console.log('Microphone permission:', result.state);
+                })
+                .catch(err => console.log('Permission query failed:', err));
+        }
+        
+        // Check if audio context is supported
+        if (window.AudioContext || window.webkitAudioContext) {
+            this.state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    }
+
+    async requestMicrophonePermission() {
+        try {
+            // Request microphone permission
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                } 
+            });
+            
+            // Stop the stream immediately - we just needed permission
+            stream.getTracks().forEach(track => track.stop());
+            
+            this.state.micPermission = 'granted';
+            console.log('Microphone permission granted');
+            
+            // Update UI to show permission granted
+            this.updatePermissionUI('granted');
+            
+            return true;
+        } catch (error) {
+            console.error('Microphone permission denied:', error);
+            this.state.micPermission = 'denied';
+            
+            // Update UI to show permission denied
+            this.updatePermissionUI('denied');
+            
+            // Show user-friendly message
+            if (error.name === 'NotAllowedError') {
+                alert('Microphone access was denied. Please allow microphone access in your browser settings to use voice features.');
+            } else if (error.name === 'NotFoundError') {
+                alert('No microphone found. Please connect a microphone to use voice features.');
+            } else {
+                alert('Unable to access microphone. Please check your device settings.');
+            }
+            
+            return false;
+        }
+    }
+
+    async requestAudioPermission() {
+        try {
+            // Request audio output permission if available
+            if ('permissions' in navigator) {
+                const result = await navigator.permissions.query({ name: 'speaker-selection' });
+                this.state.audioPermission = result.state;
+                console.log('Audio permission:', result.state);
+                this.updatePermissionUI('audio', result.state);
+                return result.state === 'granted';
+            }
+            
+            // Fallback: try to play a silent audio to trigger permission
+            const audio = new Audio();
+            audio.volume = 0;
+            await audio.play();
+            audio.pause();
+            
+            this.state.audioPermission = 'granted';
+            this.updatePermissionUI('audio', 'granted');
+            return true;
+        } catch (error) {
+            console.error('Audio permission error:', error);
+            this.state.audioPermission = 'denied';
+            this.updatePermissionUI('audio', 'denied');
+            return false;
+        }
+    }
+
+    updatePermissionUI(type, status) {
+        if (type === 'microphone') {
+            const micBtn = document.getElementById('btnVoice');
+            const welcomeMicBtn = document.getElementById('btnWelcomeVoice');
+            
+            if (status === 'granted') {
+                micBtn.style.color = '#10b981';
+                welcomeMicBtn.style.color = '#10b981';
+                micBtn.title = 'Voice input (permission granted)';
+                welcomeMicBtn.title = 'Voice input (permission granted)';
+            } else if (status === 'denied') {
+                micBtn.style.color = '#ef4444';
+                welcomeMicBtn.style.color = '#ef4444';
+                micBtn.title = 'Voice input (permission denied)';
+                welcomeMicBtn.title = 'Voice input (permission denied)';
+            } else {
+                micBtn.style.color = '#9ca3af';
+                welcomeMicBtn.style.color = '#9ca3af';
+                micBtn.title = 'Voice input (click to request permission)';
+                welcomeMicBtn.title = 'Voice input (click to request permission)';
+            }
+        }
+    }
+
+    async handleVoicePermissionRequest() {
+        // Request both microphone and audio permissions
+        const micGranted = await this.requestMicrophonePermission();
+        const audioGranted = await this.requestAudioPermission();
+        
+        if (micGranted) {
+            // Initialize voice recognition
+            this.initializeVoiceRecognition();
+            
+            // Enter voice mode
+            this.enterVoiceMode();
+        } else {
+            console.log('Voice features disabled due to permission denial');
+        }
     }
 
     loadVoiceSettings() {
@@ -1592,7 +1721,6 @@ class App {
     }
 
     updateVoiceUI() {
-        // Update mic button state
         if (this.state.micEnabled) {
             this.dom.voiceMicToggle.classList.add('active');
         } else {
@@ -1628,9 +1756,10 @@ class App {
             this.saveVoiceSettings();
         });
 
+        // Welcome screen events
         document.getElementById('btnWelcomeSend').addEventListener('click', () => this.handleWelcomeSend());
         document.getElementById('btnWelcomeUpload').addEventListener('click', () => document.getElementById('fileInput').click());
-        document.getElementById('btnWelcomeVoice').addEventListener('click', () => this.toggleVoice(true));
+        document.getElementById('btnWelcomeVoice').addEventListener('click', () => this.handleVoicePermissionRequest());
         
         this.dom.welcomeInput.addEventListener('keydown', e => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -1644,6 +1773,7 @@ class App {
             this.updateCharCounter(this.dom.welcomeInput, this.dom.welcomeCharCounter);
         });
 
+        // Main chat events
         document.getElementById('btnSend').addEventListener('click', () => this.handleSend());
         
         this.dom.input.addEventListener('keydown', e => {
@@ -1658,11 +1788,13 @@ class App {
             this.updateCharCounter(this.dom.input, this.dom.charCounter);
         });
 
+        // Sidebar events
         document.getElementById('sidebarToggle').addEventListener('click', () => this.toggleSidebarCollapse());
         document.getElementById('openSidebar').addEventListener('click', () => this.toggleSidebar(true));
         document.getElementById('closeSidebar').addEventListener('click', () => this.toggleSidebar(false));
         this.dom.overlay.addEventListener('click', () => this.toggleSidebar(false));
 
+        // Utility events
         document.getElementById('btnNewChat').addEventListener('click', () => this.newChat());
         document.getElementById('btnClearChat').addEventListener('click', () => this.clearChat());
         document.getElementById('btnClearCache').addEventListener('click', () => this.clearAllData());
@@ -1670,7 +1802,7 @@ class App {
         document.getElementById('btnUpload').addEventListener('click', () => document.getElementById('fileInput').click());
         document.getElementById('fileInput').addEventListener('change', e => this.handleFiles(e.target.files, false));
 
-        document.getElementById('btnVoice').addEventListener('click', () => this.toggleVoice(false));
+        document.getElementById('btnVoice').addEventListener('click', () => this.handleVoicePermissionRequest());
 
         document.getElementById('btnExportModal').addEventListener('click', () => this.dom.dialog.showModal());
         document.getElementById('closeDialog').addEventListener('click', () => this.dom.dialog.close());
@@ -2014,7 +2146,15 @@ class App {
     }
 
     // Voice Mode Functions
-    enterVoiceMode() {
+    async enterVoiceMode() {
+        // Check permissions first
+        if (this.state.micPermission !== 'granted') {
+            const granted = await this.requestMicrophonePermission();
+            if (!granted) {
+                return; // Don't enter voice mode if permission denied
+            }
+        }
+
         if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
             alert('Voice recognition not supported. Use Chrome, Edge, or Safari.');
             return;
@@ -2225,7 +2365,7 @@ class App {
     addMessage(text, sender, showRegenerate = false) {
         const div = document.createElement('div');
         div.className = `message ${sender}`;
-        const avatar = sender === 'user' ? 'U' : 'eS';
+        const avatar = sender === 'user' ? 'U' : 'esamz';
         const htmlContent = marked.parse(text);
         
         const regenerateBtn = showRegenerate ? '<button class="action-btn regenerate" onclick="app.regenerateResponse(this)">Regenerate</button>' : '';
@@ -2573,11 +2713,6 @@ class App {
         });
     }
 
-    toggleVoice(isWelcome) {
-        // Now just enters voice mode
-        this.enterVoiceMode();
-    }
-
     exportChat(type) {
         const messages = Array.from(document.querySelectorAll('.message')).filter(el => !el.id.startsWith('thinking'));
         
@@ -2701,6 +2836,7 @@ class App {
     }
 }
 
+// Initialize the app
 const app = new App();
     </script>
 </body>
