@@ -380,93 +380,174 @@
             padding: 40px;
         }
 
+        /* LIQUID ORB */
         .voice-orb {
-            width: 200px;
-            height: 200px;
-            margin: 0 auto 30px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(16, 185, 129, 0.3), transparent);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            width: 300px;
+            height: 300px;
+            margin: 0 auto;
             position: relative;
-            transition: all 0.3s ease;
+            cursor: pointer;
+            transition: transform 0.2s ease;
         }
 
-        .voice-orb::before {
+        .voice-orb:active {
+            transform: scale(0.95);
+        }
+
+        .orb-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            border-radius: 50%;
+            overflow: hidden;
+            background: linear-gradient(145deg, rgba(30, 30, 30, 0.8), rgba(10, 10, 10, 0.9));
+            box-shadow: 
+                inset 0 0 40px rgba(0, 0, 0, 0.5),
+                0 10px 40px rgba(0, 0, 0, 0.6);
+        }
+
+        .liquid {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 30%;
+            background: linear-gradient(180deg, 
+                rgba(16, 185, 129, 0.9) 0%,
+                rgba(16, 185, 129, 0.7) 50%,
+                rgba(16, 185, 129, 0.5) 100%
+            );
+            transition: height 0.15s ease-out;
+            border-radius: 0 0 150px 150px;
+        }
+
+        .liquid::before {
             content: '';
             position: absolute;
-            inset: 20px;
+            top: -20px;
+            left: -50%;
+            width: 200%;
+            height: 40px;
+            background: rgba(16, 185, 129, 0.8);
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(16, 185, 129, 0.5), transparent);
-            animation: pulse-slow 2s ease-in-out infinite;
+            animation: wave 2.5s ease-in-out infinite;
         }
 
-        .voice-orb.listening {
-            background: radial-gradient(circle, rgba(239, 68, 68, 0.3), transparent);
-            animation: pulse-fast 0.8s ease-in-out infinite;
+        .liquid::after {
+            content: '';
+            position: absolute;
+            top: -15px;
+            left: -50%;
+            width: 200%;
+            height: 35px;
+            background: rgba(16, 185, 129, 0.6);
+            border-radius: 50%;
+            animation: wave 2.5s ease-in-out infinite 0.5s;
         }
 
-        .voice-orb.listening::before {
-            background: radial-gradient(circle, rgba(239, 68, 68, 0.5), transparent);
+        @keyframes wave {
+            0%, 100% {
+                transform: translateX(0) translateY(0);
+            }
+            25% {
+                transform: translateX(-25%) translateY(-5px);
+            }
+            50% {
+                transform: translateX(0) translateY(0);
+            }
+            75% {
+                transform: translateX(25%) translateY(-5px);
+            }
         }
 
-        .voice-orb.speaking {
-            background: radial-gradient(circle, rgba(16, 185, 129, 0.4), transparent);
-            animation: pulse-speak 0.5s ease-in-out infinite;
+        /* Listening state - red liquid */
+        .voice-orb.listening .liquid {
+            background: linear-gradient(180deg, 
+                rgba(239, 68, 68, 0.9) 0%,
+                rgba(239, 68, 68, 0.7) 50%,
+                rgba(239, 68, 68, 0.5) 100%
+            );
         }
 
-        .voice-orb.speaking::before {
-            background: radial-gradient(circle, rgba(16, 185, 129, 0.6), transparent);
+        .voice-orb.listening .liquid::before {
+            background: rgba(239, 68, 68, 0.8);
+            animation: wave-active 1.2s ease-in-out infinite;
         }
 
-        @keyframes pulse-slow {
-            0%, 100% { transform: scale(1); opacity: 0.5; }
-            50% { transform: scale(1.1); opacity: 0.8; }
+        .voice-orb.listening .liquid::after {
+            background: rgba(239, 68, 68, 0.6);
+            animation: wave-active 1.2s ease-in-out infinite 0.3s;
         }
 
-        @keyframes pulse-fast {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.15); }
+        @keyframes wave-active {
+            0%, 100% {
+                transform: translateX(0) translateY(0);
+            }
+            25% {
+                transform: translateX(-35%) translateY(-8px);
+            }
+            50% {
+                transform: translateX(0) translateY(0);
+            }
+            75% {
+                transform: translateX(35%) translateY(-8px);
+            }
         }
 
-        @keyframes pulse-speak {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.08); }
+        /* Glow effects */
+        .orb-glow {
+            position: absolute;
+            inset: -20px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.3), transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
         }
 
-        .voice-orb-icon {
-            font-size: 80px;
-            position: relative;
-            z-index: 1;
+        .voice-orb.listening .orb-glow {
+            background: radial-gradient(circle, rgba(239, 68, 68, 0.4), transparent 70%);
+            opacity: 1;
+            animation: pulse-glow 1.5s ease-in-out infinite;
         }
 
-        .voice-status-text {
-            font-size: 24px;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 10px;
+        .voice-orb.speaking .orb-glow {
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.4), transparent 70%);
+            opacity: 1;
+            animation: pulse-glow 0.8s ease-in-out infinite;
         }
 
-        .voice-status-subtext {
-            font-size: 14px;
-            color: var(--text-secondary);
-            margin-bottom: 30px;
+        @keyframes pulse-glow {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 0.5;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 0.8;
+            }
         }
 
-        .voice-transcript {
-            max-width: 600px;
-            margin: 20px auto;
-            padding: 16px 20px;
-            background: var(--bg-elevated);
-            border-radius: var(--radius-lg);
-            border: 1px solid var(--border-glass);
-            font-size: 16px;
-            color: var(--text-primary);
-            min-height: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        /* Bubble effects */
+        .bubble {
+            position: absolute;
+            background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1));
+            border-radius: 50%;
+            pointer-events: none;
+            animation: rise linear;
+        }
+
+        @keyframes rise {
+            0% {
+                bottom: 0;
+                opacity: 0.6;
+                transform: translateX(0) scale(1);
+            }
+            100% {
+                bottom: 100%;
+                opacity: 0;
+                transform: translateX(var(--drift)) scale(0.3);
+            }
         }
 
         .voice-controls {
@@ -1322,12 +1403,10 @@
     <div class="voice-mode-overlay" id="voiceModeOverlay">
         <div class="voice-mode-content">
             <div class="voice-orb" id="voiceOrb">
-                <div class="voice-orb-icon">🎙️</div>
-            </div>
-            <div class="voice-status-text" id="voiceStatusText">Tap to speak</div>
-            <div class="voice-status-subtext" id="voiceStatusSubtext">Voice mode ready</div>
-            <div class="voice-transcript" id="voiceTranscript">
-                <span style="color: var(--text-tertiary);">Your message will appear here...</span>
+                <div class="orb-glow"></div>
+                <div class="orb-container">
+                    <div class="liquid" id="liquidLevel"></div>
+                </div>
             </div>
             <div class="voice-controls">
                 <button class="voice-control-btn stop" id="voiceExitBtn" title="Exit voice mode">✕</button>
@@ -1445,9 +1524,7 @@ class App {
             voiceSpeaker: document.getElementById('voiceSpeaker'),
             voiceModeOverlay: document.getElementById('voiceModeOverlay'),
             voiceOrb: document.getElementById('voiceOrb'),
-            voiceStatusText: document.getElementById('voiceStatusText'),
-            voiceStatusSubtext: document.getElementById('voiceStatusSubtext'),
-            voiceTranscript: document.getElementById('voiceTranscript'),
+            liquidLevel: document.getElementById('liquidLevel'),
             voiceExitBtn: document.getElementById('voiceExitBtn'),
             voiceMuteBtn: document.getElementById('voiceMuteBtn')
         };
@@ -1471,7 +1548,10 @@ class App {
             isListeningVoice: false,
             isSpeakingVoice: false,
             voiceMuted: false,
-            autoListen: true
+            autoListen: true,
+            audioContext: null,
+            analyser: null,
+            animationFrame: null
         };
 
         this.storageKey = 'esamz_conversations_v8';
@@ -1834,13 +1914,16 @@ class App {
             this.state.isSpeakingVoice = true;
             if (this.state.voiceModeActive) {
                 this.dom.voiceOrb.className = 'voice-orb speaking';
-                this.dom.voiceStatusText.textContent = 'Speaking...';
-                this.dom.voiceStatusSubtext.textContent = 'Tap to stop';
             }
 
             // Create and play new audio
             const audio = new Audio(`data:audio/wav;base64,${base64Audio}`);
             this.state.currentAudio = audio;
+            
+            // Setup audio visualization
+            if (this.state.voiceModeActive) {
+                this.setupAudioVisualization(audio);
+            }
             
             audio.play().catch(err => {
                 console.error('Audio playback failed:', err);
@@ -1850,6 +1933,12 @@ class App {
             audio.onended = () => {
                 this.state.currentAudio = null;
                 this.state.isSpeakingVoice = false;
+                this.stopVisualization();
+                
+                // Reset liquid to base level
+                if (this.state.voiceModeActive) {
+                    this.dom.liquidLevel.style.height = '30%';
+                }
                 
                 // Auto-listen again if in voice mode
                 if (this.state.voiceModeActive && this.state.autoListen) {
@@ -1858,13 +1947,86 @@ class App {
                     }, 500);
                 } else if (this.state.voiceModeActive) {
                     this.dom.voiceOrb.className = 'voice-orb';
-                    this.dom.voiceStatusText.textContent = 'Tap to speak';
-                    this.dom.voiceStatusSubtext.textContent = 'Voice mode ready';
                 }
             };
         } catch (err) {
             console.error('Failed to play audio:', err);
             this.state.isSpeakingVoice = false;
+        }
+    }
+
+    setupAudioVisualization(audio) {
+        try {
+            if (!this.state.audioContext) {
+                this.state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            const source = this.state.audioContext.createMediaElementSource(audio);
+            this.state.analyser = this.state.audioContext.createAnalyser();
+            this.state.analyser.fftSize = 256;
+            
+            source.connect(this.state.analyser);
+            this.state.analyser.connect(this.state.audioContext.destination);
+            
+            this.visualizeAudio();
+        } catch (err) {
+            console.error('Visualization setup failed:', err);
+        }
+    }
+
+    visualizeAudio() {
+        if (!this.state.analyser || !this.state.isSpeakingVoice) return;
+
+        const dataArray = new Uint8Array(this.state.analyser.frequencyBinCount);
+        
+        const animate = () => {
+            if (!this.state.isSpeakingVoice) return;
+            
+            this.state.analyser.getByteFrequencyData(dataArray);
+            
+            // Calculate average volume
+            const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+            const normalizedVolume = average / 255;
+            
+            // Map volume to liquid height (30% to 85%)
+            const minHeight = 30;
+            const maxHeight = 85;
+            const height = minHeight + (normalizedVolume * (maxHeight - minHeight));
+            
+            this.dom.liquidLevel.style.height = `${height}%`;
+            
+            // Create bubbles on high volume
+            if (normalizedVolume > 0.3 && Math.random() > 0.7) {
+                this.createBubble();
+            }
+            
+            this.state.animationFrame = requestAnimationFrame(animate);
+        };
+        
+        animate();
+    }
+
+    createBubble() {
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        
+        const size = 10 + Math.random() * 20;
+        bubble.style.width = `${size}px`;
+        bubble.style.height = `${size}px`;
+        bubble.style.left = `${20 + Math.random() * 60}%`;
+        bubble.style.setProperty('--drift', `${(Math.random() - 0.5) * 50}px`);
+        bubble.style.animationDuration = `${2 + Math.random() * 2}s`;
+        
+        const container = this.dom.voiceOrb.querySelector('.orb-container');
+        container.appendChild(bubble);
+        
+        setTimeout(() => bubble.remove(), 4000);
+    }
+
+    stopVisualization() {
+        if (this.state.animationFrame) {
+            cancelAnimationFrame(this.state.animationFrame);
+            this.state.animationFrame = null;
         }
     }
 
@@ -1874,11 +2036,11 @@ class App {
             this.state.currentAudio.currentTime = 0;
             this.state.currentAudio = null;
             this.state.isSpeakingVoice = false;
+            this.stopVisualization();
             
             if (this.state.voiceModeActive) {
                 this.dom.voiceOrb.className = 'voice-orb';
-                this.dom.voiceStatusText.textContent = 'Tap to speak';
-                this.dom.voiceStatusSubtext.textContent = 'Voice mode ready';
+                this.dom.liquidLevel.style.height = '30%';
             }
         }
     }
@@ -1894,7 +2056,7 @@ class App {
 
         this.state.voiceModeActive = true;
         this.dom.voiceModeOverlay.classList.add('active');
-        this.dom.voiceTranscript.innerHTML = '<span style="color: var(--text-tertiary);">Tap the orb to speak...</span>';
+        this.dom.liquidLevel.style.height = '30%';
         
         // Initialize recognition if not already
         if (!this.state.recognition) {
@@ -1913,6 +2075,7 @@ class App {
         this.dom.voiceModeOverlay.classList.remove('active');
         this.stopVoiceListening();
         this.stopAudio();
+        this.stopVisualization();
         this.updateVoiceUI();
     }
 
@@ -1926,25 +2089,16 @@ class App {
         this.state.recognition.onstart = () => {
             this.state.isListeningVoice = true;
             this.dom.voiceOrb.className = 'voice-orb listening';
-            this.dom.voiceStatusText.textContent = 'Listening...';
-            this.dom.voiceStatusSubtext.textContent = 'Speak now';
+            this.animateListening();
         };
         
         this.state.recognition.onresult = (e) => {
-            let interim = '';
             let final = '';
             
             for (let i = 0; i < e.results.length; i++) {
                 if (e.results[i].isFinal) {
                     final += e.results[i][0].transcript;
-                } else {
-                    interim += e.results[i][0].transcript;
                 }
-            }
-            
-            const display = final || interim;
-            if (display) {
-                this.dom.voiceTranscript.textContent = display;
             }
             
             if (final) {
@@ -1957,26 +2111,54 @@ class App {
             this.state.isListeningVoice = false;
             
             if (e.error === 'no-speech') {
-                this.dom.voiceStatusSubtext.textContent = 'No speech detected, try again';
                 setTimeout(() => {
                     if (this.state.voiceModeActive && this.state.autoListen) {
                         this.startVoiceListening();
                     }
                 }, 1500);
-            } else {
-                this.dom.voiceStatusSubtext.textContent = `Error: ${e.error}`;
             }
             
             this.dom.voiceOrb.className = 'voice-orb';
+            this.stopListeningAnimation();
         };
         
         this.state.recognition.onend = () => {
             this.state.isListeningVoice = false;
+            this.stopListeningAnimation();
             if (this.state.voiceModeActive && !this.state.isSpeakingVoice) {
                 this.dom.voiceOrb.className = 'voice-orb';
-                this.dom.voiceStatusText.textContent = 'Processing...';
             }
         };
+    }
+
+    animateListening() {
+        const animate = () => {
+            if (!this.state.isListeningVoice) return;
+            
+            // Simulate listening with random liquid movement
+            const baseHeight = 50;
+            const variation = 15;
+            const height = baseHeight + Math.sin(Date.now() / 200) * variation + Math.random() * 10;
+            
+            this.dom.liquidLevel.style.height = `${height}%`;
+            
+            // Random bubbles
+            if (Math.random() > 0.8) {
+                this.createBubble();
+            }
+            
+            this.state.animationFrame = requestAnimationFrame(animate);
+        };
+        
+        animate();
+    }
+
+    stopListeningAnimation() {
+        if (this.state.animationFrame) {
+            cancelAnimationFrame(this.state.animationFrame);
+            this.state.animationFrame = null;
+        }
+        this.dom.liquidLevel.style.height = '30%';
     }
 
     startVoiceListening() {
@@ -1988,7 +2170,6 @@ class App {
         
         try {
             this.state.recognition.start();
-            this.dom.voiceTranscript.innerHTML = '<span style="color: var(--text-tertiary);">Listening...</span>';
         } catch (e) {
             console.error('Failed to start recognition:', e);
         }
@@ -1998,6 +2179,7 @@ class App {
         if (this.state.recognition && this.state.isListeningVoice) {
             try {
                 this.state.recognition.stop();
+                this.stopListeningAnimation();
             } catch (e) {
                 console.error('Failed to stop recognition:', e);
             }
@@ -2006,10 +2188,6 @@ class App {
 
     async handleVoiceMessage(text) {
         if (!text.trim()) return;
-        
-        this.dom.voiceStatusText.textContent = 'Thinking...';
-        this.dom.voiceStatusSubtext.textContent = 'Processing your request';
-        this.dom.voiceTranscript.textContent = text;
 
         // Ensure chat is visible
         if (this.dom.welcome.style.display !== 'none') {
@@ -2068,8 +2246,6 @@ class App {
             if (this.state.voiceModeActive && this.state.autoListen) {
                 setTimeout(() => {
                     this.dom.voiceOrb.className = 'voice-orb';
-                    this.dom.voiceStatusText.textContent = 'Tap to speak';
-                    this.dom.voiceStatusSubtext.textContent = 'Ready';
                     this.startVoiceListening();
                 }, 1500);
             }
@@ -2376,10 +2552,8 @@ class App {
         
         // Don't exit voice mode, just reset the UI
         if (this.state.voiceModeActive) {
-            this.dom.voiceTranscript.innerHTML = '<span style="color: var(--text-tertiary);">New conversation started. Tap to speak...</span>';
+            this.dom.liquidLevel.style.height = '30%';
             this.dom.voiceOrb.className = 'voice-orb';
-            this.dom.voiceStatusText.textContent = 'Tap to speak';
-            this.dom.voiceStatusSubtext.textContent = 'New conversation';
             
             setTimeout(() => {
                 this.startVoiceListening();
