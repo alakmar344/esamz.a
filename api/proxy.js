@@ -109,18 +109,17 @@ export default async function handler(req, res) {
 
     /* -------- SARVAM TTS -------- */
 
-    let voice = null;
-    if (mode === "voice") {
-      voice = await callSarvamTTS(reply);
-    }
+let audio = null;
+if (mode === "voice") {
+  audio = await callSarvamTTS(reply); // base64 string
+}
 
-    return res.status(200).json({
-      reply,
-      voice,
-      provider: "sarvam",
-      model: "sarvam-m",
-      persona: "eSAMz v9"
-    });
+return res.status(200).json({
+  reply,
+  audio, // <-- THIS is what frontend reads
+  provider: "sarvam"
+});
+
 
   } catch (err) {
     console.error("Proxy error:", err);
@@ -174,9 +173,7 @@ async function callSarvamTTS(text) {
 
   const data = await res.json();
 
-  // Bulbul v2 returns base64 audio
-  return {
-    audioBase64: data.audio
-  };
+return data.audio; // pure base64 string
+
 }
 
