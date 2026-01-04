@@ -8,7 +8,7 @@ const redis = Redis.fromEnv();
 /* ================= CONFIG ================= */
 
 const TEXT_LIMIT_PER_MIN = 10;
-const VOICE_LIMIT_TOTAL = 3;
+const VOICE_LIMIT_TOTAL = 10;
 const TEXT_WINDOW_SEC = 60;
 const VOICE_RESET_SEC = 86400;
 
@@ -182,7 +182,7 @@ async function callSarvamTTS({
   speaker,
   enable_preprocessing
 }) {
-  const res = await fetch("https://api.sarvam.ai/v1/text-to-speech/convert", {
+  const res = await fetch("https://api.sarvam.ai/v1/tts", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -199,20 +199,26 @@ async function callSarvamTTS({
   const raw = await res.text();
 
   if (!res.ok) {
-    console.error("Bulbul TTS error:", raw);
-    throw new Error("Bulbul TTS failed");
+    console.error("Bulbul TTS HTTP error:", raw);
+    throw new Error("Sarvam TTS failed");
   }
 
   let data;
   try {
     data = JSON.parse(raw);
   } catch {
-    throw new Error("Invalid Bulbul JSON");
+    console.error("Bulbul invalid JSON:", raw);
+    throw new Error("Invalid Bulbul response");
   }
 
-  if (!data.audio || typeof data.audio !== "string") {
-    console.error("Bulbul audio missing:", data);
+  if (!data.audio) {
+    console.error("Bulbul missing audio:", data);
     throw new Error("Bulbul audio missing");
+  }
+
+  return data.audio; // base64 WAV
+}
+
   }
 
   // base64 WAV string (frontend-ready)
