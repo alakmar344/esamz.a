@@ -8,7 +8,7 @@ const redis = Redis.fromEnv();
 /* ================= CONFIG ================= */
 
 const TEXT_LIMIT_PER_MIN = 10;
-const VOICE_LIMIT_TOTAL = 10;
+const VOICE_LIMIT_TOTAL = 3;
 const TEXT_WINDOW_SEC = 60;
 const VOICE_RESET_SEC = 86400;
 
@@ -38,14 +38,22 @@ function getClientIP(req) {
 async function checkTextLimit(userKey) {
   const key = `rl:text:${userKey}`;
   const count = await redis.incr(key);
-  if (count === 1) await redis.expire(key, TEXT_WINDOW_SEC);
+
+  if (count === 1) {
+    await redis.expire(key, TEXT_WINDOW_SEC);
+  }
+
   return count <= TEXT_LIMIT_PER_MIN;
 }
 
 async function checkVoiceLimit(userKey) {
   const key = `rl:voice:${userKey}`;
   const used = Number(await redis.get(key)) || 0;
-  if (used >= VOICE_LIMIT_TOTAL) return false;
+
+  if (used >= VOICE_LIMIT_TOTAL) {
+    return false;
+  }
+
   await redis.incr(key);
   await redis.expire(key, VOICE_RESET_SEC);
   return true;
@@ -76,12 +84,11 @@ export default async function handler(req, res) {
 
     /* -------- BODY -------- */
 
-    const {
-      message,
-      enableVoice = false,
-      voiceLanguage = "en-IN",
-      voiceSpeaker = "anushka"
-    } = req.body || {};
+    const body = req.body || {};
+    const message = body.message;
+    const enableVoice = body.enableVoice === true;
+    const voiceLanguage = body.voiceLanguage || "en-IN";
+    const voiceSpeaker = body.voiceSpeaker || "anushka";
 
     if (!message || typeof message !== "string") {
       return res.status(400).json({
@@ -94,9 +101,10 @@ export default async function handler(req, res) {
     const ip = getClientIP(req);
     const userKey = ip;
 
-    /* -------- TEXT RATE LIMIT -------- */
+    /* -------- TEXT LIMIT -------- */
 
-    if (!(await checkTextLimit(userKey))) {
+    const textAllowed = await checkTextLimit(userKey);
+    if (!textAllowed) {
       return res.status(429).json({
         error: "Text limit exceeded (10 per minute)"
       });
@@ -106,12 +114,13 @@ export default async function handler(req, res) {
 
     const reply = await callSarvamChat(message);
 
-    /* -------- VOICE (OPTIONAL) -------- */
+    /* -------- VOICE -------- */
 
     let audio = null;
 
-    if (enableVoice === true) {
-      if (!(await checkVoiceLimit(userKey))) {
+    if (enableVoice) {
+      const voiceAllowed = await checkVoiceLimit(userKey);
+      if (!voiceAllowed) {
         return res.status(403).json({
           error: "Voice limit reached (3 total)"
         });
@@ -164,14 +173,10 @@ async function callSarvamChat(message) {
     throw new Error("Sarvam chat failed");
   }
 
-  let data;
-  try {
-    data = JSON.parse(raw);
-  } catch {
-    throw new Error("Invalid Sarvam chat JSON");
-  }
-
-  return data.choices?.[0]?.message?.content || "";
+  const data = JSON.parse(raw);
+  return data.choices && data.choices[0]
+    ? data.choices[0].message.content
+    : "";
 }
 
 /* ================= SARVAM BULBUL TTS ================= */
@@ -199,28 +204,16 @@ async function callSarvamTTS({
   const raw = await res.text();
 
   if (!res.ok) {
-    console.error("Bulbul TTS HTTP error:", raw);
+    console.error("Bulbul TTS error:", raw);
     throw new Error("Sarvam TTS failed");
   }
 
-  let data;
-  try {
-    data = JSON.parse(raw);
-  } catch {
-    console.error("Bulbul invalid JSON:", raw);
-    throw new Error("Invalid Bulbul response");
-  }
+  const data = JSON.parse(raw);
 
   if (!data.audio) {
-    console.error("Bulbul missing audio:", data);
+    console.error("Bulbul audio missing:", data);
     throw new Error("Bulbul audio missing");
   }
 
-  return data.audio; // base64 WAV
-}
-
-  }
-
-  // base64 WAV string (frontend-ready)
   return data.audio;
 }
