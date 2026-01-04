@@ -59,7 +59,7 @@ export async function runChat({
   return data?.choices?.[0]?.message?.content || "";
 }
 
-/* ================= SARVAM BULBUL TTS ================= */
+/* ================= SARVAM BULBUL TTS (FINAL CORRECT ENDPOINT) ================= */
 
 export async function runTTS({
   text,
@@ -72,15 +72,15 @@ export async function runTTS({
   loudness = 1.0,
   speechSampleRate = 22050
 }) {
-  const res = await fetch("https://api.sarvam.ai/v1/text-to-speech", {
+  const res = await fetch("https://api.sarvam.ai/v1/text-to-speech/convert", {
     method: "POST",
     headers: {
       "API-Subscription-Key": sarvamKey,
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      model: TTS_MODEL,
-      inputs: [text],
+      model: "bulbul:v2",
+      text,
       target_language_code: targetLanguageCode,
       speaker,
       pitch,
@@ -99,10 +99,11 @@ export async function runTTS({
 
   const data = await res.json();
 
-  // Official Bulbul response: audios[]
-  if (Array.isArray(data?.audios) && data.audios.length > 0) {
-    return data.audios[0]; // base64 WAV
+  // Python SDK returns a direct audio object
+  if (data?.audio) {
+    return data.audio; // base64 wav
   }
 
   return null;
 }
+
