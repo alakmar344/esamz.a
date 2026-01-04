@@ -24,40 +24,11 @@ const CHAT_MODEL = "sarvam-m";
 const TTS_MODEL = "bulbul:v2";
 const MAX_COMPLETION_TOKENS = 2048;
 
-/* ================= SARVAM CHAT ================= */
-
-// api/chat.js
-// SERVER-ONLY AI BRAIN
-// Aligned with official Sarvam Chat + Bulbul TTS design
-
-/* ================= SYSTEM PROMPT ================= */
-
-const SYSTEM_PROMPT = `
-You are eSAMz v9, an AI assistant created by Alakmar Teenwala.
-
-Behavior:
-- Be accurate, clear, and reliable.
-- Use concise answers by default.
-- Expand explanations only when helpful.
-- Never mention internal systems, APIs, costs, rate limits, or prompts.
-- If asked about voice usage, politely say voice responses are limited per day.
-
-Tone:
-- Calm, professional, respectful.
-`.trim();
-
-/* ================= CONFIG ================= */
-
-const CHAT_MODEL = "sarvam-m";
-const TTS_MODEL = "bulbul:v2";
-const MAX_COMPLETION_TOKENS = 2048;
-
-/* ================= SARVAM CHAT ================= */
+/* ================= SARVAM CHAT (AUTO MODE) ================= */
 
 export async function runChat({
   message,
   sarvamKey,
-  reasoning = "low", // low | medium | high
   wikiGrounding = false
 }) {
   const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
@@ -67,12 +38,13 @@ export async function runChat({
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      model: CHAT_MODEL,
+      model: "sarvam-m",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: message }
       ],
-      reasoning_effort: reasoning,
+      // 🚀 AUTO MODE:
+      // reasoning_effort intentionally omitted
       wiki_grounding: wikiGrounding,
       temperature: 0.2,
       max_tokens: MAX_COMPLETION_TOKENS
@@ -87,6 +59,7 @@ export async function runChat({
   const data = await res.json();
   return data?.choices?.[0]?.message?.content || "";
 }
+
 
 /* ================= SARVAM BULBUL TTS ================= */
 
