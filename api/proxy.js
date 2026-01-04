@@ -9,10 +9,10 @@ const redis = Redis.fromEnv();
 
 const TEXT_LIMIT_PER_MIN = 10;
 const VOICE_LIMIT_TOTAL = 3;
-const WINDOW_SEC = 60;
+const TEXT_WINDOW_SEC = 60;
 const VOICE_RESET_SEC = 86400;
 
-/* ================= UTIL ================= */
+/* ================= UTILS ================= */
 
 function sha256(input) {
   return crypto.createHash("sha256").update(input).digest("hex");
@@ -38,7 +38,7 @@ function getClientIP(req) {
 async function checkTextLimit(userKey) {
   const key = `rl:text:${userKey}`;
   const count = await redis.incr(key);
-  if (count === 1) await redis.expire(key, WINDOW_SEC);
+  if (count === 1) await redis.expire(key, TEXT_WINDOW_SEC);
   return count <= TEXT_LIMIT_PER_MIN;
 }
 
@@ -69,18 +69,24 @@ export default async function handler(req, res) {
       !storedHash ||
       !timingSafeEqual(sha256(internalKey), storedHash)
     ) {
-      return res.status(500).json({ error: "Server authentication failure" });
+      return res.status(500).json({
+        error: "Server authentication failure"
+      });
     }
 
     /* -------- BODY -------- */
 
     const {
       message,
-      enableVoice = false
+      enableVoice = false,
+      voiceLanguage = "en-IN",
+      voiceSpeaker = "anushka"
     } = req.body || {};
 
     if (!message || typeof message !== "string") {
-      return res.status(400).json({ error: "Invalid request body" });
+      return res.status(400).json({
+        error: "Invalid request body"
+      });
     }
 
     /* -------- USER KEY -------- */
@@ -88,7 +94,7 @@ export default async function handler(req, res) {
     const ip = getClientIP(req);
     const userKey = ip;
 
-    /* -------- TEXT LIMIT -------- */
+    /* -------- TEXT RATE LIMIT -------- */
 
     if (!(await checkTextLimit(userKey))) {
       return res.status(429).json({
@@ -111,21 +117,28 @@ export default async function handler(req, res) {
         });
       }
 
-      audio = await callSarvamTTS(reply);
+      audio = await callSarvamTTS({
+        text: reply,
+        target_language_code: voiceLanguage,
+        speaker: voiceSpeaker,
+        enable_preprocessing: true
+      });
     }
 
     /* -------- RESPONSE -------- */
 
     return res.status(200).json({
       reply,
-      audio, // base64 or null (frontend expects this)
+      audio,
       provider: "sarvam",
       model: "sarvam-m"
     });
 
   } catch (err) {
-    console.error("Proxy error:", err);
-    return res.status(500).json({ error: "Internal server error" });
+    console.error("Proxy fatal error:", err);
+    return res.status(500).json({
+      error: "Internal server error"
+    });
   }
 }
 
@@ -144,39 +157,64 @@ async function callSarvamChat(message) {
     })
   });
 
+  const raw = await res.text();
+
   if (!res.ok) {
-    const err = await res.text();
-    console.error("Sarvam chat error:", err);
+    console.error("Sarvam chat error:", raw);
     throw new Error("Sarvam chat failed");
   }
 
-  const data = await res.json();
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    throw new Error("Invalid Sarvam chat JSON");
+  }
+
   return data.choices?.[0]?.message?.content || "";
 }
 
-/* ================= SARVAM TTS (BULBUL V2) ================= */
+/* ================= SARVAM BULBUL TTS ================= */
 
-async function callSarvamTTS(text) {
-  const res = await fetch("https://api.sarvam.ai/v1/text-to-speech", {
+async function callSarvamTTS({
+  text,
+  target_language_code,
+  speaker,
+  enable_preprocessing
+}) {
+  const res = await fetch("https://api.sarvam.ai/v1/text-to-speech/convert", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.SARVAM_API_KEY}`
+      "api-subscription-key": process.env.SARVAM_API_KEY
     },
     body: JSON.stringify({
-      model: "bulbul-v2",
-      input: text
+      text,
+      target_language_code,
+      speaker,
+      enable_preprocessing
     })
   });
 
+  const raw = await res.text();
+
   if (!res.ok) {
-    const err = await res.text();
-    console.error("Sarvam TTS error:", err);
-    throw new Error("Sarvam TTS failed");
+    console.error("Bulbul TTS error:", raw);
+    throw new Error("Bulbul TTS failed");
   }
 
-  const data = await res.json();
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    throw new Error("Invalid Bulbul JSON");
+  }
 
-  // IMPORTANT: return pure base64 string
+  if (!data.audio || typeof data.audio !== "string") {
+    console.error("Bulbul audio missing:", data);
+    throw new Error("Bulbul audio missing");
+  }
+
+  // base64 WAV string (frontend-ready)
   return data.audio;
 }
