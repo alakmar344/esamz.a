@@ -1,127 +1,111 @@
 /* ============================================
-   eSAMz v9.9 – chat.js (MAIN AI HANDLER)
+   chat.js – UX Gatekeeper (Client-side)
    ============================================ */
 
-const Chat = {
+const ChatApp = {
   api: "/api/proxy",
 
   state: {
     busy: false,
-    voice: false,
-    language: "en-IN",
-    speaker: "anushka"
+    voiceEnabled: false,
+    voiceLanguage: "en-IN",
+    voiceSpeaker: "anushka"
   },
 
-  /* ---------- MAIN ENTRY ---------- */
-  async send(text) {
-    text = (text || "").trim();
-    if (!text || this.state.busy) return;
+  async sendMessage(rawText) {
+    const text = (rawText || "").trim();
+
+    // 🚧 UX GATEKEEPING (soft)
+    if (!text) return;
+    if (this.state.busy) return;
 
     this.state.busy = true;
-    this.add("user", text);
+    this.disableInput(true);
+
+    this.addMessage("user", text);
 
     try {
-      // 1️⃣ SECURITY CHECK (proxy)
-      const gate = await fetch(this.api, {
+      const res = await fetch(this.api, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          enableVoice: this.state.voice
+          message: text,
+          enableVoice: this.state.voiceEnabled,
+          voiceLanguage: this.state.voiceLanguage,
+          voiceSpeaker: this.state.voiceSpeaker
         })
       });
 
-      const gateData = await gate.json();
-      if (!gate.ok) {
-        this.system(gateData.error || "Blocked");
+      const data = await res.json();
+
+      if (!res.ok) {
+        this.handleError(res.status, data?.error);
         return;
       }
 
-      // 2️⃣ SARVAM CHAT
-      const reply = await this.callSarvamChat(text);
-      this.add("assistant", reply);
+      // reply from server brain
+      this.addMessage("assistant", data.reply);
 
-      // 3️⃣ SARVAM TTS (optional)
-      if (this.state.voice) {
-        const audio = await this.callSarvamTTS(reply);
-        if (audio) this.play(audio);
+      // optional voice
+      if (this.state.voiceEnabled && data.audio) {
+        this.playAudio(data.audio);
       }
 
-    } catch (e) {
-      console.error(e);
-      this.system("Something went wrong.");
+    } catch (err) {
+      console.error("Chat error:", err);
+      this.addSystemMessage("Network or server error.");
     } finally {
       this.state.busy = false;
+      this.disableInput(false);
     }
   },
 
-  /* ---------- SARVAM CHAT ---------- */
-  async callSarvamChat(userText) {
-    const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${window.SARVAM_PUBLIC_TOKEN}`
-      },
-      body: JSON.stringify({
-        model: "sarvam-m",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are eSAMz AI. Be accurate, calm, and helpful. Do not mention internal limits."
-          },
-          { role: "user", content: userText }
-        ],
-        temperature: 0.2
-      })
-    });
-
-    if (!res.ok) throw new Error("Chat failed");
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || "";
-  },
-
-  /* ---------- SARVAM TTS ---------- */
-  async callSarvamTTS(text) {
-    const res = await fetch("https://api.sarvam.ai/v1/tts", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "api-subscription-key": window.SARVAM_PUBLIC_TOKEN
-      },
-      body: JSON.stringify({
-        text,
-        target_language_code: this.state.language,
-        speaker: this.state.speaker,
-        enable_preprocessing: true
-      })
-    });
-
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.audio || null;
-  },
-
   /* ---------- AUDIO ---------- */
-  play(base64) {
-    const audio = new Audio(`data:audio/wav;base64,${base64}`);
-    audio.play().catch(() => {});
+  playAudio(base64) {
+    try {
+      const audio = new Audio(`data:audio/wav;base64,${base64}`);
+      audio.play().catch(() => {});
+    } catch {
+      console.warn("Audio failed");
+    }
   },
 
-  /* ---------- UI HOOKS ---------- */
-  add(role, text) {
-    console.log(role, text); // replace with UI
+  /* ---------- ERROR HANDLING ---------- */
+  handleError(status, msg) {
+    if (status === 429) {
+      this.addSystemMessage("Slow down. You are sending messages too fast.");
+    } else if (status === 403) {
+      this.addSystemMessage("Voice limit reached for today.");
+    } else {
+      this.addSystemMessage(msg || "Request blocked.");
+    }
   },
 
-  system(text) {
-    console.warn(text); // replace with UI
+  /* ---------- UI HOOKS (KEEP YOUR OWN) ---------- */
+  addMessage(role, text) {
+    console.log(role.toUpperCase(), text);
+  },
+
+  addSystemMessage(text) {
+    console.warn("SYSTEM:", text);
+  },
+
+  disableInput(disabled) {
+    // disable input / button
   },
 
   /* ---------- CONTROLS ---------- */
-  setVoice(v) {
-    this.state.voice = !!v;
+  setVoice(enabled) {
+    this.state.voiceEnabled = Boolean(enabled);
+  },
+
+  setVoiceLanguage(lang) {
+    this.state.voiceLanguage = lang || "en-IN";
+  },
+
+  setVoiceSpeaker(spk) {
+    this.state.voiceSpeaker = spk || "anushka";
   }
 };
 
-window.Chat = Chat;
-
+window.ChatApp = ChatApp;
