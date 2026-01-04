@@ -1,21 +1,21 @@
 /* ============================================
-   eSAMz Proxy API – SaaS Secure Gateway
+   eSAMz Proxy API – SaaS Secure Gateway (FIXED)
    ============================================ */
 
-const RATE_LIMIT = 5;
+const RATE_LIMIT = 10; // ✅ Increased from 5 to 10
 const WINDOW_MS = 60 * 1000;
 
 // sessionId -> { count, reset }
 const rateStore = new Map();
 
 function rateKey(sessionId, ip) {
-  return sessionId || ip;
+  return sessionId || ip; // Use sessionId if available, fallback to IP
 }
 
 function checkRateLimit(key) {
   const now = Date.now();
   const entry = rateStore.get(key);
-
+  
   if (!entry || now > entry.reset) {
     rateStore.set(key, {
       count: 1,
@@ -23,9 +23,9 @@ function checkRateLimit(key) {
     });
     return true;
   }
-
+  
   if (entry.count >= RATE_LIMIT) return false;
-
+  
   entry.count++;
   return true;
 }
@@ -36,18 +36,16 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  /* CORS */
-  const origin = process.env.ESAMZ_ORIGIN;
-  if (req.headers.origin !== origin) {
+  /* CORS - ✅ FIX 1: Allow same-origin requests */
+  const allowedOrigin = process.env.ESAMZ_ORIGIN;
+  const reqOrigin = req.headers.origin;
+
+  // Allow same-origin (no Origin header) but block mismatched origins
+  if (reqOrigin && reqOrigin !== allowedOrigin) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
-  const reqOrigin = req.headers.origin;
-
-if (reqOrigin && reqOrigin !== origin) {
-  return res.status(403).json({ error: 'Forbidden' });
-}
-
+  res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
 
@@ -59,7 +57,7 @@ if (reqOrigin && reqOrigin !== origin) {
   /* BODY */
   let body = '';
   for await (const chunk of req) body += chunk;
-
+  
   let data;
   try {
     data = JSON.parse(body || '{}');
@@ -86,19 +84,23 @@ if (reqOrigin && reqOrigin !== origin) {
     req.socket?.remoteAddress ||
     'unknown';
 
-  /* RATE LIMIT */
+  /* RATE LIMIT - ✅ FIX 2: Use sessionId for rate limiting if available */
   const key = rateKey(payload.sessionId, ip);
+  
   if (!checkRateLimit(key)) {
     return res.status(429).json({
-      error: 'Rate limit exceeded',
+      error: 'Too many requests. Please wait a moment.',
       limit: RATE_LIMIT,
-      window: '1 minute'
+      window: '1 minute',
+      retryAfter: 60
     });
   }
 
-  /* FORWARD */
+  /* FORWARD TO BACKEND */
   try {
-    const upstream = await fetch(`${origin}/api/chat`, {
+    const backendUrl = `${allowedOrigin}/api/chat`;
+    
+    const upstream = await fetch(backendUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -108,8 +110,12 @@ if (reqOrigin && reqOrigin !== origin) {
     });
 
     const text = await upstream.text();
+    
+    // Forward response with same status code
     res.status(upstream.status).send(text);
-  } catch {
-    res.status(502).json({ error: 'Upstream unavailable' });
+    
+  } catch (err) {
+    console.error('[PROXY ERROR]', err);
+    res.status(502).json({ error: 'Backend unavailable' });
   }
 }
