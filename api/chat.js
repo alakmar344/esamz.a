@@ -1,5 +1,5 @@
 /* ============================================
-   eSAMz v9.8 – SaaS Secure Backend
+   eSAMz v9.8 – SaaS Secure Backend (FIXED)
    ============================================ */
 
 import crypto from 'crypto';
@@ -15,7 +15,7 @@ const CONFIG = {
   QUEUE_CONCURRENCY: 1,
 
   RATE_LIMIT_WINDOW: 60 * 1000,
-  RATE_LIMIT_MAX: 5,
+  RATE_LIMIT_MAX: 10, // ✅ Increased from 5 to 10 to prevent self-lockout
 
   VOICE_DAILY_LIMIT: 3
 };
@@ -132,21 +132,27 @@ async function generateTTS(text, language, speaker) {
 
 /* ---------- HANDLER ---------- */
 export default async function handler(req, res) {
-  /* CORS */
-  const origin = process.env.ESAMZ_ORIGIN;
-  if (req.headers.origin !== origin) {
+  /* CORS - ✅ FIX 1: Allow same-origin requests */
+  const allowedOrigin = process.env.ESAMZ_ORIGIN;
+  const reqOrigin = req.headers.origin;
+
+  // Allow same-origin (no Origin header) but block mismatched origins
+  if (reqOrigin && reqOrigin !== allowedOrigin) {
     return res.status(403).json({ error: 'Forbidden' });
   }
-const reqOrigin = req.headers.origin;
 
-if (reqOrigin && reqOrigin !== origin) {
-  return res.status(403).json({ error: 'Forbidden' });
-}
-
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-esamz-key');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  
   if (req.method === 'OPTIONS') return res.end();
   if (req.method !== 'POST') return res.status(405).end();
+
+  /* AUTH - Check internal key */
+  const authKey = req.headers['x-esamz-key'];
+  if (authKey !== process.env.ESAMZ_BACKEND_KEY) {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
 
   if (!process.env.SARVAM_API_KEY) {
     return res.status(500).json({ error: 'Server misconfigured' });
@@ -156,15 +162,20 @@ if (reqOrigin && reqOrigin !== origin) {
   const message = (data.message || '').trim();
   if (!message) return res.status(400).json({ error: 'Message required' });
 
-  /* SESSION */
+  /* SESSION - ✅ FIX 2: Generate sessionId if missing */
   let sid = data.sessionId;
   if (!sid || !sessions.has(sid)) {
     sid = sessionId();
     sessions.set(sid, Date.now());
+    console.log('[SESSION] Generated new session:', sid);
   }
 
+  /* RATE LIMIT */
   if (!checkRateLimit(sid)) {
-    return res.status(429).json({ error: 'Rate limit exceeded' });
+    return res.status(429).json({ 
+      error: 'Rate limit exceeded. Please wait a moment.',
+      retryAfter: 60
+    });
   }
 
   /* THREAD */
@@ -172,7 +183,7 @@ if (reqOrigin && reqOrigin !== origin) {
   const history = threads.get(sid);
 
   const messages = [
-    { role: 'system', content: 'You are eSAMz AI. Be accurate, concise, and helpful.' },
+    { role: 'system', content: 'You are eSAMz v9, an AI assistant created by Alakmar Teenwala. Be accurate, concise, and helpful. If user asks about voice limits, inform them they have 3 voice requests per day.' },
     ...history,
     { role: 'user', content: message }
   ];
@@ -202,16 +213,16 @@ if (reqOrigin && reqOrigin !== origin) {
     const vk = todayKey(sid);
     const used = voiceUsage.get(vk) || 0;
     if (used < CONFIG.VOICE_DAILY_LIMIT) {
-      audio = await generateTTS(reply, data.voiceLanguage || 'en-IN', data.voiceSpeaker || 'priya');
+      audio = await generateTTS(reply, data.voiceLanguage || 'en-IN', data.voiceSpeaker || 'anushka');
       if (audio) voiceUsage.set(vk, used + 1);
     }
   }
 
+  /* ✅ FIX 3: Always return sessionId in response */
   res.json({
     sessionId: sid,
     reply,
-    voiceRemaining:
-      CONFIG.VOICE_DAILY_LIMIT - (voiceUsage.get(todayKey(sid)) || 0),
+    voiceRemaining: CONFIG.VOICE_DAILY_LIMIT - (voiceUsage.get(todayKey(sid)) || 0),
     ...(audio ? { audio } : {})
   });
 }
