@@ -3,16 +3,14 @@ import { Redis } from "@upstash/redis";
 
 /* ================= REDIS ================= */
 
-const redis = new Redis({
-  url: process.env.REDIS_URL,
-  token: process.env.REDIS_TOKEN
-});
+const redis = Redis.fromEnv();
 
 /* ================= CONFIG ================= */
 
 const TEXT_LIMIT_PER_MIN = 10;
 const VOICE_LIMIT_TOTAL = 3;
 const WINDOW_SEC = 60;
+const VOICE_RESET_SEC = 86400;
 
 /* ================= UTIL ================= */
 
@@ -35,32 +33,27 @@ function getClientIP(req) {
   );
 }
 
-/* ================= RATE LIMITERS ================= */
+/* ================= RATE LIMIT ================= */
 
 async function checkTextLimit(userKey) {
-  const redisKey = `rl:text:${userKey}`;
-
-  const count = await redis.incr(redisKey);
+  const key = `rl:text:${userKey}`;
+  const count = await redis.incr(key);
 
   if (count === 1) {
-    await redis.expire(redisKey, WINDOW_SEC);
+    await redis.expire(key, WINDOW_SEC);
   }
 
   return count <= TEXT_LIMIT_PER_MIN;
 }
 
 async function checkVoiceLimit(userKey) {
-  const redisKey = `rl:voice:${userKey}`;
+  const key = `rl:voice:${userKey}`;
+  const used = Number(await redis.get(key)) || 0;
 
-  const used = await redis.get(redisKey) || 0;
+  if (used >= VOICE_LIMIT_TOTAL) return false;
 
-  if (used >= VOICE_LIMIT_TOTAL) {
-    return false;
-  }
-
-  await redis.incr(redisKey);
-  // optional: expire daily
-  await redis.expire(redisKey, 86400);
+  await redis.incr(key);
+  await redis.expire(key, VOICE_RESET_SEC);
 
   return true;
 }
@@ -83,7 +76,9 @@ export default async function handler(req, res) {
       !storedHash ||
       !timingSafeEqual(sha256(internalKey), storedHash)
     ) {
-      return res.status(500).json({ error: "Server auth failure" });
+      return res
+        .status(500)
+        .json({ error: "Server authentication failure" });
     }
 
     /* -------- BODY -------- */
@@ -95,7 +90,7 @@ export default async function handler(req, res) {
     } = req.body || {};
 
     if (!message || typeof message !== "string") {
-      return res.status(400).json({ error: "Invalid message" });
+      return res.status(400).json({ error: "Invalid request body" });
     }
 
     /* -------- USER KEY -------- */
@@ -105,18 +100,18 @@ export default async function handler(req, res) {
 
     /* -------- TEXT LIMIT -------- */
 
-    if (!(await checkTextLimit(userKey))) {
+    const textAllowed = await checkTextLimit(userKey);
+    if (!textAllowed) {
       return res.status(429).json({
-        error: "Text rate limit exceeded (10/min)"
+        error: "Text limit exceeded (10 per minute)"
       });
     }
 
     /* -------- VOICE LIMIT -------- */
 
     if (mode === "voice") {
-      const allowed = await checkVoiceLimit(userKey);
-
-      if (!allowed) {
+      const voiceAllowed = await checkVoiceLimit(userKey);
+      if (!voiceAllowed) {
         return res.status(403).json({
           error: "Voice limit reached (3 total)"
         });
@@ -126,8 +121,6 @@ export default async function handler(req, res) {
     /* -------- CALL SARVAM -------- */
 
     const reply = await callSarvamLLM(message);
-
-    /* -------- OPTIONAL TTS -------- */
 
     let voice = null;
     if (mode === "voice") {
@@ -147,17 +140,18 @@ export default async function handler(req, res) {
   }
 }
 
-/* ================= SARVAM ================= */
+/* ================= SARVAM MOCK ================= */
 
 async function callSarvamLLM(message) {
-  // Replace with real Sarvam API call
+  // Replace with real Sarvam LLM call
   return `Hello! You said: ${message}`;
 }
 
 async function callSarvamTTS(text) {
-  // Replace with Sarvam TTS call
+  // Replace with real Sarvam TTS call
   return {
     audioUrl: "https://example.com/audio.mp3"
   };
 }
+
 
