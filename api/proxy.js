@@ -1,16 +1,20 @@
 // /api/proxy.js
 
+export const config = {
+  runtime: "nodejs"
+};
+
 import { Redis } from "@upstash/redis";
 
 // =====================
-// CONFIG
+// CONSTANTS
 // =====================
 const DAILY_VOICE_LIMIT = 3;
 const DAY_SECONDS = 86400;
 const SARVAM_ENDPOINT = "https://api.sarvam.ai/v1/chat/completions";
 
 // =====================
-// REDIS CLIENT (GLOBAL SAFE)
+// REDIS
 // =====================
 const redis = Redis.fromEnv();
 
@@ -29,12 +33,9 @@ function getClientIp(req) {
   );
 }
 
-function getUserKey(req, body) {
-  return (
-    body.sessionId ||
-    req.headers["x-client-session-id"] ||
-    getClientIp(req)
-  );
+function getUserKey(req) {
+  // Voice limits per API key, fallback to IP
+  return req.headers["x-esamz-key"] || getClientIp(req);
 }
 
 function voiceKey(userKey) {
@@ -42,10 +43,10 @@ function voiceKey(userKey) {
 }
 
 // =====================
-// VOICE LIMIT (ATOMIC)
+// VOICE LIMIT
 // =====================
-async function checkAndConsumeVoice(req, body) {
-  const userKey = getUserKey(req, body);
+async function checkAndConsumeVoice(req) {
+  const userKey = getUserKey(req);
   const key = voiceKey(userKey);
 
   const count = (await redis.get(key)) ?? 0;
@@ -54,43 +55,54 @@ async function checkAndConsumeVoice(req, body) {
     return { allowed: false, remaining: 0 };
   }
 
-  const newCount = count + 1;
-
-  await redis.set(key, newCount, { ex: DAY_SECONDS });
+  const next = count + 1;
+  await redis.set(key, next, { ex: DAY_SECONDS });
 
   return {
     allowed: true,
-    remaining: DAILY_VOICE_LIMIT - newCount
+    remaining: DAILY_VOICE_LIMIT - next
   };
 }
 
 // =====================
-// API HANDLER
+// HANDLER
 // =====================
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
-   const clientKey =
-  req.headers["x-esamz-key"] ||
-  req.headers["X-ESAMZ-KEY"];
 
-if (!clientKey || clientKey !== process.env.ESAMZ_API_KEY) {
-  return res.status(401).json({
-    error: "Unauthorized"
-  });
-}
+  // ---------------------
+  // AUTH (STRICT + CLEAR)
+  // ---------------------
+  const clientKey = req.headers["x-esamz-key"];
 
+  if (!clientKey) {
+    console.error("AUTH FAIL: Missing x-esamz-key header");
+    return res.status(401).json({ error: "Missing API key" });
+  }
 
+  if (!process.env.ESAMZ_API_KEY) {
+    console.error("SERVER MISCONFIG: ESAMZ_API_KEY not set");
+    return res.status(500).json({ error: "Server misconfigured" });
+  }
+
+  if (clientKey !== process.env.ESAMZ_API_KEY) {
+    console.error("AUTH FAIL: Invalid API key");
+    return res.status(401).json({ error: "Invalid API key" });
+  }
+
+  // ---------------------
+  // MAIN LOGIC
+  // ---------------------
   try {
-    const body = req.body ?? {};
+    const body = req.body || {};
     const wantsVoice = body.enableVoice === true;
 
     let voiceRemaining = null;
 
-    // 🔒 ENFORCE DAILY VOICE LIMIT
     if (wantsVoice) {
-      const check = await checkAndConsumeVoice(req, body);
+      const check = await checkAndConsumeVoice(req);
 
       if (!check.allowed) {
         return res.status(429).json({
@@ -102,12 +114,11 @@ if (!clientKey || clientKey !== process.env.ESAMZ_API_KEY) {
       voiceRemaining = check.remaining;
     }
 
-    // 🤖 CALL SARVAM
-    const ai = await callSarvam(body.message || "");
+    const reply = await callSarvam(body.message || "");
 
     return res.status(200).json({
-      reply: ai,
-      audio: null, // TTS later
+      reply,
+      audio: null,
       voiceRemaining
     });
 
@@ -118,7 +129,7 @@ if (!clientKey || clientKey !== process.env.ESAMZ_API_KEY) {
 }
 
 // =====================
-// SARVAM CHAT
+// SARVAM
 // =====================
 async function callSarvam(message) {
   const resp = await fetch(SARVAM_ENDPOINT, {
@@ -129,22 +140,17 @@ async function callSarvam(message) {
     },
     body: JSON.stringify({
       model: "sarvam-m",
-      messages: [
-        { role: "user", content: message }
-      ]
+      messages: [{ role: "user", content: message }]
     })
   });
 
   if (!resp.ok) {
     const text = await resp.text();
-    throw new Error(`Sarvam error ${resp.status}: ${text}`);
+    throw new Error(`Sarvam ${resp.status}: ${text}`);
   }
 
   const data = await resp.json();
-
-  return (
-    data?.choices?.[0]?.message?.content ||
-    "No response from Sarvam"
-  );
+  return data?.choices?.[0]?.message?.content || "No response";
 }
+
 
