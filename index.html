@@ -1491,19 +1491,20 @@
     </dialog>
 
     <script>
-class App { getSessionId() {
-    return localStorage.getItem('esamz_session_id');
-}
-
-setSessionId(id) {
-    if (id) {
-        localStorage.setItem('esamz_session_id', id);
+class App {
+    getSessionId() {
+        return localStorage.getItem('esamz_session_id');
     }
-}
 
-clearSessionId() {
-    localStorage.removeItem('esamz_session_id');
-}
+    setSessionId(id) {
+        if (id) {
+            localStorage.setItem('esamz_session_id', id);
+        }
+    }
+
+    clearSessionId() {
+        localStorage.removeItem('esamz_session_id');
+    }
 
     constructor() {
         this.dom = {
@@ -1553,7 +1554,8 @@ clearSessionId() {
             autoListen: true,
             audioContext: null,
             analyser: null,
-            animationFrame: null
+            animationFrame: null,
+            sessionId: this.getSessionId() // Load session on initialization
         };
 
         this.storageKey = 'esamz_conversations_v8';
@@ -1604,28 +1606,11 @@ clearSessionId() {
     }
 
     updateVoiceQuotaBadge(remaining) {
-        // Update voice quota badge (if backend provides quota info)
-        // This method is wired but backend doesn't currently send quota data
-        // Safe fallback: do nothing if no quota info available
         if (typeof remaining !== 'number') return;
-        
-        // Future implementation when backend adds quota tracking:
-        // const badge = document.getElementById('voiceQuotaBadge');
-        // if (!badge) return;
-        // badge.textContent = `${remaining} left`;
-        // if (remaining < 10) {
-        //     badge.style.color = 'var(--danger)';
-        // } else if (remaining < 50) {
-        //     badge.style.color = '#f59e0b';
-        // } else {
-        //     badge.style.color = 'var(--success)';
-        // }
-        
         console.log(`[VOICE QUOTA] ${remaining} requests remaining`);
     }
 
     updateVoiceUI() {
-        // Update mic button state
         if (this.state.micEnabled) {
             this.dom.voiceMicToggle.classList.add('active');
         } else {
@@ -1868,33 +1853,36 @@ clearSessionId() {
         const thinkingId = this.addThinking();
 
         try {
-const res = await fetch('/api/proxy', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-        message: text,
-        sessionId: this.getSessionId(),
-        enableVoice: this.state.voiceEnabled,
-        voiceLanguage: this.state.voiceLanguage,
-        voiceSpeaker: this.state.voiceSpeaker
-    })
-});
-
+            const res = await fetch('/api/proxy', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-Client-Session-Id': this.state.sessionId || ''
+                },
+                body: JSON.stringify({
+                    message: text,
+                    sessionId: this.state.sessionId,
+                    enableVoice: this.state.voiceEnabled,
+                    voiceLanguage: this.state.voiceLanguage,
+                    voiceSpeaker: this.state.voiceSpeaker
+                })
+            });
             
             if (!res.ok) throw new Error('Server error');
             
             const data = await res.json();
             this.removeThinking(thinkingId);
-           if (data.sessionId) {
-    this.setSessionId(data.sessionId);
-}
+            
+            // CRITICAL: Save session ID from backend response
+            if (data.sessionId) {
+                this.state.sessionId = data.sessionId;
+                this.setSessionId(data.sessionId);
+            }
 
-const reply = data.reply || data.message || 'No response';
-
+            const reply = data.reply || data.message || 'No response';
             this.addMessage(reply, 'ai', true);
             this.appendToHistory('ai', reply);
             
-            // Play audio if available
             if (data.audio && this.state.voiceEnabled) {
                 this.playAudio(data.audio);
             }
@@ -1910,23 +1898,19 @@ const reply = data.reply || data.message || 'No response';
 
     playAudio(base64Audio) {
         try {
-            // Stop any currently playing audio
             if (this.state.currentAudio) {
                 this.state.currentAudio.pause();
                 this.state.currentAudio = null;
             }
 
-            // Update UI for speaking
             this.state.isSpeakingVoice = true;
             if (this.state.voiceModeActive) {
                 this.dom.voiceOrb.className = 'voice-orb speaking';
             }
 
-            // Create and play new audio
             const audio = new Audio(`data:audio/wav;base64,${base64Audio}`);
             this.state.currentAudio = audio;
             
-            // Setup audio visualization
             if (this.state.voiceModeActive) {
                 this.setupAudioVisualization(audio);
             }
@@ -1941,12 +1925,10 @@ const reply = data.reply || data.message || 'No response';
                 this.state.isSpeakingVoice = false;
                 this.stopVisualization();
                 
-                // Reset liquid to base level
                 if (this.state.voiceModeActive) {
                     this.dom.liquidLevel.style.height = '30%';
                 }
                 
-                // Auto-listen again if in voice mode and mic enabled
                 if (this.state.voiceModeActive && this.state.autoListen && this.state.micEnabled) {
                     setTimeout(() => {
                         this.startVoiceListening();
@@ -1989,19 +1971,15 @@ const reply = data.reply || data.message || 'No response';
             if (!this.state.isSpeakingVoice) return;
             
             this.state.analyser.getByteFrequencyData(dataArray);
-            
-            // Calculate average volume
             const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
             const normalizedVolume = average / 255;
             
-            // Map volume to liquid height (30% to 85%)
             const minHeight = 30;
             const maxHeight = 85;
             const height = minHeight + (normalizedVolume * (maxHeight - minHeight));
             
             this.dom.liquidLevel.style.height = `${height}%`;
             
-            // Create bubbles on high volume
             if (normalizedVolume > 0.3 && Math.random() > 0.7) {
                 this.createBubble();
             }
@@ -2051,7 +2029,6 @@ const reply = data.reply || data.message || 'No response';
         }
     }
 
-    // Voice Mode Functions
     enterVoiceMode() {
         if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
             alert('Voice recognition not supported. Use Chrome, Edge, or Safari.');
@@ -2065,12 +2042,10 @@ const reply = data.reply || data.message || 'No response';
         this.dom.liquidLevel.style.height = '30%';
         this.updateVoiceUI();
         
-        // Initialize recognition if not already
         if (!this.state.recognition) {
             this.initializeVoiceRecognition();
         }
         
-        // Start listening automatically
         setTimeout(() => {
             this.startVoiceListening();
         }, 500);
@@ -2141,14 +2116,12 @@ const reply = data.reply || data.message || 'No response';
         const animate = () => {
             if (!this.state.isListeningVoice) return;
             
-            // Simulate listening with random liquid movement
             const baseHeight = 50;
             const variation = 15;
             const height = baseHeight + Math.sin(Date.now() / 200) * variation + Math.random() * 10;
             
             this.dom.liquidLevel.style.height = `${height}%`;
             
-            // Random bubbles
             if (Math.random() > 0.8) {
                 this.createBubble();
             }
@@ -2195,7 +2168,6 @@ const reply = data.reply || data.message || 'No response';
     async handleVoiceMessage(text) {
         if (!text.trim()) return;
 
-        // Ensure chat is visible
         if (this.dom.welcome.style.display !== 'none') {
             this.dom.welcome.style.display = 'none';
             this.dom.chatInputContainer.style.display = 'block';
@@ -2204,38 +2176,44 @@ const reply = data.reply || data.message || 'No response';
             }
         }
 
-        // Add message to chat
         this.addMessage(text, 'user');
         this.appendToHistory('user', text);
         this.state.messageCount++;
 
         try {
-         const res = await fetch('/api/proxy', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-        message: text,
-        sessionId: this.getSessionId(),
-        enableVoice: true,
-        voiceLanguage: this.state.voiceLanguage,
-        voiceSpeaker: this.state.voiceSpeaker
-    })
-});
-
+            const res = await fetch('/api/proxy', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-Client-Session-Id': this.state.sessionId || ''
+                },
+                body: JSON.stringify({
+                    message: text,
+                    sessionId: this.state.sessionId,
+                    enableVoice: true,
+                    voiceLanguage: this.state.voiceLanguage,
+                    voiceSpeaker: this.state.voiceSpeaker
+                })
+            });
             
             if (!res.ok) throw new Error('Server error');
             
             const data = await res.json();
+            
+            // CRITICAL: Save session ID from backend response
+            if (data.sessionId) {
+                this.state.sessionId = data.sessionId;
+                this.setSessionId(data.sessionId);
+            }
+            
             const reply = data.reply || data.message || 'No response';
             
             this.addMessage(reply, 'ai', true);
             this.appendToHistory('ai', reply);
             
-            // Play audio response
             if (data.audio) {
                 this.playAudio(data.audio);
             } else {
-                // If no audio, go back to listening
                 if (this.state.voiceModeActive && this.state.autoListen) {
                     setTimeout(() => {
                         this.startVoiceListening();
@@ -2248,7 +2226,6 @@ const reply = data.reply || data.message || 'No response';
             this.addMessage(reply, 'ai', true);
             this.appendToHistory('ai', reply);
             
-            // Go back to listening
             if (this.state.voiceModeActive && this.state.autoListen) {
                 setTimeout(() => {
                     this.dom.voiceOrb.className = 'voice-orb';
@@ -2336,10 +2313,13 @@ const reply = data.reply || data.message || 'No response';
             try {
                 const res = await fetch('/api/proxy', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-Client-Session-Id': this.state.sessionId || ''
+                    },
                     body: JSON.stringify({
                         message: userText,
-                        threadId: this.state.threadId,
+                        sessionId: this.state.sessionId,
                         mode: 'default',
                         enableVoice: this.state.voiceEnabled,
                         voiceLanguage: this.state.voiceLanguage,
@@ -2351,6 +2331,13 @@ const reply = data.reply || data.message || 'No response';
                 
                 const data = await res.json();
                 this.removeThinking(thinkingId);
+                
+                // CRITICAL: Save session ID from backend response
+                if (data.sessionId) {
+                    this.state.sessionId = data.sessionId;
+                    this.setSessionId(data.sessionId);
+                }
+                
                 const reply = data.reply || data.message || 'No response';
                 this.addMessage(reply, 'ai', true);
                 
@@ -2548,7 +2535,10 @@ const reply = data.reply || data.message || 'No response';
     }
 
     newChat() {
+        // Clear session ONLY on explicit "New Chat"
         this.clearSessionId();
+        this.state.sessionId = null;
+        
         this.state.chatId = null;
         this.state.messageCount = 0;
         this.state.files = [];
@@ -2557,7 +2547,6 @@ const reply = data.reply || data.message || 'No response';
         this.stopAudio();
         this.stopVoiceListening();
         
-        // Don't exit voice mode, just reset the UI
         if (this.state.voiceModeActive) {
             this.dom.liquidLevel.style.height = '30%';
             this.dom.voiceOrb.className = 'voice-orb';
@@ -2613,7 +2602,6 @@ const reply = data.reply || data.message || 'No response';
     }
 
     toggleVoice(isWelcome) {
-        // Now just enters voice mode
         this.enterVoiceMode();
     }
 
