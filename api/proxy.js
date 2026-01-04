@@ -162,17 +162,21 @@ async function callSarvamTTS(text) {
     },
     body: JSON.stringify({
       model: "bulbul-v2",
-      input: text,
-      voice: "neutral"
+      input: text
     })
   });
 
   if (!res.ok) {
     const err = await res.text();
-    console.error("Sarvam TTS error:", err);
-    throw new Error("Sarvam TTS failed");
+    console.error("Sarvam TTS v2 error:", err);
+    throw new Error("Sarvam TTS v2 failed");
   }
 
-  return await res.json();
+  const data = await res.json();
+
+  // Bulbul v2 returns base64 audio
+  return {
+    audioBase64: data.audio
+  };
 }
 
