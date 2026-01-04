@@ -7,7 +7,7 @@ const redis = Redis.fromEnv();
 
 /* ================= CONFIG ================= */
 
-const TEXT_LIMIT_PER_MIN = 10;
+const TEXT_LIMIT_PER_MIN = 30;
 const VOICE_LIMIT_TOTAL = 3;
 const TEXT_WINDOW_SEC = 60;
 const VOICE_RESET_SEC = 86400;
