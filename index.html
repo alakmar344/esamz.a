@@ -1495,17 +1495,24 @@
     <script>
 class App {
     getSessionId() {
-        return localStorage.getItem('esamz_session_id');
+        const id = localStorage.getItem('esamz_session_id');
+        if (!id || typeof id !== 'string') {
+            return null;
+        }
+        return id;
     }
 
     setSessionId(id) {
-        if (id) {
+        if (id && typeof id === 'string') {
             localStorage.setItem('esamz_session_id', id);
+            return true;
         }
+        return false;
     }
 
     clearSessionId() {
         localStorage.removeItem('esamz_session_id');
+        return true;
     }
 
     constructor() {
@@ -1534,6 +1541,18 @@ class App {
             voiceSpeaker: document.getElementById('voiceSpeaker')
         };
 
+        const missingElements = [];
+        for (const [key, element] of Object.entries(this.dom)) {
+            if (!element) {
+                missingElements.push(key);
+            }
+        }
+        
+        if (missingElements.length > 0) {
+            console.error('Missing required DOM elements:', missingElements);
+            throw new Error(`Missing required DOM elements: ${missingElements.join(', ')}`);
+        }
+
         this.state = {
             chatId: null,
             files: [],
@@ -1557,59 +1576,77 @@ class App {
             audioContext: null,
             analyser: null,
             animationFrame: null,
-            sessionId: this.getSessionId() // Load session on initialization
+            sessionId: this.getSessionId()
         };
 
         this.storageKey = 'esamz_conversations_v8';
         this.maxStorageSize = 5 * 1024 * 1024;
-        this.init();
+        
+        try {
+            this.init();
+        } catch (error) {
+            console.error('App construction failed:', error);
+            throw error;
+        }
     }
 
     init() {
-        this.loadHistory();
-        this.loadVoiceSettings();
-        this.setupEvents();
-        this.setupDragDrop();
-        this.dom.welcomeInput.focus();
-        
-        window.addEventListener('resize', () => {
-            const wasMobile = this.state.isMobile;
-            this.state.isMobile = window.innerWidth <= 768;
+        try {
+            this.loadHistory();
+            this.loadVoiceSettings();
+            this.setupEvents();
+            this.setupDragDrop();
+            this.dom.welcomeInput.focus();
             
-            if (wasMobile !== this.state.isMobile) {
-                if (this.state.isMobile) {
-                    this.dom.sidebar.classList.remove('collapsed');
-                    this.dom.mainContent.classList.remove('sidebar-collapsed');
-                } else {
-                    this.dom.sidebar.classList.remove('mobile-open');
-                    this.dom.overlay.classList.remove('active');
+            window.addEventListener('resize', () => {
+                const wasMobile = this.state.isMobile;
+                this.state.isMobile = window.innerWidth <= 768;
+                
+                if (wasMobile !== this.state.isMobile) {
+                    if (this.state.isMobile) {
+                        this.dom.sidebar.classList.remove('collapsed');
+                        this.dom.mainContent.classList.remove('sidebar-collapsed');
+                    } else {
+                        this.dom.sidebar.classList.remove('mobile-open');
+                        this.dom.overlay.classList.remove('active');
+                    }
                 }
-            }
-        });
+            });
+            
+            return true;
+        } catch (error) {
+            console.error('Initialization failed:', error);
+            throw error;
+        }
     }
 
     loadVoiceSettings() {
-        const saved = localStorage.getItem('esamz_voice_settings');
-        if (saved) {
-            try {
+        try {
+            const saved = localStorage.getItem('esamz_voice_settings');
+            if (saved) {
                 const settings = JSON.parse(saved);
-                this.state.voiceSpeaker = settings.speaker || 'anushka';
-                this.dom.voiceSpeaker.value = this.state.voiceSpeaker;
-            } catch (e) {
-                console.error('Failed to load voice settings:', e);
+                if (settings && typeof settings === 'object') {
+                    this.state.voiceSpeaker = settings.speaker || 'anushka';
+                    this.dom.voiceSpeaker.value = this.state.voiceSpeaker;
+                }
             }
+            return true;
+        } catch (e) {
+            console.error('Failed to load voice settings:', e);
+            return false;
         }
     }
 
     saveVoiceSettings() {
-        localStorage.setItem('esamz_voice_settings', JSON.stringify({
-            speaker: this.state.voiceSpeaker
-        }));
-    }
-
-    updateVoiceQuotaBadge(remaining) {
-        if (typeof remaining !== 'number') return;
-        console.log(`[VOICE QUOTA] ${remaining} requests remaining`);
+        try {
+            localStorage.setItem('esamz_voice_settings', JSON.stringify({
+                speaker: this.state.voiceSpeaker
+            }));
+            return true;
+        } catch (e) {
+            console.error('Failed to save voice settings:', e);
+            return false;
+        }
     }
 
     updateVoiceUI() {
@@ -1618,128 +1655,154 @@ class App {
         } else {
             this.dom.voiceMicToggle.classList.remove('active');
         }
+        return true;
     }
 
     setupEvents() {
-        // Voice mode controls
-        this.dom.voiceOrb.addEventListener('click', () => {
-            if (this.state.isSpeakingVoice) {
-                this.stopAudio();
-            } else if (this.state.micEnabled) {
-                this.startVoiceListening();
-            }
-        });
+        try {
+            this.dom.voiceOrb.addEventListener('click', () => {
+                if (this.state.isSpeakingVoice) {
+                    return this.stopAudio();
+                } else if (this.state.micEnabled) {
+                    return this.startVoiceListening();
+                }
+            });
 
-        this.dom.voiceExitBtn.addEventListener('click', () => this.exitVoiceMode());
-        
-        this.dom.voiceMicToggle.addEventListener('click', () => {
-            this.state.micEnabled = !this.state.micEnabled;
-            this.updateVoiceUI();
+            this.dom.voiceExitBtn.addEventListener('click', () => this.exitVoiceMode());
             
-            if (!this.state.micEnabled) {
-                this.stopVoiceListening();
-            } else if (this.state.voiceModeActive && !this.state.isSpeakingVoice) {
-                this.startVoiceListening();
-            }
-        });
+            this.dom.voiceMicToggle.addEventListener('click', () => {
+                this.state.micEnabled = !this.state.micEnabled;
+                this.updateVoiceUI();
+                
+                if (!this.state.micEnabled) {
+                    return this.stopVoiceListening();
+                } else if (this.state.voiceModeActive && !this.state.isSpeakingVoice) {
+                    return this.startVoiceListening();
+                }
+            });
 
-        this.dom.voiceSpeaker.addEventListener('change', (e) => {
-            this.state.voiceSpeaker = e.target.value;
-            this.saveVoiceSettings();
-        });
+            this.dom.voiceSpeaker.addEventListener('change', (e) => {
+                this.state.voiceSpeaker = e.target.value;
+                return this.saveVoiceSettings();
+            });
 
-        document.getElementById('btnWelcomeSend').addEventListener('click', () => this.handleWelcomeSend());
-        document.getElementById('btnWelcomeUpload').addEventListener('click', () => document.getElementById('fileInput').click());
-        document.getElementById('btnWelcomeVoice').addEventListener('click', () => this.toggleVoice(true));
-        
-        this.dom.welcomeInput.addEventListener('keydown', e => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.handleWelcomeSend();
-            }
-        });
-        
-        this.dom.welcomeInput.addEventListener('input', () => {
-            this.autoResize(this.dom.welcomeInput);
-            this.updateCharCounter(this.dom.welcomeInput, this.dom.welcomeCharCounter);
-        });
+            document.getElementById('btnWelcomeSend').addEventListener('click', () => this.handleWelcomeSend());
+            document.getElementById('btnWelcomeUpload').addEventListener('click', () => document.getElementById('fileInput').click());
+            document.getElementById('btnWelcomeVoice').addEventListener('click', () => this.toggleVoice(true));
+            
+            this.dom.welcomeInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    return this.handleWelcomeSend();
+                }
+            });
+            
+            this.dom.welcomeInput.addEventListener('input', () => {
+                this.autoResize(this.dom.welcomeInput);
+                return this.updateCharCounter(this.dom.welcomeInput, this.dom.welcomeCharCounter);
+            });
 
-        document.getElementById('btnSend').addEventListener('click', () => this.handleSend());
-        
-        this.dom.input.addEventListener('keydown', e => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.handleSend();
-            }
-        });
-        
-        this.dom.input.addEventListener('input', () => {
-            this.autoResize(this.dom.input);
-            this.updateCharCounter(this.dom.input, this.dom.charCounter);
-        });
+            document.getElementById('btnSend').addEventListener('click', () => this.handleSend());
+            
+            this.dom.input.addEventListener('keydown', e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    return this.handleSend();
+                }
+            });
+            
+            this.dom.input.addEventListener('input', () => {
+                this.autoResize(this.dom.input);
+                return this.updateCharCounter(this.dom.input, this.dom.charCounter);
+            });
 
-        document.getElementById('sidebarToggle').addEventListener('click', () => this.toggleSidebarCollapse());
-        document.getElementById('openSidebar').addEventListener('click', () => this.toggleSidebar(true));
-        document.getElementById('closeSidebar').addEventListener('click', () => this.toggleSidebar(false));
-        this.dom.overlay.addEventListener('click', () => this.toggleSidebar(false));
+            document.getElementById('sidebarToggle').addEventListener('click', () => this.toggleSidebarCollapse());
+            document.getElementById('openSidebar').addEventListener('click', () => this.toggleSidebar(true));
+            document.getElementById('closeSidebar').addEventListener('click', () => this.toggleSidebar(false));
+            this.dom.overlay.addEventListener('click', () => this.toggleSidebar(false));
 
-        document.getElementById('btnNewChat').addEventListener('click', () => this.newChat());
-        document.getElementById('btnClearChat').addEventListener('click', () => this.clearChat());
-        document.getElementById('btnClearCache').addEventListener('click', () => this.clearAllData());
+            document.getElementById('btnNewChat').addEventListener('click', () => this.newChat());
+            document.getElementById('btnClearChat').addEventListener('click', () => this.clearChat());
+            document.getElementById('btnClearCache').addEventListener('click', () => this.clearAllData());
 
-        document.getElementById('btnUpload').addEventListener('click', () => document.getElementById('fileInput').click());
-        document.getElementById('fileInput').addEventListener('change', e => this.handleFiles(e.target.files, false));
+            document.getElementById('btnUpload').addEventListener('click', () => document.getElementById('fileInput').click());
+            document.getElementById('fileInput').addEventListener('change', e => this.handleFiles(e.target.files, false));
 
-        document.getElementById('btnVoice').addEventListener('click', () => this.toggleVoice(false));
+            document.getElementById('btnVoice').addEventListener('click', () => this.toggleVoice(false));
 
-        document.getElementById('btnExportModal').addEventListener('click', () => this.dom.dialog.showModal());
-        document.getElementById('closeDialog').addEventListener('click', () => this.dom.dialog.close());
+            document.getElementById('btnExportModal').addEventListener('click', () => this.dom.dialog.showModal());
+            document.getElementById('closeDialog').addEventListener('click', () => this.dom.dialog.close());
+            
+            return true;
+        } catch (error) {
+            console.error('Event setup failed:', error);
+            throw error;
+        }
     }
 
     setupDragDrop() {
-        [this.dom.wrapper, this.dom.welcomeWrapper].forEach(wrapper => {
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt =>
-                wrapper.addEventListener(evt, e => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                })
-            );
-            
-            wrapper.addEventListener('dragenter', () => wrapper.style.borderColor = 'var(--primary)');
-            wrapper.addEventListener('dragleave', () => wrapper.style.borderColor = 'var(--border-glass)');
-            wrapper.addEventListener('drop', e => {
-                wrapper.style.borderColor = 'var(--border-glass)';
-                const isWelcome = wrapper === this.dom.welcomeWrapper;
-                this.handleFiles(e.dataTransfer.files, isWelcome);
+        try {
+            [this.dom.wrapper, this.dom.welcomeWrapper].forEach(wrapper => {
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt =>
+                    wrapper.addEventListener(evt, e => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    })
+                );
+                
+                wrapper.addEventListener('dragenter', () => {
+                    wrapper.style.borderColor = 'var(--primary)';
+                });
+                
+                wrapper.addEventListener('dragleave', () => {
+                    wrapper.style.borderColor = 'var(--border-glass)';
+                });
+                
+                wrapper.addEventListener('drop', e => {
+                    wrapper.style.borderColor = 'var(--border-glass)';
+                    const isWelcome = wrapper === this.dom.welcomeWrapper;
+                    return this.handleFiles(e.dataTransfer.files, isWelcome);
+                });
             });
-        });
+            return true;
+        } catch (error) {
+            console.error('Drag-drop setup failed:', error);
+            throw error;
+        }
     }
 
     autoResize(textarea) {
         textarea.style.height = 'auto';
         textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+        return true;
     }
 
     updateCharCounter(textarea, counter) {
         const length = textarea.value.length;
         counter.textContent = `${length} / ${this.state.maxChars}`;
         
+        counter.classList.remove('warning', 'danger');
+        
         if (length > this.state.maxChars) {
             counter.classList.add('danger');
-            counter.classList.remove('warning');
         } else if (length > this.state.maxChars * 0.9) {
             counter.classList.add('warning');
-            counter.classList.remove('danger');
-        } else {
-            counter.classList.remove('warning', 'danger');
         }
+        
+        return true;
     }
 
     async handleFiles(fileList, isWelcome) {
+        if (!fileList || fileList.length === 0) {
+            return false;
+        }
+        
         const files = isWelcome ? this.state.welcomeFiles : this.state.files;
         const preview = isWelcome ? this.dom.welcomePreview : this.dom.preview;
         
         for (const file of fileList) {
+            if (!file || !file.name) continue;
+            
             const ext = file.name.split('.').pop().toLowerCase();
             
             if (!['txt', 'md'].includes(ext)) {
@@ -1755,16 +1818,22 @@ class App {
             try {
                 const text = await this.readTextFile(file);
                 files.push({ file, textExtracted: text });
-            } catch {
+            } catch (error) {
+                console.error(`Failed to read file ${file.name}:`, error);
                 alert(`Unable to read file: ${file.name}`);
             }
         }
         
-        this.renderFiles(files, preview, isWelcome);
+        return this.renderFiles(files, preview, isWelcome);
     }
 
     readTextFile(file) {
         return new Promise((resolve, reject) => {
+            if (!file) {
+                reject(new Error('No file provided'));
+                return;
+            }
+            
             const reader = new FileReader();
             reader.onload = () => resolve(reader.result);
             reader.onerror = () => reject(new Error('Failed to read file'));
@@ -1775,30 +1844,45 @@ class App {
     renderFiles(files, preview, isWelcome) {
         preview.innerHTML = '';
         files.forEach((item, idx) => {
+            if (!item || !item.file) return;
+            
             const chip = document.createElement('div');
             chip.className = 'file-chip';
             chip.innerHTML = `📎 ${item.file.name} <button onclick="app.removeFile(${idx}, ${isWelcome})">×</button>`;
             preview.appendChild(chip);
         });
+        return true;
     }
 
     removeFile(idx, isWelcome) {
-        if (isWelcome) {
-            this.state.welcomeFiles.splice(idx, 1);
-            this.renderFiles(this.state.welcomeFiles, this.dom.welcomePreview, true);
-        } else {
-            this.state.files.splice(idx, 1);
-            this.renderFiles(this.state.files, this.dom.preview, false);
+        try {
+            if (isWelcome) {
+                if (idx >= 0 && idx < this.state.welcomeFiles.length) {
+                    this.state.welcomeFiles.splice(idx, 1);
+                    return this.renderFiles(this.state.welcomeFiles, this.dom.welcomePreview, true);
+                }
+            } else {
+                if (idx >= 0 && idx < this.state.files.length) {
+                    this.state.files.splice(idx, 1);
+                    return this.renderFiles(this.state.files, this.dom.preview, false);
+                }
+            }
+            return false;
+        } catch (error) {
+            console.error('Failed to remove file:', error);
+            return false;
         }
     }
 
     async handleWelcomeSend() {
         const text = this.dom.welcomeInput.value.trim();
-        if (!text && this.state.welcomeFiles.length === 0) return;
+        if (!text && this.state.welcomeFiles.length === 0) {
+            return false;
+        }
         
         if (text.length > this.state.maxChars) {
             alert(`Message is too long. Maximum ${this.state.maxChars} characters allowed.`);
-            return;
+            return false;
         }
 
         this.dom.welcome.style.display = 'none';
@@ -1813,93 +1897,152 @@ class App {
         
         this.createChatSession(text);
         
-        await this.sendMessage(text);
+        const success = await this.sendMessage(text);
         
         this.dom.welcomeInput.value = '';
         this.dom.welcomeInput.style.height = 'auto';
         this.dom.welcomePreview.innerHTML = '';
         this.updateCharCounter(this.dom.welcomeInput, this.dom.welcomeCharCounter);
+        
+        return success;
     }
 
     async handleSend() {
         const text = this.dom.input.value.trim();
-        if (!text && this.state.files.length === 0) return;
+        if (!text && this.state.files.length === 0) {
+            return false;
+        }
         
         if (text.length > this.state.maxChars) {
             alert(`Message is too long. Maximum ${this.state.maxChars} characters allowed.`);
-            return;
+            return false;
         }
 
-        await this.sendMessage(text);
+        const success = await this.sendMessage(text);
 
         this.dom.input.value = '';
         this.dom.input.style.height = 'auto';
         this.updateCharCounter(this.dom.input, this.dom.charCounter);
+        
+        return success;
     }
 
-    async sendMessage(text) {
-        let fullMessage = text;
-        if (this.state.files.length) {
-            fullMessage += '\n\n' + this.state.files.map(f =>
-                `**File:** ${f.file.name}\n\`\`\`\n${f.textExtracted}\n\`\`\``
-            ).join('\n');
+    async sendMessage(userText) {
+        if (!userText && this.state.files.length === 0) {
+            return false;
         }
+        
+        const constructedPayload = {
+            userMessage: userText || '',
+            fileContents: this.state.files.map(f => ({
+                fileName: f.file.name,
+                content: f.textExtracted
+            }))
+        };
+        
+        const displayText = constructedPayload.userMessage + (constructedPayload.fileContents.length > 0 ? 
+            '\n\n' + constructedPayload.fileContents.map(f => 
+                `**File:** ${f.fileName}\n\`\`\`\n${f.content}\n\`\`\``
+            ).join('\n') : '');
 
-        this.addMessage(fullMessage, 'user');
-        this.appendToHistory('user', fullMessage);
+        const messageElement = this.addMessage(displayText, 'user');
+        const appendResult = this.appendToHistory('user', displayText);
+        if (!appendResult) {
+            console.error('Failed to append user message to history');
+        }
         this.state.messageCount++;
 
         this.state.files = [];
-        this.renderFiles(this.state.files, this.dom.preview, false);
+        const renderResult = this.renderFiles(this.state.files, this.dom.preview, false);
+        if (!renderResult) {
+            console.warn('Failed to render files after send');
+        }
 
         const thinkingId = this.addThinking();
 
         try {
+            const requestPayload = {
+                message: constructedPayload.userMessage,
+                sessionId: this.state.sessionId,
+                enableVoice: this.state.voiceEnabled,
+                voiceLanguage: this.state.voiceLanguage,
+                voiceSpeaker: this.state.voiceSpeaker,
+                files: constructedPayload.fileContents
+            };
+            
             const res = await fetch('/api/proxy', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
                     'X-Client-Session-Id': this.state.sessionId || ''
                 },
-                body: JSON.stringify({
-                    message: text,
-                    sessionId: this.state.sessionId,
-                    enableVoice: this.state.voiceEnabled,
-                    voiceLanguage: this.state.voiceLanguage,
-                    voiceSpeaker: this.state.voiceSpeaker
-                })
+                body: JSON.stringify(requestPayload)
             });
             
-            if (!res.ok) throw new Error('Server error');
+            if (!res.ok) {
+                throw new Error(`Server error: ${res.status} ${res.statusText}`);
+            }
             
             const data = await res.json();
             this.removeThinking(thinkingId);
             
-            // CRITICAL: Save session ID from backend response
+            if (!data) {
+                throw new Error('Empty response from server');
+            }
+            
             if (data.sessionId) {
                 this.state.sessionId = data.sessionId;
                 this.setSessionId(data.sessionId);
             }
 
-            const reply = data.reply || data.message || 'No response';
-            this.addMessage(reply, 'ai', true);
-            this.appendToHistory('ai', reply);
+            const reply = data.reply || data.message || '';
+            if (!reply) {
+                throw new Error('Empty response content from AI');
+            }
+
+            const aiMessageElement = this.addMessage(reply, 'ai', true);
+            const historyResult = this.appendToHistory('ai', reply);
+            if (!historyResult) {
+                console.error('Failed to append AI message to history');
+            }
             
             if (data.audio && this.state.voiceEnabled) {
-                this.playAudio(data.audio);
+                const audioResult = this.playAudio(data.audio);
+                if (!audioResult) {
+                    console.warn('Failed to play audio response');
+                }
             }
-        } catch (e) {
+            
+            return true;
+            
+        } catch (error) {
+            console.error('API request failed:', error);
             this.removeThinking(thinkingId);
-            const reply = this.generateSmartResponse(text);
-            this.addMessage(reply, 'ai', true);
-            this.appendToHistory('ai', reply);
+            
+            const errorMessage = `**API Error:** ${error.message}\n\n` +
+                `The request could not be completed. Please check your connection and try again.\n` +
+                `\`\`\`\nRequest: ${userText || '(no text)'}\n` +
+                `Files: ${this.state.files.length}\n` +
+                `Error: ${error.message}\n\`\`\``;
+            
+            const errorElement = this.addMessage(errorMessage, 'ai', false);
+            const errorHistoryResult = this.appendToHistory('ai', errorMessage);
+            if (!errorHistoryResult) {
+                console.error('Failed to append error to history');
+            }
+            
+            return false;
+        } finally {
+            this.checkStorageSize();
         }
-        
-        this.checkStorageSize();
     }
 
     playAudio(base64Audio) {
         try {
+            if (!base64Audio || typeof base64Audio !== 'string') {
+                throw new Error('Invalid audio data');
+            }
+
             if (this.state.currentAudio) {
                 this.state.currentAudio.pause();
                 this.state.currentAudio = null;
@@ -1914,41 +2057,65 @@ class App {
             this.state.currentAudio = audio;
             
             if (this.state.voiceModeActive) {
-                this.setupAudioVisualization(audio);
+                const visualizationResult = this.setupAudioVisualization(audio);
+                if (!visualizationResult) {
+                    console.warn('Audio visualization setup failed');
+                }
             }
             
-            audio.play().catch(err => {
-                console.error('Audio playback failed:', err);
-                this.state.isSpeakingVoice = false;
-            });
+            return new Promise((resolve) => {
+                audio.play().then(() => {
+                    resolve(true);
+                }).catch(err => {
+                    console.error('Audio playback failed:', err);
+                    this.state.isSpeakingVoice = false;
+                    resolve(false);
+                });
 
-            audio.onended = () => {
-                this.state.currentAudio = null;
-                this.state.isSpeakingVoice = false;
-                this.stopVisualization();
+                audio.onended = () => {
+                    this.state.currentAudio = null;
+                    this.state.isSpeakingVoice = false;
+                    this.stopVisualization();
+                    
+                    if (this.state.voiceModeActive) {
+                        this.dom.liquidLevel.style.height = '30%';
+                    }
+                    
+                    if (this.state.voiceModeActive && this.state.autoListen && this.state.micEnabled) {
+                        setTimeout(() => {
+                            this.startVoiceListening();
+                        }, 500);
+                    } else if (this.state.voiceModeActive) {
+                        this.dom.voiceOrb.className = 'voice-orb';
+                    }
+                };
                 
-                if (this.state.voiceModeActive) {
-                    this.dom.liquidLevel.style.height = '30%';
-                }
-                
-                if (this.state.voiceModeActive && this.state.autoListen && this.state.micEnabled) {
-                    setTimeout(() => {
-                        this.startVoiceListening();
-                    }, 500);
-                } else if (this.state.voiceModeActive) {
-                    this.dom.voiceOrb.className = 'voice-orb';
-                }
-            };
+                audio.onerror = (err) => {
+                    console.error('Audio error:', err);
+                    this.state.isSpeakingVoice = false;
+                    this.stopVisualization();
+                    resolve(false);
+                };
+            });
+            
         } catch (err) {
             console.error('Failed to play audio:', err);
             this.state.isSpeakingVoice = false;
+            return false;
         }
     }
 
     setupAudioVisualization(audio) {
         try {
+            if (!this.state.voiceModeActive) return false;
+            
             if (!this.state.audioContext) {
-                this.state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) {
+                    console.warn('Web Audio API not supported');
+                    return false;
+                }
+                this.state.audioContext = new AudioContext();
             }
 
             const source = this.state.audioContext.createMediaElementSource(audio);
@@ -1958,38 +2125,48 @@ class App {
             source.connect(this.state.analyser);
             this.state.analyser.connect(this.state.audioContext.destination);
             
-            this.visualizeAudio();
+            return this.visualizeAudio();
         } catch (err) {
             console.error('Visualization setup failed:', err);
+            return false;
         }
     }
 
     visualizeAudio() {
-        if (!this.state.analyser || !this.state.isSpeakingVoice) return;
+        if (!this.state.analyser || !this.state.isSpeakingVoice) return false;
 
         const dataArray = new Uint8Array(this.state.analyser.frequencyBinCount);
         
         const animate = () => {
-            if (!this.state.isSpeakingVoice) return;
-            
-            this.state.analyser.getByteFrequencyData(dataArray);
-            const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-            const normalizedVolume = average / 255;
-            
-            const minHeight = 30;
-            const maxHeight = 85;
-            const height = minHeight + (normalizedVolume * (maxHeight - minHeight));
-            
-            this.dom.liquidLevel.style.height = `${height}%`;
-            
-            if (normalizedVolume > 0.3 && Math.random() > 0.7) {
-                this.createBubble();
+            if (!this.state.isSpeakingVoice) {
+                this.stopVisualization();
+                return;
             }
             
-            this.state.animationFrame = requestAnimationFrame(animate);
+            try {
+                this.state.analyser.getByteFrequencyData(dataArray);
+                const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+                const normalizedVolume = average / 255;
+                
+                const minHeight = 30;
+                const maxHeight = 85;
+                const height = minHeight + (normalizedVolume * (maxHeight - minHeight));
+                
+                this.dom.liquidLevel.style.height = `${height}%`;
+                
+                if (normalizedVolume > 0.3 && Math.random() > 0.7) {
+                    this.createBubble();
+                }
+                
+                this.state.animationFrame = requestAnimationFrame(animate);
+            } catch (error) {
+                console.error('Visualization error:', error);
+                this.stopVisualization();
+            }
         };
         
         animate();
+        return true;
     }
 
     createBubble() {
@@ -2004,9 +2181,15 @@ class App {
         bubble.style.animationDuration = `${2 + Math.random() * 2}s`;
         
         const container = this.dom.voiceOrb.querySelector('.orb-container');
-        container.appendChild(bubble);
-        
-        setTimeout(() => bubble.remove(), 4000);
+        if (container) {
+            container.appendChild(bubble);
+            setTimeout(() => {
+                if (bubble.parentNode === container) {
+                    container.removeChild(bubble);
+                }
+            }, 4000);
+        }
+        return true;
     }
 
     stopVisualization() {
@@ -2014,145 +2197,202 @@ class App {
             cancelAnimationFrame(this.state.animationFrame);
             this.state.animationFrame = null;
         }
+        return true;
     }
 
     stopAudio() {
-        if (this.state.currentAudio) {
-            this.state.currentAudio.pause();
-            this.state.currentAudio.currentTime = 0;
-            this.state.currentAudio = null;
-            this.state.isSpeakingVoice = false;
-            this.stopVisualization();
-            
-            if (this.state.voiceModeActive) {
-                this.dom.voiceOrb.className = 'voice-orb';
-                this.dom.liquidLevel.style.height = '30%';
+        try {
+            if (this.state.currentAudio) {
+                this.state.currentAudio.pause();
+                this.state.currentAudio.currentTime = 0;
+                this.state.currentAudio = null;
+                this.state.isSpeakingVoice = false;
+                this.stopVisualization();
+                
+                if (this.state.voiceModeActive) {
+                    this.dom.voiceOrb.className = 'voice-orb';
+                    this.dom.liquidLevel.style.height = '30%';
+                }
             }
+            return true;
+        } catch (error) {
+            console.error('Failed to stop audio:', error);
+            return false;
         }
     }
 
     enterVoiceMode() {
-        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-            alert('Voice recognition not supported. Use Chrome, Edge, or Safari.');
-            return;
-        }
+        try {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert('Voice recognition not supported. Use Chrome, Edge, or Safari.');
+                return false;
+            }
 
-        this.state.voiceEnabled = true;
-        this.state.voiceModeActive = true;
-        this.state.micEnabled = true;
-        this.dom.voiceModeOverlay.classList.add('active');
-        this.dom.liquidLevel.style.height = '30%';
-        this.updateVoiceUI();
-        
-        if (!this.state.recognition) {
-            this.initializeVoiceRecognition();
-        }
-        
-        setTimeout(() => {
-            this.startVoiceListening();
-        }, 500);
-    }
-
-    exitVoiceMode() {
-        this.state.voiceModeActive = false;
-        this.state.voiceEnabled = false;
-        this.dom.voiceModeOverlay.classList.remove('active');
-        this.stopVoiceListening();
-        this.stopAudio();
-        this.stopVisualization();
-    }
-
-    initializeVoiceRecognition() {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        this.state.recognition = new SpeechRecognition();
-        this.state.recognition.lang = 'en-US';
-        this.state.recognition.continuous = false;
-        this.state.recognition.interimResults = true;
-        
-        this.state.recognition.onstart = () => {
-            this.state.isListeningVoice = true;
-            this.dom.voiceOrb.className = 'voice-orb listening';
-            this.animateListening();
-        };
-        
-        this.state.recognition.onresult = (e) => {
-            let final = '';
+            this.state.voiceEnabled = true;
+            this.state.voiceModeActive = true;
+            this.state.micEnabled = true;
             
-            for (let i = 0; i < e.results.length; i++) {
-                if (e.results[i].isFinal) {
-                    final += e.results[i][0].transcript;
+            this.dom.voiceModeOverlay.classList.add('active');
+            this.dom.liquidLevel.style.height = '30%';
+            
+            this.updateVoiceUI();
+            
+            if (!this.state.recognition) {
+                const initResult = this.initializeVoiceRecognition();
+                if (!initResult) {
+                    throw new Error('Failed to initialize voice recognition');
                 }
             }
             
-            if (final) {
-                this.handleVoiceMessage(final);
-            }
-        };
-        
-        this.state.recognition.onerror = (e) => {
-            console.error('Speech recognition error:', e.error);
-            this.state.isListeningVoice = false;
+            setTimeout(() => {
+                const listenResult = this.startVoiceListening();
+                if (!listenResult) {
+                    console.warn('Voice listening failed to start');
+                }
+            }, 500);
             
-            if (e.error === 'no-speech') {
-                setTimeout(() => {
-                    if (this.state.voiceModeActive && this.state.autoListen) {
-                        this.startVoiceListening();
+            return true;
+        } catch (error) {
+            console.error('Failed to enter voice mode:', error);
+            return false;
+        }
+    }
+
+    exitVoiceMode() {
+        try {
+            this.state.voiceModeActive = false;
+            this.state.voiceEnabled = false;
+            
+            this.dom.voiceModeOverlay.classList.remove('active');
+            
+            const stopListenResult = this.stopVoiceListening();
+            const stopAudioResult = this.stopAudio();
+            const stopVizResult = this.stopVisualization();
+            
+            return stopListenResult && stopAudioResult && stopVizResult;
+        } catch (error) {
+            console.error('Failed to exit voice mode:', error);
+            return false;
+        }
+    }
+
+    initializeVoiceRecognition() {
+        try {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                throw new Error('Speech recognition not available');
+            }
+            
+            this.state.recognition = new SpeechRecognition();
+            this.state.recognition.lang = 'en-US';
+            this.state.recognition.continuous = false;
+            this.state.recognition.interimResults = true;
+            
+            this.state.recognition.onstart = () => {
+                this.state.isListeningVoice = true;
+                this.dom.voiceOrb.className = 'voice-orb listening';
+                return this.animateListening();
+            };
+            
+            this.state.recognition.onresult = (e) => {
+                if (!e || !e.results) return;
+                
+                let final = '';
+                
+                for (let i = 0; i < e.results.length; i++) {
+                    if (e.results[i].isFinal && e.results[i][0]) {
+                        final += e.results[i][0].transcript;
                     }
-                }, 1500);
-            }
+                }
+                
+                if (final) {
+                    return this.handleVoiceMessage(final);
+                }
+            };
             
-            this.dom.voiceOrb.className = 'voice-orb';
-            this.stopListeningAnimation();
-        };
-        
-        this.state.recognition.onend = () => {
-            this.state.isListeningVoice = false;
-            this.stopListeningAnimation();
-            if (this.state.voiceModeActive && !this.state.isSpeakingVoice) {
+            this.state.recognition.onerror = (e) => {
+                console.error('Speech recognition error:', e.error);
+                this.state.isListeningVoice = false;
+                
+                if (e.error === 'no-speech') {
+                    setTimeout(() => {
+                        if (this.state.voiceModeActive && this.state.autoListen) {
+                            return this.startVoiceListening();
+                        }
+                    }, 1500);
+                }
+                
                 this.dom.voiceOrb.className = 'voice-orb';
-            }
-        };
+                return this.stopListeningAnimation();
+            };
+            
+            this.state.recognition.onend = () => {
+                this.state.isListeningVoice = false;
+                this.stopListeningAnimation();
+                if (this.state.voiceModeActive && !this.state.isSpeakingVoice) {
+                    this.dom.voiceOrb.className = 'voice-orb';
+                }
+            };
+            
+            return true;
+        } catch (error) {
+            console.error('Failed to initialize voice recognition:', error);
+            return false;
+        }
     }
 
     animateListening() {
+        if (!this.state.isListeningVoice) return false;
+
         const animate = () => {
-            if (!this.state.isListeningVoice) return;
-            
-            const baseHeight = 50;
-            const variation = 15;
-            const height = baseHeight + Math.sin(Date.now() / 200) * variation + Math.random() * 10;
-            
-            this.dom.liquidLevel.style.height = `${height}%`;
-            
-            if (Math.random() > 0.8) {
-                this.createBubble();
+            if (!this.state.isListeningVoice) {
+                this.stopListeningAnimation();
+                return;
             }
             
-            this.state.animationFrame = requestAnimationFrame(animate);
+            try {
+                const baseHeight = 50;
+                const variation = 15;
+                const height = baseHeight + Math.sin(Date.now() / 200) * variation + Math.random() * 10;
+                
+                this.dom.liquidLevel.style.height = `${height}%`;
+                
+                if (Math.random() > 0.8) {
+                    this.createBubble();
+                }
+                
+                this.state.animationFrame = requestAnimationFrame(animate);
+            } catch (error) {
+                console.error('Animation error:', error);
+                this.stopListeningAnimation();
+            }
         };
         
         animate();
+        return true;
     }
 
     stopListeningAnimation() {
-        if (this.state.animationFrame) {
-            cancelAnimationFrame(this.state.animationFrame);
-            this.state.animationFrame = null;
-        }
+        const vizResult = this.stopVisualization();
         this.dom.liquidLevel.style.height = '30%';
+        return vizResult;
     }
 
     startVoiceListening() {
         if (!this.state.recognition) {
-            this.initializeVoiceRecognition();
+            if (!this.initializeVoiceRecognition()) {
+                return false;
+            }
         }
         
-        if (this.state.isListeningVoice || this.state.isSpeakingVoice) return;
+        if (this.state.isListeningVoice || this.state.isSpeakingVoice) return false;
         
         try {
             this.state.recognition.start();
+            return true;
         } catch (e) {
             console.error('Failed to start recognition:', e);
+            return false;
         }
     }
 
@@ -2160,15 +2400,19 @@ class App {
         if (this.state.recognition && this.state.isListeningVoice) {
             try {
                 this.state.recognition.stop();
-                this.stopListeningAnimation();
+                return this.stopListeningAnimation();
             } catch (e) {
                 console.error('Failed to stop recognition:', e);
+                return false;
             }
         }
+        return true;
     }
 
     async handleVoiceMessage(text) {
-        if (!text.trim()) return;
+        if (!text || !text.trim()) {
+            return false;
+        }
 
         if (this.dom.welcome.style.display !== 'none') {
             this.dom.welcome.style.display = 'none';
@@ -2178,72 +2422,123 @@ class App {
             }
         }
 
-        this.addMessage(text, 'user');
-        this.appendToHistory('user', text);
+        const messageElement = this.addMessage(text, 'user');
+        const historyResult = this.appendToHistory('user', text);
+        if (!historyResult) {
+            console.error('Failed to append voice message to history');
+        }
         this.state.messageCount++;
 
         try {
+            const requestPayload = {
+                message: text,
+                sessionId: this.state.sessionId,
+                enableVoice: true,
+                voiceLanguage: this.state.voiceLanguage,
+                voiceSpeaker: this.state.voiceSpeaker,
+                files: []
+            };
+            
             const res = await fetch('/api/proxy', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
                     'X-Client-Session-Id': this.state.sessionId || ''
                 },
-                body: JSON.stringify({
-                    message: text,
-                    sessionId: this.state.sessionId,
-                    enableVoice: true,
-                    voiceLanguage: this.state.voiceLanguage,
-                    voiceSpeaker: this.state.voiceSpeaker
-                })
+                body: JSON.stringify(requestPayload)
             });
             
-            if (!res.ok) throw new Error('Server error');
+            if (!res.ok) {
+                throw new Error(`Server error: ${res.status} ${res.statusText}`);
+            }
             
             const data = await res.json();
             
-            // CRITICAL: Save session ID from backend response
+            if (!data) {
+                throw new Error('Empty response from server');
+            }
+            
             if (data.sessionId) {
                 this.state.sessionId = data.sessionId;
                 this.setSessionId(data.sessionId);
             }
             
-            const reply = data.reply || data.message || 'No response';
+            const reply = data.reply || data.message || '';
+            if (!reply) {
+                throw new Error('Empty response content from AI');
+            }
             
-            this.addMessage(reply, 'ai', true);
-            this.appendToHistory('ai', reply);
+            const aiMessageElement = this.addMessage(reply, 'ai', true);
+            const aiHistoryResult = this.appendToHistory('ai', reply);
+            if (!aiHistoryResult) {
+                console.error('Failed to append AI voice response to history');
+            }
             
             if (data.audio) {
-                this.playAudio(data.audio);
+                const audioResult = await this.playAudio(data.audio);
+                if (!audioResult) {
+                    console.warn('Voice audio playback failed');
+                }
             } else {
                 if (this.state.voiceModeActive && this.state.autoListen) {
                     setTimeout(() => {
-                        this.startVoiceListening();
+                        const listenResult = this.startVoiceListening();
+                        if (!listenResult) {
+                            console.warn('Failed to restart voice listening');
+                        }
                     }, 500);
                 }
             }
-        } catch (e) {
-            console.error('Voice message error:', e);
-            const reply = this.generateSmartResponse(text);
-            this.addMessage(reply, 'ai', true);
-            this.appendToHistory('ai', reply);
+            
+            return true;
+            
+        } catch (error) {
+            console.error('Voice message error:', error);
+            
+            const errorMessage = `**Voice Processing Error:** ${error.message}\n\n` +
+                `The voice request could not be completed.\n` +
+                `\`\`\`\nVoice Input: ${text}\n` +
+                `Error: ${error.message}\n\`\`\``;
+            
+            const errorElement = this.addMessage(errorMessage, 'ai', true);
+            const errorHistoryResult = this.appendToHistory('ai', errorMessage);
+            if (!errorHistoryResult) {
+                console.error('Failed to append voice error to history');
+            }
             
             if (this.state.voiceModeActive && this.state.autoListen) {
                 setTimeout(() => {
                     this.dom.voiceOrb.className = 'voice-orb';
-                    this.startVoiceListening();
+                    const listenResult = this.startVoiceListening();
+                    if (!listenResult) {
+                        console.warn('Failed to restart voice listening after error');
+                    }
                 }, 1500);
             }
+            
+            return false;
+            
+        } finally {
+            this.checkStorageSize();
         }
-        
-        this.checkStorageSize();
     }
 
     addMessage(text, sender, showRegenerate = false) {
         const div = document.createElement('div');
         div.className = `message ${sender}`;
         const avatar = sender === 'user' ? 'U' : 'eS';
-        const htmlContent = marked.parse(text);
+        
+        let htmlContent;
+        try {
+            if (marked && typeof marked.parse === 'function') {
+                htmlContent = marked.parse(text || '');
+            } else {
+                htmlContent = (text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            }
+        } catch (error) {
+            console.error('Markdown parsing failed:', error);
+            htmlContent = (text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
         
         const regenerateBtn = showRegenerate ? '<button class="action-btn regenerate" onclick="app.regenerateResponse(this)">Regenerate</button>' : '';
         
@@ -2260,7 +2555,15 @@ class App {
         this.dom.chat.appendChild(div);
         this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
         
-        if (window.Prism) Prism.highlightAllUnder(div);
+        if (window.Prism && typeof Prism.highlightAllUnder === 'function') {
+            try {
+                Prism.highlightAllUnder(div);
+            } catch (error) {
+                console.error('Prism highlighting failed:', error);
+            }
+        }
+        
+        return div;
     }
 
     addThinking() {
@@ -2284,19 +2587,11 @@ class App {
 
     removeThinking(id) {
         const el = document.getElementById(id);
-        if (el) el.remove();
-    }
-
-    generateSmartResponse(text) {
-        const responses = [
-            `I understand you're asking about "${text.slice(0, 50)}${text.length > 50 ? '...' : ''}"\n\n**Demo Mode Active:** The backend service is currently unavailable. In production, I would provide a detailed, contextual response based on your query.\n\n**Key Points:**\n- All features remain functional with local storage\n- Your conversation history is preserved\n- File uploads and voice input work locally\n\nWould you like to explore other features?`,
-            
-            `**Analysis of your request:**\n\n"${text.slice(0, 100)}${text.length > 100 ? '...' : ''}"\n\n*Note: Running in demo mode*\n\nBased on your input, here's what I can help you with:\n\n1. **Code Generation** - I can help structure your ideas\n2. **Problem Solving** - Breaking down complex challenges\n3. **Creative Writing** - Developing narratives and content\n\nThe full AI backend will provide more detailed, context-aware responses.`,
-            
-            `**eSAMz AI Response (Demo):**\n\nI've received your message about: "${text.slice(0, 70)}${text.length > 70 ? '...' : ''}"\n\n\`\`\`\nStatus: Demo Mode\nBackend: Offline\nLocal Features: Active\n\`\`\`\n\nWhile the AI service is unavailable, I'm maintaining:\n- ✓ Conversation history\n- ✓ Export functionality\n- ✓ File handling\n- ✓ Voice input\n\nYour data is safe and ready for when the backend reconnects.`
-        ];
-        
-        return responses[Math.floor(Math.random() * responses.length)];
+        if (el) {
+            el.remove();
+            return true;
+        }
+        return false;
     }
 
     async regenerateResponse(btn) {
@@ -2306,62 +2601,92 @@ class App {
         
         if (index > 0) {
             const userMessageEl = messages[index - 1];
-            const userText = userMessageEl.querySelector('.message-bubble').innerText;
+            const userText = userMessageEl.querySelector('.message-bubble')?.innerText || '';
             
             messageEl.remove();
             
             const thinkingId = this.addThinking();
             
             try {
+                const requestPayload = {
+                    message: userText,
+                    sessionId: this.state.sessionId,
+                    mode: 'default',
+                    enableVoice: this.state.voiceEnabled,
+                    voiceLanguage: this.state.voiceLanguage,
+                    voiceSpeaker: this.state.voiceSpeaker,
+                    files: []
+                };
+                
                 const res = await fetch('/api/proxy', {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
                         'X-Client-Session-Id': this.state.sessionId || ''
                     },
-                    body: JSON.stringify({
-                        message: userText,
-                        sessionId: this.state.sessionId,
-                        mode: 'default',
-                        enableVoice: this.state.voiceEnabled,
-                        voiceLanguage: this.state.voiceLanguage,
-                        voiceSpeaker: this.state.voiceSpeaker
-                    })
+                    body: JSON.stringify(requestPayload)
                 });
                 
-                if (!res.ok) throw new Error('Server error');
+                if (!res.ok) {
+                    throw new Error(`Server error: ${res.status} ${res.statusText}`);
+                }
                 
                 const data = await res.json();
                 this.removeThinking(thinkingId);
                 
-                // CRITICAL: Save session ID from backend response
+                if (!data) {
+                    throw new Error('Empty response from server');
+                }
+                
                 if (data.sessionId) {
                     this.state.sessionId = data.sessionId;
                     this.setSessionId(data.sessionId);
                 }
                 
-                const reply = data.reply || data.message || 'No response';
-                this.addMessage(reply, 'ai', true);
+                const reply = data.reply || data.message || '';
+                if (!reply) {
+                    throw new Error('Empty response content from AI');
+                }
+                
+                const messageElement = this.addMessage(reply, 'ai', true);
                 
                 if (data.audio && this.state.voiceEnabled) {
-                    this.playAudio(data.audio);
+                    const audioResult = this.playAudio(data.audio);
+                    if (!audioResult) {
+                        console.warn('Regenerate audio playback failed');
+                    }
                 }
-            } catch (e) {
+                
+                return true;
+                
+            } catch (error) {
+                console.error('Regenerate failed:', error);
                 this.removeThinking(thinkingId);
-                const reply = this.generateSmartResponse(userText);
-                this.addMessage(reply, 'ai', true);
+                
+                const errorMessage = `**Regeneration Error:** ${error.message}\n\n` +
+                    `Failed to regenerate response.\n` +
+                    `\`\`\`\nOriginal: ${userText}\n` +
+                    `Error: ${error.message}\n\`\`\``;
+                
+                const errorElement = this.addMessage(errorMessage, 'ai', true);
+                return false;
             }
         }
+        return false;
     }
 
     loadHistory() {
         try {
             const raw = localStorage.getItem(this.storageKey);
             const history = raw ? JSON.parse(raw) : [];
-            history.slice(0, 50).forEach(chat => this.renderHistoryItem(chat));
+            if (Array.isArray(history)) {
+                history.slice(0, 50).forEach(chat => this.renderHistoryItem(chat));
+            }
+            return history;
         } catch (e) {
             console.error('Failed to load history:', e);
             localStorage.removeItem(this.storageKey);
+            return [];
         }
     }
 
@@ -2375,6 +2700,7 @@ class App {
         `;
         btn.onclick = () => this.loadChat(chat.id);
         this.dom.history.appendChild(btn);
+        return btn;
     }
 
     escapeHtml(text) {
@@ -2385,86 +2711,132 @@ class App {
 
     createChatSession(firstText) {
         this.state.chatId = Date.now().toString();
-        const title = firstText.slice(0, 35) + (firstText.length > 35 ? '…' : '');
-        const chat = { id: this.state.chatId, title, messages: [], created: Date.now() };
-        this.saveChat(chat);
-        this.renderHistoryItem(chat);
+        const title = (firstText || 'New Chat').slice(0, 35) + ((firstText || '').length > 35 ? '…' : '');
+        const chat = { 
+            id: this.state.chatId, 
+            title, 
+            messages: [], 
+            created: Date.now(),
+            updated: Date.now()
+        };
+        const saveResult = this.saveChat(chat);
+        const renderResult = this.renderHistoryItem(chat);
+        return saveResult && renderResult ? chat : null;
     }
 
     appendToHistory(role, content) {
         try {
+            if (!this.state.chatId) return false;
+            
             const history = this.getHistory();
             const chat = history.find(c => c.id === this.state.chatId);
             if (chat) {
                 chat.messages.push({ role, content, ts: Date.now() });
                 chat.updated = Date.now();
-                this.saveHistory(history);
+                return this.saveHistory(history);
             }
+            return false;
         } catch (e) {
             console.error('Failed to save message:', e);
+            return false;
         }
     }
 
     loadChat(chatId) {
-        const history = this.getHistory();
-        const chat = history.find(c => c.id === chatId);
-        if (!chat) return;
-        
-        this.state.chatId = chatId;
-        this.state.messageCount = chat.messages.length;
-        
-        this.dom.welcome.style.display = 'none';
-        this.dom.chatInputContainer.style.display = 'block';
-        
-        const messagesContainer = document.createElement('div');
-        chat.messages.forEach(m => {
-            const div = document.createElement('div');
-            div.className = `message ${m.role}`;
-            const avatar = m.role === 'user' ? 'U' : 'eS';
-            const htmlContent = marked.parse(m.content);
-            const isLastAI = m.role === 'ai' && chat.messages.indexOf(m) === chat.messages.length - 1;
+        try {
+            const history = this.getHistory();
+            const chat = history.find(c => c.id === chatId);
+            if (!chat) return false;
             
-            div.innerHTML = `
-                <div class="message-avatar">${avatar}</div>
-                <div class="message-content">
-                    <div class="message-bubble">${htmlContent}</div>
-                    ${m.role === 'ai' ? `<div class="message-actions">
-                        <button class="action-btn" onclick="app.copyText(this)">Copy</button>
-                        ${isLastAI ? '<button class="action-btn regenerate" onclick="app.regenerateResponse(this)">Regenerate</button>' : ''}
-                    </div>` : ''}
-                </div>`;
-            messagesContainer.appendChild(div);
-        });
-        
-        this.dom.chat.innerHTML = '';
-        this.dom.chat.appendChild(messagesContainer);
-        this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
-        
-        if (window.Prism) Prism.highlightAll();
-        
-        this.toggleSidebar(false);
+            this.state.chatId = chatId;
+            this.state.messageCount = chat.messages.length;
+            
+            this.dom.welcome.style.display = 'none';
+            this.dom.chatInputContainer.style.display = 'block';
+            
+            const messagesContainer = document.createElement('div');
+            chat.messages.forEach(m => {
+                const div = document.createElement('div');
+                div.className = `message ${m.role}`;
+                const avatar = m.role === 'user' ? 'U' : 'eS';
+                
+                let htmlContent;
+                try {
+                    if (marked && typeof marked.parse === 'function') {
+                        htmlContent = marked.parse(m.content || '');
+                    } else {
+                        htmlContent = (m.content || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    }
+                } catch (error) {
+                    console.error('Markdown parsing failed:', error);
+                    htmlContent = (m.content || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                }
+                
+                const isLastAI = m.role === 'ai' && chat.messages.indexOf(m) === chat.messages.length - 1;
+                
+                div.innerHTML = `
+                    <div class="message-avatar">${avatar}</div>
+                    <div class="message-content">
+                        <div class="message-bubble">${htmlContent}</div>
+                        ${m.role === 'ai' ? `<div class="message-actions">
+                            <button class="action-btn" onclick="app.copyText(this)">Copy</button>
+                            ${isLastAI ? '<button class="action-btn regenerate" onclick="app.regenerateResponse(this)">Regenerate</button>' : ''}
+                        </div>` : ''}
+                    </div>`;
+                messagesContainer.appendChild(div);
+            });
+            
+            this.dom.chat.innerHTML = '';
+            this.dom.chat.appendChild(messagesContainer);
+            this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
+            
+            if (window.Prism && typeof Prism.highlightAll === 'function') {
+                try {
+                    Prism.highlightAll();
+                } catch (error) {
+                    console.error('Prism highlighting failed:', error);
+                }
+            }
+            
+            this.toggleSidebar(false);
+            return true;
+            
+        } catch (error) {
+            console.error('Failed to load chat:', error);
+            return false;
+        }
     }
 
     deleteChat(chatId) {
-        if (!confirm('Delete this conversation?')) return;
+        if (!confirm('Delete this conversation?')) return false;
         
         try {
             let history = this.getHistory();
             history = history.filter(c => c.id !== chatId);
-            this.saveHistory(history);
+            const saveResult = this.saveHistory(history);
             
             this.dom.history.innerHTML = '';
             history.forEach(c => this.renderHistoryItem(c));
             
-            if (this.state.chatId === chatId) this.newChat();
+            if (this.state.chatId === chatId) {
+                const newChatResult = this.newChat();
+                return saveResult && newChatResult;
+            }
+            return saveResult;
+            
         } catch (e) {
             console.error('Failed to delete chat:', e);
+            return false;
         }
     }
 
     getHistory() {
         try {
-            return JSON.parse(localStorage.getItem(this.storageKey) || '[]');
+            const data = localStorage.getItem(this.storageKey);
+            if (!data) return [];
+            
+            const parsed = JSON.parse(data);
+            return Array.isArray(parsed) ? parsed : [];
         } catch (e) {
             console.error('Failed to parse history:', e);
             return [];
@@ -2472,27 +2844,36 @@ class App {
     }
 
     saveChat(chat) {
+        if (!chat || !chat.id) return false;
+        
         const history = this.getHistory();
         history.unshift(chat);
         if (history.length > 100) {
             history.splice(100);
         }
-        this.saveHistory(history);
+        return this.saveHistory(history);
     }
 
     saveHistory(history) {
         try {
+            if (!Array.isArray(history)) {
+                throw new Error('History must be an array');
+            }
+            
             const data = JSON.stringify(history);
             if (data.length > this.maxStorageSize) {
                 history.sort((a, b) => (b.updated || b.created) - (a.updated || a.created));
                 history.splice(50);
                 localStorage.setItem(this.storageKey, JSON.stringify(history));
+                console.warn('Storage limit reached. Truncated history to 50 items.');
             } else {
                 localStorage.setItem(this.storageKey, data);
             }
+            return true;
         } catch (e) {
             console.error('Failed to save history:', e);
             alert('Storage limit reached. Please clear some history.');
+            return false;
         }
     }
 
@@ -2501,14 +2882,17 @@ class App {
             const data = localStorage.getItem(this.storageKey);
             if (data && data.length > this.maxStorageSize * 0.9) {
                 console.warn('Storage is near limit. Consider clearing old conversations.');
+                return false;
             }
+            return true;
         } catch (e) {
             console.error('Storage check failed:', e);
+            return false;
         }
     }
 
     toggleSidebarCollapse() {
-        if (this.state.isMobile) return;
+        if (this.state.isMobile) return false;
         
         this.state.sidebarCollapsed = !this.state.sidebarCollapsed;
         const toggleBtn = document.getElementById('sidebarToggle');
@@ -2522,10 +2906,11 @@ class App {
             this.dom.mainContent.classList.remove('sidebar-collapsed');
             toggleBtn.innerHTML = '‹';
         }
+        return true;
     }
 
     toggleSidebar(open) {
-        if (!this.state.isMobile) return;
+        if (!this.state.isMobile) return false;
         
         if (open) {
             this.dom.sidebar.classList.add('mobile-open');
@@ -2534,10 +2919,10 @@ class App {
             this.dom.sidebar.classList.remove('mobile-open');
             this.dom.overlay.classList.remove('active');
         }
+        return true;
     }
 
     newChat() {
-        // Clear session ONLY on explicit "New Chat"
         this.clearSessionId();
         this.state.sessionId = null;
         
@@ -2546,15 +2931,19 @@ class App {
         this.state.files = [];
         this.state.welcomeFiles = [];
         this.state.threadId = `thread_${Date.now()}`;
-        this.stopAudio();
-        this.stopVoiceListening();
+        
+        const stopAudioResult = this.stopAudio();
+        const stopVoiceResult = this.stopVoiceListening();
         
         if (this.state.voiceModeActive) {
             this.dom.liquidLevel.style.height = '30%';
             this.dom.voiceOrb.className = 'voice-orb';
             
             setTimeout(() => {
-                this.startVoiceListening();
+                const listenResult = this.startVoiceListening();
+                if (!listenResult) {
+                    console.warn('Failed to restart voice listening in new chat');
+                }
             }, 1000);
         }
         
@@ -2574,37 +2963,53 @@ class App {
             this.toggleSidebar(false);
             this.dom.welcomeInput.focus();
         }
+        
+        return stopAudioResult && stopVoiceResult;
     }
 
     clearChat() {
-        if (this.state.messageCount > 0 && !confirm('Clear current conversation?')) return;
-        this.newChat();
+        if (this.state.messageCount > 0 && !confirm('Clear current conversation?')) return false;
+        return this.newChat();
     }
 
     clearAllData() {
-        if (confirm('Delete ALL conversation history? This cannot be undone.')) {
-            try {
-                localStorage.clear();
-                location.reload();
-            } catch (e) {
-                console.error('Failed to clear storage:', e);
-            }
+        if (!confirm('Delete ALL conversation history? This cannot be undone.')) return false;
+        
+        try {
+            localStorage.clear();
+            location.reload();
+            return true;
+        } catch (e) {
+            console.error('Failed to clear storage:', e);
+            return false;
         }
     }
 
     copyText(btn) {
-        const text = btn.closest('.message').querySelector('.message-bubble').innerText;
-        navigator.clipboard.writeText(text).then(() => {
+        const messageEl = btn.closest('.message');
+        if (!messageEl) return false;
+        
+        const bubble = messageEl.querySelector('.message-bubble');
+        if (!bubble) return false;
+        
+        const text = bubble.innerText;
+        return navigator.clipboard.writeText(text).then(() => {
             const orig = btn.innerText;
             btn.innerText = 'Copied!';
-            setTimeout(() => btn.innerText = orig, 2000);
+            setTimeout(() => {
+                if (btn.innerText === 'Copied!') {
+                    btn.innerText = orig;
+                }
+            }, 2000);
+            return true;
         }).catch(err => {
             console.error('Failed to copy:', err);
+            return false;
         });
     }
 
     toggleVoice(isWelcome) {
-        this.enterVoiceMode();
+        return this.enterVoiceMode();
     }
 
     exportChat(type) {
@@ -2612,26 +3017,26 @@ class App {
         
         if (messages.length === 0) {
             alert('No conversation to export');
-            return;
+            return false;
         }
         
         const msgs = messages.map(el => {
             const who = el.classList.contains('user') ? 'User' : 'eSAMz AI';
-            const txt = el.querySelector('.message-bubble').innerText;
+            const txt = el.querySelector('.message-bubble')?.innerText || '';
             return `[${who}]: ${txt}`;
         }).join('\n\n');
         
         const filename = `esamz-export-${Date.now()}`;
         
         if (type === 'txt') {
-            this.download(filename + '.txt', msgs);
+            return this.download(filename + '.txt', msgs);
         } else if (type === 'md') {
             const markdown = messages.map(el => {
                 const who = el.classList.contains('user') ? '**You**' : '**eSAMz AI**';
-                const txt = el.querySelector('.message-bubble').innerText;
+                const txt = el.querySelector('.message-bubble')?.innerText || '';
                 return `${who}\n\n${txt}`;
             }).join('\n\n---\n\n');
-            this.download(filename + '.md', markdown);
+            return this.download(filename + '.md', markdown);
         } else if (type === 'html') {
             const html = `<!DOCTYPE html>
 <html lang="en">
@@ -2695,7 +3100,7 @@ class App {
     ${messages.map(el => {
         const who = el.classList.contains('user') ? 'You' : 'eSAMz AI';
         const cls = el.classList.contains('user') ? 'user' : 'ai';
-        const content = el.querySelector('.message-bubble').innerHTML;
+        const content = el.querySelector('.message-bubble')?.innerHTML || '';
         return `<div class="message ${cls}">
             <div class="message-header">${who}</div>
             <div>${content}</div>
@@ -2706,10 +3111,11 @@ class App {
     </div>
 </body>
 </html>`;
-            this.download(filename + '.html', html);
+            return this.download(filename + '.html', html);
         }
         
         this.dom.dialog.close();
+        return true;
     }
 
     download(name, content) {
@@ -2723,9 +3129,11 @@ class App {
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
+            return true;
         } catch (e) {
             console.error('Download failed:', e);
             alert('Failed to download file');
+            return false;
         }
     }
 }
