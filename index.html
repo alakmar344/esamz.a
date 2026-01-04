@@ -1493,28 +1493,10 @@
     </dialog>
 
     <script>
+// API Key Definition (top-level constant)
+const ESAMZ_KEY = document.querySelector('meta[name="esamz-key"]')?.content || "";
+
 class App {
-    getSessionId() {
-        const id = localStorage.getItem('esamz_session_id');
-        if (!id || typeof id !== 'string') {
-            return null;
-        }
-        return id;
-    }
-
-    setSessionId(id) {
-        if (id && typeof id === 'string') {
-            localStorage.setItem('esamz_session_id', id);
-            return true;
-        }
-        return false;
-    }
-
-    clearSessionId() {
-        localStorage.removeItem('esamz_session_id');
-        return true;
-    }
-
     constructor() {
         this.dom = {
             chat: document.getElementById('chatContainer'),
@@ -1567,7 +1549,6 @@ class App {
             voiceLanguage: 'en-IN',
             voiceSpeaker: 'anushka',
             currentAudio: null,
-            threadId: `thread_${Date.now()}`,
             voiceModeActive: false,
             isListeningVoice: false,
             isSpeakingVoice: false,
@@ -1575,8 +1556,9 @@ class App {
             autoListen: true,
             audioContext: null,
             analyser: null,
-            animationFrame: null,
-            sessionId: this.getSessionId()
+            animationFrame: null
+            // REMOVED: sessionId
+            // REMOVED: threadId
         };
 
         this.storageKey = 'esamz_conversations_v8';
@@ -1593,7 +1575,6 @@ class App {
     init() {
         try {
             this.loadHistory();
-            this.loadVoiceSettings();
             this.setupEvents();
             this.setupDragDrop();
             this.dom.welcomeInput.focus();
@@ -1617,35 +1598,6 @@ class App {
         } catch (error) {
             console.error('Initialization failed:', error);
             throw error;
-        }
-    }
-
-    loadVoiceSettings() {
-        try {
-            const saved = localStorage.getItem('esamz_voice_settings');
-            if (saved) {
-                const settings = JSON.parse(saved);
-                if (settings && typeof settings === 'object') {
-                    this.state.voiceSpeaker = settings.speaker || 'anushka';
-                    this.dom.voiceSpeaker.value = this.state.voiceSpeaker;
-                }
-            }
-            return true;
-        } catch (e) {
-            console.error('Failed to load voice settings:', e);
-            return false;
-        }
-    }
-
-    saveVoiceSettings() {
-        try {
-            localStorage.setItem('esamz_voice_settings', JSON.stringify({
-                speaker: this.state.voiceSpeaker
-            }));
-            return true;
-        } catch (e) {
-            console.error('Failed to save voice settings:', e);
-            return false;
         }
     }
 
@@ -1683,7 +1635,7 @@ class App {
 
             this.dom.voiceSpeaker.addEventListener('change', (e) => {
                 this.state.voiceSpeaker = e.target.value;
-                return this.saveVoiceSettings();
+                return true;
             });
 
             document.getElementById('btnWelcomeSend').addEventListener('click', () => this.handleWelcomeSend());
@@ -1963,23 +1915,30 @@ class App {
         try {
             const requestPayload = {
                 message: constructedPayload.userMessage,
-                sessionId: this.state.sessionId,
                 enableVoice: this.state.voiceEnabled,
                 voiceLanguage: this.state.voiceLanguage,
                 voiceSpeaker: this.state.voiceSpeaker,
                 files: constructedPayload.fileContents
+                // REMOVED: sessionId, threadId, quota counters
             };
             
             const res = await fetch('/api/proxy', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'X-Client-Session-Id': this.state.sessionId || ''
+                    'x-esamz-key': ESAMZ_KEY // ADDED: API key header
                 },
                 body: JSON.stringify(requestPayload)
             });
             
-            if (!res.ok) {
+            // Handle all backend responses appropriately
+            if (res.status === 401) {
+                throw new Error('Unauthorized - Please check your API key');
+            } else if (res.status === 429) {
+                throw new Error('Rate limit exceeded - Please try again later');
+            } else if (res.status === 403) {
+                throw new Error('Access forbidden - You do not have permission');
+            } else if (!res.ok) {
                 throw new Error(`Server error: ${res.status} ${res.statusText}`);
             }
             
@@ -1988,11 +1947,6 @@ class App {
             
             if (!data) {
                 throw new Error('Empty response from server');
-            }
-            
-            if (data.sessionId) {
-                this.state.sessionId = data.sessionId;
-                this.setSessionId(data.sessionId);
             }
 
             const reply = data.reply || data.message || '';
@@ -2432,7 +2386,6 @@ class App {
         try {
             const requestPayload = {
                 message: text,
-                sessionId: this.state.sessionId,
                 enableVoice: true,
                 voiceLanguage: this.state.voiceLanguage,
                 voiceSpeaker: this.state.voiceSpeaker,
@@ -2443,12 +2396,19 @@ class App {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'X-Client-Session-Id': this.state.sessionId || ''
+                    'x-esamz-key': ESAMZ_KEY // ADDED: API key header
                 },
                 body: JSON.stringify(requestPayload)
             });
             
-            if (!res.ok) {
+            // Handle all backend responses appropriately
+            if (res.status === 401) {
+                throw new Error('Unauthorized - Please check your API key');
+            } else if (res.status === 429) {
+                throw new Error('Rate limit exceeded - Please try again later');
+            } else if (res.status === 403) {
+                throw new Error('Access forbidden - You do not have permission');
+            } else if (!res.ok) {
                 throw new Error(`Server error: ${res.status} ${res.statusText}`);
             }
             
@@ -2456,11 +2416,6 @@ class App {
             
             if (!data) {
                 throw new Error('Empty response from server');
-            }
-            
-            if (data.sessionId) {
-                this.state.sessionId = data.sessionId;
-                this.setSessionId(data.sessionId);
             }
             
             const reply = data.reply || data.message || '';
@@ -2610,7 +2565,6 @@ class App {
             try {
                 const requestPayload = {
                     message: userText,
-                    sessionId: this.state.sessionId,
                     mode: 'default',
                     enableVoice: this.state.voiceEnabled,
                     voiceLanguage: this.state.voiceLanguage,
@@ -2622,12 +2576,19 @@ class App {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'X-Client-Session-Id': this.state.sessionId || ''
+                        'x-esamz-key': ESAMZ_KEY // ADDED: API key header
                     },
                     body: JSON.stringify(requestPayload)
                 });
                 
-                if (!res.ok) {
+                // Handle all backend responses appropriately
+                if (res.status === 401) {
+                    throw new Error('Unauthorized - Please check your API key');
+                } else if (res.status === 429) {
+                    throw new Error('Rate limit exceeded - Please try again later');
+                } else if (res.status === 403) {
+                    throw new Error('Access forbidden - You do not have permission');
+                } else if (!res.ok) {
                     throw new Error(`Server error: ${res.status} ${res.statusText}`);
                 }
                 
@@ -2636,11 +2597,6 @@ class App {
                 
                 if (!data) {
                     throw new Error('Empty response from server');
-                }
-                
-                if (data.sessionId) {
-                    this.state.sessionId = data.sessionId;
-                    this.setSessionId(data.sessionId);
                 }
                 
                 const reply = data.reply || data.message || '';
@@ -2923,14 +2879,10 @@ class App {
     }
 
     newChat() {
-        this.clearSessionId();
-        this.state.sessionId = null;
-        
         this.state.chatId = null;
         this.state.messageCount = 0;
         this.state.files = [];
         this.state.welcomeFiles = [];
-        this.state.threadId = `thread_${Date.now()}`;
         
         const stopAudioResult = this.stopAudio();
         const stopVoiceResult = this.stopVoiceListening();
