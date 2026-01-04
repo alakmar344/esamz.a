@@ -59,7 +59,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    /* -------- SERVER KEY CHECK -------- */
+    /* -------- SERVER AUTH -------- */
 
     const internalKey = process.env.ESAMZ_INTERNAL_KEY;
     const storedHash = process.env.ESAMZ_KEY_HASH;
@@ -69,12 +69,15 @@ export default async function handler(req, res) {
       !storedHash ||
       !timingSafeEqual(sha256(internalKey), storedHash)
     ) {
-      return res.status(500).json({ error: "Server auth failure" });
+      return res.status(500).json({ error: "Server authentication failure" });
     }
 
     /* -------- BODY -------- */
 
-    const { message, threadId = "default", mode = "text" } = req.body || {};
+    const {
+      message,
+      enableVoice = false
+    } = req.body || {};
 
     if (!message || typeof message !== "string") {
       return res.status(400).json({ error: "Invalid request body" });
@@ -83,43 +86,42 @@ export default async function handler(req, res) {
     /* -------- USER KEY -------- */
 
     const ip = getClientIP(req);
-    const userKey = `${ip}:${threadId}`;
+    const userKey = ip;
 
     /* -------- TEXT LIMIT -------- */
 
     if (!(await checkTextLimit(userKey))) {
       return res.status(429).json({
-        error: "Text limit exceeded (10/min)"
+        error: "Text limit exceeded (10 per minute)"
       });
-    }
-
-    /* -------- VOICE LIMIT -------- */
-
-    if (mode === "voice") {
-      if (!(await checkVoiceLimit(userKey))) {
-        return res.status(403).json({
-          error: "Voice limit reached (3 total)"
-        });
-      }
     }
 
     /* -------- SARVAM CHAT -------- */
 
     const reply = await callSarvamChat(message);
 
-    /* -------- SARVAM TTS -------- */
+    /* -------- VOICE (OPTIONAL) -------- */
 
-let audio = null;
-if (mode === "voice") {
-  audio = await callSarvamTTS(reply); // base64 string
-}
+    let audio = null;
 
-return res.status(200).json({
-  reply,
-  audio, // <-- THIS is what frontend reads
-  provider: "sarvam"
-});
+    if (enableVoice === true) {
+      if (!(await checkVoiceLimit(userKey))) {
+        return res.status(403).json({
+          error: "Voice limit reached (3 total)"
+        });
+      }
 
+      audio = await callSarvamTTS(reply);
+    }
+
+    /* -------- RESPONSE -------- */
+
+    return res.status(200).json({
+      reply,
+      audio, // base64 or null (frontend expects this)
+      provider: "sarvam",
+      model: "sarvam-m"
+    });
 
   } catch (err) {
     console.error("Proxy error:", err);
@@ -127,7 +129,7 @@ return res.status(200).json({
   }
 }
 
-/* ================= SARVAM REAL CALLS ================= */
+/* ================= SARVAM CHAT ================= */
 
 async function callSarvamChat(message) {
   const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
@@ -152,6 +154,8 @@ async function callSarvamChat(message) {
   return data.choices?.[0]?.message?.content || "";
 }
 
+/* ================= SARVAM TTS (BULBUL V2) ================= */
+
 async function callSarvamTTS(text) {
   const res = await fetch("https://api.sarvam.ai/v1/text-to-speech", {
     method: "POST",
@@ -167,13 +171,12 @@ async function callSarvamTTS(text) {
 
   if (!res.ok) {
     const err = await res.text();
-    console.error("Sarvam TTS v2 error:", err);
-    throw new Error("Sarvam TTS v2 failed");
+    console.error("Sarvam TTS error:", err);
+    throw new Error("Sarvam TTS failed");
   }
 
   const data = await res.json();
 
-return data.audio; // pure base64 string
-
+  // IMPORTANT: return pure base64 string
+  return data.audio;
 }
-
