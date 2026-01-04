@@ -161,7 +161,7 @@ async function callSarvamTTS(text) {
       Authorization: `Bearer ${process.env.SARVAM_API_KEY}`
     },
     body: JSON.stringify({
-      model: "bulbul-v3",
+      model: "bulbul-v2",
       input: text,
       voice: "neutral"
     })
