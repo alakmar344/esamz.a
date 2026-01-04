@@ -10,7 +10,7 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>eSAMz AI - Intelligent Assistant with Voice</title>
+    <title>eSAMz AI - Intelligent Assistant</title>
     <meta name="description" content="Advanced AI assistant with multi-modal capabilities and voice interaction">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1920,7 +1920,7 @@ class App {
                 // REMOVED: sessionId, threadId, quota counters
             };
             
-            const res = await fetch('/api/chat', {
+            const res = await fetch('/api/proxy', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -2389,7 +2389,7 @@ class App {
                 files: []
             };
             
-            const res = await fetch('/api/chat', {
+            const res = await fetch('/api/proxy', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -2569,7 +2569,7 @@ class App {
                     files: []
                 };
                 
-                const res = await fetch('/api/chat', {
+                const res = await fetch('/api/proxy', {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
