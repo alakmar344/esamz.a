@@ -1,78 +1,144 @@
-export const config = { runtime: "nodejs" };
-
+import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
-const redis = Redis.fromEnv();
+/* ================= REDIS ================= */
 
-const DAILY_VOICE_LIMIT = 3;
-const DAY_SECONDS = 86400;
-const SARVAM_ENDPOINT = "https://api.sarvam.ai/v1/chat/completions";
+const redis = new Redis({
+  url: process.env.REDIS_URL,
+  token: process.env.REDIS_TOKEN
+});
 
-function todayUTC() {
-  return new Date().toISOString().slice(0, 10);
+/* ================= CONFIG ================= */
+
+const TEXT_LIMIT_PER_MIN = 10;
+const VOICE_LIMIT_TOTAL = 3;
+const WINDOW_SEC = 60;
+
+/* ================= UTIL ================= */
+
+function sha256(input) {
+  return crypto.createHash("sha256").update(input).digest("hex");
 }
 
-function getClientIp(req) {
+function timingSafeEqual(a, b) {
+  const A = Buffer.from(a);
+  const B = Buffer.from(b);
+  if (A.length !== B.length) return false;
+  return crypto.timingSafeEqual(A, B);
+}
+
+function getClientIP(req) {
   return (
-    req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+    req.headers["x-forwarded-for"]?.split(",")[0] ||
     req.socket?.remoteAddress ||
     "unknown"
   );
 }
 
-function voiceKey(ip) {
-  return `voice:${ip}:${todayUTC()}`;
-}
+/* ================= RATE LIMITERS ================= */
 
-async function checkAndConsumeVoice(ip) {
-  const key = voiceKey(ip);
-  const count = (await redis.get(key)) ?? 0;
+async function checkTextLimit(userKey) {
+  const redisKey = `rl:text:${userKey}`;
 
-  if (count >= DAILY_VOICE_LIMIT) {
-    return { allowed: false, remaining: 0 };
+  const count = await redis.incr(redisKey);
+
+  if (count === 1) {
+    await redis.expire(redisKey, WINDOW_SEC);
   }
 
-  const next = count + 1;
-  await redis.set(key, next, { ex: DAY_SECONDS });
-
-  return { allowed: true, remaining: DAILY_VOICE_LIMIT - next };
+  return count <= TEXT_LIMIT_PER_MIN;
 }
+
+async function checkVoiceLimit(userKey) {
+  const redisKey = `rl:voice:${userKey}`;
+
+  const used = await redis.get(redisKey) || 0;
+
+  if (used >= VOICE_LIMIT_TOTAL) {
+    return false;
+  }
+
+  await redis.incr(redisKey);
+  // optional: expire daily
+  await redis.expire(redisKey, 86400);
+
+  return true;
+}
+
+/* ================= HANDLER ================= */
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // 🔒 Origin lock (prevents other sites using your API)
-  const origin = req.headers.origin || "";
-  if (origin !== "https://esamz.site") {
-    return res.status(403).json({ error: "Forbidden origin" });
-  }
-
   try {
-    const body = req.body ?? {};
-    const wantsVoice = body.enableVoice === true;
-    const ip = getClientIp(req);
+    /* -------- SERVER KEY CHECK -------- */
 
-    let voiceRemaining = null;
+    const internalKey = process.env.ESAMZ_INTERNAL_KEY;
+    const storedHash = process.env.ESAMZ_KEY_HASH;
 
-    if (wantsVoice) {
-      const limit = await checkAndConsumeVoice(ip);
-      if (!limit.allowed) {
-        return res.status(429).json({
-          error: "Daily voice limit reached",
-          voiceRemaining: 0
-        });
-      }
-      voiceRemaining = limit.remaining;
+    if (
+      !internalKey ||
+      !storedHash ||
+      !timingSafeEqual(sha256(internalKey), storedHash)
+    ) {
+      return res.status(500).json({ error: "Server auth failure" });
     }
 
-    const aiReply = await callSarvam(body.message || "");
+    /* -------- BODY -------- */
+
+    const {
+      message,
+      threadId = "default",
+      mode = "text" // "text" | "voice"
+    } = req.body || {};
+
+    if (!message || typeof message !== "string") {
+      return res.status(400).json({ error: "Invalid message" });
+    }
+
+    /* -------- USER KEY -------- */
+
+    const ip = getClientIP(req);
+    const userKey = `${ip}:${threadId}`;
+
+    /* -------- TEXT LIMIT -------- */
+
+    if (!(await checkTextLimit(userKey))) {
+      return res.status(429).json({
+        error: "Text rate limit exceeded (10/min)"
+      });
+    }
+
+    /* -------- VOICE LIMIT -------- */
+
+    if (mode === "voice") {
+      const allowed = await checkVoiceLimit(userKey);
+
+      if (!allowed) {
+        return res.status(403).json({
+          error: "Voice limit reached (3 total)"
+        });
+      }
+    }
+
+    /* -------- CALL SARVAM -------- */
+
+    const reply = await callSarvamLLM(message);
+
+    /* -------- OPTIONAL TTS -------- */
+
+    let voice = null;
+    if (mode === "voice") {
+      voice = await callSarvamTTS(reply);
+    }
 
     return res.status(200).json({
-      reply: aiReply,
-      audio: null,
-      voiceRemaining
+      reply,
+      voice,
+      provider: "sarvam",
+      persona: "eSAMz v9-redis-secure"
     });
 
   } catch (err) {
@@ -81,24 +147,17 @@ export default async function handler(req, res) {
   }
 }
 
-async function callSarvam(message) {
-  const resp = await fetch(SARVAM_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${process.env.SARVAM_API_KEY}`
-    },
-    body: JSON.stringify({
-      model: "sarvam-m",
-      messages: [{ role: "user", content: message }]
-    })
-  });
+/* ================= SARVAM ================= */
 
-  if (!resp.ok) {
-    const text = await resp.text();
-    throw new Error(`Sarvam error ${resp.status}: ${text}`);
-  }
-
-  const data = await resp.json();
-  return data?.choices?.[0]?.message?.content || "No response";
+async function callSarvamLLM(message) {
+  // Replace with real Sarvam API call
+  return `Hello! You said: ${message}`;
 }
+
+async function callSarvamTTS(text) {
+  // Replace with Sarvam TTS call
+  return {
+    audioUrl: "https://example.com/audio.mp3"
+  };
+}
+
