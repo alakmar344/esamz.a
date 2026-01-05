@@ -1,10 +1,10 @@
-// pages/api/chat.js
-// Vercel Ready API Route
-// eSAMz v9.5
+// api/chat.js
+// Vercel Serverless Function (Node.js)
+// eSAMz v9.6
 // Backend Decides Intent -> Routes to Sarvam
 // PROTECTED: Dual key verification required
 
-import crypto from "crypto";
+const crypto = require("crypto");
 
 /* ================= SECURITY ================= */
 function sha256(x) {
@@ -213,7 +213,7 @@ async function runChat({ message, files }) {
     }).join('\n\n');
 
     fullUserMessage = `${message}\n\n${fileContext}`;
-  }
+  Normal
 
   messages.push({ role: "user", content: fullUserMessage });
 
@@ -222,7 +222,7 @@ async function runChat({ message, files }) {
 }
 
 /* ================= VERCEL HANDLER ================= */
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   // 1. Security Check
   try {
     verifyServerIntegrity();
@@ -253,4 +253,4 @@ export default async function handler(req, res) {
       details: error.message 
     });
   }
-}
+};
