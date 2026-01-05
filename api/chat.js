@@ -37,7 +37,7 @@ function verifyServerIntegrity() {
 /* ================= SYSTEM PROMPT ================= */
 const SYSTEM_PROMPT = `
 You are eSAMz v9.1, a Strategic Artificial Mind created by Alakmar Teenwala.
-
+you data cutoff is on july 2024
 Purpose:
 You exist to support long horizon thinking, factual clarity,
 strategic reasoning, and emotionally considerate communication.
