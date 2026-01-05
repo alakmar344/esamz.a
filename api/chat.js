@@ -1,9 +1,7 @@
 // api/chat.js
 // SERVER ONLY AI BRAIN
-// eSAMz v9.2 (Architecture Update)
-// Frontend suggests -> Backend Decides
-// Sarvam Chat + GLM-4.7 Code/File Routing
-// NO browser APIs
+// eSAMz v9.3 (Fixed Cutoff Issues)
+// Backend Decides Intent -> Routes to GLM (Code/File) or Sarvam (Chat)
 // PROTECTED: Dual key verification required
 
 import crypto from "crypto";
@@ -24,11 +22,8 @@ function verifyServerIntegrity() {
   const raw = process.env.ESAMZ_INTERNAL_KEY;
   const hash = process.env.ESAMZ_KEY_HASH;
 
-  // Allow bypassing for testing if keys are missing, 
-  // otherwise it throws 403 on every request.
   if (!raw || !hash) {
-    // console.warn("Security keys not configured. Running in open mode.");
-    return true; 
+    throw new Error("Security keys not configured");
   }
 
   if (!timingSafeEqual(sha256(raw), hash)) {
@@ -77,7 +72,7 @@ Object.freeze(SYSTEM_PROMPT);
 
 /* ================= CONFIG ================= */
 const SARVAM_MODEL = "sarvam-m";
-const MAX_COMPLETION_TOKENS = 6048;
+const MAX_COMPLETION_TOKENS = 2048;
 const GLM_MODEL = "glm-4.7";
 
 /* ================= 3. BACKEND QUEUE (GLM PROTECTION) ================= */
@@ -185,28 +180,29 @@ function detectIntent({ message, files }) {
 
 /* ================= 6. GLM CALL (INTERNAL ONLY) ================= */
 async function runGLM({ messages, thinking }) {
-  // Use official endpoint or your specific proxy
-  const GLM_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"; 
-  const GLM_KEY = process.env.GLM_API_KEY;
-
-  const res = await fetch(GLM_URL, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${GLM_KEY}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: GLM_MODEL,
-      messages,
-      thinking: thinking ? { type: "enabled" } : undefined,
-      temperature: 0.2,
-      max_tokens: 4096
-    })
-  });
+  const res = await fetch(
+    "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.GLM_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: GLM_MODEL,
+        messages,
+        // FIX: Correct GLM reasoning/thinking syntax
+        reasoning_model: thinking ? { type: "auto" } : undefined,
+        temperature: 0.2,
+        max_tokens: 8192 // INCREASED to prevent cutoff
+      })
+    }
+  );
 
   if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`GLM Error ${res.status}: ${errText}`);
+    const errorText = await res.text();
+    console.error("GLM Error:", errorText);
+    throw new Error("GLM failed: " + errorText);
   }
 
   const data = await res.json();
@@ -325,35 +321,15 @@ export async function runChat({ message, files }) {
   });
 }
 
-/* ================= HANDLER (THE FIX) ================= */
+/* ================= BLOCK DIRECT ACCESS ================= */
 export default async function handler(req, res) {
-  // 1. Setup CORS headers (Important for Vercel/Next.js)
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*'); // Allow all origins or specific domain
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-
-  // 2. Only allow POST
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
   try {
-    // 3. Parse Body
-    const { message, files } = req.body;
-
-    // 4. Run Logic
-    const reply = await runChat({ message, files });
-
-    // 5. Return Response
-    return res.status(200).json({ reply });
-
-  } catch (error) {
-    console.error("API Error:", error);
-    return res.status(500).json({ error: error.message });
+    verifyServerIntegrity();
+  } catch {
+    return res.status(403).json({ error: "Direct access forbidden" });
   }
+
+  return res.status(403).json({
+    error: "This endpoint cannot be accessed directly"
+  });
 }
