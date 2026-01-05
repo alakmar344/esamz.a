@@ -77,7 +77,7 @@ Object.freeze(SYSTEM_PROMPT);
 
 /* ================= CONFIG ================= */
 const SARVAM_MODEL = "sarvam-m";
-const MAX_COMPLETION_TOKENS = 2048;
+const MAX_COMPLETION_TOKENS = 6048;
 const GLM_MODEL = "glm-4.7";
 
 /* ================= 3. BACKEND QUEUE (GLM PROTECTION) ================= */
