@@ -1,6 +1,6 @@
 // api/chat.js
 // Vercel Serverless Function (ES Module)
-// eSAMz v9.7 (File Upload Fix)
+// eSAMz v9.8 (Fixed Input Length Error)
 // Backend Decides Intent -> Routes to Sarvam
 // PROTECTED: Dual key verification required
 
@@ -73,6 +73,8 @@ Object.freeze(SYSTEM_PROMPT);
 /* ================= CONFIG ================= */
 const SARVAM_MODEL = "sarvam-m";
 const MAX_COMPLETION_TOKENS = 2048;
+// Set strict limit to stay under 7168 tokens (System prompt + Message + File)
+const SAFE_TOKEN_LIMIT = 4000; 
 
 /* ================= WEB SEARCH (YOU.COM) ================= */
 async function runWebSearch(query) {
@@ -208,8 +210,14 @@ async function runChat({ message, files }) {
   let fullUserMessage = message;
   if (files && files.length > 0) {
     const fileContext = files.map(f => {
+      // FIX: Truncate file content to prevent Sarvam 400 Error
+      // Assuming 1 token ≈ 4 chars. Limit to ~12,000 chars to stay safe.
+      const safeContent = f.content.length > 12000 
+        ? f.content.substring(0, 12000) + "... [Content Truncated]" 
+        : f.content;
+
       const typeLabel = f.type === 'image' ? '[Image Content]' : `[${f.type || 'File'}: ${f.fileName}]`;
-      return `${typeLabel}\n\`\`\`\n${f.content}\n\`\`\``;
+      return `${typeLabel}\n\`\`\`\n${safeContent}\n\`\`\``;
     }).join('\n\n');
 
     fullUserMessage = `${message}\n\n${fileContext}`;
@@ -238,10 +246,8 @@ export default async function handler(req, res) {
 
   try {
     // 3. Parse Body Helper
-    // In Vercel, req.body is usually parsed, but we double check for safety
     let body;
     
-    // If Vercel already parsed it, use it. If not, try to parse string.
     if (typeof req.body === 'object' && req.body !== null) {
         body = req.body;
     } else if (typeof req.body === 'string') {
@@ -251,7 +257,6 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: "Invalid JSON body" });
         }
     } else {
-        // Edge case: Read stream (unlikely on Vercel but safe fallback)
         const chunks = [];
         for await (const chunk of req) {
             chunks.push(chunk);
