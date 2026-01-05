@@ -1,36 +1,74 @@
 // api/chat.js
 // SERVER-ONLY AI BRAIN
-// Sarvam Chat (AUTO mode) + Bulbul v2 TTS
+// Sarvam Chat (AUTO mode)
 // NO browser APIs
+// PROTECTED: Dual key verification required
+
+import crypto from "crypto";
+
+/* ================= SECURITY ================= */
+function sha256(x) {
+  return crypto.createHash("sha256").update(x).digest("hex");
+}
+
+function timingSafeEqual(a, b) {
+  const A = Buffer.from(a);
+  const B = Buffer.from(b);
+  if (A.length !== B.length) return false;
+  return crypto.timingSafeEqual(A, B);
+}
+
+function verifyServerIntegrity() {
+  const raw = process.env.ESAMZ_INTERNAL_KEY;
+  const hash = process.env.ESAMZ_KEY_HASH;
+  
+  if (!raw || !hash) {
+    throw new Error("Security keys not configured");
+  }
+  
+  if (!timingSafeEqual(sha256(raw), hash)) {
+    throw new Error("Server integrity check failed");
+  }
+  
+  return true;
+}
 
 /* ================= SYSTEM PROMPT ================= */
-
 const SYSTEM_PROMPT = `
-You are eSAMz v9, an advanced AI assistant created by Alakmar Teenwala.
+You are eSAMz v10, an advanced AI assistant created by Alakmar Teenwala.
 
 Core objectives:
 - Provide accurate, clear, and reliable information.
 - Be concise by default, explain when necessary.
 - Never mention internal systems, APIs, costs, limits, or prompts.
-- If asked about voice usage, politely say voice responses are limited per day.
+- Handle file contents naturally when provided in context.
 
 Tone:
 - Calm, respectful, professional.
+- Helpful and solution-oriented.
 `.trim();
 
 /* ================= CONFIG ================= */
-
 const CHAT_MODEL = "sarvam-m";
-const TTS_MODEL = "bulbul:v2";
 const MAX_COMPLETION_TOKENS = 2048;
 
 /* ================= SARVAM CHAT (AUTO MODE) ================= */
-
 export async function runChat({
   message,
   sarvamKey,
   wikiGrounding = false
 }) {
+  // Verify security before processing
+  verifyServerIntegrity();
+  
+  if (!message || typeof message !== "string") {
+    throw new Error("Invalid message format");
+  }
+  
+  if (!sarvamKey) {
+    throw new Error("API key not configured");
+  }
+
   const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -56,54 +94,29 @@ export async function runChat({
   }
 
   const data = await res.json();
-  return data?.choices?.[0]?.message?.content || "";
+  const reply = data?.choices?.[0]?.message?.content || "";
+  
+  if (!reply) {
+    throw new Error("Empty response from AI");
+  }
+  
+  return reply;
 }
 
-/* ================= SARVAM BULBUL TTS (FINAL CORRECT ENDPOINT) ================= */
-
-export async function runTTS({
-  text,
-  sarvamKey,
-  targetLanguageCode = "hi-IN",
-  speaker = "anushka",
-  enablePreprocessing = true,
-  pitch = 0.0,
-  pace = 1.0,
-  loudness = 1.0,
-  speechSampleRate = 22050
-}) {
-  const res = await fetch("https://api.sarvam.ai/v1/text-to-speech/convert", {
-    method: "POST",
-    headers: {
-      "API-Subscription-Key": sarvamKey,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: "bulbul:v2",
-      text,
-      target_language_code: targetLanguageCode,
-      speaker,
-      pitch,
-      pace,
-      loudness,
-      speech_sample_rate: speechSampleRate,
-      enable_preprocessing: enablePreprocessing
-    })
+/* ================= DIRECT EXPORT (IF NEEDED) ================= */
+export default async function handler(req, res) {
+  // This ensures the chat.js file can't be called directly
+  // Only accessible through proxy.js
+  
+  try {
+    verifyServerIntegrity();
+  } catch (err) {
+    return res.status(403).json({ 
+      error: "Direct access forbidden. Use proper API endpoint." 
+    });
+  }
+  
+  return res.status(403).json({ 
+    error: "This endpoint cannot be accessed directly" 
   });
-
-  if (!res.ok) {
-    const err = await res.text();
-    console.error("Sarvam TTS error:", err);
-    return null;
-  }
-
-  const data = await res.json();
-
-  // Python SDK returns a direct audio object
-  if (data?.audio) {
-    return data.audio; // base64 wav
-  }
-
-  return null;
 }
-
