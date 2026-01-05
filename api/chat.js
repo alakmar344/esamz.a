@@ -1,6 +1,6 @@
 // api/chat.js
 // Vercel Serverless Function (ES Module)
-// eSAMz v9.6 (ESM Syntax)
+// eSAMz v9.7 (File Upload Fix)
 // Backend Decides Intent -> Routes to Sarvam
 // PROTECTED: Dual key verification required
 
@@ -236,10 +236,36 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed. Use POST." });
   }
 
-  // 3. Parse Body
-  const { message, files } = req.body;
-
   try {
+    // 3. Parse Body Helper
+    // In Vercel, req.body is usually parsed, but we double check for safety
+    let body;
+    
+    // If Vercel already parsed it, use it. If not, try to parse string.
+    if (typeof req.body === 'object' && req.body !== null) {
+        body = req.body;
+    } else if (typeof req.body === 'string') {
+        try {
+            body = JSON.parse(req.body);
+        } catch (e) {
+            return res.status(400).json({ error: "Invalid JSON body" });
+        }
+    } else {
+        // Edge case: Read stream (unlikely on Vercel but safe fallback)
+        const chunks = [];
+        for await (const chunk of req) {
+            chunks.push(chunk);
+        }
+        const buffer = Buffer.concat(chunks).toString();
+        try {
+            body = JSON.parse(buffer);
+        } catch (e) {
+            return res.status(400).json({ error: "Invalid JSON stream" });
+        }
+    }
+
+    const { message, files } = body;
+
     // 4. Process Logic
     const reply = await runChat({ message, files });
 
