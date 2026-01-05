@@ -1,6 +1,6 @@
 // api/chat.js
 // Vercel Serverless Function (Node.js)
-// eSAMz v9.6
+// eSAMz v9.6 (Fixed Syntax)
 // Backend Decides Intent -> Routes to Sarvam
 // PROTECTED: Dual key verification required
 
@@ -213,7 +213,7 @@ async function runChat({ message, files }) {
     }).join('\n\n');
 
     fullUserMessage = `${message}\n\n${fileContext}`;
-  Normal
+  }
 
   messages.push({ role: "user", content: fullUserMessage });
 
