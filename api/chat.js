@@ -1,7 +1,7 @@
-// api/chat.js
 // SERVER ONLY AI BRAIN
-// eSAMz v9.1
-// Sarvam Chat AUTO mode with Intelligent Web Search
+// eSAMz v9.2 (Architecture Update)
+// Frontend suggests -> Backend Decides
+// Sarvam Chat + GLM-4.7 Code/File Routing
 // NO browser APIs
 // PROTECTED: Dual key verification required
 
@@ -72,8 +72,42 @@ You assist human judgment. You do not replace it.
 Object.freeze(SYSTEM_PROMPT);
 
 /* ================= CONFIG ================= */
-const CHAT_MODEL = "sarvam-m";
+const SARVAM_MODEL = "sarvam-m";
 const MAX_COMPLETION_TOKENS = 2048;
+const GLM_MODEL = "glm-4.7";
+
+/* ================= 3. BACKEND QUEUE (GLM PROTECTION) ================= */
+class AsyncQueue {
+  constructor(limit = 4) {
+    this.limit = limit;
+    this.active = 0;
+    this.queue = [];
+  }
+
+  run(task) {
+    return new Promise((resolve, reject) => {
+      this.queue.push({ task, resolve, reject });
+      this.next();
+    });
+  }
+
+  next() {
+    if (this.active >= this.limit) return;
+    const item = this.queue.shift();
+    if (!item) return;
+
+    this.active++;
+    item.task()
+      .then(item.resolve)
+      .catch(item.reject)
+      .finally(() => {
+        this.active--;
+        this.next();
+      });
+  }
+}
+
+const glmQueue = new AsyncQueue(4);
 
 /* ================= WEB SEARCH (YOU.COM) ================= */
 async function runWebSearch(query) {
@@ -130,47 +164,54 @@ function shouldSearchWeb(message) {
   return triggers.some(t => q.includes(t));
 }
 
+/* ================= 4. BACKEND INTENT ENFORCEMENT ================= */
+function detectIntent({ message, files }) {
+  // 1. File Presence overrides everything
+  if (files && files.length > 0) return "file";
+
+  // 2. Regex for Code Triggers
+  const codeRegex =
+    /(code|rewrite|refactor|bug|error|html|css|js|python|api|json|schema|build|design)/i;
+
+  if (codeRegex.test(message)) return "code";
+
+  // 3. Default to Chat
+  return "chat";
+}
+
+/* ================= 6. GLM CALL (INTERNAL ONLY) ================= */
+async function runGLM({ messages, thinking }) {
+  const res = await fetch(
+    "https://api.z.ai/api/paas/v4/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.GLM_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: GLM_MODEL,
+        messages,
+        thinking: thinking ? { type: "enabled" } : undefined,
+        temperature: 0.2,
+        max_tokens: 4096
+      })
+    }
+  );
+
+  if (!res.ok) throw new Error("GLM failed");
+
+  const data = await res.json();
+  return data?.choices?.[0]?.message?.content || "";
+}
+
 /* ================= SARVAM CHAT ================= */
-export async function runChat({ message, sarvamKey }) {
-  verifyServerIntegrity();
-
-  if (!message || typeof message !== "string") {
-    throw new Error("Invalid message format");
-  }
-
-  if (message.length > 8000) {
-    throw new Error("Message too long");
-  }
+async function runSarvam({ messages }) {
+  const sarvamKey = process.env.SARVAM_API_KEY;
 
   if (!sarvamKey) {
-    throw new Error("API key not configured");
+    throw new Error("Sarvam API key not configured");
   }
-
-  const useWebSearch = shouldSearchWeb(message);
-  let webContext = "";
-
-  if (useWebSearch) {
-    try {
-      webContext = await runWebSearch(message);
-    } catch {
-      webContext = "";
-    }
-  }
-
-  const messages = [
-    { role: "system", content: SYSTEM_PROMPT }
-  ];
-
-  if (webContext) {
-    messages.push({
-      role: "system",
-      content:
-        "Recent web sourced context for factual grounding only:\n\n" +
-        webContext
-    });
-  }
-
-  messages.push({ role: "user", content: message });
 
   const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
     method: "POST",
@@ -179,7 +220,7 @@ export async function runChat({ message, sarvamKey }) {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      model: CHAT_MODEL,
+      model: SARVAM_MODEL,
       messages,
       temperature: 0.2,
       max_tokens: MAX_COMPLETION_TOKENS
@@ -199,6 +240,81 @@ export async function runChat({ message, sarvamKey }) {
   }
 
   return reply;
+}
+
+/* ================= 5. UPDATED BACKEND ROUTER (CORE LOGIC) ================= */
+async function routeRequest({ intent, messages }) {
+  // Route based on detected intent
+  if (intent === "chat") {
+    return runSarvam({ messages });
+  }
+
+  // code / file → GLM (queued)
+  return glmQueue.run(() =>
+    runGLM({
+      messages,
+      thinking: true // ON for code & files
+    })
+  );
+}
+
+/* ================= 7. FINAL HANDLER GLUE ================= */
+export async function runChat({ message, files }) {
+  verifyServerIntegrity();
+
+  if (!message || typeof message !== "string") {
+    throw new Error("Invalid message format");
+  }
+
+  if (message.length > 8000) {
+    throw new Error("Message too long");
+  }
+
+  // 1. Backend Decides Intent
+  const intent = detectIntent({ message, files });
+
+  // 2. Build Messages
+  const messages = [
+    { role: "system", content: SYSTEM_PROMPT }
+  ];
+
+  // 3. Handle Web Context (Only for Chat intent)
+  let webContext = "";
+  if (intent === "chat" && shouldSearchWeb(message)) {
+    try {
+      webContext = await runWebSearch(message);
+    } catch {
+      webContext = "";
+    }
+  }
+
+  if (webContext) {
+    messages.push({
+      role: "system",
+      content:
+        "Recent web sourced context for factual grounding only:\n\n" +
+        webContext
+    });
+  }
+
+  // 4. Handle File Context
+  let fullUserMessage = message;
+  if (files && files.length > 0) {
+    const fileContext = files.map(f => {
+      const typeLabel = f.type === 'image' ? '[Image Content]' : `[${f.type || 'File'}: ${f.fileName}]`;
+      return `${typeLabel}\n\`\`\`\n${f.content}\n\`\`\``;
+    }).join('\n\n');
+
+    fullUserMessage = `${message}\n\n${fileContext}`;
+  }
+
+  messages.push({ role: "user", content: fullUserMessage });
+
+  // 5. Route Request
+  return routeRequest({
+    intent,
+    messages
+  });
 }
 
 /* ================= BLOCK DIRECT ACCESS ================= */
