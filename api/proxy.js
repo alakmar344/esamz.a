@@ -1,17 +1,14 @@
 // api/proxy.js
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
-import { runChat, runTTS } from "./chat.js";
+import { runChat } from "./chat.js";
 
 /* ---------- REDIS ---------- */
 const redis = Redis.fromEnv();
 
 /* ---------- LIMIT CONFIG ---------- */
-const CHAT_LIMIT_PER_MIN = 10;
-const VOICE_LIMIT_PER_DAY = 3;
-
-const CHAT_TTL_SEC = 60;
-const VOICE_TTL_SEC = 86400;
+const CHAT_LIMIT_PER_MIN = 10; // 10 messages per minute per user
+const CHAT_TTL_SEC = 60; // 60 seconds TTL for rate limit
 
 /* ---------- UTILS ---------- */
 function sha256(x) {
@@ -33,10 +30,6 @@ function getIP(req) {
   );
 }
 
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 /* ---------- USER IDENTIFIER ---------- */
 // sessionId preferred, IP fallback
 function getUserKey(req, body) {
@@ -54,15 +47,6 @@ async function checkChatLimit(userKey) {
   return count <= CHAT_LIMIT_PER_MIN;
 }
 
-async function checkVoiceLimit(userKey) {
-  const key = `rl:voice:${userKey}:${today()}`;
-  const used = Number(await redis.get(key)) || 0;
-  if (used >= VOICE_LIMIT_PER_DAY) return false;
-  await redis.incr(key);
-  await redis.expire(key, VOICE_TTL_SEC);
-  return true;
-}
-
 /* ---------- HANDLER ---------- */
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -73,7 +57,7 @@ export default async function handler(req, res) {
     /* ----- SERVER INTEGRITY (emz + hash) ----- */
     const raw = process.env.ESAMZ_INTERNAL_KEY;
     const hash = process.env.ESAMZ_KEY_HASH;
-
+    
     if (!raw || !hash || !timingSafeEqual(sha256(raw), hash)) {
       return res.status(500).json({ error: "Server auth failure" });
     }
@@ -81,9 +65,7 @@ export default async function handler(req, res) {
     /* ----- BODY ----- */
     const {
       message,
-      enableVoice = false,
-      voiceLanguage = "en-IN",
-      voiceSpeaker = "anushka",
+      files = [],
       sessionId
     } = req.body || {};
 
@@ -101,34 +83,24 @@ export default async function handler(req, res) {
       });
     }
 
+    /* ----- PREPARE MESSAGE WITH FILES ----- */
+    let fullMessage = message;
+    if (Array.isArray(files) && files.length > 0) {
+      const fileContext = files
+        .map(f => `File: ${f.fileName}\n${f.content}`)
+        .join("\n\n");
+      fullMessage = `${message}\n\n${fileContext}`;
+    }
+
     /* ----- CHAT (MONEY SPENT HERE ONLY) ----- */
     const reply = await runChat({
-      message,
+      message: fullMessage,
       sarvamKey: process.env.SARVAM_API_KEY
     });
 
-    /* ----- VOICE ----- */
-    let audio = null;
-
-    if (enableVoice === true) {
-      if (!(await checkVoiceLimit(userKey))) {
-        return res.status(403).json({
-          error: "Voice limit reached for today."
-        });
-      }
-
-      audio = await runTTS({
-        text: reply,
-        language: voiceLanguage,
-        speaker: voiceSpeaker,
-        sarvamKey: process.env.SARVAM_API_KEY
-      });
-    }
-
     /* ----- RESPONSE ----- */
     return res.json({
-      reply,
-      audio
+      reply
     });
 
   } catch (err) {
