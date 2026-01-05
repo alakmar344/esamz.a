@@ -1640,7 +1640,22 @@ class App {
         }
         
         const regenerateBtn = showRegenerate ? '<button class="action-btn regenerate" onclick="app.regenerateResponse(this)">Regenerate</button>' : '';
-        
+       handleSend() {
+    const text = this.dom.input.value.trim();
+    if (!text && this.state.files.length === 0) return;
+
+    if (text.length > this.state.maxChars) {
+        alert(`Message is too long. Maximum ${this.state.maxChars} characters allowed.`);
+        return;
+    }
+
+    this.dom.input.value = '';
+    this.dom.input.style.height = 'auto';
+    this.updateCharCounter(this.dom.input, this.dom.charCounter);
+
+    this.sendMessage(text);
+}
+ 
         div.innerHTML = `
             <div class="message-avatar">${avatar}</div>
             <div class="message-content">
