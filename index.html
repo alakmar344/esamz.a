@@ -875,6 +875,19 @@
             background: var(--bg-elevated);
             color: var(--text-primary);
         }
+        
+        /* Microphone Recording State */
+        .input-btn.recording {
+            color: var(--danger);
+            background: rgba(239, 68, 68, 0.1);
+            animation: pulse-red 1.5s infinite;
+        }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
 
         .input-btn.primary {
             background: linear-gradient(135deg, #1f1f1f 0%, #2a2a2a 100%);
@@ -1270,7 +1283,7 @@
                 <button class="mobile-toggle" id="openSidebar">☰</button>
                 <div class="status-indicator">
                     <span class="status-dot"></span>
-                    <span>Ready</span>
+                    <span id="statusText">Ready</span>
                 </div>
             </div>
             <button class="btn-secondary" id="btnClearChat">Clear Chat</button>
@@ -1297,6 +1310,8 @@
                         <div class="file-preview" id="welcomeFilePreview"></div>
                         <div class="input-row">
                             <button class="input-btn" id="btnWelcomeUpload" title="Upload Files (Images, Code, Text)">📎</button>
+                            <!-- NEW: Voice Input Button for Welcome Screen -->
+                            <button class="input-btn" id="btnWelcomeVoice" title="Voice Input">🎤</button>
                             <textarea id="welcomeInput" rows="1" placeholder="Describe your vision..."></textarea>
                             <button class="input-btn primary" id="btnWelcomeSend">→</button>
                         </div>
@@ -1311,6 +1326,8 @@
                 <div class="file-preview" id="filePreview"></div>
                 <div class="input-row">
                     <button class="input-btn" id="btnUpload" title="Upload Files (Images, Code, Text)">📎</button>
+                    <!-- NEW: Voice Input Button for Chat Screen -->
+                    <button class="input-btn" id="btnVoice" title="Voice Input">🎤</button>
                     <!-- Updated to accept all code files, text, and images -->
                     <input type="file" id="fileInput" hidden multiple 
                            accept=".txt,.md,.js,.py,.html,.css,.json,.java,.cpp,.c,.ts,.jsx,.tsx,.php,.rb,.go,.rs,.swift,.kt,.xml,.yaml,.yml,.sh,.sql,.csv,.log,.ini,.conf,.png,.jpg,.jpeg,.gif,.bmp,.webp">
@@ -1398,7 +1415,8 @@ class App {
             charCounter: document.getElementById('charCounter'),
             welcomeCharCounter: document.getElementById('welcomeCharCounter'),
             ocrStatus: document.getElementById('ocrStatus'),
-            ocrStatusText: document.getElementById('ocrStatusText')
+            ocrStatusText: document.getElementById('ocrStatusText'),
+            statusText: document.getElementById('statusText')
         };
 
         this.state = {
@@ -1411,7 +1429,8 @@ class App {
             sidebarCollapsed: false,
             isProcessing: false,
             // FIX: Track where the upload button was clicked (Welcome vs Chat)
-            uploadContext: null 
+            uploadContext: null,
+            isRecording: false
         };
 
         this.storageKey = 'esamz_conversations_v10';
@@ -1423,8 +1442,94 @@ class App {
             code: ['js', 'py', 'html', 'css', 'java', 'cpp', 'c', 'ts', 'jsx', 'tsx', 'php', 'rb', 'go', 'rs', 'swift', 'kt', 'sh', 'sql'],
             image: ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp']
         };
+
+        // Initialize Speech Recognition
+        this.initSpeechRecognition();
         
         this.init();
+    }
+
+    initSpeechRecognition() {
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            this.recognition = new SpeechRecognition();
+            this.recognition.continuous = false;
+            this.recognition.lang = 'en-US';
+            this.recognition.interimResults = false;
+
+            this.recognition.onstart = () => {
+                this.state.isRecording = true;
+                this.updateMicUI(true);
+                this.statusText.innerText = "Listening...";
+                document.documentElement.style.cursor = 'wait';
+            };
+
+            this.recognition.onend = () => {
+                this.state.isRecording = false;
+                this.updateMicUI(false);
+                this.statusText.innerText = "Ready";
+                document.documentElement.style.cursor = 'default';
+            };
+
+            this.recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                const activeInput = this.dom.chatInputContainer.style.display === 'none' ? this.dom.welcomeInput : this.dom.input;
+                
+                // Append text with a space if needed
+                const currentText = activeInput.value;
+                activeInput.value = currentText ? currentText + ' ' + transcript : transcript;
+                
+                // Trigger input events to auto-resize and update counter
+                activeInput.dispatchEvent(new Event('input'));
+            };
+
+            this.recognition.onerror = (event) => {
+                console.error('Speech recognition error', event.error);
+                this.state.isRecording = false;
+                this.updateMicUI(false);
+                this.statusText.innerText = "Error";
+                
+                let msg = 'Voice recognition failed.';
+                if (event.error === 'not-allowed') {
+                    msg = 'Microphone access denied. Please allow permission.';
+                } else if (event.error === 'no-speech') {
+                    msg = 'No speech detected. Please try again.';
+                }
+                alert(msg);
+                this.statusText.innerText = "Ready";
+            };
+        } else {
+            console.warn('Speech Recognition API not supported in this browser.');
+            // Hide buttons if not supported
+            const micBtns = document.querySelectorAll('#btnVoice, #btnWelcomeVoice');
+            micBtns.forEach(btn => btn.style.display = 'none');
+        }
+    }
+
+    toggleRecording() {
+        if (!this.recognition) {
+            alert("Sorry, your browser does not support voice input.");
+            return;
+        }
+
+        if (this.state.isRecording) {
+            this.recognition.stop();
+        } else {
+            this.recognition.start();
+        }
+    }
+
+    updateMicUI(isRecording) {
+        const micBtns = [document.getElementById('btnVoice'), document.getElementById('btnWelcomeVoice')];
+        micBtns.forEach(btn => {
+            if (isRecording) {
+                btn.classList.add('recording');
+                btn.setAttribute('title', 'Stop Recording');
+            } else {
+                btn.classList.remove('recording');
+                btn.setAttribute('title', 'Voice Input');
+            }
+        });
     }
 
     init() {
@@ -1458,6 +1563,10 @@ class App {
             this.state.uploadContext = 'welcome';
             document.getElementById('fileInput').click();
         });
+
+        // Voice Event: Welcome
+        const welcomeMic = document.getElementById('btnWelcomeVoice');
+        if(welcomeMic) welcomeMic.addEventListener('click', () => this.toggleRecording());
         
         this.dom.welcomeInput.addEventListener('keydown', e => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -1479,6 +1588,10 @@ class App {
             this.state.uploadContext = 'chat';
             document.getElementById('fileInput').click();
         });
+
+        // Voice Event: Chat
+        const chatMic = document.getElementById('btnVoice');
+        if(chatMic) chatMic.addEventListener('click', () => this.toggleRecording());
         
         this.dom.input.addEventListener('keydown', e => {
             if (e.key === 'Enter' && !e.shiftKey) {
