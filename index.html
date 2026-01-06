@@ -1409,7 +1409,9 @@ class App {
             maxChars: 4000,
             isMobile: window.innerWidth <= 768,
             sidebarCollapsed: false,
-            isProcessing: false
+            isProcessing: false,
+            // FIX: Track where the upload button was clicked (Welcome vs Chat)
+            uploadContext: null 
         };
 
         this.storageKey = 'esamz_conversations_v10';
@@ -1450,7 +1452,12 @@ class App {
     setupEvents() {
         // Welcome screen events
         document.getElementById('btnWelcomeSend').addEventListener('click', () => this.handleWelcomeSend());
-        document.getElementById('btnWelcomeUpload').addEventListener('click', () => document.getElementById('fileInput').click());
+        
+        // FIX: Set context to 'welcome' when welcome upload button is clicked
+        document.getElementById('btnWelcomeUpload').addEventListener('click', () => {
+            this.state.uploadContext = 'welcome';
+            document.getElementById('fileInput').click();
+        });
         
         this.dom.welcomeInput.addEventListener('keydown', e => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -1466,6 +1473,12 @@ class App {
 
         // Chat input events
         document.getElementById('btnSend').addEventListener('click', () => this.handleSend());
+        
+        // FIX: Set context to 'chat' when main upload button is clicked
+        document.getElementById('btnUpload').addEventListener('click', () => {
+            this.state.uploadContext = 'chat';
+            document.getElementById('fileInput').click();
+        });
         
         this.dom.input.addEventListener('keydown', e => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -1490,9 +1503,14 @@ class App {
         document.getElementById('btnClearChat').addEventListener('click', () => this.clearChat());
         document.getElementById('btnClearCache').addEventListener('click', () => this.clearAllData());
 
-        // File upload events
-        document.getElementById('btnUpload').addEventListener('click', () => document.getElementById('fileInput').click());
-        document.getElementById('fileInput').addEventListener('change', e => this.handleFiles(e.target.files, false));
+        // File input change handler (FIXED to use context)
+        document.getElementById('fileInput').addEventListener('change', e => {
+            const isWelcome = this.state.uploadContext === 'welcome';
+            this.handleFiles(e.target.files, isWelcome);
+            // Reset value so selecting the same file again triggers change
+            e.target.value = ''; 
+            this.state.uploadContext = null;
+        });
 
         // Modal events
         document.getElementById('btnExportModal').addEventListener('click', () => this.dom.dialog.showModal());
