@@ -3,7 +3,7 @@
     "api/**/*.js": {
       "maxDuration": 30
     },
-    "api/**/*.cjs": {
+    "api/**/*.js": {
       "maxDuration": 30
     }
   },
