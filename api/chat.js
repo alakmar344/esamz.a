@@ -1,12 +1,10 @@
 // api/chat.js
 // Vercel Serverless Function (ES Module)
-// eSAMz v9.13 (Backend-Only Session Handling via Cookies)
+// eSAMz v9.14 (Stable - No external cookie dependency)
 // Backend Decides Intent -> Routes to Sarvam -> Manages Memory
 // PROTECTED: Dual key verification required
 
 import crypto from "crypto";
-import { serialize } from "cookie"; // No install needed, Node 18+ built-in or polyfill usually available. 
-// If 'cookie' module is missing in Vercel edge/node, we use a manual string builder below.
 
 /* ================= SECURITY ================= */
 function sha256(x) {
@@ -58,6 +56,8 @@ const MAX_THREAD_LENGTH = 15;
 const COOKIE_NAME = "esamz_sid";
 
 /* ================= MOCK DATABASE ================= */
+// In production, replace this object with Vercel Postgres or Redis.
+// This persists in memory while the server function is "warm".
 const DB = {
   users: {}, // sessionId -> { memories: [], summary: "", threadHistory: [] }
   
@@ -78,8 +78,10 @@ function vectorToBase64(vector) {
   const buffer = Buffer.from(new Float32Array(vector).buffer);
   return buffer.toString('base64');
 }
+
 function base64ToVector(base64Str) {
   const buffer = Buffer.from(base64Str, 'base64');
+  // FIX: Used Float32Array instead of Float32Buffer
   return Array.from(new Float32Array(buffer.buffer));
 }
 
@@ -229,7 +231,6 @@ async function runChat({ message, sessionId }) {
   const finalReply = await enforcePersona(message, draftReply);
 
   // 5. Update Memory (Detect Name explicitly)
-  // Pattern: "My name is X", "I am X", "I'm X"
   const namePattern = /(?:my name is|i am|i'm)\s+([a-zA-Z]+)/i;
   const nameMatch = message.match(namePattern);
   
@@ -247,7 +248,6 @@ async function runChat({ message, sessionId }) {
   newHistory.push({ role: "assistant", content: finalReply });
   
   if (newHistory.length > MAX_THREAD_LENGTH) {
-    // Simple truncation for now to prevent token overflow
     userDoc.threadHistory = newHistory.slice(-MAX_THREAD_LENGTH);
   } else {
     userDoc.threadHistory = newHistory;
@@ -279,10 +279,10 @@ export default async function handler(req, res) {
     const result = await runChat({ message, sessionId: activeSessionId });
 
     // 3. Set Cookie if it's a new session or missing
-    // We use 'Set-Cookie' header to force the browser to remember it.
+    // FIX: Manual string construction instead of using 'cookie' package
     if (!req.cookies || !req.cookies[COOKIE_NAME]) {
       const cookieValue = result.sessionId;
-      // HttpOnly for security, SameSite=Lax to work with standard fetch
+      // Format: Name=Value; Path=/; HttpOnly; SameSite=Lax; Max-Age=...
       const cookieString = `${COOKIE_NAME}=${cookieValue}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`; // 30 days
       
       res.setHeader('Set-Cookie', cookieString);
