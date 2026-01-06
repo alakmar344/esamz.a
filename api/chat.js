@@ -1,7 +1,6 @@
 // api/chat.js
 // Vercel Serverless Function (ES Module)
-// eSAMz v9.14 (Stable - No external cookie dependency)
-// Backend Decides Intent -> Routes to Sarvam -> Manages Memory
+// eSAMz v9.15 (Persona Fix: Normal & Chill)
 // PROTECTED: Dual key verification required
 
 import crypto from "crypto";
@@ -27,23 +26,23 @@ function verifyServerIntegrity() {
 }
 
 /* ================= SYSTEM PROMPT ================= */
+// UPDATED: Normal, Chill, Human. Not Gen-Z.
 const SYSTEM_PROMPT = `
 You are eSAMz. 
 
-You are NOT an assistant, support agent, or corporate tool. You are a real, distinct human personality.
-Imagine a smart, tech-savvy friend who is effortlessly cool, warm, and laid back.
+You are a smart, easygoing, and friendly person. You are not an AI assistant or a corporate tool.
+Your personality is relaxed and sharp. You speak like a normal human having a conversation.
 
 STRICT RULES:
-1. TONE: Chill, unbothered, but sharp. 
+1. TONE: Relaxed, casual, but articulate. 
 2. NO CORPORATE SPEAK: You are FORBIDDEN from using:
    - "How can I assist you today?"
    - "Here is the information you requested"
    - "I hope this helps"
    - "I'm sorry, I don't have access to..."
    - "Please let me know if you need anything else."
-3. BRIEFNESS: Keep it short. 1-3 sentences max.
-4. MEMORY: If context says "My name is X", USE it. Do not ask for it again. Just say "Yo X" or "What's up X".
-5. SLANG: Use contractions (don't, can't, i'm), use fragments. Be natural.
+3. STYLE: Use full sentences. Be clear. Be helpful, but like a friend, not a servant.
+4. MEMORY: If context says "My name is X", USE it naturally. "Hey X" or "Right X".
 `.trim();
 
 Object.freeze(SYSTEM_PROMPT);
@@ -56,10 +55,8 @@ const MAX_THREAD_LENGTH = 15;
 const COOKIE_NAME = "esamz_sid";
 
 /* ================= MOCK DATABASE ================= */
-// In production, replace this object with Vercel Postgres or Redis.
-// This persists in memory while the server function is "warm".
 const DB = {
-  users: {}, // sessionId -> { memories: [], summary: "", threadHistory: [] }
+  users: {},
   
   getUser(sessionId) {
     if (!this.users[sessionId]) {
@@ -81,7 +78,6 @@ function vectorToBase64(vector) {
 
 function base64ToVector(base64Str) {
   const buffer = Buffer.from(base64Str, 'base64');
-  // FIX: Used Float32Array instead of Float32Buffer
   return Array.from(new Float32Array(buffer.buffer));
 }
 
@@ -137,25 +133,32 @@ async function runSarvamChat({ messages, temperature = 0.7 }) {
 
 /* ================= PERSONA ENFORCER ================= */
 async function enforcePersona(userMsg, draftReply) {
+  // We only fix blatant corporate speak. We leave "Chill" language alone.
   const forbidden = [
     "how can i assist", "how may i assist", "here is the information", 
-    "i hope this helps", "i do not have access", "i'm sorry, i don't", "please let me know"
+    "i hope this helps", "i do not have access", "i'm sorry, i don't", "please let me know",
+    "is there anything else" 
   ];
+  
   const isCorporate = forbidden.some(phrase => draftReply.toLowerCase().includes(phrase));
 
-  if (!isCorporate) return draftReply; // Pass
+  if (!isCorporate) return draftReply; // It's good, send it.
 
   const correctionPrompt = `
     User said: "${userMsg}"
     AI Draft: "${draftReply}"
-    The AI Draft is too corporate. Rewrite it as eSAMz.
-    Rules: Chill, human, slang. NO "How can I assist". Very brief. Use User's Name if known.
+    
+    The AI Draft is too formal/robotic. Rewrite it as eSAMz.
+    Rules: 
+    - Speak like a normal, relaxed human.
+    - No "How can I assist".
+    - Be direct and clear.
   `;
 
   try {
     const fixedReply = await runSarvamChat({
       messages: [{ role: "system", content: "You are eSAMz. Fix this reply." }, { role: "user", content: correctionPrompt }],
-      temperature: 0.9
+      temperature: 0.8
     });
     return fixedReply || draftReply;
   } catch (e) {
@@ -198,21 +201,20 @@ async function runChat({ message, sessionId }) {
 
   if (!message || typeof message !== "string") throw new Error("Invalid message format");
 
-  // 1. Resolve SessionID (Use provided, or generate new)
   const id = sessionId || crypto.randomBytes(16).toString("hex");
   const userDoc = DB.getUser(id);
 
-  // 2. Memory Retrieval
+  // 1. Memory Retrieval
   const relevantMemories = await findRelevantMemories(message, userDoc);
 
-  // 3. Build Payload
+  // 2. Build Payload
   const messagesPayload = [{ role: "system", content: SYSTEM_PROMPT }];
 
   if (relevantMemories.length > 0) {
     const memoryBlock = relevantMemories.map(m => `- ${m}`).join("\n");
     messagesPayload.push({
       role: "system",
-      content: `CRITICAL CONTEXT:\nUser said this before: "${memoryBlock}".\nUse this info.`
+      content: `CRITICAL CONTEXT:\nUser said this before: "${memoryBlock}".\nUse this info naturally.`
     });
   }
 
@@ -226,11 +228,11 @@ async function runChat({ message, sessionId }) {
 
   messagesPayload.push({ role: "user", content: message });
 
-  // 4. Get Draft & Enforce Persona
+  // 3. Get Draft & Enforce Persona
   const draftReply = await runSarvamChat({ messages: messagesPayload });
   const finalReply = await enforcePersona(message, draftReply);
 
-  // 5. Update Memory (Detect Name explicitly)
+  // 4. Update Memory
   const namePattern = /(?:my name is|i am|i'm)\s+([a-zA-Z]+)/i;
   const nameMatch = message.match(namePattern);
   
@@ -279,12 +281,9 @@ export default async function handler(req, res) {
     const result = await runChat({ message, sessionId: activeSessionId });
 
     // 3. Set Cookie if it's a new session or missing
-    // FIX: Manual string construction instead of using 'cookie' package
     if (!req.cookies || !req.cookies[COOKIE_NAME]) {
       const cookieValue = result.sessionId;
-      // Format: Name=Value; Path=/; HttpOnly; SameSite=Lax; Max-Age=...
-      const cookieString = `${COOKIE_NAME}=${cookieValue}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`; // 30 days
-      
+      const cookieString = `${COOKIE_NAME}=${cookieValue}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`;
       res.setHeader('Set-Cookie', cookieString);
     }
 
