@@ -26,7 +26,6 @@ function verifyServerIntegrity() {
 }
 
 /* ================= SYSTEM PROMPT ================= */
-// UPDATED: Normal, Chill, Human. Not Gen-Z.
 const SYSTEM_PROMPT = `
 You are eSAMz v9.1. you were created by alakmar teenwala
 
@@ -133,7 +132,6 @@ async function runSarvamChat({ messages, temperature = 0.7 }) {
 
 /* ================= PERSONA ENFORCER ================= */
 async function enforcePersona(userMsg, draftReply) {
-  // We only fix blatant corporate speak. We leave "Chill" language alone.
   const forbidden = [
     "how can i assist", "how may i assist", "here is the information", 
     "i hope this helps", "i do not have access", "i'm sorry, i don't", "please let me know",
@@ -142,7 +140,7 @@ async function enforcePersona(userMsg, draftReply) {
   
   const isCorporate = forbidden.some(phrase => draftReply.toLowerCase().includes(phrase));
 
-  if (!isCorporate) return draftReply; // It's good, send it.
+  if (!isCorporate) return draftReply; 
 
   const correctionPrompt = `
     User said: "${userMsg}"
@@ -196,7 +194,8 @@ async function saveMemory(text, userDoc) {
 }
 
 /* ================= MAIN LOGIC ================= */
-async function runChat({ message, sessionId }) {
+// UPDATED: Accept 'files' parameter
+async function runChat({ message, sessionId, files = [] }) {
   verifyServerIntegrity();
 
   if (!message || typeof message !== "string") throw new Error("Invalid message format");
@@ -204,10 +203,23 @@ async function runChat({ message, sessionId }) {
   const id = sessionId || crypto.randomBytes(16).toString("hex");
   const userDoc = DB.getUser(id);
 
-  // 1. Memory Retrieval
+  // 1. File Processing (NEW)
+  // We append the file content to the message so the AI can "read" it.
+  let finalMessage = message;
+  
+  if (files && files.length > 0) {
+    const fileContext = files.map(f => {
+      // Determine language hint for code files if possible, otherwise just text
+      return `\n--- [FILE: ${f.fileName} (${f.type})] ---\n${f.content}\n--- END FILE ---`;
+    }).join('\n');
+    
+    finalMessage = `${message}\n\n${fileContext}`;
+  }
+
+  // 2. Memory Retrieval
   const relevantMemories = await findRelevantMemories(message, userDoc);
 
-  // 2. Build Payload
+  // 3. Build Payload
   const messagesPayload = [{ role: "system", content: SYSTEM_PROMPT }];
 
   if (relevantMemories.length > 0) {
@@ -226,13 +238,14 @@ async function runChat({ message, sessionId }) {
     messagesPayload.push(...userDoc.threadHistory);
   }
 
-  messagesPayload.push({ role: "user", content: message });
+  // 4. Add the Final Message (Text + Files)
+  messagesPayload.push({ role: "user", content: finalMessage });
 
-  // 3. Get Draft & Enforce Persona
+  // 5. Get Draft & Enforce Persona
   const draftReply = await runSarvamChat({ messages: messagesPayload });
   const finalReply = await enforcePersona(message, draftReply);
 
-  // 4. Update Memory
+  // 6. Update Memory
   const namePattern = /(?:my name is|i am|i'm)\s+([a-zA-Z]+)/i;
   const nameMatch = message.match(namePattern);
   
@@ -246,7 +259,7 @@ async function runChat({ message, sessionId }) {
 
   // Update History
   const newHistory = (userDoc.threadHistory || []);
-  newHistory.push({ role: "user", content: message });
+  newHistory.push({ role: "user", content: message }); // We save the original message, not the huge file blob, to save space
   newHistory.push({ role: "assistant", content: finalReply });
   
   if (newHistory.length > MAX_THREAD_LENGTH) {
@@ -269,7 +282,8 @@ export default async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const { message, sessionId } = body;
+    // FIX: Extract 'files' from body
+    const { message, sessionId, files } = body;
 
     // 1. PRIORITY: Check Cookie for Session ID
     let activeSessionId = sessionId;
@@ -277,8 +291,8 @@ export default async function handler(req, res) {
       activeSessionId = req.cookies[COOKIE_NAME];
     }
 
-    // 2. Run Logic
-    const result = await runChat({ message, sessionId: activeSessionId });
+    // 2. Run Logic (FIX: Pass files)
+    const result = await runChat({ message, sessionId: activeSessionId, files });
 
     // 3. Set Cookie if it's a new session or missing
     if (!req.cookies || !req.cookies[COOKIE_NAME]) {
