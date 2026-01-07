@@ -1,13 +1,16 @@
-t<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
     <link rel="manifest" href="/site.webmanifest">
+    
+    <!-- Keep one AdSense script in head -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4596710157872091"
      crossorigin="anonymous"></script>
 <meta name="google-adsense-account" content="ca-pub-4596710157872091">
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>eSAMz AI - Intelligent Assistant</title>
@@ -24,17 +27,17 @@ t<!DOCTYPE html>
     
     <script type="application/ld+json">
 {
-  "@context": "https://schema.org ",
+  "@context": "https://schema.org",
   "@graph": [
     {
       "@type": "Organization",
-      "@id": "https://esamz.site/#organization ",
+      "@id": "https://esamz.site/#organization",
       "name": "esamz AI",
       "alternateName": "eSAMz",
-      "url": "https://esamz.site ",
+      "url": "https://esamz.site",
       "logo": {
         "@type": "ImageObject",
-        "url": "https://esamz.site/logo.png ",
+        "url": "https://esamz.site/logo.png",
         "width": 512,
         "height": 512
       },
@@ -44,9 +47,9 @@ t<!DOCTYPE html>
       },
       "foundingDate": "2024",
       "sameAs": [
-        "https://www.linkedin.com/company/esamz-ai ",
-        "https://twitter.com/esamz_ai ",
-        "https://instagram.com/esamz.ai "
+        "https://www.linkedin.com/company/esamz-ai",
+        "https://twitter.com/esamz_ai",
+        "https://instagram.com/esamz.ai"
       ],
       "description": "esamz AI is a fast, human like artificial intelligence platform designed to share knowledge, assist users, and deliver intelligent responses without unnecessary complexity.",
       "knowsAbout": [
@@ -61,10 +64,9 @@ t<!DOCTYPE html>
         "Creative AI"
       ]
     },
-
     {
       "@type": "SoftwareApplication",
-      "@id": "https://esamz.site/#software ",
+      "@id": "https://esamz.site/#software",
       "name": "esamz AI",
       "operatingSystem": "Web",
       "applicationCategory": "AIApplication",
@@ -73,11 +75,11 @@ t<!DOCTYPE html>
         "@type": "Offer",
         "price": "0",
         "priceCurrency": "USD",
-        "availability": "https://schema.org/InStock "
+        "availability": "https://schema.org/InStock"
       },
       "description": "esamz AI is a fast, privacy focused, human like AI assistant that shares information instead of merely answering questions.",
       "publisher": {
-        "@id": "https://esamz.site/#organization "
+        "@id": "https://esamz.site/#organization"
       },
       "featureList": [
         "Fast AI responses",
@@ -91,36 +93,34 @@ t<!DOCTYPE html>
       ],
       "keywords": "esamz, esamz ai, ai assistant, fast ai, human like ai, free ai, chat ai, smart ai, voice ai"
     },
-
     {
       "@type": "WebSite",
-      "@id": "https://esamz.site/#website ",
-      "url": "https://esamz.site ",
+      "@id": "https://esamz.site/#website",
+      "url": "https://esamz.site",
       "name": "esamz AI",
       "publisher": {
-        "@id": "https://esamz.site/#organization "
+        "@id": "https://esamz.site/#organization"
       },
       "potentialAction": {
         "@type": "SearchAction",
-        "target": "https://esamz.site/?q= {search_term_string}",
+        "target": "https://esamz.site/?q={search_term_string}",
         "query-input": "required name=search_term_string"
       }
     },
-
     {
       "@type": "WebPage",
-      "@id": "https://esamz.site/#homepage ",
-      "url": "https://esamz.site ",
+      "@id": "https://esamz.site/#homepage",
+      "url": "https://esamz.site",
       "name": "esamz AI – Fast Human Like Artificial Intelligence",
       "isPartOf": {
-        "@id": "https://esamz.site/#website "
+        "@id": "https://esamz.site/#website"
       },
       "about": {
-        "@id": "https://esamz.site/#software "
+        "@id": "https://esamz.site/#software"
       },
       "primaryImageOfPage": {
         "@type": "ImageObject",
-        "url": "https://esamz.site/cover.png "
+        "url": "https://esamz.site/cover.png"
       },
       "datePublished": "2024-01-01",
       "dateModified": "2026-01-03",
@@ -138,10 +138,9 @@ t<!DOCTYPE html>
         "voice assistant"
       ]
     },
-
     {
       "@type": "FAQPage",
-      "@id": "https://esamz.site/#faq ",
+      "@id": "https://esamz.site/#faq",
       "mainEntity": [
         {
           "@type": "Question",
@@ -169,16 +168,15 @@ t<!DOCTYPE html>
         }
       ]
     },
-
     {
       "@type": "BreadcrumbList",
-      "@id": "https://esamz.site/#breadcrumbs ",
+      "@id": "https://esamz.site/#breadcrumbs",
       "itemListElement": [
         {
           "@type": "ListItem",
           "position": 1,
           "name": "Home",
-          "item": "https://esamz.site "
+          "item": "https://esamz.site"
         }
       ]
     }
@@ -236,6 +234,7 @@ t<!DOCTYPE html>
             box-sizing: border-box;
         }
         
+        /* LAYOUT FIX: Changed from Grid to Flexbox to prevent 1/4 screen squashing */
         body { 
             background: #000000;
             background-attachment: fixed;
@@ -244,9 +243,9 @@ t<!DOCTYPE html>
             font-size: 14px;
             line-height: 1.6;
             height: 100vh; 
+            width: 100vw; /* Ensure full width */
             overflow: hidden;
-            display: grid;
-            grid-template-columns: var(--sidebar-width) 1fr;
+            display: flex; /* Flexbox layout */
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
@@ -264,6 +263,7 @@ t<!DOCTYPE html>
 
         /* SIDEBAR */
         .sidebar { 
+            width: var(--sidebar-width);
             background: var(--bg-glass);
             backdrop-filter: blur(20px) saturate(180%);
             -webkit-backdrop-filter: blur(20px) saturate(180%);
@@ -273,7 +273,8 @@ t<!DOCTYPE html>
             height: 100vh;
             position: relative;
             z-index: 100;
-            transition: transform 0.3s ease;
+            flex-shrink: 0; /* Prevent sidebar from shrinking */
+            transition: transform 0.3s ease, margin-left 0.3s ease;
         }
 
         .sidebar-toggle-btn {
@@ -304,8 +305,9 @@ t<!DOCTYPE html>
             width: 36px;
         }
 
+        /* When collapsed, move sidebar off-screen via margin or transform */
         .sidebar.collapsed {
-            transform: translateX(calc(-1 * var(--sidebar-width)));
+            margin-left: calc(-1 * var(--sidebar-width));
         }
 
         .sidebar.collapsed + .sidebar-toggle-btn {
@@ -506,12 +508,9 @@ t<!DOCTYPE html>
             display: flex; 
             flex-direction: column;
             height: 100vh;
+            width: 100%; /* Fill remaining space */
             background: transparent;
-            transition: margin-left 0.3s ease;
-        }
-
-        .main-content.sidebar-collapsed {
-            margin-left: calc(-1 * var(--sidebar-width));
+            flex: 1; /* Take up available width */
         }
 
         header { 
@@ -1082,7 +1081,7 @@ t<!DOCTYPE html>
 
         @media (max-width: 768px) {
             body {
-                grid-template-columns: 1fr;
+                flex-direction: column; /* Stack vertically on mobile if needed, but sidebar is overlay */
             }
 
             .sidebar { 
@@ -1091,19 +1090,18 @@ t<!DOCTYPE html>
                 left: 0;
                 bottom: 0;
                 width: 280px;
-                transform: translateX(-100%);
-                transition: transform 0.3s;
-                box-shadow: none;
+                margin-left: -280px; /* Hidden by default */
+                transition: margin-left 0.3s ease;
+                box-shadow: 20px 0 50px rgba(0, 0, 0, 0.7);
                 z-index: 200;
             }
 
             .sidebar.mobile-open {
-                transform: translateX(0);
-                box-shadow: 20px 0 50px rgba(0, 0, 0, 0.7);
+                margin-left: 0;
             }
-
+            
             .sidebar.collapsed {
-                transform: translateX(-100%);
+                margin-left: -280px; /* Ensure it hides properly */
             }
 
             .sidebar-toggle-btn {
@@ -1183,10 +1181,6 @@ t<!DOCTYPE html>
             .welcome h1 {
                 font-size: 28px;
             }
-
-            .main-content.sidebar-collapsed {
-                margin-left: 0;
-            }
             
             .ocr-status {
                 bottom: 80px;
@@ -1258,16 +1252,14 @@ t<!DOCTYPE html>
         <div class="sidebar-footer">
             <div class="ad-label">Sponsored</div>
             <div class="footer-ad">
-               <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4596710157872091"
-     crossorigin="anonymous"></script>
-<!-- ad1 -->
-<ins class="adsbygoogle"
-     style="display:inline-block;width:320px;height:50px"
-     data-ad-client="ca-pub-4596710157872091"
-     data-ad-slot="6618890335"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>
+               <!-- Removed duplicate script tag here, kept only ad unit -->
+               <ins class="adsbygoogle"
+                    style="display:inline-block;width:320px;height:50px"
+                    data-ad-client="ca-pub-4596710157872091"
+                    data-ad-slot="6618890335"></ins>
+               <script>
+                    (adsbygoogle = window.adsbygoogle || []).push({});
+               </script>
             </div>
             <div class="footer-copyright">
                 © 2025 eSAMz AI · All rights reserved
@@ -1376,8 +1368,6 @@ t<!DOCTYPE html>
     </dialog>
 
     <script>
-        // 2. Frontend logic (simple, reliable)
-        
         // Intent detection (client side)
         function detectIntent({ text, files }) {
             if (files && files.length > 0) return "file";
@@ -1428,7 +1418,7 @@ class App {
             isMobile: window.innerWidth <= 768,
             sidebarCollapsed: false,
             isProcessing: false,
-            // FIX: Track where the upload button was clicked (Welcome vs Chat)
+            // FIX: Added missing uploadContext property
             uploadContext: null,
             isRecording: false
         };
@@ -1545,7 +1535,6 @@ class App {
             if (wasMobile !== this.state.isMobile) {
                 if (this.state.isMobile) {
                     this.dom.sidebar.classList.remove('collapsed');
-                    this.dom.mainContent.classList.remove('sidebar-collapsed');
                 } else {
                     this.dom.sidebar.classList.remove('mobile-open');
                     this.dom.overlay.classList.remove('active');
@@ -1558,7 +1547,7 @@ class App {
         // Welcome screen events
         document.getElementById('btnWelcomeSend').addEventListener('click', () => this.handleWelcomeSend());
         
-        // FIX: Set context to 'welcome' when welcome upload button is clicked
+        // Set context to 'welcome' when welcome upload button is clicked
         document.getElementById('btnWelcomeUpload').addEventListener('click', () => {
             this.state.uploadContext = 'welcome';
             document.getElementById('fileInput').click();
@@ -1583,7 +1572,7 @@ class App {
         // Chat input events
         document.getElementById('btnSend').addEventListener('click', () => this.handleSend());
         
-        // FIX: Set context to 'chat' when main upload button is clicked
+        // Set context to 'chat' when main upload button is clicked
         document.getElementById('btnUpload').addEventListener('click', () => {
             this.state.uploadContext = 'chat';
             document.getElementById('fileInput').click();
@@ -2334,11 +2323,9 @@ class App {
         
         if (this.state.sidebarCollapsed) {
             this.dom.sidebar.classList.add('collapsed');
-            this.dom.mainContent.classList.add('sidebar-collapsed');
             toggleBtn.innerHTML = '›';
         } else {
             this.dom.sidebar.classList.remove('collapsed');
-            this.dom.mainContent.classList.remove('sidebar-collapsed');
             toggleBtn.innerHTML = '‹';
         }
     }
@@ -2362,7 +2349,6 @@ class App {
         this.state.welcomeFiles = [];
         
         this.dom.sidebar.classList.remove('hidden');
-        this.dom.mainContent.classList.remove('expanded');
         this.dom.chatInputContainer.style.display = 'none';
         this.dom.chat.innerHTML = '';
         this.dom.chat.appendChild(this.dom.welcome);
