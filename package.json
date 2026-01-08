@@ -1,11 +1,7 @@
 {
   "name": "esamz-api",
-  "version": "1.0.0",
   "private": true,
   "type": "module",
-  "scripts": {
-    "build": "echo \"api-only project\""
-  },
   "dependencies": {
     "@upstash/redis": "^1.31.0"
   }
