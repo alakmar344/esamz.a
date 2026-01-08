@@ -1,32 +1,20 @@
-import express from "express";
-import { db } from "../db.js";
-import { hash } from "../utils.js";
+import { kv } from "@vercel/kv";
 
-const router = express.Router();
+export default async function handler(req, res) {
+  if (req.method !== "POST") return res.status(405).end();
 
-router.post("/activate", async (req, res) => {
-  const { license_key, email } = req.body;
+  const { email, license_key } = req.body;
+  if (!email || !license_key)
+    return res.status(400).json({ error: "Missing fields" });
 
-  const row = await db.get(
-    "SELECT * FROM license_keys WHERE license_key=?",
-    [license_key]
-  );
+  const data = await kv.hgetall(`license:${license_key}`);
+  if (!data) return res.status(400).json({ error: "Invalid key" });
 
-  if (!row || row.is_activated) {
-    return res.status(400).json({ error: "Invalid key" });
-  }
-
-  if (row.email_hash !== hash(email)) {
+  if (data.email !== email)
     return res.status(403).json({ error: "Email mismatch" });
-  }
 
-  const expires = new Date();
-  expires.setDate(expires.getDate() + 30);
-
-  await db.run(
-    "UPDATE license_keys SET is_activated=1, expires_at=? WHERE license_key=?",
-    [expires.toISOString(), license_key]
-  );
+  res.json({ success: true });
+}
 
   res.json({ plan: row.plan, expires_at: expires });
 });
