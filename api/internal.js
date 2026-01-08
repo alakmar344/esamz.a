@@ -10,15 +10,16 @@ router.post("/create-license", async (req, res) => {
     return res.status(403).end();
   }
 
-  const { email, plan } = req.body;
-  const key = generateKey(plan);
+  const { email } = req.body;
+  const key = generateKey();
 
   await db.run(
     "INSERT INTO license_keys (license_key, plan, email_hash) VALUES (?,?,?)",
-    [key, plan, hash(email)]
+    [key, "adfree", hash(email)]
   );
 
   res.json({ key });
 });
+
 
 export default router;
