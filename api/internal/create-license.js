@@ -1,5 +1,7 @@
-import { kv } from "@vercel/kv";
+import { Redis } from "@upstash/redis";
 import crypto from "crypto";
+
+const redis = Redis.fromEnv();
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
@@ -17,7 +19,7 @@ export default async function handler(req, res) {
 
   const expires = Date.now() + 30 * 24 * 60 * 60 * 1000;
 
-  await kv.hset(`license:${key}`, {
+  await redis.hset(`license:${key}`, {
     email,
     expires
   });
