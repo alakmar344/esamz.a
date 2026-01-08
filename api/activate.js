@@ -1,4 +1,6 @@
-import { kv } from "@vercel/kv";
+import { Redis } from "@upstash/redis";
+
+const redis = Redis.fromEnv();
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
@@ -7,7 +9,7 @@ export default async function handler(req, res) {
   if (!email || !license_key)
     return res.status(400).json({ error: "Missing fields" });
 
-  const data = await kv.hgetall(`license:${license_key}`);
+  const data = await redis.hgetall(`license:${license_key}`);
   if (!data) return res.status(400).json({ error: "Invalid key" });
 
   if (data.email !== email)
@@ -15,8 +17,3 @@ export default async function handler(req, res) {
 
   res.json({ success: true });
 }
-
-  res.json({ plan: row.plan, expires_at: expires });
-});
-
-export default router;
