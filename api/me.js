@@ -1,28 +1,22 @@
-import express from "express";
-import { db } from "../db.js";
+import { kv } from "@vercel/kv";
 
-const router = express.Router();
-router.get("/me", async (req, res) => {
-  const key = req.headers.authorization?.replace("Bearer ", "");
+export default async function handler(req, res) {
+  const auth = req.headers.authorization;
 
-  if (!key) {
+  if (!auth) {
     return res.json({ plan: "free", ads: true });
   }
 
-  const row = await db.get(
-    "SELECT * FROM license_keys WHERE license_key=?",
-    [key]
-  );
+  const key = auth.replace("Bearer ", "");
+  const data = await kv.hgetall(`license:${key}`);
 
-  if (!row || new Date(row.expires_at) < new Date()) {
+  if (!data || Date.now() > Number(data.expires)) {
     return res.json({ plan: "free", ads: true });
   }
 
-  res.json({
-    plan: "adfree",
-    ads: false
-  });
-});
+  res.json({ plan: "adfree", ads: false });
+}
+
 
 
 
