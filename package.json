@@ -1,14 +1,13 @@
 {
-  "name": "esamz-license-server",
+  "name": "esamz-backend",
   "version": "1.0.0",
-  "main": "server.js",
+  "private": true,
   "type": "module",
   "scripts": {
-    "start": "node server.js"
+    "dev": "vercel dev",
+    "build": "echo \"no build step\""
   },
   "dependencies": {
-    "express": "^4.19.2",
-    "sqlite3": "^5.1.7",
-    "crypto": "^1.0.1"
+    "@upstash/redis": "^1.31.0"
   }
 }
