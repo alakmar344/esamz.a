@@ -89,7 +89,8 @@
         "Education support",
         "Creative assistance",
         "Privacy aware AI",
-        "Voice interaction capabilities"
+        "Voice interaction capabilities",
+        "Real-time Web Search"
       ],
       "keywords": "esamz, esamz ai, ai assistant, fast ai, human like ai, free ai, chat ai, smart ai, voice ai"
     },
@@ -711,6 +712,8 @@
             font-size: 14px;
             line-height: 1.7;
             word-wrap: break-word;
+            /* For streaming, prevent breaking layout too much during text accumulation */
+            min-height: 20px;
         }
 
         .message.user .message-bubble { 
@@ -726,6 +729,32 @@
             border: 1px solid var(--border-glass);
             color: var(--text-primary);
         }
+        
+        /* Searching Status Badge inside Bubble */
+        .message-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--primary);
+            margin-bottom: 8px;
+            padding: 4px 8px;
+            background: rgba(229, 231, 235, 0.05);
+            border-radius: 6px;
+            border: 1px solid rgba(229, 231, 235, 0.1);
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .message-status .mini-spinner {
+            width: 10px;
+            height: 10px;
+            border: 2px solid rgba(229, 231, 235, 0.3);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         .message-bubble pre {
             background: rgba(0, 0, 0, 0.4) !important;
@@ -1210,7 +1239,7 @@
                 </div>
                 <div class="brand-text">
                     <div class="brand-name">eSAMz AI</div>
-                    <div class="brand-version">Version 9.1</div>
+                    <div class="brand-version">Version 9.2</div>
                 </div>
             </div>
             <button class="btn-new" id="btnNewChat">
@@ -1421,12 +1450,11 @@ class App {
             isMobile: window.innerWidth <= 768,
             sidebarCollapsed: false,
             isProcessing: false,
-            // FIX: Added missing uploadContext property
             uploadContext: null,
             isRecording: false
         };
 
-        this.storageKey = 'esamz_conversations_v10';
+        this.storageKey = 'esamz_conversations_v11';
         this.maxStorageSize = 5 * 1024 * 1024;
         
         // Supported file types classification
@@ -1903,11 +1931,14 @@ class App {
         this.renderFiles(this.state.files, this.dom.preview, false);
         this.state.isProcessing = true;
 
-        const thinkingId = this.addThinking();
+        // Create a placeholder for the AI response to stream into
+        const aiMessageDiv = this.addStreamingMessage();
+        const bubbleContent = aiMessageDiv.querySelector('.message-content-text');
+        const statusBadge = aiMessageDiv.querySelector('.message-status');
 
         try {
-            // Sending request
-            const res = await fetch("/api/chat", {
+            // UPDATED STREAMING FETCH
+            const response = await fetch("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -1917,47 +1948,112 @@ class App {
                 })
             });
 
-            if (res.status === 401) {
-                throw new Error('Unauthorized - Please check your API key');
-            } else if (res.status === 429) {
-                throw new Error('Rate limit exceeded - Please try again later');
-            } else if (res.status === 403) {
-                throw new Error('Access forbidden - You do not have permission');
-            } else if (!res.ok) {
-                throw new Error(`Server error: ${res.status} ${res.statusText}`);
-            }
-            
-            const data = await res.json();
-            this.removeThinking(thinkingId);
-            
-            if (!data) {
-                throw new Error('Empty response from server');
+            if (!response.ok) throw new Error(`Server error: ${response.status}`);
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let fullText = "";
+            let searching = false;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                    if (!line) continue;
+                    
+                    // Protocol: TYPE|DATA
+                    const [type, data] = line.split('|');
+
+                    if (type === 'STATUS') {
+                        if (data === 'SEARCHING') {
+                            searching = true;
+                            statusBadge.style.display = 'inline-flex';
+                            statusBadge.innerHTML = `<div class="mini-spinner"></div> Searching the web...`;
+                            this.statusText.innerText = "Searching web...";
+                        } else if (data === 'TYPING') {
+                            if (searching) {
+                                searching = false;
+                                statusBadge.style.display = 'none'; // Hide badge when typing starts
+                                this.statusText.innerText = "Typing...";
+                            }
+                        }
+                    } else if (type === 'CHUNK') {
+                        // Append text immediately
+                        fullText += data;
+                        // During streaming, we just append text to avoid layout thrashing from markdown parsing
+                        // We will format markdown at the end.
+                        bubbleContent.innerText = fullText;
+                        this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
+                    } else if (type === 'ERROR') {
+                        throw new Error(data);
+                    }
+                }
             }
 
-            const reply = data.reply || data.message || data.choices?.[0]?.message?.content || '';
-            if (!reply) {
-                throw new Error('Empty response content from AI');
+            // Finalize: Parse Markdown once
+            try {
+                if (marked && typeof marked.parse === 'function') {
+                    bubbleContent.innerHTML = marked.parse(fullText || '');
+                } else {
+                    bubbleContent.innerHTML = (fullText || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                }
+                
+                // Apply syntax highlighting
+                if (window.Prism && typeof Prism.highlightAllUnder === 'function') {
+                    Prism.highlightAllUnder(aiMessageDiv);
+                }
+            } catch (e) {
+                console.error('Markdown final parse failed', e);
             }
 
-            this.addMessage(reply, 'ai', true);
-            this.appendToHistory('ai', reply);
+            this.addMessageActions(aiMessageDiv);
+            this.appendToHistory('ai', fullText);
             
         } catch (error) {
             console.error('API request failed:', error);
-            this.removeThinking(thinkingId);
-            
-            const errorMessage = `**API Error:** ${error.message}\n\n` +
-                `The request could not be completed. Please check your connection and try again.\n` +
-                `\`\`\`\nRequest: ${userText || '(no text)'}\n` +
-                `Intent: ${intent}\n` +
-                `Error: ${error.message}\n\`\`\``;
-            
-            this.addMessage(errorMessage, 'ai', false);
+            const errorMessage = `**API Error:** ${error.message}\n\nThe request could not be completed.`;
+            bubbleContent.innerHTML = marked.parse(errorMessage);
+            this.addMessageActions(aiMessageDiv);
             this.appendToHistory('ai', errorMessage);
         } finally {
             this.state.isProcessing = false;
+            this.statusText.innerText = "Ready";
             this.checkStorageSize();
         }
+    }
+
+    // Creates a message div but leaves the content empty for streaming
+    addStreamingMessage() {
+        const div = document.createElement('div');
+        div.className = 'message ai';
+        
+        div.innerHTML = `
+            <div class="message-avatar">eS</div>
+            <div class="message-content">
+                <div class="message-status" style="display:none"></div>
+                <div class="message-bubble">
+                    <div class="message-content-text"></div>
+                </div>
+            </div>`;
+        
+        this.dom.chat.appendChild(div);
+        this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
+        return div;
+    }
+
+    addMessageActions(messageDiv) {
+        const contentDiv = messageDiv.querySelector('.message-content');
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'message-actions';
+        actionsDiv.innerHTML = `
+            <button class="action-btn" onclick="app.copyText(this)">Copy</button>
+            <button class="action-btn regenerate" onclick="app.regenerateResponse(this)">Regenerate</button>
+        `;
+        contentDiv.appendChild(actionsDiv);
     }
     
     handleSend() {
@@ -2022,30 +2118,6 @@ class App {
         return div;
     }
 
-    addThinking() {
-        const id = 'thinking-' + Date.now();
-        const div = document.createElement('div');
-        div.className = 'message ai';
-        div.id = id;
-        div.innerHTML = `
-            <div class="message-avatar">eS</div>
-            <div class="message-content">
-                <div class="message-bubble" style="display:flex; align-items:center; gap:10px;">
-                    <span style="color:var(--primary); font-weight:500;">Processing</span>
-                    <span class="status-dot"></span>
-                </div>
-            </div>`;
-        
-        this.dom.chat.appendChild(div);
-        this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
-        return id;
-    }
-
-    removeThinking(id) {
-        const el = document.getElementById(id);
-        if (el) el.remove();
-    }
-
     async regenerateResponse(btn) {
         if (this.state.isProcessing) return;
 
@@ -2059,14 +2131,18 @@ class App {
             
             messageEl.remove();
             
-            const thinkingId = this.addThinking();
+            // Create streaming placeholder
+            const aiMessageDiv = this.addStreamingMessage();
+            const bubbleContent = aiMessageDiv.querySelector('.message-content-text');
+            const statusBadge = aiMessageDiv.querySelector('.message-status');
+            
             this.state.isProcessing = true;
 
             try {
                 // Re-detect intent for regeneration
                 const intent = detectIntent({ text: userText, files: [] });
 
-                const res = await fetch("/api/chat", {
+                const response = await fetch("/api/chat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -2076,42 +2152,71 @@ class App {
                     })
                 });
                 
-                if (res.status === 401) {
-                    throw new Error('Unauthorized - Please check your API key');
-                } else if (res.status === 429) {
-                    throw new Error('Rate limit exceeded - Please try again later');
-                } else if (res.status === 403) {
-                    throw new Error('Access forbidden - You do not have permission');
-                } else if (!res.ok) {
-                    throw new Error(`Server error: ${res.status} ${res.statusText}`);
+                if (!response.ok) throw new Error(`Server error: ${response.status}`);
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                let fullText = "";
+                let searching = false;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
+
+                    for (const line of lines) {
+                        if (!line) continue;
+                        const [type, data] = line.split('|');
+
+                        if (type === 'STATUS') {
+                            if (data === 'SEARCHING') {
+                                searching = true;
+                                statusBadge.style.display = 'inline-flex';
+                                statusBadge.innerHTML = `<div class="mini-spinner"></div> Searching...`;
+                                this.statusText.innerText = "Searching...";
+                            } else if (data === 'TYPING') {
+                                if (searching) {
+                                    searching = false;
+                                    statusBadge.style.display = 'none';
+                                    this.statusText.innerText = "Typing...";
+                                }
+                            }
+                        } else if (type === 'CHUNK') {
+                            fullText += data;
+                            bubbleContent.innerText = fullText;
+                            this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
+                        } else if (type === 'ERROR') {
+                            throw new Error(data);
+                        }
+                    }
                 }
                 
-                const data = await res.json();
-                this.removeThinking(thinkingId);
-                
-                if (!data) {
-                    throw new Error('Empty response from server');
+                // Finalize Markdown
+                try {
+                    if (marked && typeof marked.parse === 'function') {
+                        bubbleContent.innerHTML = marked.parse(fullText || '');
+                    } else {
+                        bubbleContent.innerHTML = (fullText || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    }
+                    if (window.Prism && typeof Prism.highlightAllUnder === 'function') {
+                        Prism.highlightAllUnder(aiMessageDiv);
+                    }
+                } catch (e) {
+                    console.error('Markdown final parse failed', e);
                 }
                 
-                const reply = data.reply || data.message || data.choices?.[0]?.message?.content || '';
-                if (!reply) {
-                    throw new Error('Empty response content from AI');
-                }
-                
-                this.addMessage(reply, 'ai', true);
+                this.addMessageActions(aiMessageDiv);
                 
             } catch (error) {
                 console.error('Regenerate failed:', error);
-                this.removeThinking(thinkingId);
-                
-                const errorMessage = `**Regeneration Error:** ${error.message}\n\n` +
-                    `Failed to regenerate response.\n` +
-                    `\`\`\`\nOriginal: ${userText}\n` +
-                    `Error: ${error.message}\n\`\`\``;
-                
-                this.addMessage(errorMessage, 'ai', true);
+                const errorMessage = `**Regeneration Error:** ${error.message}`;
+                bubbleContent.innerHTML = marked.parse(errorMessage);
+                this.addMessageActions(aiMessageDiv);
             } finally {
                 this.state.isProcessing = false;
+                this.statusText.innerText = "Ready";
             }
         }
     }
