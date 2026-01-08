@@ -2,7 +2,6 @@ import express from "express";
 import { db } from "../db.js";
 
 const router = express.Router();
-
 router.get("/me", async (req, res) => {
   const key = req.headers.authorization?.replace("Bearer ", "");
 
@@ -20,10 +19,11 @@ router.get("/me", async (req, res) => {
   }
 
   res.json({
-    plan: row.plan,
-    ads: false,
-    voice_limit: row.plan === "starter" ? 3 : 20
+    plan: "adfree",
+    ads: false
   });
 });
+
+
 
 export default router;
