@@ -1,7 +1,6 @@
 // api/chat.js
 // Vercel Serverless Function (ES Module)
-// eSAMz v9.15 (Persona Fix: Normal & Chill)
-// PROTECTED: Dual key verification required
+// eSAMz v9.2 (Web Search & Streaming Integration)
 
 import crypto from "crypto";
 
@@ -42,6 +41,7 @@ STRICT RULES:
    - "Please let me know if you need anything else."
 3. STYLE: Use full sentences. Be clear. Be helpful, but like a friend, not a servant.
 4. MEMORY: If context says "My name is X", USE it naturally. "Hey X" or "Right X".
+5. WEB SEARCH: If you are provided with SEARCH RESULTS below, use them to answer the user's question. Cite the information naturally.
 `.trim();
 
 Object.freeze(SYSTEM_PROMPT);
@@ -52,6 +52,7 @@ const SARVAM_EMBED_MODEL = "embed-multilingual-v2.0";
 const MAX_COMPLETION_TOKENS = 2048;
 const MAX_THREAD_LENGTH = 15;
 const COOKIE_NAME = "esamz_sid";
+const SERPER_API_KEY = process.env.SERPER_API_KEY; // Required for Web Search
 
 /* ================= MOCK DATABASE ================= */
 const DB = {
@@ -92,6 +93,43 @@ function cosineSimilarity(vecA, vecB) {
   }
   if (normA === 0 || normB === 0) return 0;
   return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+/* ================= SEARCH UTILS ================= */
+function needsSearch(query) {
+  const lower = query.toLowerCase();
+  const triggers = [
+    "who is", "what is", "latest", "news", "weather", "price", "search for", 
+    "current", "happening", "define", "meaning of", "capital of", "president of"
+  ];
+  return triggers.some(t => lower.includes(t));
+}
+
+async function googleSearch(query) {
+  if (!SERPER_API_KEY) return null;
+  
+  try {
+    const response = await fetch("https://google.serper.dev/search", {
+      method: "POST",
+      headers: {
+        "X-API-KEY": SERPER_API_KEY,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ q: query, num: 5 }) // Top 5 results
+    });
+
+    if (!response.ok) return null;
+    const data = await response.json();
+    
+    // Format results for the AI
+    const snippets = (data.answerBox?.snippet || "") + "\n" + 
+      (data.organic?.map((r, i) => `${i+1}. ${r.title} - ${r.snippet}`).join("\n") || "");
+      
+    return snippets;
+  } catch (e) {
+    console.error("Serper Error:", e);
+    return null;
+  }
 }
 
 /* ================= SARVAM API WRAPPERS ================= */
@@ -193,9 +231,20 @@ async function saveMemory(text, userDoc) {
   });
 }
 
+/* ================= STREAMING UTILS ================= */
+// Helper to send data in a format the frontend understands
+function sendEvent(res, type, data) {
+  // We use a custom simple protocol: TYPE|DATA
+  // e.g. STATUS|SEARCHING
+  //      CHUNK|Hello there
+  res.write(`${type}|${data}\n`);
+}
+
+// Artificial delay helper to simulate typing
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 /* ================= MAIN LOGIC ================= */
-// UPDATED: Accept 'files' parameter
-async function runChat({ message, sessionId, files = [] }) {
+async function runChat({ message, sessionId, files = [], res }) {
   verifyServerIntegrity();
 
   if (!message || typeof message !== "string") throw new Error("Invalid message format");
@@ -203,23 +252,37 @@ async function runChat({ message, sessionId, files = [] }) {
   const id = sessionId || crypto.randomBytes(16).toString("hex");
   const userDoc = DB.getUser(id);
 
-  // 1. File Processing (NEW)
-  // We append the file content to the message so the AI can "read" it.
+  // 1. File Processing
   let finalMessage = message;
   
   if (files && files.length > 0) {
     const fileContext = files.map(f => {
-      // Determine language hint for code files if possible, otherwise just text
       return `\n--- [FILE: ${f.fileName} (${f.type})] ---\n${f.content}\n--- END FILE ---`;
     }).join('\n');
     
     finalMessage = `${message}\n\n${fileContext}`;
   }
 
-  // 2. Memory Retrieval
+  // 2. Web Search Logic
+  let searchContext = "";
+  const shouldSearch = needsSearch(message) && SERPER_API_KEY;
+  
+  if (shouldSearch) {
+    sendEvent(res, "STATUS", "SEARCHING"); // Tell Frontend to show loader
+    const results = await googleSearch(message);
+    if (results) {
+      searchContext = `\n\nSEARCH RESULTS:\n${results}\n\nUse these results to answer the user.`;
+    }
+    // Send DONE searching status
+    sendEvent(res, "STATUS", "TYPING"); 
+  } else {
+    sendEvent(res, "STATUS", "TYPING");
+  }
+
+  // 3. Memory Retrieval
   const relevantMemories = await findRelevantMemories(message, userDoc);
 
-  // 3. Build Payload
+  // 4. Build Payload
   const messagesPayload = [{ role: "system", content: SYSTEM_PROMPT }];
 
   if (relevantMemories.length > 0) {
@@ -238,8 +301,8 @@ async function runChat({ message, sessionId, files = [] }) {
     messagesPayload.push(...userDoc.threadHistory);
   }
 
-  // 4. Add the Final Message (Text + Files)
-  messagesPayload.push({ role: "user", content: finalMessage });
+  // Add message + search context + file context
+  messagesPayload.push({ role: "user", content: finalMessage + searchContext });
 
   // 5. Get Draft & Enforce Persona
   const draftReply = await runSarvamChat({ messages: messagesPayload });
@@ -259,7 +322,7 @@ async function runChat({ message, sessionId, files = [] }) {
 
   // Update History
   const newHistory = (userDoc.threadHistory || []);
-  newHistory.push({ role: "user", content: message }); // We save the original message, not the huge file blob, to save space
+  newHistory.push({ role: "user", content: message });
   newHistory.push({ role: "assistant", content: finalReply });
   
   if (newHistory.length > MAX_THREAD_LENGTH) {
@@ -275,14 +338,27 @@ async function runChat({ message, sessionId, files = [] }) {
 
 /* ================= VERCEL HANDLER ================= */
 export default async function handler(req, res) {
-  try { verifyServerIntegrity(); } 
-  catch (e) { return res.status(403).json({ error: "Forbidden" }); }
+  // Enable streaming headers
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Transfer-Encoding', 'chunked');
+  // Disable buffering to ensure immediate sending
+  res.setHeader('X-Accel-Buffering', 'no'); 
 
-  if (req.method !== 'POST') return res.status(405).json({ error: "Method not allowed" });
+  try { 
+    verifyServerIntegrity(); 
+  } 
+  catch (e) { 
+    res.write(`ERROR|${e.message}`);
+    return res.end(); 
+  }
+
+  if (req.method !== 'POST') {
+    res.write(`ERROR|Method not allowed`);
+    return res.end();
+  }
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    // FIX: Extract 'files' from body
     const { message, sessionId, files } = body;
 
     // 1. PRIORITY: Check Cookie for Session ID
@@ -291,20 +367,40 @@ export default async function handler(req, res) {
       activeSessionId = req.cookies[COOKIE_NAME];
     }
 
-    // 2. Run Logic (FIX: Pass files)
-    const result = await runChat({ message, sessionId: activeSessionId, files });
+    // 2. Run Logic & Stream Response
+    const result = await runChat({ 
+      message, 
+      sessionId: activeSessionId, 
+      files, 
+      res 
+    });
 
-    // 3. Set Cookie if it's a new session or missing
+    // 3. Artificial Streaming (Word by Word Effect)
+    // Since we already fetched the full text, we chunk it and send it with delays
+    const words = result.reply.split(' ');
+    
+    for (let i = 0; i < words.length; i++) {
+      const chunk = words[i] + ' ';
+      res.write(`CHUNK|${chunk}`);
+      // Small delay to simulate typing (30ms per word approx)
+      await delay(30); 
+    }
+
+    // Send Final End Signal
+    res.write(`DONE|${result.sessionId}`);
+
+    // 4. Set Cookie if new
     if (!req.cookies || !req.cookies[COOKIE_NAME]) {
       const cookieValue = result.sessionId;
       const cookieString = `${COOKIE_NAME}=${cookieValue}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`;
       res.setHeader('Set-Cookie', cookieString);
     }
 
-    return res.status(200).json(result);
+    res.end();
 
   } catch (error) {
     console.error("API Error:", error);
-    return res.status(500).json({ error: error.message });
+    res.write(`ERROR|${error.message}`);
+    res.end();
   }
 }
