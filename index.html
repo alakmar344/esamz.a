@@ -1965,8 +1965,7 @@ class App {
                 for (const line of lines) {
                     if (!line) continue;
                     
-                    // FIX: Use indexOf to split only on the first pipe character
-                    // This fixes the issue where answer text containing pipes (|) would break the parsing
+                    // FIX: Use indexOf to split only on first pipe character
                     const separatorIndex = line.indexOf('|');
                     if (separatorIndex === -1) continue;
 
@@ -1987,8 +1986,24 @@ class App {
                             }
                         }
                     } else if (type === 'CHUNK') {
-                        // Append text immediately
-                        fullText += data;
+                        // CRITICAL FIX: Handle broken backend stream where chunks are concatenated
+                        // e.g. "verify CHUNK|subscriptions"
+                        let content = data;
+                        let nextSplit = content.indexOf('CHUNK|');
+                        
+                        // Recursively split content until no CHUNK| markers remain
+                        while (nextSplit !== -1) {
+                            // Append text before the marker
+                            fullText += content.substring(0, nextSplit);
+                            // Move pointer past the marker ("CHUNK|" is 6 characters)
+                            content = content.substring(nextSplit + 6);
+                            // Check for next occurrence
+                            nextSplit = content.indexOf('CHUNK|');
+                        }
+                        
+                        // Append remaining text
+                        fullText += content;
+
                         // During streaming, we just append text to avoid layout thrashing from markdown parsing
                         // We will format markdown at the end.
                         bubbleContent.innerText = fullText;
@@ -2174,7 +2189,7 @@ class App {
                     for (const line of lines) {
                         if (!line) continue;
                         
-                        // FIX: Use indexOf to split only on the first pipe character
+                        // FIX: Use indexOf to split only on first pipe character
                         const separatorIndex = line.indexOf('|');
                         if (separatorIndex === -1) continue;
 
@@ -2195,7 +2210,18 @@ class App {
                                 }
                             }
                         } else if (type === 'CHUNK') {
-                            fullText += data;
+                            // CRITICAL FIX: Handle broken backend stream in regeneration
+                            let content = data;
+                            let nextSplit = content.indexOf('CHUNK|');
+                            
+                            while (nextSplit !== -1) {
+                                fullText += content.substring(0, nextSplit);
+                                content = content.substring(nextSplit + 6);
+                                nextSplit = content.indexOf('CHUNK|');
+                            }
+                            
+                            fullText += content;
+
                             bubbleContent.innerText = fullText;
                             this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
                         } else if (type === 'ERROR') {
