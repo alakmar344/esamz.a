@@ -213,29 +213,40 @@ async function runChat({ message, sessionId }) {
 /* ================= HANDLER ================= */
 
 export default async function handler(req, res) {
-  res.setHeader("Content-Type", "text/plain; charset=utf-8");
-  res.setHeader("Transfer-Encoding", "chunked");
-  res.setHeader("X-Accel-Buffering", "no");
-
   try {
     verifyServerIntegrity();
   } catch (e) {
-    send(res, "ERROR", e.message);
-    return res.end();
+    res.statusCode = 403;
+    res.end("ERROR|" + e.message);
+    return;
   }
 
   if (req.method !== "POST") {
-    send(res, "ERROR", "Method not allowed");
-    return res.end();
+    res.statusCode = 405;
+    res.end("ERROR|Method not allowed");
+    return;
   }
 
   try {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
     const { message, sessionId } = body;
 
-    send(res, "STATUS", "TYPING");
-
+    // Run chat first (no streaming yet)
     const result = await runChat({ message, sessionId });
+
+    // Now headers are still open — safe to set cookie
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Transfer-Encoding", "chunked");
+    res.setHeader("X-Accel-Buffering", "no");
+
+    // Activity-based session cookie (30 min)
+    res.setHeader(
+      "Set-Cookie",
+      `${COOKIE_NAME}=${result.sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=1800`
+    );
+
+    // Start streaming AFTER headers
+    send(res, "STATUS", "TYPING");
 
     for (const word of result.reply.split(" ")) {
       send(res, "CHUNK", word + " ");
@@ -243,17 +254,11 @@ export default async function handler(req, res) {
     }
 
     send(res, "DONE", result.sessionId);
-
-    // Activity-based session cookie (30 min inactivity)
-    res.setHeader(
-      "Set-Cookie",
-      `${COOKIE_NAME}=${result.sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=1800`
-    );
-
     res.end();
+
   } catch (err) {
     console.error("API error:", err);
-    send(res, "ERROR", err.message);
-    res.end();
+    res.statusCode = 500;
+    res.end("ERROR|" + err.message);
   }
 }
