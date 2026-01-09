@@ -1,6 +1,6 @@
 // api/chat.js
 // Vercel Serverless Function (ES Module)
-// eSAMz v9.2 (Web Search & Streaming Integration)
+// eSAMz v9.3 (Intelligent Long-Term Memory & Summarization)
 
 import crypto from "crypto";
 
@@ -40,7 +40,7 @@ STRICT RULES:
    - "I'm sorry, I don't have access to..."
    - "Please let me know if you need anything else."
 3. STYLE: Use full sentences. Be clear. Be helpful, but like a friend, not a servant.
-4. MEMORY: If context says "My name is X", USE it naturally. "Hey X" or "Right X".
+4. MEMORY: You have access to "CRITICAL CONTEXT" (memories) and "Past Context" (summary). Use these to remember details about the user.
 5. WEB SEARCH: If you are provided with SEARCH RESULTS below, use them to answer the user's question. Cite the information naturally.
 `.trim();
 
@@ -50,9 +50,9 @@ Object.freeze(SYSTEM_PROMPT);
 const SARVAM_MODEL = "sarvam-m";
 const SARVAM_EMBED_MODEL = "embed-multilingual-v2.0";
 const MAX_COMPLETION_TOKENS = 2048;
-const MAX_THREAD_LENGTH = 15;
+const MAX_THREAD_LENGTH = 12; // Reduced slightly to save room for summary
 const COOKIE_NAME = "esamz_sid";
-const SERPER_API_KEY = process.env.SERPER_API_KEY; // Required for Web Search
+const SERPER_API_KEY = process.env.SERPER_API_KEY;
 
 /* ================= MOCK DATABASE ================= */
 const DB = {
@@ -60,7 +60,7 @@ const DB = {
   
   getUser(sessionId) {
     if (!this.users[sessionId]) {
-      this.users[sessionId] = { memories: [], summary: "", threadHistory: [] };
+      this.users[sessionId] = { memories: [], summary: "New conversation started.", threadHistory: [] };
     }
     return this.users[sessionId];
   },
@@ -98,34 +98,25 @@ function cosineSimilarity(vecA, vecB) {
 /* ================= SEARCH UTILS ================= */
 function needsSearch(query) {
   const lower = query.toLowerCase();
-  const triggers = [
-    "who is", "what is", "latest", "news", "weather", "price", "search for", 
-    "current", "happening", "define", "meaning of", "capital of", "president of"
-  ];
+  const exclude = ["my name", "i am", "i'm", "who am i", "my email", "my address", "remember that", "do you know me"];
+  if (exclude.some(ex => lower.includes(ex))) return false;
+  const triggers = ["latest", "news", "weather", "price", "search for", "current", "happening now", "stock price", "today", "capital of", "president of", "meaning of", "define"];
   return triggers.some(t => lower.includes(t));
 }
 
 async function googleSearch(query) {
   if (!SERPER_API_KEY) return null;
-  
   try {
     const response = await fetch("https://google.serper.dev/search", {
       method: "POST",
-      headers: {
-        "X-API-KEY": SERPER_API_KEY,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ q: query, num: 5 }) // Top 5 results
+      headers: { "X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ q: query, num: 5 })
     });
-
     if (!response.ok) return null;
     const data = await response.json();
-    
-    // Format results for the AI
-    const snippets = (data.answerBox?.snippet || "") + "\n" + 
-      (data.organic?.map((r, i) => `${i+1}. ${r.title} - ${r.snippet}`).join("\n") || "");
-      
-    return snippets;
+    const answerBox = data.answerBox?.snippet || data.answerBox?.answer || "";
+    const organic = data.organic?.map((r, i) => `${i+1}. ${r.title} - ${r.snippet}`).join("\n") || "";
+    return (answerBox + "\n" + organic).trim();
   } catch (e) {
     console.error("Serper Error:", e);
     return null;
@@ -151,18 +142,11 @@ async function getSarvamEmbedding(text) {
 async function runSarvamChat({ messages, temperature = 0.7 }) {
   const sarvamKey = process.env.SARVAM_API_KEY;
   if (!sarvamKey) throw new Error("Sarvam API key not configured");
-
   const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${sarvamKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: SARVAM_MODEL,
-      messages,
-      temperature,
-      max_tokens: MAX_COMPLETION_TOKENS
-    })
+    body: JSON.stringify({ model: SARVAM_MODEL, messages, temperature, max_tokens: MAX_COMPLETION_TOKENS })
   });
-
   if (!res.ok) throw new Error("Sarvam Chat failed");
   const data = await res.json();
   return data?.choices?.[0]?.message?.content || "";
@@ -170,27 +154,10 @@ async function runSarvamChat({ messages, temperature = 0.7 }) {
 
 /* ================= PERSONA ENFORCER ================= */
 async function enforcePersona(userMsg, draftReply) {
-  const forbidden = [
-    "how can i assist", "how may i assist", "here is the information", 
-    "i hope this helps", "i do not have access", "i'm sorry, i don't", "please let me know",
-    "is there anything else" 
-  ];
-  
+  const forbidden = ["how can i assist", "how may i assist", "here is the information", "i hope this helps", "i do not have access", "i'm sorry, i don't", "please let me know", "is there anything else"];
   const isCorporate = forbidden.some(phrase => draftReply.toLowerCase().includes(phrase));
-
   if (!isCorporate) return draftReply; 
-
-  const correctionPrompt = `
-    User said: "${userMsg}"
-    AI Draft: "${draftReply}"
-    
-    The AI Draft is too formal/robotic. Rewrite it as eSAMz.
-    Rules: 
-    - Speak like a normal, relaxed human.
-    - No "How can I assist".
-    - Be direct and clear.
-  `;
-
+  const correctionPrompt = `User said: "${userMsg}"\nAI Draft: "${draftReply}"\nThe AI Draft is too formal/robotic. Rewrite it as eSAMz.\nRules: \n- Speak like a normal, relaxed human.\n- No "How can I assist".\n- Be direct and clear.`;
   try {
     const fixedReply = await runSarvamChat({
       messages: [{ role: "system", content: "You are eSAMz. Fix this reply." }, { role: "user", content: correctionPrompt }],
@@ -206,47 +173,118 @@ async function enforcePersona(userMsg, draftReply) {
 async function findRelevantMemories(query, userDoc) {
   const queryVector = await getSarvamEmbedding(query);
   if (!queryVector || !userDoc.memories?.length) return [];
-
   const scored = userDoc.memories.map(mem => {
     let memVector = [];
     try { memVector = base64ToVector(mem.vectorBase64); } catch (e) { return { mem, score: 0 }; }
     const score = cosineSimilarity(queryVector, memVector);
     return { mem, score };
   });
-
   return scored
-    .filter(item => item.score > 0.7)
+    .filter(item => item.score > 0.7) // Threshold for relevance
     .sort((a, b) => b.score - a.score)
-    .slice(0, 3)
+    .slice(0, 4) // Retrieve top 4 memories
     .map(item => item.mem.text);
 }
 
 async function saveMemory(text, userDoc) {
   const vector = await getSarvamEmbedding(text);
   if (!vector) return;
-  userDoc.memories.push({
-    text: text,
-    vectorBase64: vectorToBase64(vector),
-    timestamp: Date.now()
-  });
+  // Check for duplicates to save space
+  const exists = userDoc.memories.some(m => m.text === text);
+  if (!exists) {
+    userDoc.memories.push({
+      text: text,
+      vectorBase64: vectorToBase64(vector),
+      timestamp: Date.now()
+    });
+  }
+}
+
+/* ================= INTELLIGENT MEMORY EXTRACTION ================= */
+// This function asks the LLM to pick out facts from the conversation
+async function extractAndSaveFacts(userMsg, botReply, userDoc) {
+  const factPrompt = `
+    Analyze this conversation turn.
+    User: "${userMsg}"
+    Bot: "${botReply}"
+    
+    Extract 1-3 specific facts, preferences, or details about the user that should be remembered for future conversations.
+    Ignore general greetings like "hello".
+    
+    Output format: A JSON array of strings. Example: ["User likes pizza", "User's name is John"]
+    If no specific facts are found, return an empty array [].
+  `;
+
+  try {
+    const rawResponse = await runSarvamChat({
+      messages: [
+        { role: "system", content: "You are a data extraction assistant. Output only valid JSON." },
+        { role: "user", content: factPrompt }
+      ],
+      temperature: 0.1
+    });
+
+    // Attempt to parse JSON (LLMs sometimes add text before/after JSON)
+    const jsonMatch = rawResponse.match(/\[.*\]/s);
+    const jsonString = jsonMatch ? jsonMatch[0] : rawResponse;
+    const facts = JSON.parse(jsonString);
+
+    if (Array.isArray(facts)) {
+      for (const fact of facts) {
+        if (typeof fact === 'string' && fact.length > 5) {
+          await saveMemory(fact, userDoc);
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Memory extraction failed:", e);
+  }
+}
+
+/* ================= CONVERSATION SUMMARIZATION ================= */
+// This function summarizes old chat history so we don't lose context
+async function summarizeHistoryAndTrim(userDoc) {
+  const history = userDoc.threadHistory;
+  if (history.length <= MAX_THREAD_LENGTH) return;
+
+  // We keep the last N messages, and summarize the rest
+  const messagesToSummarize = history.slice(0, history.length - MAX_THREAD_LENGTH + 2);
+  const keepHistory = history.slice(history.length - MAX_THREAD_LENGTH + 2);
+
+  const historyText = messagesToSummarize.map(m => `${m.role}: ${m.content}`).join("\n");
+  
+  const summaryPrompt = `
+    Previous Summary: ${userDoc.summary}
+    
+    New Conversation to Summarize:
+    ${historyText}
+    
+    Create a concise summary of the user's intent, current topic, and any key facts discussed in the new conversation, incorporating it into the previous summary context.
+  `;
+
+  try {
+    const newSummary = await runSarvamChat({
+      messages: [{ role: "system", content: "You are a summarizer." }, { role: "user", content: summaryPrompt }],
+      temperature: 0.5
+    });
+
+    userDoc.summary = newSummary;
+    userDoc.threadHistory = keepHistory;
+  } catch (e) {
+    // If summarization fails, just force trim to prevent crash
+    userDoc.threadHistory = history.slice(-MAX_THREAD_LENGTH);
+  }
 }
 
 /* ================= STREAMING UTILS ================= */
-// Helper to send data in a format the frontend understands
 function sendEvent(res, type, data) {
-  // We use a custom simple protocol: TYPE|DATA
-  // e.g. STATUS|SEARCHING
-  //      CHUNK|Hello there
   res.write(`${type}|${data}\n`);
 }
-
-// Artificial delay helper to simulate typing
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 /* ================= MAIN LOGIC ================= */
 async function runChat({ message, sessionId, files = [], res }) {
   verifyServerIntegrity();
-
   if (!message || typeof message !== "string") throw new Error("Invalid message format");
 
   const id = sessionId || crypto.randomBytes(16).toString("hex");
@@ -254,26 +292,18 @@ async function runChat({ message, sessionId, files = [], res }) {
 
   // 1. File Processing
   let finalMessage = message;
-  
   if (files && files.length > 0) {
-    const fileContext = files.map(f => {
-      return `\n--- [FILE: ${f.fileName} (${f.type})] ---\n${f.content}\n--- END FILE ---`;
-    }).join('\n');
-    
+    const fileContext = files.map(f => `\n--- [FILE: ${f.fileName} (${f.type})] ---\n${f.content}\n--- END FILE ---`).join('\n');
     finalMessage = `${message}\n\n${fileContext}`;
   }
 
   // 2. Web Search Logic
   let searchContext = "";
   const shouldSearch = needsSearch(message) && SERPER_API_KEY;
-  
   if (shouldSearch) {
-    sendEvent(res, "STATUS", "SEARCHING"); // Tell Frontend to show loader
+    sendEvent(res, "STATUS", "SEARCHING");
     const results = await googleSearch(message);
-    if (results) {
-      searchContext = `\n\nSEARCH RESULTS:\n${results}\n\nUse these results to answer the user.`;
-    }
-    // Send DONE searching status
+    if (results) searchContext = `\n\nSEARCH RESULTS:\n${results}\n\nUse these results to answer the user.`;
     sendEvent(res, "STATUS", "TYPING"); 
   } else {
     sendEvent(res, "STATUS", "TYPING");
@@ -289,107 +319,74 @@ async function runChat({ message, sessionId, files = [], res }) {
     const memoryBlock = relevantMemories.map(m => `- ${m}`).join("\n");
     messagesPayload.push({
       role: "system",
-      content: `CRITICAL CONTEXT:\nUser said this before: "${memoryBlock}".\nUse this info naturally.`
+      content: `CRITICAL CONTEXT (Long-term Memory):\n${memoryBlock}\nUse this info naturally.`
     });
   }
 
   if (userDoc.summary) {
-    messagesPayload.push({ role: "system", content: `Past Context: ${userDoc.summary}` });
+    messagesPayload.push({ role: "system", content: `Past Conversation Summary:\n${userDoc.summary}` });
   }
 
   if (userDoc.threadHistory?.length) {
     messagesPayload.push(...userDoc.threadHistory);
   }
 
-  // Add message + search context + file context
   messagesPayload.push({ role: "user", content: finalMessage + searchContext });
 
   // 5. Get Draft & Enforce Persona
   const draftReply = await runSarvamChat({ messages: messagesPayload });
   const finalReply = await enforcePersona(message, draftReply);
 
-  // 6. Update Memory
-  const namePattern = /(?:my name is|i am|i'm)\s+([a-zA-Z]+)/i;
-  const nameMatch = message.match(namePattern);
-  
-  if (nameMatch) {
-    const name = nameMatch[1];
-    await saveMemory(`User's name is ${name}`, userDoc);
-  } else {
-    const factPatterns = [/i like/i, /i prefer/i, /i work at/i, /i live in/i];
-    if (factPatterns.some(p => p.test(message))) await saveMemory(message, userDoc);
-  }
+  // 6. INTELLIGENT MEMORY UPDATE
+  // Extract facts automatically from this turn
+  await extractAndSaveFacts(message, finalReply, userDoc);
 
   // Update History
   const newHistory = (userDoc.threadHistory || []);
   newHistory.push({ role: "user", content: message });
   newHistory.push({ role: "assistant", content: finalReply });
   
+  // 7. Summarize if history is too long
   if (newHistory.length > MAX_THREAD_LENGTH) {
-    userDoc.threadHistory = newHistory.slice(-MAX_THREAD_LENGTH);
+    await summarizeHistoryAndTrim(userDoc);
   } else {
     userDoc.threadHistory = newHistory;
   }
 
   DB.updateUser(id, userDoc);
-
   return { reply: finalReply, sessionId: id };
 }
 
 /* ================= VERCEL HANDLER ================= */
 export default async function handler(req, res) {
-  // Enable streaming headers
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Transfer-Encoding', 'chunked');
-  // Disable buffering to ensure immediate sending
   res.setHeader('X-Accel-Buffering', 'no'); 
 
-  try { 
-    verifyServerIntegrity(); 
-  } 
-  catch (e) { 
-    res.write(`ERROR|${e.message}`);
-    return res.end(); 
-  }
-
-  if (req.method !== 'POST') {
-    res.write(`ERROR|Method not allowed`);
-    return res.end();
-  }
+  try { verifyServerIntegrity(); } 
+  catch (e) { res.write(`ERROR|${e.message}\n`); return res.end(); }
+  if (req.method !== 'POST') { res.write(`ERROR|Method not allowed\n`); return res.end(); }
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const { message, sessionId, files } = body;
 
-    // 1. PRIORITY: Check Cookie for Session ID
     let activeSessionId = sessionId;
     if (!activeSessionId && req.cookies && req.cookies[COOKIE_NAME]) {
       activeSessionId = req.cookies[COOKIE_NAME];
     }
 
-    // 2. Run Logic & Stream Response
-    const result = await runChat({ 
-      message, 
-      sessionId: activeSessionId, 
-      files, 
-      res 
-    });
+    const result = await runChat({ message, sessionId: activeSessionId, files, res });
 
-    // 3. Artificial Streaming (Word by Word Effect)
-    // Since we already fetched the full text, we chunk it and send it with delays
     const words = result.reply.split(' ');
-    
     for (let i = 0; i < words.length; i++) {
       const chunk = words[i] + ' ';
-      res.write(`CHUNK|${chunk}`);
-      // Small delay to simulate typing (30ms per word approx)
+      sendEvent(res, "CHUNK", chunk);
       await delay(30); 
     }
 
-    // Send Final End Signal
-    res.write(`DONE|${result.sessionId}`);
+    sendEvent(res, "DONE", result.sessionId);
 
-    // 4. Set Cookie if new
     if (!req.cookies || !req.cookies[COOKIE_NAME]) {
       const cookieValue = result.sessionId;
       const cookieString = `${COOKIE_NAME}=${cookieValue}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`;
@@ -400,7 +397,7 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error("API Error:", error);
-    res.write(`ERROR|${error.message}`);
+    res.write(`ERROR|${error.message}\n`);
     res.end();
   }
 }
