@@ -1,6 +1,6 @@
 // api/chat.js
 // Vercel Serverless Function (ES Module)
-// eSAMz v9.3 (Fixed API Models)
+// eSAMz v9.4 (Fixed System Message & Memory Stability)
 
 import crypto from "crypto";
 
@@ -40,17 +40,15 @@ STRICT RULES:
    - "I'm sorry, I don't have access to..."
    - "Please let me know if you need anything else."
 3. STYLE: Use full sentences. Be clear. Be helpful, but like a friend, not a servant.
-4. MEMORY: You have access to "CRITICAL CONTEXT" (memories) and "Past Context" (summary). Use these to remember details about the user.
-5. WEB SEARCH: If you are provided with SEARCH RESULTS below, use them to answer the user's question. Cite the information naturally.
+4. WEB SEARCH: If you are provided with SEARCH RESULTS below, use them to answer the user's question. Cite the information naturally.
 `.trim();
 
 Object.freeze(SYSTEM_PROMPT);
 
 /* ================= CONFIG ================= */
-const SARVAM_MODEL = "sarvam-m"; // FIXED: Valid model per API Error logs
-const SARVAM_EMBED_MODEL = "sarvam-m"; // UPDATED: Attempting to use chat model for embeddings as old one was Not Found
+const SARVAM_MODEL = "sarvam-m";
 const MAX_COMPLETION_TOKENS = 2048;
-const MAX_THREAD_LENGTH = 12;
+const MAX_THREAD_LENGTH = 15;
 const COOKIE_NAME = "esamz_sid";
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
 
@@ -60,7 +58,7 @@ const DB = {
   
   getUser(sessionId) {
     if (!this.users[sessionId]) {
-      this.users[sessionId] = { memories: [], summary: "New conversation started.", threadHistory: [] };
+      this.users[sessionId] = { summary: "New conversation started.", threadHistory: [] };
     }
     return this.users[sessionId];
   },
@@ -69,31 +67,6 @@ const DB = {
     this.users[sessionId] = { ...this.getUser(sessionId), ...data };
   }
 };
-
-/* ================= VECTOR & MATH UTILS ================= */
-function vectorToBase64(vector) {
-  const buffer = Buffer.from(new Float32Array(vector).buffer);
-  return buffer.toString('base64');
-}
-
-function base64ToVector(base64Str) {
-  const buffer = Buffer.from(base64Str, 'base64');
-  return Array.from(new Float32Array(buffer.buffer));
-}
-
-function cosineSimilarity(vecA, vecB) {
-  if (vecA.length !== vecB.length) return 0;
-  let dotProduct = 0;
-  let normA = 0;
-  let normB = 0;
-  for (let i = 0; i < vecA.length; i++) {
-    dotProduct += vecA[i] * vecB[i];
-    normA += vecA[i] * vecA[i];
-    normB += vecB[i] * vecB[i];
-  }
-  if (normA === 0 || normB === 0) return 0;
-  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
-}
 
 /* ================= SEARCH UTILS ================= */
 function needsSearch(query) {
@@ -124,33 +97,9 @@ async function googleSearch(query) {
 }
 
 /* ================= SARVAM API WRAPPERS ================= */
-async function getSarvamEmbedding(text) {
-  const sarvamKey = process.env.SARVAM_API_KEY;
-  if (!sarvamKey) return null;
-  
-  try {
-    const res = await fetch("https://api.sarvam.ai/v1/embeddings", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${sarvamKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: SARVAM_EMBED_MODEL, input: text })
-    });
-    if (!res.ok) {
-      // If embeddings fail (e.g., model doesn't support it), we log it and return null
-      // This prevents the bot from crashing while still allowing chat to work
-      console.log(`Embedding API returned ${res.status} - Memory features will be paused for this turn.`);
-      return null;
-    }
-    const data = await res.json();
-    return data?.data?.[0]?.embedding;
-  } catch (e) {
-    console.error("Embedding Exception:", e.message);
-    return null;
-  }
-}
-
 async function runSarvamChat({ messages, temperature = 0.7 }) {
   const sarvamKey = process.env.SARVAM_API_KEY;
-  if (!sarvamKey) throw new Error("SARVAM_API_KEY not configured in env");
+  if (!sarvamKey) throw new Error("SARVAM_API_KEY not configured");
   
   const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
     method: "POST",
@@ -186,81 +135,19 @@ async function enforcePersona(userMsg, draftReply) {
 }
 
 /* ================= MEMORY LOGIC ================= */
-async function findRelevantMemories(query, userDoc) {
-  const queryVector = await getSarvamEmbedding(query);
-  if (!queryVector || !userDoc.memories?.length) return [];
-  const scored = userDoc.memories.map(mem => {
-    let memVector = [];
-    try { memVector = base64ToVector(mem.vectorBase64); } catch (e) { return { mem, score: 0 }; }
-    const score = cosineSimilarity(queryVector, memVector);
-    return { mem, score };
-  });
-  return scored
-    .filter(item => item.score > 0.7)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 4)
-    .map(item => item.mem.text);
-}
 
-async function saveMemory(text, userDoc) {
-  const vector = await getSarvamEmbedding(text);
-  if (!vector) return; // Silently fail if embedding fails
-  const exists = userDoc.memories.some(m => m.text === text);
-  if (!exists) {
-    userDoc.memories.push({
-      text: text,
-      vectorBase64: vectorToBase64(vector),
-      timestamp: Date.now()
-    });
-  }
-}
-
-/* ================= INTELLIGENT MEMORY EXTRACTION ================= */
-async function extractAndSaveFacts(userMsg, botReply, userDoc) {
-  const factPrompt = `
-    Analyze this conversation turn.
-    User: "${userMsg}"
-    Bot: "${botReply}"
-    
-    Extract 1-3 specific facts, preferences, or details about the user that should be remembered for future conversations.
-    Ignore general greetings like "hello".
-    
-    Output format: A JSON array of strings. Example: ["User likes pizza", "User's name is John"]
-    If no specific facts are found, return an empty array [].
-  `;
-
-  try {
-    const rawResponse = await runSarvamChat({
-      messages: [
-        { role: "system", content: "You are a data extraction assistant. Output only valid JSON." },
-        { role: "user", content: factPrompt }
-      ],
-      temperature: 0.1
-    });
-
-    const jsonMatch = rawResponse.match(/\[.*\]/s);
-    const jsonString = jsonMatch ? jsonMatch[0] : rawResponse;
-    const facts = JSON.parse(jsonString);
-
-    if (Array.isArray(facts)) {
-      for (const fact of facts) {
-        if (typeof fact === 'string' && fact.length > 5) {
-          await saveMemory(fact, userDoc);
-        }
-      }
-    }
-  } catch (e) {
-    console.error("Memory extraction failed (Non-critical):", e.message);
-  }
-}
+// NOTE: Vector Memory (Embeddings) has been disabled because Sarvam API returns 404 for embeddings.
+// We rely on "Summary" and "Thread History" to handle memory for now.
 
 /* ================= CONVERSATION SUMMARIZATION ================= */
 async function summarizeHistoryAndTrim(userDoc) {
   const history = userDoc.threadHistory;
   if (history.length <= MAX_THREAD_LENGTH) return;
 
-  const messagesToSummarize = history.slice(0, history.length - MAX_THREAD_LENGTH + 2);
-  const keepHistory = history.slice(history.length - MAX_THREAD_LENGTH + 2);
+  // Take the oldest messages to summarize
+  const messagesToSummarize = history.slice(0, history.length - MAX_THREAD_LENGTH + 4);
+  // Keep the recent messages
+  const keepHistory = history.slice(history.length - MAX_THREAD_LENGTH + 4);
 
   const historyText = messagesToSummarize.map(m => `${m.role}: ${m.content}`).join("\n");
   
@@ -270,7 +157,7 @@ async function summarizeHistoryAndTrim(userDoc) {
     New Conversation to Summarize:
     ${historyText}
     
-    Create a concise summary of the user's intent, current topic, and any key facts discussed in the new conversation, incorporating it into the previous summary context.
+    Create a concise summary of the user's intent, current topic, and any key facts discussed in the new conversation.
   `;
 
   try {
@@ -320,43 +207,33 @@ async function runChat({ message, sessionId, files = [], res }) {
     sendEvent(res, "STATUS", "TYPING");
   }
 
-  // 3. Memory Retrieval
-  const relevantMemories = await findRelevantMemories(message, userDoc);
-
-  // 4. Build Payload
-  const messagesPayload = [{ role: "system", content: SYSTEM_PROMPT }];
-
-  if (relevantMemories.length > 0) {
-    const memoryBlock = relevantMemories.map(m => `- ${m}`).join("\n");
-    messagesPayload.push({
-      role: "system",
-      content: `CRITICAL CONTEXT (Long-term Memory):\n${memoryBlock}\nUse this info naturally.`
-    });
-  }
+  // 3. Build Payload (CRITICAL FIX: Only ONE system message allowed by Sarvam)
+  let fullSystemContent = SYSTEM_PROMPT;
 
   if (userDoc.summary) {
-    messagesPayload.push({ role: "system", content: `Past Conversation Summary:\n${userDoc.summary}` });
+    fullSystemContent += `\n\nPAST CONTEXT:\n${userDoc.summary}`;
   }
 
+  const messagesPayload = [{ role: "system", content: fullSystemContent }];
+
+  // Append Conversation History
   if (userDoc.threadHistory?.length) {
     messagesPayload.push(...userDoc.threadHistory);
   }
 
+  // Append Current User Message
   messagesPayload.push({ role: "user", content: finalMessage + searchContext });
 
-  // 5. Get Draft & Enforce Persona
+  // 4. Get Draft & Enforce Persona
   const draftReply = await runSarvamChat({ messages: messagesPayload });
   const finalReply = await enforcePersona(message, draftReply);
 
-  // 6. INTELLIGENT MEMORY UPDATE
-  await extractAndSaveFacts(message, finalReply, userDoc);
-
-  // Update History
+  // 5. Update History
   const newHistory = (userDoc.threadHistory || []);
   newHistory.push({ role: "user", content: message });
   newHistory.push({ role: "assistant", content: finalReply });
   
-  // 7. Summarize if history is too long
+  // 6. Summarize if history is too long (This is our memory mechanism now)
   if (newHistory.length > MAX_THREAD_LENGTH) {
     await summarizeHistoryAndTrim(userDoc);
   } else {
