@@ -166,6 +166,17 @@ async function runSarvamChat({ messages, temperature = 0.7 }) {
   if (!res.ok) throw new Error("Sarvam Chat failed");
   const data = await res.json();
   return data?.choices?.[0]?.message?.content || "";
+  export default async function test(req, res) {
+  const r = await fetch("https://api.sarvam.ai/v1/models", {
+    headers: {
+      Authorization: `Bearer ${process.env.SARVAM_API_KEY}`
+    }
+  });
+
+  const t = await r.text();
+  res.status(200).send(t);
+}
+
 }
 
 /* ================= PERSONA ENFORCER ================= */
