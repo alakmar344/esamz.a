@@ -1,4 +1,4 @@
-// api/chat.js — eSAMz v11 (ES Module, Secure, Search Enabled)
+// api/chat.js — eSAMz v12 (Secure, Search, Streaming, Activity Session)
 
 import crypto from "crypto";
 
@@ -25,6 +25,16 @@ function verifyServerIntegrity() {
 
 /* ================= CONFIG ================= */
 
+const SARVAM_MODEL = "sarvam-m";
+const MAX_COMPLETION_TOKENS = 2048;
+const MAX_THREAD_LENGTH = 10;
+const COOKIE_NAME = "esamz_sid";
+const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes inactivity
+
+const SERPER_API_KEY = process.env.SERPER_API_KEY;
+
+/* ================= MODEL PROMPT ================= */
+
 const SYSTEM_PROMPT = `
 You are eSAMz v9.1. You were created by alakmar teenwala.
 
@@ -44,22 +54,33 @@ STRICT RULES:
 5. WEB SEARCH: If you are provided with SEARCH RESULTS below, use them to answer the user's question. Cite the information naturally.
 `.trim();
 
-
-const SARVAM_MODEL = "sarvam-m";
-const MAX_COMPLETION_TOKENS = 2048;
-const MAX_THREAD_LENGTH = 10;
-const COOKIE_NAME = "esamz_sid";
-
-const SERPER_API_KEY = process.env.SERPER_API_KEY;
-
-/* ================= IN-MEMORY DB ================= */
+/* ================= SESSION DB ================= */
 
 const DB = {
   users: {},
+
   getUser(id) {
-    if (!this.users[id]) this.users[id] = { thread: [] };
-    return this.users[id];
+    const now = Date.now();
+    let user = this.users[id];
+
+    // Expire inactive session
+    if (user && now - user.lastActive > SESSION_TIMEOUT) {
+      delete this.users[id];
+      user = null;
+    }
+
+    if (!user) {
+      user = {
+        thread: [],
+        lastActive: now
+      };
+      this.users[id] = user;
+    }
+
+    user.lastActive = now;
+    return user;
   },
+
   saveUser(id, data) {
     this.users[id] = data;
   }
@@ -151,7 +172,7 @@ function send(res, type, payload) {
 
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
-/* ================= CORE CHAT ================= */
+/* ================= CHAT ENGINE ================= */
 
 async function runChat({ message, sessionId }) {
   verifyServerIntegrity();
@@ -223,12 +244,11 @@ export default async function handler(req, res) {
 
     send(res, "DONE", result.sessionId);
 
-    if (!req.cookies || !req.cookies[COOKIE_NAME]) {
-      res.setHeader(
-        "Set-Cookie",
-        `${COOKIE_NAME}=${result.sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`
-      );
-    }
+    // Activity-based session cookie (30 min inactivity)
+    res.setHeader(
+      "Set-Cookie",
+      `${COOKIE_NAME}=${result.sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=1800`
+    );
 
     res.end();
   } catch (err) {
