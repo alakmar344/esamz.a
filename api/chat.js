@@ -1,8 +1,8 @@
 // api/chat.js
-// Vercel Serverless Function (CommonJS Module)
+// Vercel Serverless Function (ES Module)
 // eSAMz v9.2 (Web Search & Streaming Integration)
 
-const crypto = require("crypto");
+import crypto from "crypto";
 
 /* ================= SECURITY ================= */
 function sha256(x) {
@@ -337,7 +337,7 @@ async function runChat({ message, sessionId, files = [], res }) {
 }
 
 /* ================= VERCEL HANDLER ================= */
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   // Enable streaming headers
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Transfer-Encoding', 'chunked');
@@ -403,4 +403,4 @@ module.exports = async function handler(req, res) {
     res.write(`ERROR|${error.message}`);
     res.end();
   }
-};
+}
