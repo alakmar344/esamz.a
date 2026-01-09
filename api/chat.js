@@ -47,10 +47,10 @@ STRICT RULES:
 Object.freeze(SYSTEM_PROMPT);
 
 /* ================= CONFIG ================= */
-const SARVAM_MODEL = "sarvam-m";
+const SARVAM_MODEL = "sarvam-2b-v1.5"; // UPDATED: Standard Sarvam Model
 const SARVAM_EMBED_MODEL = "embed-multilingual-v2.0";
 const MAX_COMPLETION_TOKENS = 2048;
-const MAX_THREAD_LENGTH = 12; // Reduced slightly to save room for summary
+const MAX_THREAD_LENGTH = 12;
 const COOKIE_NAME = "esamz_sid";
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
 
@@ -126,28 +126,42 @@ async function googleSearch(query) {
 /* ================= SARVAM API WRAPPERS ================= */
 async function getSarvamEmbedding(text) {
   const sarvamKey = process.env.SARVAM_API_KEY;
-  if (!sarvamKey) return null;
+  if (!sarvamKey) throw new Error("SARVAM_API_KEY not configured in env");
   try {
     const res = await fetch("https://api.sarvam.ai/v1/embeddings", {
       method: "POST",
       headers: { Authorization: `Bearer ${sarvamKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({ model: SARVAM_EMBED_MODEL, input: text })
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+       const err = await res.text();
+       console.error("Embedding Error:", err);
+       return null;
+    }
     const data = await res.json();
     return data?.data?.[0]?.embedding;
-  } catch { return null; }
+  } catch (e) {
+    console.error("Embedding Exception:", e);
+    return null;
+  }
 }
 
 async function runSarvamChat({ messages, temperature = 0.7 }) {
   const sarvamKey = process.env.SARVAM_API_KEY;
-  if (!sarvamKey) throw new Error("Sarvam API key not configured");
+  if (!sarvamKey) throw new Error("SARVAM_API_KEY not configured in env");
+  
   const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${sarvamKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({ model: SARVAM_MODEL, messages, temperature, max_tokens: MAX_COMPLETION_TOKENS })
   });
-  if (!res.ok) throw new Error("Sarvam Chat failed");
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("Sarvam API Error:", res.status, errorText);
+    throw new Error(`Sarvam API Error ${res.status}: ${errorText}`);
+  }
+
   const data = await res.json();
   return data?.choices?.[0]?.message?.content || "";
 }
@@ -180,16 +194,15 @@ async function findRelevantMemories(query, userDoc) {
     return { mem, score };
   });
   return scored
-    .filter(item => item.score > 0.7) // Threshold for relevance
+    .filter(item => item.score > 0.7)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 4) // Retrieve top 4 memories
+    .slice(0, 4)
     .map(item => item.mem.text);
 }
 
 async function saveMemory(text, userDoc) {
   const vector = await getSarvamEmbedding(text);
   if (!vector) return;
-  // Check for duplicates to save space
   const exists = userDoc.memories.some(m => m.text === text);
   if (!exists) {
     userDoc.memories.push({
@@ -201,7 +214,6 @@ async function saveMemory(text, userDoc) {
 }
 
 /* ================= INTELLIGENT MEMORY EXTRACTION ================= */
-// This function asks the LLM to pick out facts from the conversation
 async function extractAndSaveFacts(userMsg, botReply, userDoc) {
   const factPrompt = `
     Analyze this conversation turn.
@@ -224,7 +236,6 @@ async function extractAndSaveFacts(userMsg, botReply, userDoc) {
       temperature: 0.1
     });
 
-    // Attempt to parse JSON (LLMs sometimes add text before/after JSON)
     const jsonMatch = rawResponse.match(/\[.*\]/s);
     const jsonString = jsonMatch ? jsonMatch[0] : rawResponse;
     const facts = JSON.parse(jsonString);
@@ -237,17 +248,15 @@ async function extractAndSaveFacts(userMsg, botReply, userDoc) {
       }
     }
   } catch (e) {
-    console.error("Memory extraction failed:", e);
+    console.error("Memory extraction failed (Non-critical):", e.message);
   }
 }
 
 /* ================= CONVERSATION SUMMARIZATION ================= */
-// This function summarizes old chat history so we don't lose context
 async function summarizeHistoryAndTrim(userDoc) {
   const history = userDoc.threadHistory;
   if (history.length <= MAX_THREAD_LENGTH) return;
 
-  // We keep the last N messages, and summarize the rest
   const messagesToSummarize = history.slice(0, history.length - MAX_THREAD_LENGTH + 2);
   const keepHistory = history.slice(history.length - MAX_THREAD_LENGTH + 2);
 
@@ -271,7 +280,7 @@ async function summarizeHistoryAndTrim(userDoc) {
     userDoc.summary = newSummary;
     userDoc.threadHistory = keepHistory;
   } catch (e) {
-    // If summarization fails, just force trim to prevent crash
+    console.error("Summarization failed, force trimming:", e.message);
     userDoc.threadHistory = history.slice(-MAX_THREAD_LENGTH);
   }
 }
@@ -338,7 +347,6 @@ async function runChat({ message, sessionId, files = [], res }) {
   const finalReply = await enforcePersona(message, draftReply);
 
   // 6. INTELLIGENT MEMORY UPDATE
-  // Extract facts automatically from this turn
   await extractAndSaveFacts(message, finalReply, userDoc);
 
   // Update History
