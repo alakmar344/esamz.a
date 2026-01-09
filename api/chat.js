@@ -32,7 +32,7 @@ No corporate speak. No “How can I assist”.
 `.trim();
 
 const SARVAM_MODEL = "sarvam-m";
-const MAX_COMPLETION_TOKENS = 2048;
+const MAX_COMPLETION_TOKENS = 8048;
 const MAX_THREAD_LENGTH = 10;
 const COOKIE_NAME = "esamz_sid";
 
