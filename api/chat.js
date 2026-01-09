@@ -1,6 +1,6 @@
 // api/chat.js
 // Vercel Serverless Function (ES Module)
-// eSAMz v9.4 (Fixed System Message & Memory Stability)
+// eSAMz v9.4 (Fixed Streaming Header Issue)
 
 import crypto from "crypto";
 
@@ -136,17 +136,12 @@ async function enforcePersona(userMsg, draftReply) {
 
 /* ================= MEMORY LOGIC ================= */
 
-// NOTE: Vector Memory (Embeddings) has been disabled because Sarvam API returns 404 for embeddings.
-// We rely on "Summary" and "Thread History" to handle memory for now.
-
 /* ================= CONVERSATION SUMMARIZATION ================= */
 async function summarizeHistoryAndTrim(userDoc) {
   const history = userDoc.threadHistory;
   if (history.length <= MAX_THREAD_LENGTH) return;
 
-  // Take the oldest messages to summarize
   const messagesToSummarize = history.slice(0, history.length - MAX_THREAD_LENGTH + 4);
-  // Keep the recent messages
   const keepHistory = history.slice(history.length - MAX_THREAD_LENGTH + 4);
 
   const historyText = messagesToSummarize.map(m => `${m.role}: ${m.content}`).join("\n");
@@ -207,7 +202,7 @@ async function runChat({ message, sessionId, files = [], res }) {
     sendEvent(res, "STATUS", "TYPING");
   }
 
-  // 3. Build Payload (CRITICAL FIX: Only ONE system message allowed by Sarvam)
+  // 3. Build Payload (CRITICAL: Only ONE system message allowed)
   let fullSystemContent = SYSTEM_PROMPT;
 
   if (userDoc.summary) {
@@ -233,7 +228,7 @@ async function runChat({ message, sessionId, files = [], res }) {
   newHistory.push({ role: "user", content: message });
   newHistory.push({ role: "assistant", content: finalReply });
   
-  // 6. Summarize if history is too long (This is our memory mechanism now)
+  // 6. Summarize if history is too long
   if (newHistory.length > MAX_THREAD_LENGTH) {
     await summarizeHistoryAndTrim(userDoc);
   } else {
@@ -246,6 +241,7 @@ async function runChat({ message, sessionId, files = [], res }) {
 
 /* ================= VERCEL HANDLER ================= */
 export default async function handler(req, res) {
+  // Set Initial Headers BEFORE any writing happens
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Transfer-Encoding', 'chunked');
   res.setHeader('X-Accel-Buffering', 'no'); 
@@ -258,13 +254,26 @@ export default async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const { message, sessionId, files } = body;
 
-    let activeSessionId = sessionId;
-    if (!activeSessionId && req.cookies && req.cookies[COOKIE_NAME]) {
-      activeSessionId = req.cookies[COOKIE_NAME];
+    // 1. PRE-COMPUTE SESSION ID & COOKIE
+    // We must do this BEFORE runChat because runChat calls res.write(), which locks headers.
+    let activeSessionId = sessionId || req.cookies?.[COOKIE_NAME] || crypto.randomBytes(16).toString("hex");
+
+    // 2. SET COOKIE HEADER NOW (Before any streaming)
+    if (!req.cookies || !req.cookies[COOKIE_NAME]) {
+      const cookieString = `${COOKIE_NAME}=${activeSessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`;
+      res.setHeader('Set-Cookie', cookieString);
     }
 
-    const result = await runChat({ message, sessionId: activeSessionId, files, res });
+    // 3. Run Logic & Stream Response
+    // We pass the activeSessionId so DB uses the same ID as the cookie
+    const result = await runChat({ 
+      message, 
+      sessionId: activeSessionId, 
+      files, 
+      res 
+    });
 
+    // 4. Artificial Streaming (Word by Word Effect)
     const words = result.reply.split(' ');
     for (let i = 0; i < words.length; i++) {
       const chunk = words[i] + ' ';
@@ -272,19 +281,19 @@ export default async function handler(req, res) {
       await delay(30); 
     }
 
+    // 5. Send Final End Signal
     sendEvent(res, "DONE", result.sessionId);
-
-    if (!req.cookies || !req.cookies[COOKIE_NAME]) {
-      const cookieValue = result.sessionId;
-      const cookieString = `${COOKIE_NAME}=${cookieValue}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`;
-      res.setHeader('Set-Cookie', cookieString);
-    }
 
     res.end();
 
   } catch (error) {
     console.error("API Error:", error);
-    res.write(`ERROR|${error.message}\n`);
-    res.end();
+    // Only write error if headers haven't been sent (unlikely here, but safe practice)
+    if (!res.headersSent) {
+      res.write(`ERROR|${error.message}\n`);
+    }
+    if (!res.writableEnded) {
+      res.end();
+    }
   }
 }
