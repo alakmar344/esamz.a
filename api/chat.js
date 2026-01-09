@@ -1,7 +1,6 @@
-// api/chat.js
-// eSAMz v10 — Stable, Debuggable, Production Ready
-
-import crypto from "crypto";
+// api/chat.js — eSAMz v11
+const crypto = require("crypto");
+const fetch = require("node-fetch");
 
 /* ================= SECURITY ================= */
 
@@ -19,96 +18,116 @@ function timingSafeEqual(a, b) {
 function verifyServerIntegrity() {
   const raw = process.env.ESAMZ_INTERNAL_KEY;
   const hash = process.env.ESAMZ_KEY_HASH;
-
   if (!raw || !hash) throw new Error("Security keys not configured");
-  if (!timingSafeEqual(sha256(raw), hash)) throw new Error("Server integrity check failed");
-
+  if (!timingSafeEqual(sha256(raw), hash)) throw new Error("Server integrity failed");
   return true;
 }
 
 /* ================= CONFIG ================= */
 
-const SARVAM_MODEL = "sarvam-m";
-const MAX_COMPLETION_TOKENS = 2048;
-const MAX_THREAD_LENGTH = 12;
-const COOKIE_NAME = "esamz_sid";
-
-/* ================= SYSTEM PROMPT ================= */
-
 const SYSTEM_PROMPT = `
-You are eSAMz. You were created by alakmar teenwala.
-
-You speak like a smart relaxed human. You are not corporate. You are not robotic.
-You are direct, sharp, helpful and conversational.
-
-Never say:
-- How can I assist
-- I hope this helps
-- Here is the information
-- Please let me know
-- I'm sorry I don't have access
-
-Speak normally.
+You are eSAMz. Created by alakmar teenwala.
+Speak like a smart relaxed human.
+No corporate speak. No “How can I assist”.
 `.trim();
 
-/* ================= MEMORY DB (IN-MEMORY) ================= */
+const SARVAM_MODEL = "sarvam-m";
+const MAX_COMPLETION_TOKENS = 2048;
+const MAX_THREAD_LENGTH = 10;
+const COOKIE_NAME = "esamz_sid";
+
+const SERPER_API_KEY = process.env.SERPER_API_KEY;
+
+/* ================= IN-MEMORY DB ================= */
 
 const DB = {
   users: {},
-
   getUser(id) {
-    if (!this.users[id]) {
-      this.users[id] = {
-        thread: []
-      };
-    }
+    if (!this.users[id]) this.users[id] = { thread: [] };
     return this.users[id];
   },
-
   saveUser(id, data) {
     this.users[id] = data;
   }
 };
 
+/* ================= WEB SEARCH ================= */
+
+async function doGoogleSearch(query) {
+  if (!SERPER_API_KEY) return null;
+
+  try {
+    const res = await fetch("https://google.serper.dev/search", {
+      method: "POST",
+      headers: {
+        "X-API-KEY": SERPER_API_KEY,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ q: query, num: 5 })
+    });
+
+    if (!res.ok) return null;
+    const json = await res.json();
+
+    const best = json.answerBox?.snippet || "";
+    const list = json.organic
+      ?.map((item, i) => `${i + 1}. ${item.title} — ${item.snippet}`)
+      .join("\n") || "";
+
+    return [best, list].filter(Boolean).join("\n");
+  } catch (e) {
+    console.error("Search error:", e);
+    return null;
+  }
+}
+
+function needsSearch(text) {
+  const lower = text.toLowerCase();
+  const triggers = [
+    "who is", "what is", "latest", "news", "weather", "price",
+    "search for", "current", "define ", "meaning of", "capital of"
+  ];
+  return triggers.some(t => lower.includes(t));
+}
+
 /* ================= SARVAM CLIENT ================= */
 
 async function runSarvamChat(messages) {
-  const apiKey = process.env.SARVAM_API_KEY;
-  if (!apiKey) throw new Error("Sarvam API key missing");
+  const key = process.env.SARVAM_API_KEY;
+  if (!key) throw new Error("Sarvam API key missing");
 
   const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${key}`,
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
       model: SARVAM_MODEL,
       messages,
       max_tokens: MAX_COMPLETION_TOKENS,
-      temperature: 0.7
+      temperature: 0.72
     })
   });
 
   const text = await res.text();
 
   if (!res.ok) {
-    console.error("Sarvam Status:", res.status);
-    console.error("Sarvam Response:", text);
-    throw new Error(`Sarvam API failed: ${res.status}`);
+    console.error("Sarvam status:", res.status, text);
+    throw new Error(`Sarvam failed: ${res.status}`);
   }
 
   let data;
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error("Sarvam returned invalid JSON");
+    throw new Error("Sarvam invalid JSON");
   }
 
   return data?.choices?.[0]?.message?.content || "";
 }
 
-/* ================= STREAMING ================= */
+/* ================= STREAMING HELPERS ================= */
 
 function send(res, type, payload) {
   res.write(`${type}|${payload}\n`);
@@ -116,25 +135,28 @@ function send(res, type, payload) {
 
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
-/* ================= CORE CHAT ================= */
+/* ================= CHAT ENGINE ================= */
 
 async function runChat({ message, sessionId }) {
   verifyServerIntegrity();
 
-  if (!message || typeof message !== "string") {
-    throw new Error("Invalid message");
-  }
-
   const sid = sessionId || crypto.randomBytes(16).toString("hex");
   const user = DB.getUser(sid);
 
-  const messages = [
+  let searchContext = "";
+  if (needsSearch(message)) {
+    const sr = await doGoogleSearch(message);
+    if (sr) searchContext = `\n\nSEARCH:\n${sr}\n\n`;
+  }
+
+  const history = [
     { role: "system", content: SYSTEM_PROMPT },
-    ...user.thread,
-    { role: "user", content: message }
+    ...user.thread
   ];
 
-  const reply = await runSarvamChat(messages);
+  history.push({ role: "user", content: message + searchContext });
+
+  const reply = await runSarvamChat(history);
 
   user.thread.push({ role: "user", content: message });
   user.thread.push({ role: "assistant", content: reply });
@@ -150,7 +172,7 @@ async function runChat({ message, sessionId }) {
 
 /* ================= VERCEL HANDLER ================= */
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.setHeader("Transfer-Encoding", "chunked");
   res.setHeader("X-Accel-Buffering", "no");
@@ -175,10 +197,9 @@ export default async function handler(req, res) {
 
     const result = await runChat({ message, sessionId });
 
-    const words = result.reply.split(" ");
-    for (const word of words) {
+    for (const word of result.reply.split(" ")) {
       send(res, "CHUNK", word + " ");
-      await delay(25);
+      await delay(30);
     }
 
     send(res, "DONE", result.sessionId);
@@ -192,8 +213,8 @@ export default async function handler(req, res) {
 
     res.end();
   } catch (err) {
-    console.error("API Error:", err);
+    console.error("API error:", err);
     send(res, "ERROR", err.message);
     res.end();
   }
-}
+};
