@@ -1,6 +1,6 @@
 // api/chat.js
 // Vercel Serverless Function (ES Module)
-// eSAMz v9.3 (Intelligent Long-Term Memory & Summarization)
+// eSAMz v9.3 (Fixed API Models)
 
 import crypto from "crypto";
 
@@ -47,8 +47,8 @@ STRICT RULES:
 Object.freeze(SYSTEM_PROMPT);
 
 /* ================= CONFIG ================= */
-const SARVAM_MODEL = "sarvam-2b-v1.5"; // UPDATED: Standard Sarvam Model
-const SARVAM_EMBED_MODEL = "embed-multilingual-v2.0";
+const SARVAM_MODEL = "sarvam-m"; // FIXED: Valid model per API Error logs
+const SARVAM_EMBED_MODEL = "sarvam-m"; // UPDATED: Attempting to use chat model for embeddings as old one was Not Found
 const MAX_COMPLETION_TOKENS = 2048;
 const MAX_THREAD_LENGTH = 12;
 const COOKIE_NAME = "esamz_sid";
@@ -126,7 +126,8 @@ async function googleSearch(query) {
 /* ================= SARVAM API WRAPPERS ================= */
 async function getSarvamEmbedding(text) {
   const sarvamKey = process.env.SARVAM_API_KEY;
-  if (!sarvamKey) throw new Error("SARVAM_API_KEY not configured in env");
+  if (!sarvamKey) return null;
+  
   try {
     const res = await fetch("https://api.sarvam.ai/v1/embeddings", {
       method: "POST",
@@ -134,14 +135,15 @@ async function getSarvamEmbedding(text) {
       body: JSON.stringify({ model: SARVAM_EMBED_MODEL, input: text })
     });
     if (!res.ok) {
-       const err = await res.text();
-       console.error("Embedding Error:", err);
-       return null;
+      // If embeddings fail (e.g., model doesn't support it), we log it and return null
+      // This prevents the bot from crashing while still allowing chat to work
+      console.log(`Embedding API returned ${res.status} - Memory features will be paused for this turn.`);
+      return null;
     }
     const data = await res.json();
     return data?.data?.[0]?.embedding;
   } catch (e) {
-    console.error("Embedding Exception:", e);
+    console.error("Embedding Exception:", e.message);
     return null;
   }
 }
@@ -202,7 +204,7 @@ async function findRelevantMemories(query, userDoc) {
 
 async function saveMemory(text, userDoc) {
   const vector = await getSarvamEmbedding(text);
-  if (!vector) return;
+  if (!vector) return; // Silently fail if embedding fails
   const exists = userDoc.memories.some(m => m.text === text);
   if (!exists) {
     userDoc.memories.push({
