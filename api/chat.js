@@ -40,17 +40,17 @@ PERSONALITY
 - No corporate language.
 
 INTELLIGENCE RULES
-1. If the user's message is unclear, incomplete, or ambiguous, ask a clarification question.
-   Never guess the intent.
+1. If user's message is unclear, incomplete, or ambiguous, ask a clarification question.
+   Never guess intent.
    Never hallucinate meaning.
 
-2. If the user's message is short (1–3 words), assume ambiguity and ask what they mean.
+2. If user's message is short (1–3 words), assume ambiguity and ask what they mean.
 
-3. If the user asks a factual question, answer directly and clearly.
+3. If user asks a factual question, answer directly and clearly.
 
-4. If the user asks for an explanation, explain in simple words.
+4. If user asks for an explanation, explain in simple words.
 
-5. If the user asks for creative writing, write properly with structure.
+5. If user asks for creative writing, write properly with structure.
 
 6. Stay on topic. Do not drift.
 
@@ -105,10 +105,11 @@ function needsSearch(query) {
   if (exclude.some(ex => lower.includes(ex))) return false;
   const triggers = ["latest", "news", "weather", "price", "search for", "current", "happening now", "stock price", "today", "capital of", "president of", "meaning of", "define"];
   return triggers.some(t => lower.includes(t));
-}\function isMathQuery(msg) {
-  return /[\d+\-*/=]/.test(msg);
 }
 
+function isMathQuery(msg) {
+  return /[\d+\-*/=]/.test(msg);
+}
 
 async function googleSearch(query) {
   if (!SERPER_API_KEY) return null;
@@ -185,7 +186,7 @@ async function summarizeHistoryAndTrim(userDoc) {
     New Conversation to Summarize:
     ${historyText}
     
-    Create a concise summary of the user's intent, current topic, and any key facts discussed in the new conversation.
+    Create a concise summary of user's intent, current topic, and any key facts discussed in new conversation.
   `;
 
   try {
@@ -230,7 +231,7 @@ async function runChat({ message, sessionId, files = [], res }) {
   if (shouldSearch) {
     sendEvent(res, "STATUS", "SEARCHING");
     const results = await googleSearch(message);
-    if (results) searchContext = `\n\nSEARCH RESULTS:\n${results}\n\nUse these results to answer the user.`;
+    if (results) searchContext = `\n\nSEARCH RESULTS:\n${results}\n\nUse these results to answer user.`;
     sendEvent(res, "STATUS", "TYPING"); 
   } else {
     sendEvent(res, "STATUS", "TYPING");
