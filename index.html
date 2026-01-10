@@ -1277,20 +1277,8 @@
             </a>
         </div>
         
-        <div class="sidebar-footer">
-            <div class="ad-label">Sponsored</div>
-            <div class="footer-ad">
-               <!-- Removed duplicate script tag here, kept only ad unit -->
-               <ins class="adsbygoogle"
-                    style="display:inline-block;width:320px;height:50px"
-                    data-ad-client="ca-pub-4596710157872091"
-                    data-ad-slot="6618890335"></ins>
-               <script>
-                    (adsbygoogle = window.adsbygoogle || []).push({});
-               </script>
-            </div>
             <div class="footer-copyright">
-                © 2025 eSAMz AI · All rights reserved
+                © 2025 eSAMz AI · All rights reserved a product if smart mobiles
             </div>
         </div>
     </aside>
@@ -1477,14 +1465,16 @@ class App {
             this.recognition.onstart = () => {
                 this.state.isRecording = true;
                 this.updateMicUI(true);
-                this.statusText.innerText = "Listening...";
+                // BUG FIX: Corrected 'this.statusText' to 'this.dom.statusText'
+                if (this.dom.statusText) this.dom.statusText.innerText = "Listening...";
                 document.documentElement.style.cursor = 'wait';
             };
 
             this.recognition.onend = () => {
                 this.state.isRecording = false;
                 this.updateMicUI(false);
-                this.statusText.innerText = "Ready";
+                // BUG FIX: Corrected 'this.statusText' to 'this.dom.statusText'
+                if (this.dom.statusText) this.dom.statusText.innerText = "Ready";
                 document.documentElement.style.cursor = 'default';
             };
 
@@ -1504,7 +1494,8 @@ class App {
                 console.error('Speech recognition error', event.error);
                 this.state.isRecording = false;
                 this.updateMicUI(false);
-                this.statusText.innerText = "Error";
+                // BUG FIX: Corrected 'this.statusText' to 'this.dom.statusText'
+                if (this.dom.statusText) this.dom.statusText.innerText = "Error";
                 
                 let msg = 'Voice recognition failed.';
                 if (event.error === 'not-allowed') {
@@ -1513,7 +1504,8 @@ class App {
                     msg = 'No speech detected. Please try again.';
                 }
                 alert(msg);
-                this.statusText.innerText = "Ready";
+                // BUG FIX: Corrected 'this.statusText' to 'this.dom.statusText'
+                if (this.dom.statusText) this.dom.statusText.innerText = "Ready";
             };
         } else {
             console.warn('Speech Recognition API not supported in this browser.');
@@ -1969,16 +1961,19 @@ class App {
                     const data = line.substring(separatorIndex + 1);
 
                     if (type === 'STATUS') {
+                        // BUG FIX: Added null-safe access and correct dom path
                         if (data === 'SEARCHING') {
                             searching = true;
-                            statusBadge.style.display = 'inline-flex';
-                            statusBadge.innerHTML = `<div class="mini-spinner"></div> Searching the web...`;
-                            this.statusText.innerText = "Searching web...";
+                            if (statusBadge) {
+                                statusBadge.style.display = 'inline-flex';
+                                statusBadge.innerHTML = `<div class="mini-spinner"></div> Searching the web...`;
+                            }
+                            if (this.dom.statusText) this.dom.statusText.innerText = "Searching web...";
                         } else if (data === 'TYPING') {
                             if (searching) {
                                 searching = false;
-                                statusBadge.style.display = 'none'; // Hide badge when typing starts
-                                this.statusText.innerText = "Typing...";
+                                if (statusBadge) statusBadge.style.display = 'none'; // Hide badge when typing starts
+                                if (this.dom.statusText) this.dom.statusText.innerText = "Typing...";
                             }
                         }
                     } else if (type === 'CHUNK') {
@@ -2037,7 +2032,7 @@ class App {
             this.appendToHistory('ai', errorMessage);
         } finally {
             this.state.isProcessing = false;
-            this.statusText.innerText = "Ready";
+            if (this.dom.statusText) this.dom.statusText.innerText = "Ready";
             this.checkStorageSize();
         }
     }
@@ -2193,16 +2188,19 @@ class App {
                         const data = line.substring(separatorIndex + 1);
 
                         if (type === 'STATUS') {
+                            // BUG FIX: Corrected 'this.statusText' to 'this.dom.statusText'
                             if (data === 'SEARCHING') {
                                 searching = true;
-                                statusBadge.style.display = 'inline-flex';
-                                statusBadge.innerHTML = `<div class="mini-spinner"></div> Searching...`;
-                                this.statusText.innerText = "Searching...";
+                                if (statusBadge) {
+                                    statusBadge.style.display = 'inline-flex';
+                                    statusBadge.innerHTML = `<div class="mini-spinner"></div> Searching...`;
+                                }
+                                if (this.dom.statusText) this.dom.statusText.innerText = "Searching...";
                             } else if (data === 'TYPING') {
                                 if (searching) {
                                     searching = false;
-                                    statusBadge.style.display = 'none';
-                                    this.statusText.innerText = "Typing...";
+                                    if (statusBadge) statusBadge.style.display = 'none';
+                                    if (this.dom.statusText) this.dom.statusText.innerText = "Typing...";
                                 }
                             }
                         } else if (type === 'CHUNK') {
@@ -2249,7 +2247,8 @@ class App {
                 this.addMessageActions(aiMessageDiv);
             } finally {
                 this.state.isProcessing = false;
-                this.statusText.innerText = "Ready";
+                // BUG FIX: Corrected 'this.statusText' to 'this.dom.statusText'
+                if (this.dom.statusText) this.dom.statusText.innerText = "Ready";
             }
         }
     }
