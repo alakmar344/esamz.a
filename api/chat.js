@@ -105,7 +105,10 @@ function needsSearch(query) {
   if (exclude.some(ex => lower.includes(ex))) return false;
   const triggers = ["latest", "news", "weather", "price", "search for", "current", "happening now", "stock price", "today", "capital of", "president of", "meaning of", "define"];
   return triggers.some(t => lower.includes(t));
+}\function isMathQuery(msg) {
+  return /[\d+\-*/=]/.test(msg);
 }
+
 
 async function googleSearch(query) {
   if (!SERPER_API_KEY) return null;
