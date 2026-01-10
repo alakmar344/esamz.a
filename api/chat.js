@@ -225,7 +225,8 @@ async function runChat({ message, sessionId, files = [], res }) {
 
   // 2. Web Search Logic
   let searchContext = "";
-  const shouldSearch = needsSearch(message) && SERPER_API_KEY;
+  const shouldSearch = needsSearch(message) && !isMathQuery(message) && SERPER_API_KEY;
+
   if (shouldSearch) {
     sendEvent(res, "STATUS", "SEARCHING");
     const results = await googleSearch(message);
