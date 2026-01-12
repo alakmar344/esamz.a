@@ -1,6 +1,6 @@
 // api/chat.js
 // Vercel Serverless Function (ES Module)
-// eSAMz v10.0 (Redis + Real Streaming + Rate Limiting)
+// eSAMz v10.1 (Redis + No Cookies + 30m Inactivity Timeout + Bug Fixes)
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -14,7 +14,6 @@ function verifyServerIntegrity() {
   const hash = process.env.ESAMZ_KEY_HASH;
   if (!raw || !hash) throw new Error("Security keys not configured");
   
-  // Basic timing safe check (reimplemented locally to avoid issues)
   const A = crypto.createHash("sha256").update(raw).digest("hex");
   if (A !== hash) throw new Error("Server integrity check failed");
 }
@@ -22,17 +21,16 @@ function verifyServerIntegrity() {
 /* ================= CONFIG ================= */
 const SARVAM_MODEL = "sarvam-m";
 const MAX_COMPLETION_TOKENS = 1024;
-const MAX_THREAD_LENGTH = 15;
-const COOKIE_NAME = "esamz_sid";
+const MAX_THREAD_LENGTH = 15; 
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
 
-// Rate Limit Config
-const CHAT_LIMIT_PER_MIN = 10;
-const CHAT_TTL_SEC = 60;
+// Rate Limit & Session Config
+const CHAT_LIMIT_PER_MIN = 15; // Slightly increased
+const SESSION_TTL_SEC = 1800;  // 30 Minutes
 
 /* ================= SYSTEM PROMPT ================= */
 const SYSTEM_PROMPT = `
-You are eSAMz v9.1, created by Alakmar Teenwala.
+You are eSAMz v10.1, created by Alakmar Teenwala.
 
 You are a smart, calm, sharp human-like conversationalist.
 You are not a corporate assistant and not a robotic chatbot.
@@ -89,14 +87,9 @@ function getIP(req) {
 }
 
 function sendEvent(res, type, data) {
-  // Sanitize newlines in data to avoid breaking the SSE format if strictly following SSE,
-  // but here we use a custom pipe format: TYPE|DATA
-  // We should ensure DATA doesn't contain newlines that would be interpreted as new events 
-  // if we were parsing line-by-line on client. 
-  // Client splits by '\n', then splits by '|'. 
-  // So multiline data needs to be handled carefully or just passed through if client handles it.
-  // The current client implementation accumulates text, so we can just write it.
-  // However, let's keep it safe.
+  // Simple pipe protocol: TYPE|DATA\n
+  // We sanitize newlines in data to prevent protocol breaks if strictly parsed,
+  // but here we allow them as the client handles buffering.
   res.write(`${type}|${data}\n`);
 }
 
@@ -108,15 +101,15 @@ const DB = {
   },
 
   async updateUser(sessionId, data) {
-    // Expires in 7 days to keep Redis clean
-    await redis.set(`user:${sessionId}`, data, { ex: 60 * 60 * 24 * 7 });
+    // Expires in 30 minutes of inactivity
+    await redis.set(`user:${sessionId}`, data, { ex: SESSION_TTL_SEC });
   }
 };
 
 async function checkRateLimit(identifier) {
   const key = `rl:${identifier}`;
   const count = await redis.incr(key);
-  if (count === 1) await redis.expire(key, CHAT_TTL_SEC);
+  if (count === 1) await redis.expire(key, 60); // 1 minute window for rate limit
   return count <= CHAT_LIMIT_PER_MIN;
 }
 
@@ -153,7 +146,6 @@ async function googleSearch(query) {
 }
 
 /* ================= AI STREAMING ================= */
-// Use standard OpenAI-compatible streaming
 async function streamSarvamChat({ messages, temperature = 0.7, onChunk }) {
   const sarvamKey = process.env.SARVAM_API_KEY;
   if (!sarvamKey) throw new Error("SARVAM_API_KEY not configured");
@@ -166,7 +158,7 @@ async function streamSarvamChat({ messages, temperature = 0.7, onChunk }) {
       messages, 
       temperature, 
       max_tokens: MAX_COMPLETION_TOKENS,
-      stream: true // ENABLE REAL STREAMING
+      stream: true 
     })
   });
 
@@ -175,7 +167,6 @@ async function streamSarvamChat({ messages, temperature = 0.7, onChunk }) {
     throw new Error(`Sarvam API Error ${res.status}: ${errorText}`);
   }
 
-  // Parse SSE Stream
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
@@ -187,12 +178,11 @@ async function streamSarvamChat({ messages, temperature = 0.7, onChunk }) {
     
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split("\n");
-    buffer = lines.pop() || ""; // Keep the last incomplete line
+    buffer = lines.pop() || ""; 
 
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed.startsWith("data: ")) continue;
-      
       const dataStr = trimmed.slice(6);
       if (dataStr === "[DONE]") continue;
 
@@ -203,27 +193,38 @@ async function streamSarvamChat({ messages, temperature = 0.7, onChunk }) {
           fullContent += content;
           onChunk(content);
         }
-      } catch (e) {
-        // Ignore parse errors for partial chunks
-      }
+      } catch (e) { /* ignore partial json */ }
     }
   }
-  
   return fullContent;
 }
 
-/* ================= SUMMARIZATION ================= */
+/* ================= SUMMARIZATION & TRIMMING ================= */
 async function summarizeHistoryAndTrim(userDoc) {
   const history = userDoc.threadHistory;
   if (history.length <= MAX_THREAD_LENGTH) return userDoc.summary;
 
-  const messagesToSummarize = history.slice(0, history.length - MAX_THREAD_LENGTH + 4);
-  const keepHistory = history.slice(history.length - MAX_THREAD_LENGTH + 4);
+  // FIX: Calculate cut index to ensure we don't split a [User, Assistant] pair awkwardly.
+  // We want to keep the last N messages.
+  let cutIndex = history.length - MAX_THREAD_LENGTH;
+  
+  // If cutIndex is odd, it likely points to an Assistant message (assuming index 0 is User).
+  // We should increment to point to the next User message.
+  if (cutIndex % 2 !== 0) cutIndex++;
+  if (cutIndex < 0) cutIndex = 0;
+
+  const messagesToSummarize = history.slice(0, cutIndex);
+  const keepHistory = history.slice(cutIndex);
+
+  // Safety: Ensure keepHistory starts with 'user'
+  if (keepHistory.length > 0 && keepHistory[0].role === "assistant") {
+    keepHistory.shift();
+  }
 
   const historyText = messagesToSummarize.map(m => `${m.role}: ${m.content}`).join("\n");
   
   const summaryPrompt = `
-    Previous Summary: ${userDoc.summary}
+    Previous Summary: ${userDoc.summary || "None"}
     
     New Conversation to Summarize:
     ${historyText}
@@ -232,7 +233,6 @@ async function summarizeHistoryAndTrim(userDoc) {
   `;
 
   try {
-    // Non-streaming call for summary
     const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
       method: "POST",
       headers: { 
@@ -249,21 +249,20 @@ async function summarizeHistoryAndTrim(userDoc) {
       })
     });
     
-    const data = await res.json();
-    const newSummary = data.choices[0].message.content;
+    if(!res.ok) throw new Error("Summary failed");
     
-    userDoc.summary = newSummary;
+    const data = await res.json();
+    userDoc.summary = data.choices[0].message.content;
     userDoc.threadHistory = keepHistory;
   } catch (e) {
     console.error("Summarization failed:", e);
-    // Fallback: just trim
-    userDoc.threadHistory = history.slice(-MAX_THREAD_LENGTH);
+    // Fallback: Just trim, but ensure safety
+    userDoc.threadHistory = keepHistory;
   }
 }
 
 /* ================= MAIN HANDLER ================= */
 export default async function handler(req, res) {
-  // Set Headers for Streaming
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Transfer-Encoding', 'chunked');
   res.setHeader('X-Accel-Buffering', 'no'); 
@@ -278,7 +277,8 @@ export default async function handler(req, res) {
     const { message, sessionId, files } = body;
 
     // 1. Session & Rate Limit
-    let activeSessionId = sessionId || req.cookies?.[COOKIE_NAME] || crypto.randomBytes(16).toString("hex");
+    // Use sessionId from body. If missing, generate one (but client won't remember it without cookies unless they save the response).
+    let activeSessionId = sessionId || crypto.randomBytes(16).toString("hex");
     const ip = getIP(req);
 
     if (!(await checkRateLimit(activeSessionId)) || !(await checkRateLimit(ip))) {
@@ -286,10 +286,7 @@ export default async function handler(req, res) {
       return res.end();
     }
 
-    // Set Cookie
-    if (!req.cookies || !req.cookies[COOKIE_NAME]) {
-      res.setHeader('Set-Cookie', `${COOKIE_NAME}=${activeSessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`);
-    }
+    // REMOVED: Cookie setting logic. Purely API/Redis based now.
 
     // 2. Load User Data
     const userDoc = await DB.getUser(activeSessionId);
@@ -317,9 +314,17 @@ export default async function handler(req, res) {
     }
 
     const messagesPayload = [{ role: "system", content: fullSystemContent }];
+    
     if (userDoc.threadHistory?.length) {
+      // FIX: Sanitize existing history to prevent API errors
+      // If the first message in history is 'assistant', the API will reject it.
+      // We must remove leading assistant messages.
+      while (userDoc.threadHistory.length > 0 && userDoc.threadHistory[0].role === "assistant") {
+        userDoc.threadHistory.shift();
+      }
       messagesPayload.push(...userDoc.threadHistory);
     }
+    
     messagesPayload.push({ role: "user", content: finalMessage + searchContext });
 
     // 6. Stream AI Response
@@ -329,79 +334,18 @@ export default async function handler(req, res) {
       messages: messagesPayload,
       onChunk: (chunk) => {
         accumulatedReply += chunk;
-        // The client expects "CHUNK|text"
-        // We replace newlines with a placeholder or handle them safely if needed, 
-        // but since we are using a custom delimiter protocol, we just pass it.
-        // If the chunk contains newlines, the client loop (split by \n) might get confused
-        // unless we sanitize or the client handles it.
-        // The client loop: `const lines = chunk.split('\n');`
-        // If we send `CHUNK|Hello\nWorld\n`, the client sees:
-        // 1. `CHUNK|Hello` -> handled
-        // 2. `World` -> ignored because no pipe?
-        // Let's sanitize the output format to be safe.
-        // Actually, the client code `const separatorIndex = line.indexOf('|');` 
-        // handles lines. If we inject a newline in the content, it splits the event.
-        // Solution: Use a replacement or JSON encode the data part.
-        // BUT, looking at the client: `fullText += content;`
-        // It's brittle.
-        // Safer way: Encode newlines or use JSON stringify for the data part.
-        // However, I can't easily change the client protocol without verifying it works.
-        // The client splits the *stream chunk* by `\n`.
-        // If I write `CHUNK|Hello\n`, that's one event.
-        // If I write `CHUNK|Line1\nLine2\n`, that's two events? No.
-        // If `chunk` from AI is "Line1\nLine2", and I write `CHUNK|Line1\nLine2\n`
-        // Client reads: `CHUNK|Line1` (ok), `Line2` (no pipe -> ignored).
-        // FIX: We must escape newlines in the data part OR send strictly one line per chunk.
         
-        // Let's send one line per internal newline to be safe.
-        const safeChunk = chunk.replace(/\n/g, "\\n"); 
-        // Wait, if I escape it, the markdown rendering needs it back.
-        // If I use `JSON.stringify(chunk)`, the client receives `"text"`. It needs raw text.
-        // Client: `let content = data; ... fullText += content;`
-        
-        // Let's look at client again.
-        // `const lines = chunk.split('\n');` -> This splits the *network packet*.
-        // If I send `CHUNK|Line1\nCHUNK|Line2\n`, it works.
-        // So if the AI chunk has a newline, I should split it and send multiple CHUNK events.
-        
+        // Handle newlines safely for the pipe protocol
         const parts = chunk.split('\n');
         for (let i = 0; i < parts.length; i++) {
           let part = parts[i];
-          if (i < parts.length - 1) {
-            // This part ended with a newline in the original text.
-            // We should send the newline to the client.
-            // But if we send `CHUNK|part\n`, the `\n` is the delimiter.
-            // The client takes `part` and adds it. It effectively swallows the newline?
-            // "CHUNK|A\n" -> data="A". Client appends "A". Newline lost.
-            // So we must explicitly send the newline character.
-            part += "\n";
-          }
-          if (part) {
-            // We need to be careful. `res.write` sends bytes.
-            // `sendEvent` appends `\n`.
-            // If we send `CHUNK|A\n`, client sees `A`.
-            // If we want client to see `A\n`, we might need `CHUNK|A\n\n`? NO.
-            // This legacy protocol is tricky.
-            // Best bet: use JSON for the data payload to preserve newlines.
-            // `CHUNK|{"text": "..."}`
-            // But client expects raw text: `fullText += content`.
-            
-            // Let's try to pass the newline as a literal newline.
-            // If I send `CHUNK|Hello\nWorld\n` (single write)
-            // Client splits by `\n`.
-            // 1. `CHUNK|Hello` -> data=`Hello`.
-            // 2. `World` -> ignored.
-            
-            // So I must prefix every line with `CHUNK|`.
-            // `CHUNK|Hello\nCHUNK|World\n`
-            
-            sendEvent(res, "CHUNK", part);
-          }
+          if (i < parts.length - 1) part += "\n"; // Re-add newline except for last part
+          if (part) sendEvent(res, "CHUNK", part);
         }
       }
     });
 
-    // 7. Save History (Async, after response is done)
+    // 7. Save History (Async)
     userDoc.threadHistory = userDoc.threadHistory || [];
     userDoc.threadHistory.push({ role: "user", content: message });
     userDoc.threadHistory.push({ role: "assistant", content: accumulatedReply });
@@ -410,6 +354,7 @@ export default async function handler(req, res) {
       await summarizeHistoryAndTrim(userDoc);
     }
     
+    // Update Redis (resets the 30-minute timer)
     await DB.updateUser(activeSessionId, userDoc);
 
     sendEvent(res, "DONE", activeSessionId);
