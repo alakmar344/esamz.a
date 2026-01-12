@@ -94,7 +94,7 @@ async function streamSarvamChat({ messages, onChunk }) {
   if (!sarvamKey) throw new Error("SARVAM_API_KEY missing");
 
   // FIX 1: Use the specific technical model slug, not the marketing name
-  const modelSlug = "sarvam-2b-v0.5"; 
+  const modelSlug = "sarvam-m"; 
 
   const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
     method: "POST",
