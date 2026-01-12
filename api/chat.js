@@ -1,6 +1,6 @@
 // api/chat.js
 // Vercel Serverless Function (ES Module)
-// eSAMz v14 (Cookie-Based Session + Original Persona + Robust Memory)
+// eSAMz v14.1 (Cookie Session + Self-Healing Memory + Original Persona)
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -11,24 +11,27 @@ const CONSTANTS = {
   SARVAM_MODEL: "sarvam-m",
   MAX_TOKENS: 2048,
   THREAD_LENGTH: 20, 
-  SESSION_TTL: 31536000, // 1 Year (Persistent Memory)
-  COOKIE_NAME: "esamz_session_v1"
+  SESSION_TTL: 31536000, // 1 Year Cookie
+  COOKIE_NAME: "esamz_v1"
 };
 
-/* ================= 2. THE ARCHITECT'S PERSONA ================= */
+/* ================= 2. THE ARCHITECT'S PERSONA (RESTORED) ================= */
 const SYSTEM_PROMPT = `
 You are eSAMz v11, created by Alakmar Teenwala.
+
+You are a smart, calm, sharp human-like conversationalist.
+You are not a corporate assistant and not a robotic chatbot.
 
 PERSONALITY:
 - Speak naturally like a real person.
 - Be friendly, but not silly.
 - Be confident, not overdramatic.
-- No corporate language.
+- No corporate language ("I apologize", "As an AI").
 
 INTELLIGENCE RULES:
-1. If user's message is short, ask for clarification.
-2. If search results are present, USE THEM.
-3. If asked for code, provide production-ready code.
+1. If user's message is unclear, ask a clarification question.
+2. If search results are provided, USE THEM.
+3. If asked for code, provide clean, working code.
 
 STRICTLY FORBIDDEN PHRASES:
 - "How can I assist you"
@@ -36,26 +39,34 @@ STRICTLY FORBIDDEN PHRASES:
 - "Is there anything else"
 `.trim();
 
-/* ================= 3. MEMORY & TOOLS ================= */
+/* ================= 3. SELF-HEALING MEMORY (FIXES THE CRASH) ================= */
 const DB = {
   async getHistory(id) {
     const key = `chat:${id}`;
     const raw = await redis.lrange(key, 0, -1);
+    
+    // THE FIX: Safely try to parse each item. If it fails, ignore it.
     return raw.map(item => {
       try {
-        if (typeof item !== 'string' || item.includes("[object Object]")) return null;
+        if (typeof item !== 'string') return null;
+        if (item.includes("[object Object]")) return null; // Skip corrupt data
         return JSON.parse(item);
-      } catch (e) { return null; }
-    }).filter(x => x);
+      } catch (e) { 
+        return null; // Skip invalid JSON
+      }
+    }).filter(x => x !== null); // Filter out the garbage
   },
+
   async addToHistory(id, role, content) {
     const key = `chat:${id}`;
+    // Always stringify to prevent future corruption
     await redis.rpush(key, JSON.stringify({ role, content }));
     await redis.ltrim(key, -CONSTANTS.THREAD_LENGTH, -1);
     await redis.expire(key, CONSTANTS.SESSION_TTL);
   }
 };
 
+/* ================= 4. TOOLS & BRAIN ================= */
 async function googleSearch(query) {
   if (!process.env.SERPER_API_KEY) return null;
   try {
@@ -72,11 +83,10 @@ async function googleSearch(query) {
 function shouldSearch(msg) {
   if (!msg) return false;
   const lower = msg.toLowerCase();
-  if (["hello", "hi", "code", "html"].some(x => lower.includes(x))) return false;
+  if (["hello", "hi", "code", "html", "write"].some(x => lower.includes(x))) return false;
   return (msg.includes("price") || msg.includes("news") || msg.includes("who is") || (msg.endsWith("?") && msg.length > 15));
 }
 
-/* ================= 4. STREAMING ENGINE ================= */
 async function streamSarvamChat({ messages, onChunk }) {
   const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
     method: "POST",
@@ -121,24 +131,25 @@ export default async function handler(req, res) {
     isNewSession = true;
   }
 
-  // 2. Set Headers (Cookie + Stream)
-  const cookieHeader = `${CONSTANTS.COOKIE_NAME}=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${CONSTANTS.SESSION_TTL}`;
-  
+  // 2. Set Headers (Important: Set-Cookie)
   res.writeHead(200, {
     'Content-Type': 'text/plain; charset=utf-8',
     'Transfer-Encoding': 'chunked',
-    'Set-Cookie': cookieHeader // <--- This saves the memory in the browser
+    'Set-Cookie': `${CONSTANTS.COOKIE_NAME}=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${CONSTANTS.SESSION_TTL}`
   });
 
   if (req.method !== 'POST') return res.end("ERROR|Method not allowed");
 
   try {
-    const { message } = JSON.parse(req.body);
+    // Parse input safely
+    const rawBody = req.body || "{}";
+    const bodyData = typeof rawBody === 'string' ? JSON.parse(rawBody) : rawBody;
+    const message = bodyData.message || "";
     
-    // 3. Load Memory using the Session ID
+    // 3. Load Memory (Safe & Robust)
     const history = await DB.getHistory(sessionId);
     
-    // 4. Search Layer
+    // 4. Search
     let context = "";
     if (shouldSearch(message)) {
       res.write("STATUS|SEARCHING\n");
@@ -147,13 +158,14 @@ export default async function handler(req, res) {
     }
     res.write("STATUS|TYPING\n");
 
-    // 5. Generate Response
+    // 5. Build Prompt
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
       ...history.map(m => ({ role: m.role === 'ai' ? 'assistant' : m.role, content: m.content })),
       { role: "user", content: message + context }
     ];
 
+    // 6. Stream Response
     let fullReply = "";
     await streamSarvamChat({
       messages,
@@ -163,7 +175,7 @@ export default async function handler(req, res) {
       }
     });
 
-    // 6. Save Memory
+    // 7. Save Memory (Securely)
     await DB.addToHistory(sessionId, 'user', message);
     await DB.addToHistory(sessionId, 'assistant', fullReply);
 
