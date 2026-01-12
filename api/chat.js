@@ -88,26 +88,32 @@ function shouldSearch(msg) {
   return (msg.endsWith("?") && msg.length > 10);
 }
 
-/* ================= 4. BRAIN: SARVAM API STREAM ================= */
+/* ================= 4. BRAIN: SARVAM API STREAM (STABLE FIX) ================= */
 async function streamSarvamChat({ messages, onChunk }) {
   const sarvamKey = process.env.SARVAM_API_KEY;
   if (!sarvamKey) throw new Error("SARVAM_API_KEY missing");
+
+  // FIX 1: Use the specific technical model slug, not the marketing name
+  const modelSlug = "sarvam-2b-v0.5"; 
 
   const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${sarvamKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({ 
-      model: CONSTANTS.SARVAM_MODEL, 
+      model: modelSlug, 
       messages: messages, 
       temperature: 0.5, 
       max_tokens: CONSTANTS.MAX_TOKENS,
-      stream: true,
-      reasoning_effort: "medium", 
-      wiki_grounding: true
+      stream: true
+      // REMOVED: reasoning_effort & wiki_grounding (Causing 500 Errors currently)
     })
   });
 
-  if (!res.ok) throw new Error(`Sarvam Error: ${res.statusText}`);
+  if (!res.ok) {
+     // Better error logging to see exactly what Sarvam says
+     const errText = await res.text();
+     throw new Error(`Sarvam API Error ${res.status}: ${errText}`);
+  }
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -130,7 +136,6 @@ async function streamSarvamChat({ messages, onChunk }) {
     }
   }
 }
-
 /* ================= 5. DATABASE (REDIS SESSION) ================= */
 const DB = {
   async get(id) {
