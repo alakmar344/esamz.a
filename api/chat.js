@@ -13,8 +13,7 @@ const redis = Redis.fromEnv();
 function verifyServerIntegrity() {
   const raw = process.env.ESAMZ_INTERNAL_KEY;
   const hash = process.env.ESAMZ_KEY_HASH;
-  // If keys aren't set in Vercel, skip check to prevent crashing (Dev mode)
-  if (!raw || !hash) return; 
+  if (!raw || !hash) return; // Skip in dev
   
   const A = crypto.createHash("sha256").update(raw).digest("hex");
   if (A !== hash) throw new Error("Server integrity check failed");
@@ -22,7 +21,7 @@ function verifyServerIntegrity() {
 
 const CONSTANTS = {
   SARVAM_MODEL: "sarvam-m", // 24B Parameter Model
-  MAX_TOKENS: 4096,
+  MAX_TOKENS: 6096,
   THREAD_LENGTH: 15, // Context window size
   CHAT_LIMIT: 20, // Rate limit per minute
   SESSION_TTL: 1800, // 30 Minutes
@@ -31,15 +30,15 @@ const CONSTANTS = {
 
 /* ================= 2. INTELLIGENCE (SYSTEM PROMPT) ================= */
 const SYSTEM_PROMPT = `
-You are eSAMz v11, an advanced AI created by Alakmar Teenwala.
+You are eSAMz v9.1, an advanced AI created by Alakmar Teenwala.
 You are running on a high-performance reasoning engine.
 
 CORE INSTRUCTIONS:
-1.  **Be Helpful & Direct:** Answer the user's question immediately. No fluff.
-2.  **Use Tools Smartly:** If you receive SEARCH RESULTS, you MUST use them to answer.
-    * *Example:* If user asks "Bitcoin price / 2", use the search result price and calculate the division.
-3.  **Personality:** Friendly, sharp, and concise. Speak like a smart tech founder, not a robot.
-4.  **Privacy:** You do not store data. You are a "Zero-Storage" AI.
+1. Be Helpful & Direct: Answer the user's question immediately.
+2. Use Tools Smartly: If you receive SEARCH RESULTS, you MUST use them to answer.
+   * Example: If user asks "Bitcoin price / 2", use the search result price and calculate.
+3. Personality: Friendly, sharp, and concise. Speak like a smart tech founder.
+4. Privacy: You do not store data. You are a "Zero-Storage" AI.
 
 STRICT RULES:
 - Never say "As an AI..."
@@ -56,7 +55,7 @@ async function googleSearch(query) {
     const response = await fetch("https://google.serper.dev/search", {
       method: "POST",
       headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({ q: query, num: 4 }) // Fetch top 4 results
+      body: JSON.stringify({ q: query, num: 4 })
     });
     
     if (!response.ok) return null;
@@ -73,8 +72,8 @@ async function googleSearch(query) {
   }
 }
 
-// Logic to decide if we need to search
 function shouldSearch(msg) {
+  if (!msg) return false;
   const lower = msg.toLowerCase();
   
   // 1. Skip personal/identity questions
@@ -85,7 +84,7 @@ function shouldSearch(msg) {
   const triggers = ["price", "news", "latest", "today", "weather", "who is", "current", "stock", "usd to", "value of"];
   if (triggers.some(t => lower.includes(t))) return true;
 
-  // 3. Smart Fallback: If it looks like a factual question, search.
+  // 3. Smart Fallback
   return (msg.endsWith("?") && msg.length > 10);
 }
 
@@ -100,13 +99,11 @@ async function streamSarvamChat({ messages, onChunk }) {
     body: JSON.stringify({ 
       model: CONSTANTS.SARVAM_MODEL, 
       messages: messages, 
-      temperature: 0.5, // Balanced for creativity + logic
+      temperature: 0.5, 
       max_tokens: CONSTANTS.MAX_TOKENS,
       stream: true,
-      
-      // *** v11 UPGRADES ***
-      reasoning_effort: "medium", // Enables "Thinking Mode"
-      wiki_grounding: true        // Enables built-in fact checking
+      reasoning_effort: "medium", 
+      wiki_grounding: true
     })
   });
 
@@ -140,7 +137,6 @@ const DB = {
     return (await redis.get(`session:${id}`)) || { history: [] };
   },
   async save(id, data) {
-    // Keep only last N messages to save RAM
     if (data.history.length > CONSTANTS.THREAD_LENGTH) {
       data.history = data.history.slice(-CONSTANTS.THREAD_LENGTH);
     }
@@ -163,77 +159,89 @@ export default async function handler(req, res) {
     'X-Accel-Buffering': 'no'
   });
 
-  // A. Basic Checks
-  if (req.method !== 'POST') return res.end("ERROR|Method not allowed");
-  try { verifyServerIntegrity(); } catch(e) { return res.end(`ERROR|${e.message}`); }
+  if (req.method !== 'POST') {
+    res.write("ERROR|Method not allowed");
+    return res.end();
+  }
+  
+  try { verifyServerIntegrity(); } catch(e) { 
+    res.write(`ERROR|${e.message}`);
+    return res.end();
+  }
 
   try {
-    const { message, files } = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const ip = req.headers["x-forwarded-for"] || "127.0.0.1";
+    const rawBody = req.body || "{}";
+    const { message, files } = typeof rawBody === 'string' ? JSON.parse(rawBody) : rawBody;
     
-    // B. Cookie / Session ID
-    const cookies = req.headers.cookie || "";
-    let sessionId = cookies.match(new RegExp(`${CONSTANTS.COOKIE_NAME}=([^;]+)`))?.[1];
-    if (!sessionId) {
-      sessionId = crypto.randomBytes(16).toString("hex");
-      res.write(`EVENT|SET_COOKIE|${CONSTANTS.COOKIE_NAME}=${sessionId}; Path=/; HttpOnly; Max-Age=${CONSTANTS.SESSION_TTL}\n`);
+    if (!message) {
+      res.write("DONE|Welcome to eSAMz v11");
+      return res.end();
     }
 
-    // C. Rate Limit
-    if (!(await DB.rateLimit(sessionId))) {
+    // Cookie / Session
+    const cookies = req.headers.cookie || "";
+    let sessionId = cookies.match(new RegExp(`${CONSTANTS.COOKIE_NAME}=([^;]+)`))?.[1];
+    
+    if (!sessionId) {
+      sessionId = crypto.randomBytes(16).toString("hex");
+      // Note: In Node HTTP, we write header via writeHead or before first write
+      // Since we already wrote status 200, we can't set-cookie easily in pure Node stream 
+      // without using a framework helper, but for Vercel functions, this usually works:
+      // However, since we used writeHead above, Set-Cookie might be ignored if not sent there.
+      // FIX: We rely on client to store ID if needed, or send it in the stream event.
+      res.write(`EVENT|SET_COOKIE|${CONSTANTS.COOKIE_NAME}=${sessionId}\n`);
+    }
+
+    // Rate Limit
+    if (!(await DB.rateLimit(sessionId || "guest"))) {
       res.write("ERROR|You are sending messages too fast. Please wait.");
       return res.end();
     }
 
-    // D. Load History
-    const session = await DB.get(sessionId);
+    // Load History
+    const session = await DB.get(sessionId || "guest");
 
-    // E. Search Execution (The "Agent" Step)
+    // Search Execution
     let contextData = "";
     if (shouldSearch(message)) {
-      res.write("STATUS|Searching the live web...\n"); // Tell frontend we are searching
+      res.write("STATUS|Searching the live web...\n"); 
       const searchResult = await googleSearch(message);
       if (searchResult) {
-        contextData = `\n\n${searchResult}\n\n(Use the above real-time data to answer the user)`;
+        contextData = `\n\n${searchResult}\n\n(Use the above real-time data to answer)`;
       }
     }
     
-    res.write("STATUS|Thinking...\n"); // Tell frontend we are processing
+    res.write("STATUS|Thinking...\n"); 
 
-    // F. Construct Prompt
+    // Construct Prompt
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
-      ...session.history, // Past context
-      { role: "user", content: message + contextData } // Current message + Search Data
+      ...session.history, 
+      { role: "user", content: message + contextData } 
     ];
 
-    // G. Generate & Stream Response
+    // Generate & Stream
     let fullReply = "";
     await streamSarvamChat({
       messages,
       onChunk: (text) => {
         fullReply += text;
-        // Clean newlines for SSE format safety
         const safeText = text.replace(/\n/g, "\\n"); 
         res.write(`CHUNK|${safeText}\n`);
       }
     });
 
-    // H. Save to Memory
+    // Save to Memory
     session.history.push({ role: "user", content: message });
     session.history.push({ role: "assistant", content: fullReply });
-    await DB.save(sessionId, session);
+    await DB.save(sessionId || "guest", session);
 
     res.write("DONE|Stream Complete");
     res.end();
 
   } catch (err) {
     console.error(err);
-    res.write(`ERROR|${err.message}`);  
-  }
-    res.end();
-  }
-}
+    res.write(`ERROR|${err.message}`);
     res.end();
   }
 }
