@@ -1,6 +1,6 @@
 // api/chat.js
 // Vercel Serverless Function (ES Module)
-// eSAMz v10.1 (Redis + No Cookies + 30m Inactivity Timeout + Bug Fixes)
+// eSAMz v10.2 (Redis + Server Cookie + 30m Strict Timeout + Bug Fixes)
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -8,7 +8,6 @@ import { Redis } from "@upstash/redis";
 /* ================= SECURITY & REDIS ================= */
 const redis = Redis.fromEnv();
 
-// Simple integrity check
 function verifyServerIntegrity() {
   const raw = process.env.ESAMZ_INTERNAL_KEY;
   const hash = process.env.ESAMZ_KEY_HASH;
@@ -20,17 +19,18 @@ function verifyServerIntegrity() {
 
 /* ================= CONFIG ================= */
 const SARVAM_MODEL = "sarvam-m";
-const MAX_COMPLETION_TOKENS = 1024;
+const MAX_COMPLETION_TOKENS = 5024;
 const MAX_THREAD_LENGTH = 15; 
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
+const COOKIE_NAME = "esamz_sid";
 
 // Rate Limit & Session Config
-const CHAT_LIMIT_PER_MIN = 15; // Slightly increased
-const SESSION_TTL_SEC = 1800;  // 30 Minutes
+const CHAT_LIMIT_PER_MIN = 15; 
+const SESSION_TTL_SEC = 1800; // 30 Minutes
 
 /* ================= SYSTEM PROMPT ================= */
 const SYSTEM_PROMPT = `
-You are eSAMz v10.1, created by Alakmar Teenwala.
+You are eSAMz v9.1, created by Alakmar Teenwala.
 
 You are a smart, calm, sharp human-like conversationalist.
 You are not a corporate assistant and not a robotic chatbot.
@@ -86,10 +86,19 @@ function getIP(req) {
   );
 }
 
+// Helper to parse cookies from header string
+function parseCookies(req) {
+  const list = {};
+  const rc = req.headers.cookie;
+  if (!rc) return list;
+  rc.split(';').forEach((cookie) => {
+    const parts = cookie.split('=');
+    list[parts.shift().trim()] = decodeURI(parts.join('='));
+  });
+  return list;
+}
+
 function sendEvent(res, type, data) {
-  // Simple pipe protocol: TYPE|DATA\n
-  // We sanitize newlines in data to prevent protocol breaks if strictly parsed,
-  // but here we allow them as the client handles buffering.
   res.write(`${type}|${data}\n`);
 }
 
@@ -109,7 +118,7 @@ const DB = {
 async function checkRateLimit(identifier) {
   const key = `rl:${identifier}`;
   const count = await redis.incr(key);
-  if (count === 1) await redis.expire(key, 60); // 1 minute window for rate limit
+  if (count === 1) await redis.expire(key, 60); 
   return count <= CHAT_LIMIT_PER_MIN;
 }
 
@@ -193,30 +202,26 @@ async function streamSarvamChat({ messages, temperature = 0.7, onChunk }) {
           fullContent += content;
           onChunk(content);
         }
-      } catch (e) { /* ignore partial json */ }
+      } catch (e) { /* ignore */ }
     }
   }
   return fullContent;
 }
 
-/* ================= SUMMARIZATION & TRIMMING ================= */
+/* ================= SUMMARIZATION ================= */
 async function summarizeHistoryAndTrim(userDoc) {
   const history = userDoc.threadHistory;
   if (history.length <= MAX_THREAD_LENGTH) return userDoc.summary;
 
-  // FIX: Calculate cut index to ensure we don't split a [User, Assistant] pair awkwardly.
-  // We want to keep the last N messages.
+  // FIX: Ensure clean cut between User and Assistant
   let cutIndex = history.length - MAX_THREAD_LENGTH;
-  
-  // If cutIndex is odd, it likely points to an Assistant message (assuming index 0 is User).
-  // We should increment to point to the next User message.
   if (cutIndex % 2 !== 0) cutIndex++;
   if (cutIndex < 0) cutIndex = 0;
 
   const messagesToSummarize = history.slice(0, cutIndex);
   const keepHistory = history.slice(cutIndex);
 
-  // Safety: Ensure keepHistory starts with 'user'
+  // Safety: Remove leading assistant message if orphan
   if (keepHistory.length > 0 && keepHistory[0].role === "assistant") {
     keepHistory.shift();
   }
@@ -225,38 +230,27 @@ async function summarizeHistoryAndTrim(userDoc) {
   
   const summaryPrompt = `
     Previous Summary: ${userDoc.summary || "None"}
-    
-    New Conversation to Summarize:
-    ${historyText}
-    
-    Create a concise summary of user's intent, current topic, and any key facts discussed in new conversation.
+    New Conversation: ${historyText}
+    Create a concise summary of user's intent, current topic, and any key facts.
   `;
 
   try {
     const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
       method: "POST",
-      headers: { 
-        Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, 
-        "Content-Type": "application/json" 
-      },
+      headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ 
         model: SARVAM_MODEL, 
-        messages: [
-          { role: "system", content: "You are a summarizer." },
-          { role: "user", content: summaryPrompt }
-        ],
+        messages: [{ role: "system", content: "You are a summarizer." }, { role: "user", content: summaryPrompt }],
         max_tokens: 500
       })
     });
     
     if(!res.ok) throw new Error("Summary failed");
-    
     const data = await res.json();
     userDoc.summary = data.choices[0].message.content;
     userDoc.threadHistory = keepHistory;
   } catch (e) {
     console.error("Summarization failed:", e);
-    // Fallback: Just trim, but ensure safety
     userDoc.threadHistory = keepHistory;
   }
 }
@@ -274,24 +268,32 @@ export default async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const { message, sessionId, files } = body;
+    const { message, files } = body;
+    
+    // 1. Cookie Management
+    const cookies = parseCookies(req);
+    let activeSessionId = cookies[COOKIE_NAME];
+    
+    // If no cookie, generate ID. 
+    if (!activeSessionId) {
+      activeSessionId = crypto.randomBytes(16).toString("hex");
+    }
 
-    // 1. Session & Rate Limit
-    // Use sessionId from body. If missing, generate one (but client won't remember it without cookies unless they save the response).
-    let activeSessionId = sessionId || crypto.randomBytes(16).toString("hex");
+    // Refresh Cookie (Strict 30 Min Expiry)
+    // SameSite=Lax allows the cookie to be sent on top-level navigations
+    res.setHeader('Set-Cookie', `${COOKIE_NAME}=${activeSessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL_SEC}`);
+
+    // Rate Limit
     const ip = getIP(req);
-
     if (!(await checkRateLimit(activeSessionId)) || !(await checkRateLimit(ip))) {
       res.write(`ERROR|Rate limit exceeded. Please wait a moment.\n`);
       return res.end();
     }
 
-    // REMOVED: Cookie setting logic. Purely API/Redis based now.
-
     // 2. Load User Data
     const userDoc = await DB.getUser(activeSessionId);
 
-    // 3. Prepare Message (Files + Text)
+    // 3. Prepare Message
     let finalMessage = message;
     if (files && files.length > 0) {
       const fileContext = files.map(f => `\n--- [FILE: ${f.fileName} (${f.type})] ---\n${f.content}\n--- END FILE ---`).join('\n');
@@ -316,9 +318,7 @@ export default async function handler(req, res) {
     const messagesPayload = [{ role: "system", content: fullSystemContent }];
     
     if (userDoc.threadHistory?.length) {
-      // FIX: Sanitize existing history to prevent API errors
-      // If the first message in history is 'assistant', the API will reject it.
-      // We must remove leading assistant messages.
+      // FIX: Sanitize history to prevent API 400 Errors
       while (userDoc.threadHistory.length > 0 && userDoc.threadHistory[0].role === "assistant") {
         userDoc.threadHistory.shift();
       }
@@ -334,12 +334,10 @@ export default async function handler(req, res) {
       messages: messagesPayload,
       onChunk: (chunk) => {
         accumulatedReply += chunk;
-        
-        // Handle newlines safely for the pipe protocol
         const parts = chunk.split('\n');
         for (let i = 0; i < parts.length; i++) {
           let part = parts[i];
-          if (i < parts.length - 1) part += "\n"; // Re-add newline except for last part
+          if (i < parts.length - 1) part += "\n"; 
           if (part) sendEvent(res, "CHUNK", part);
         }
       }
@@ -354,7 +352,6 @@ export default async function handler(req, res) {
       await summarizeHistoryAndTrim(userDoc);
     }
     
-    // Update Redis (resets the 30-minute timer)
     await DB.updateUser(activeSessionId, userDoc);
 
     sendEvent(res, "DONE", activeSessionId);
