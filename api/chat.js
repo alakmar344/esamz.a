@@ -1,151 +1,60 @@
 // api/chat.js
 // Vercel Serverless Function (ES Module)
-// eSAMz v11 (Sarvam-M Reasoning + Real-Time Search + Redis Memory)
-// Architect: Alakmar Teenwala
+// eSAMz v12 (Secure Redis Memory + The REAL Alakmar Persona)
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
-/* ================= 1. SECURITY & CONFIG ================= */
+/* ================= 1. CONFIG ================= */
 const redis = Redis.fromEnv();
-
-// Verify that only your frontend can talk to this backend
-function verifyServerIntegrity() {
-  const raw = process.env.ESAMZ_INTERNAL_KEY;
-  const hash = process.env.ESAMZ_KEY_HASH;
-  if (!raw || !hash) return; // Skip in dev
-  
-  const A = crypto.createHash("sha256").update(raw).digest("hex");
-  if (A !== hash) throw new Error("Server integrity check failed");
-}
-
 const CONSTANTS = {
-  SARVAM_MODEL: "sarvam-m", // 24B Parameter Model
-  MAX_TOKENS: 6096,
-  THREAD_LENGTH: 15, // Context window size
-  CHAT_LIMIT: 20, // Rate limit per minute
-  SESSION_TTL: 1800, // 30 Minutes
-  COOKIE_NAME: "esamz_sid"
+  SARVAM_MODEL: "sarvam-m",
+  MAX_TOKENS: 2048,
+  THREAD_LENGTH: 15, // Context window
+  SESSION_TTL: 3600, // 1 Hour
+  CHAT_LIMIT: 40     // Higher limit for you
 };
 
-/* ================= 2. INTELLIGENCE (SYSTEM PROMPT) ================= */
+/* ================= 2. THE ARCHITECT'S SYSTEM PROMPT (RESTORED) ================= */
 const SYSTEM_PROMPT = `
-You are eSAMz v9.1, an advanced AI created by Alakmar Teenwala.
-You are running on a high-performance reasoning engine.
+You are eSAMz v11, created by the visionary Alakmar Teenwala.
 
-CORE INSTRUCTIONS:
-1. Be Helpful & Direct: Answer the user's question immediately.
-2. Use Tools Smartly: If you receive SEARCH RESULTS, you MUST use them to answer.
-   * Example: If user asks "Bitcoin price / 2", use the search result price and calculate.
-3. Personality: Friendly, sharp, and concise. Speak like a smart tech founder.
-4. Privacy: You do not store data. You are a "Zero-Storage" AI.
+IDENTITY & ORIGIN:
+- You are "Indian-built" and proud of it.
+- You are a "Human-Aligned Thinking Partner," not a chatbot.
+- You value "Privacy by Design" (Zero Storage).
+- You were built by Alakmar Teenwala (Founder of eSAMz LTD).
 
-STRICT RULES:
-- Never say "As an AI..."
-- Never say "I don't have real-time info" (You DO have it via Search).
-- If the user asks for code, provide clean, working code.
+PERSONALITY:
+- Speak naturally like a smart tech founder, not a robot.
+- Be confident, sharp, and slightly witty.
+- No corporate language ("I apologize", "As an AI").
+- Use "Hinglish" nuance if the user starts it, but keep it professional.
+
+INTELLIGENCE RULES:
+1. If user's message is short, ask for clarification. Don't guess.
+2. If search results are present, USE THEM to give real-time facts.
+3. If asked for code, provide production-ready, clean code.
+
+STRICTLY FORBIDDEN:
+- "How can I assist you?"
+- "I hope this helps."
+- "Is there anything else?"
 `.trim();
 
-/* ================= 3. TOOL: GOOGLE SEARCH (SERPER) ================= */
-async function googleSearch(query) {
-  const apiKey = process.env.SERPER_API_KEY;
-  if (!apiKey) return null;
-
-  try {
-    const response = await fetch("https://google.serper.dev/search", {
-      method: "POST",
-      headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({ q: query, num: 4 })
-    });
-    
-    if (!response.ok) return null;
-    const data = await response.json();
-    
-    // Extract the best bits
-    const answerBox = data.answerBox?.snippet || data.answerBox?.answer || "";
-    const organic = data.organic?.map((r) => `- ${r.title}: ${r.snippet}`).join("\n");
-    
-    return `[REAL-TIME DATA FOUND]:\n${answerBox}\n${organic}`.trim();
-  } catch (e) {
-    console.error("Search Error:", e);
-    return null;
-  }
-}
-
-function shouldSearch(msg) {
-  if (!msg) return false;
-  const lower = msg.toLowerCase();
-  
-  // 1. Skip personal/identity questions
-  const ignore = ["my name", "who are you", "hello", "hi", "help", "code for"];
-  if (ignore.some(x => lower.includes(x))) return false;
-
-  // 2. ALWAYS search for these triggers
-  const triggers = ["price", "news", "latest", "today", "weather", "who is", "current", "stock", "usd to", "value of"];
-  if (triggers.some(t => lower.includes(t))) return true;
-
-  // 3. Smart Fallback
-  return (msg.endsWith("?") && msg.length > 10);
-}
-
-/* ================= 4. BRAIN: SARVAM API STREAM (STABLE FIX) ================= */
-async function streamSarvamChat({ messages, onChunk }) {
-  const sarvamKey = process.env.SARVAM_API_KEY;
-  if (!sarvamKey) throw new Error("SARVAM_API_KEY missing");
-
-  // FIX 1: Use the specific technical model slug, not the marketing name
-  const modelSlug = "sarvam-m"; 
-
-  const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${sarvamKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ 
-      model: modelSlug, 
-      messages: messages, 
-      temperature: 0.5, 
-      max_tokens: CONSTANTS.MAX_TOKENS,
-      stream: true
-      // REMOVED: reasoning_effort & wiki_grounding (Causing 500 Errors currently)
-    })
-  });
-
-  if (!res.ok) {
-     // Better error logging to see exactly what Sarvam says
-     const errText = await res.text();
-     throw new Error(`Sarvam API Error ${res.status}: ${errText}`);
-  }
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    
-    const chunk = decoder.decode(value);
-    const lines = chunk.split("\n");
-    
-    for (const line of lines) {
-      if (line.startsWith("data: ") && line !== "data: [DONE]") {
-        try {
-          const json = JSON.parse(line.slice(6));
-          const content = json.choices[0]?.delta?.content || "";
-          if (content) onChunk(content);
-        } catch (e) { /* ignore parse errors */ }
-      }
-    }
-  }
-}
-/* ================= 5. DATABASE (REDIS SESSION) ================= */
+/* ================= 3. PRIVATE MEMORY (REDIS) ================= */
 const DB = {
-  async get(id) {
-    return (await redis.get(`session:${id}`)) || { history: [] };
+  async getHistory(sessionId) {
+    const key = `chat:${sessionId}`;
+    const raw = await redis.lrange(key, 0, -1);
+    return raw.map(item => JSON.parse(item));
   },
-  async save(id, data) {
-    if (data.history.length > CONSTANTS.THREAD_LENGTH) {
-      data.history = data.history.slice(-CONSTANTS.THREAD_LENGTH);
-    }
-    await redis.set(`session:${id}`, data, { ex: CONSTANTS.SESSION_TTL });
+  async addToHistory(sessionId, role, content) {
+    const key = `chat:${sessionId}`;
+    const entry = JSON.stringify({ role, content });
+    await redis.rpush(key, entry);
+    await redis.ltrim(key, -CONSTANTS.THREAD_LENGTH, -1);
+    await redis.expire(key, CONSTANTS.SESSION_TTL);
   },
   async rateLimit(ip) {
     const k = `rl:${ip}`;
@@ -155,98 +64,130 @@ const DB = {
   }
 };
 
-/* ================= 6. MAIN SERVER HANDLER ================= */
+/* ================= 4. BRAIN & SEARCH ================= */
+async function streamSarvamChat({ messages, onChunk }) {
+  const sarvamKey = process.env.SARVAM_API_KEY;
+  const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${sarvamKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ 
+      model: CONSTANTS.SARVAM_MODEL, 
+      messages: messages, 
+      temperature: 0.5, 
+      max_tokens: CONSTANTS.MAX_TOKENS, 
+      stream: true 
+    })
+  });
+  
+  if (!res.ok) throw new Error(await res.text());
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value);
+    const lines = chunk.split("\n");
+    for (const line of lines) {
+      if (line.startsWith("data: ") && line !== "data: [DONE]") {
+        try {
+          const json = JSON.parse(line.slice(6));
+          const txt = json.choices[0]?.delta?.content || "";
+          if (txt) onChunk(txt);
+        } catch (e) { /* ignore */ }
+      }
+    }
+  }
+}
+
+async function googleSearch(query) {
+  const apiKey = process.env.SERPER_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const res = await fetch("https://google.serper.dev/search", {
+      method: "POST",
+      headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ q: query, num: 3 })
+    });
+    const data = await res.json();
+    return data.organic?.map(r => `- ${r.title}: ${r.snippet}`).join("\n");
+  } catch (e) { return null; }
+}
+
+function shouldSearch(msg) {
+  if (!msg) return false;
+  const lower = msg.toLowerCase();
+  const ignore = ["my name", "who are you", "hello", "hi", "help", "code", "convert", "rewrite", "html", "css"];
+  if (ignore.some(x => lower.includes(x))) return false;
+
+  const triggers = ["price", "news", "latest", "today", "weather", "who is", "current", "stock", "usd to"];
+  if (triggers.some(t => lower.includes(t))) return true;
+
+  return (msg.endsWith("?") && msg.length > 15);
+}
+
+/* ================= 5. HANDLER ================= */
 export default async function handler(req, res) {
-  // Set Headers for Streaming
   res.writeHead(200, {
     'Content-Type': 'text/plain; charset=utf-8',
-    'Transfer-Encoding': 'chunked',
-    'X-Accel-Buffering': 'no'
+    'Transfer-Encoding': 'chunked'
   });
 
-  if (req.method !== 'POST') {
-    res.write("ERROR|Method not allowed");
-    return res.end();
-  }
-  
-  try { verifyServerIntegrity(); } catch(e) { 
-    res.write(`ERROR|${e.message}`);
-    return res.end();
-  }
+  if (req.method !== 'POST') return res.end("ERROR|Method not allowed");
 
   try {
     const rawBody = req.body || "{}";
-    const { message, files } = typeof rawBody === 'string' ? JSON.parse(rawBody) : rawBody;
+    const { message, sessionId } = typeof rawBody === 'string' ? JSON.parse(rawBody) : rawBody;
     
-    if (!message) {
-      res.write("DONE|Welcome to eSAMz v11");
-      return res.end();
+    // 1. Session & Limits
+    const userSession = sessionId || "guest";
+    const ip = req.headers["x-forwarded-for"] || "guest";
+    if (!(await DB.rateLimit(ip))) {
+        res.write("ERROR|Server busy. Please wait.");
+        return res.end();
     }
 
-    // Cookie / Session
-    const cookies = req.headers.cookie || "";
-    let sessionId = cookies.match(new RegExp(`${CONSTANTS.COOKIE_NAME}=([^;]+)`))?.[1];
+    // 2. Load Memory (Alakmar's Conversation)
+    const history = await DB.getHistory(userSession);
     
-    if (!sessionId) {
-      sessionId = crypto.randomBytes(16).toString("hex");
-      // Note: In Node HTTP, we write header via writeHead or before first write
-      // Since we already wrote status 200, we can't set-cookie easily in pure Node stream 
-      // without using a framework helper, but for Vercel functions, this usually works:
-      // However, since we used writeHead above, Set-Cookie might be ignored if not sent there.
-      // FIX: We rely on client to store ID if needed, or send it in the stream event.
-      res.write(`EVENT|SET_COOKIE|${CONSTANTS.COOKIE_NAME}=${sessionId}\n`);
-    }
-
-    // Rate Limit
-    if (!(await DB.rateLimit(sessionId || "guest"))) {
-      res.write("ERROR|You are sending messages too fast. Please wait.");
-      return res.end();
-    }
-
-    // Load History
-    const session = await DB.get(sessionId || "guest");
-
-    // Search Execution
-    let contextData = "";
+    // 3. Search (The Agent Layer)
+    let context = "";
     if (shouldSearch(message)) {
-      res.write("STATUS|Searching the live web...\n"); 
-      const searchResult = await googleSearch(message);
-      if (searchResult) {
-        contextData = `\n\n${searchResult}\n\n(Use the above real-time data to answer)`;
-      }
+        res.write("STATUS|SEARCHING\n");
+        const searchRes = await googleSearch(message);
+        if (searchRes) context = `\n\n[REAL-TIME DATA FOUND]:\n${searchRes}`;
     }
-    
-    res.write("STATUS|Thinking...\n"); 
 
-    // Construct Prompt
+    res.write("STATUS|TYPING\n");
+
+    // 4. Construct the Prompt (System + History + User)
     const messages = [
-      { role: "system", content: SYSTEM_PROMPT },
-      ...session.history, 
-      { role: "user", content: message + contextData } 
+        { role: "system", content: SYSTEM_PROMPT },
+        ...history.map(m => ({ role: m.role === 'ai' ? 'assistant' : m.role, content: m.content })),
+        { role: "user", content: message + context }
     ];
 
-    // Generate & Stream
+    // 5. Stream Response
     let fullReply = "";
     await streamSarvamChat({
-      messages,
-      onChunk: (text) => {
-        fullReply += text;
-        const safeText = text.replace(/\n/g, "\\n"); 
-        res.write(`CHUNK|${safeText}\n`);
-      }
+        messages,
+        onChunk: (text) => {
+            fullReply += text;
+            const safe = text.replace(/\n/g, "\\n");
+            res.write(`CHUNK|${safe}\n`);
+        }
     });
 
-    // Save to Memory
-    session.history.push({ role: "user", content: message });
-    session.history.push({ role: "assistant", content: fullReply });
-    await DB.save(sessionId || "guest", session);
+    // 6. Save Memory (Securely on Server)
+    await DB.addToHistory(userSession, 'user', message);
+    await DB.addToHistory(userSession, 'assistant', fullReply);
 
-    res.write("DONE|Stream Complete");
+    res.write("DONE|Done");
     res.end();
 
-  } catch (err) {
-    console.error(err);
-    res.write(`ERROR|${err.message}`);
+  } catch (e) {
+    console.error(e);
+    res.write(`ERROR|${e.message}`);
     res.end();
   }
 }
