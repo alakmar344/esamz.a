@@ -1,6 +1,6 @@
 // api/chat.js
 // Vercel Serverless Function (ES Module)
-// eSAMz v12 (Secure Redis Memory + The REAL Alakmar Persona)
+// eSAMz v12.1 (Self-Healing Memory + Security)
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -10,12 +10,12 @@ const redis = Redis.fromEnv();
 const CONSTANTS = {
   SARVAM_MODEL: "sarvam-m",
   MAX_TOKENS: 2048,
-  THREAD_LENGTH: 15, // Context window
-  SESSION_TTL: 3600, // 1 Hour
-  CHAT_LIMIT: 40     // Higher limit for you
+  THREAD_LENGTH: 15, 
+  SESSION_TTL: 3600, 
+  CHAT_LIMIT: 40     
 };
 
-/* ================= 2. THE ARCHITECT'S SYSTEM PROMPT (RESTORED) ================= */
+/* ================= 2. SYSTEM PROMPT ================= */
 const SYSTEM_PROMPT = `
 You are eSAMz v11, created by the visionary Alakmar Teenwala.
 
@@ -29,33 +29,41 @@ PERSONALITY:
 - Speak naturally like a smart tech founder, not a robot.
 - Be confident, sharp, and slightly witty.
 - No corporate language ("I apologize", "As an AI").
-- Use "Hinglish" nuance if the user starts it, but keep it professional.
+- Use "Hinglish" nuance if the user starts it.
 
 INTELLIGENCE RULES:
-1. If user's message is short, ask for clarification. Don't guess.
-2. If search results are present, USE THEM to give real-time facts.
-3. If asked for code, provide production-ready, clean code.
-
-STRICTLY FORBIDDEN:
-- "How can I assist you?"
-- "I hope this helps."
-- "Is there anything else?"
+1. If user's message is short, ask for clarification.
+2. If search results are present, USE THEM.
+3. If asked for code, provide production-ready code.
 `.trim();
 
-/* ================= 3. PRIVATE MEMORY (REDIS) ================= */
+/* ================= 3. PRIVATE MEMORY (ROBUST) ================= */
 const DB = {
   async getHistory(sessionId) {
     const key = `chat:${sessionId}`;
     const raw = await redis.lrange(key, 0, -1);
-    return raw.map(item => JSON.parse(item));
+    
+    // FIX: Safely parse history and ignore corrupt "[object Object]" data
+    return raw.map(item => {
+      try {
+        if (typeof item !== 'string') return null;
+        if (item === "[object Object]") return null; // Skip bad data
+        return JSON.parse(item);
+      } catch (e) {
+        return null; // Skip corrupt JSON
+      }
+    }).filter(item => item !== null); // Remove the nulls
   },
+
   async addToHistory(sessionId, role, content) {
     const key = `chat:${sessionId}`;
+    // Ensure we ALWAYS stringify before saving
     const entry = JSON.stringify({ role, content });
     await redis.rpush(key, entry);
     await redis.ltrim(key, -CONSTANTS.THREAD_LENGTH, -1);
     await redis.expire(key, CONSTANTS.SESSION_TTL);
   },
+
   async rateLimit(ip) {
     const k = `rl:${ip}`;
     const c = await redis.incr(k);
@@ -147,7 +155,7 @@ export default async function handler(req, res) {
         return res.end();
     }
 
-    // 2. Load Memory (Alakmar's Conversation)
+    // 2. Load Memory (Safe Load)
     const history = await DB.getHistory(userSession);
     
     // 3. Search (The Agent Layer)
