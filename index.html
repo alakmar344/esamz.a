@@ -1945,16 +1945,16 @@ class App {
 
         try {
             // UPDATED STREAMING FETCH
-            const response = await fetch("/api/chat", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    message: constructedPayload.userMessage,
-                    intent: intent,
-                    files: constructedPayload.files
-                })
-            });
-
+           const response = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+        message: constructedPayload.userMessage,
+        intent: intent,
+        files: constructedPayload.files,
+        sessionId: this.state.chatId // <--- ADD THIS LINE
+    })
+});
             if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
             const reader = response.body.getReader();
