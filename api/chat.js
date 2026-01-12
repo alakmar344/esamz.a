@@ -1,6 +1,6 @@
 // api/chat.js
 // Vercel Serverless Function (ES Module)
-// eSAMz v14.1 (Cookie Session + Self-Healing Memory + Original Persona)
+// eSAMz v15.1 (The Real System Prompt + Hybrid Memory + Self-Healing)
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -9,64 +9,94 @@ import { Redis } from "@upstash/redis";
 const redis = Redis.fromEnv();
 const CONSTANTS = {
   SARVAM_MODEL: "sarvam-m",
-  MAX_TOKENS: 2048,
-  THREAD_LENGTH: 20, 
-  SESSION_TTL: 31536000, // 1 Year Cookie
-  COOKIE_NAME: "esamz_v1"
+  MAX_TOKENS: 7048,
+  THREAD_LENGTH: 1000,
+  SESSION_TTL: 1800, // 1 Year
+  COOKIE_NAME: "esamz_id"
 };
 
-/* ================= 2. THE ARCHITECT'S PERSONA (RESTORED) ================= */
+/* ================= 2. THE ORIGINAL SYSTEM PROMPT (RESTORED) ================= */
 const SYSTEM_PROMPT = `
 You are eSAMz v11, created by Alakmar Teenwala.
 
 You are a smart, calm, sharp human-like conversationalist.
 You are not a corporate assistant and not a robotic chatbot.
 
-PERSONALITY:
+Your job is to understand intent first, then respond clearly and helpfully.
+
+PERSONALITY
 - Speak naturally like a real person.
 - Be friendly, but not silly.
 - Be confident, not overdramatic.
-- No corporate language ("I apologize", "As an AI").
+- No corporate language.
 
-INTELLIGENCE RULES:
-1. If user's message is unclear, ask a clarification question.
-2. If search results are provided, USE THEM.
-3. If asked for code, provide clean, working code.
+INTELLIGENCE RULES
+1. If user's message is unclear, incomplete, or ambiguous, ask a clarification question.
+   Never guess intent.
+   Never hallucinate meaning.
 
-STRICTLY FORBIDDEN PHRASES:
+2. If user's message is short (1–3 words), assume ambiguity and ask what they mean.
+
+3. If user asks a factual question, answer directly and clearly.
+
+4. If user asks for an explanation, explain in simple words.
+
+5. If user asks for creative writing, write properly with structure.
+
+6. Stay on topic. Do not drift.
+
+STRICTLY FORBIDDEN PHRASES
 - "How can I assist you"
+- "Here is the information"
 - "I hope this helps"
+- "Please let me know"
 - "Is there anything else"
+- "I'm sorry, I don't have access"
+
+SEARCH USAGE
+If search results are provided, use them naturally in your answer.
+Do not mention search engines or sources unless asked.
+
+STYLE
+- Use full sentences.
+- Be clear and concise.
+- No fluff.
+- No filler.
 `.trim();
 
-/* ================= 3. SELF-HEALING MEMORY (FIXES THE CRASH) ================= */
+/* ================= 3. MEMORY LOGIC (SELF-HEALING) ================= */
 const DB = {
   async getHistory(id) {
     const key = `chat:${id}`;
-    const raw = await redis.lrange(key, 0, -1);
-    
-    // THE FIX: Safely try to parse each item. If it fails, ignore it.
-    return raw.map(item => {
-      try {
-        if (typeof item !== 'string') return null;
-        if (item.includes("[object Object]")) return null; // Skip corrupt data
-        return JSON.parse(item);
-      } catch (e) { 
-        return null; // Skip invalid JSON
-      }
-    }).filter(x => x !== null); // Filter out the garbage
+    try {
+        const raw = await redis.lrange(key, 0, -1);
+        // Self-Healing: Ignore corrupt data from old tests
+        return raw.map(item => {
+            if (typeof item === 'object' && item !== null) return item;
+            try {
+                if (typeof item === 'string' && !item.includes("[object Object]")) {
+                    return JSON.parse(item);
+                }
+            } catch(e) {}
+            return null;
+        }).filter(x => x !== null);
+    } catch(e) {
+        console.error("Redis Error:", e);
+        return [];
+    }
   },
 
   async addToHistory(id, role, content) {
     const key = `chat:${id}`;
-    // Always stringify to prevent future corruption
-    await redis.rpush(key, JSON.stringify({ role, content }));
+    // Force stringify to ensure consistency
+    const safeEntry = JSON.stringify({ role, content });
+    await redis.rpush(key, safeEntry);
     await redis.ltrim(key, -CONSTANTS.THREAD_LENGTH, -1);
     await redis.expire(key, CONSTANTS.SESSION_TTL);
   }
 };
 
-/* ================= 4. TOOLS & BRAIN ================= */
+/* ================= 4. TOOLS (SEARCH) ================= */
 async function googleSearch(query) {
   if (!process.env.SERPER_API_KEY) return null;
   try {
@@ -83,10 +113,12 @@ async function googleSearch(query) {
 function shouldSearch(msg) {
   if (!msg) return false;
   const lower = msg.toLowerCase();
-  if (["hello", "hi", "code", "html", "write"].some(x => lower.includes(x))) return false;
+  const ignore = ["hello", "hi", "code", "html", "write", "rewrite", "convert"];
+  if (ignore.some(x => lower.includes(x))) return false;
   return (msg.includes("price") || msg.includes("news") || msg.includes("who is") || (msg.endsWith("?") && msg.length > 15));
 }
 
+/* ================= 5. BRAIN (SARVAM) ================= */
 async function streamSarvamChat({ messages, onChunk }) {
   const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
     method: "POST",
@@ -100,7 +132,7 @@ async function streamSarvamChat({ messages, onChunk }) {
     })
   });
   if (!res.ok) throw new Error(await res.text());
-
+  
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   while (true) {
@@ -119,37 +151,35 @@ async function streamSarvamChat({ messages, onChunk }) {
   }
 }
 
-/* ================= 5. MAIN HANDLER (COOKIE LOGIC) ================= */
+/* ================= 6. MAIN HANDLER (HYBRID SESSION) ================= */
 export default async function handler(req, res) {
-  // 1. Get or Create Session ID from Cookie
-  const cookies = req.headers.cookie || "";
-  let sessionId = cookies.match(new RegExp(`${CONSTANTS.COOKIE_NAME}=([^;]+)`))?.[1];
-  let isNewSession = false;
-
-  if (!sessionId) {
-    sessionId = crypto.randomBytes(16).toString("hex");
-    isNewSession = true;
-  }
-
-  // 2. Set Headers (Important: Set-Cookie)
   res.writeHead(200, {
     'Content-Type': 'text/plain; charset=utf-8',
-    'Transfer-Encoding': 'chunked',
-    'Set-Cookie': `${CONSTANTS.COOKIE_NAME}=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${CONSTANTS.SESSION_TTL}`
+    'Transfer-Encoding': 'chunked'
   });
 
   if (req.method !== 'POST') return res.end("ERROR|Method not allowed");
 
   try {
-    // Parse input safely
     const rawBody = req.body || "{}";
     const bodyData = typeof rawBody === 'string' ? JSON.parse(rawBody) : rawBody;
     const message = bodyData.message || "";
     
-    // 3. Load Memory (Safe & Robust)
+    // 1. HYBRID SESSION: Prefer ID from Frontend, Fallback to Cookie
+    const cookies = req.headers.cookie || "";
+    const cookieId = cookies.match(new RegExp(`${CONSTANTS.COOKIE_NAME}=([^;]+)`))?.[1];
+    
+    // This is the key logic that makes memory work:
+    let sessionId = bodyData.sessionId || cookieId;
+
+    if (!sessionId) {
+        sessionId = crypto.randomBytes(16).toString("hex");
+    }
+
+    // 2. Load History
     const history = await DB.getHistory(sessionId);
     
-    // 4. Search
+    // 3. Search
     let context = "";
     if (shouldSearch(message)) {
       res.write("STATUS|SEARCHING\n");
@@ -158,24 +188,26 @@ export default async function handler(req, res) {
     }
     res.write("STATUS|TYPING\n");
 
-    // 5. Build Prompt
+    // 4. Prompt Construction
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
       ...history.map(m => ({ role: m.role === 'ai' ? 'assistant' : m.role, content: m.content })),
       { role: "user", content: message + context }
     ];
 
-    // 6. Stream Response
+    // 5. Stream
     let fullReply = "";
     await streamSarvamChat({
       messages,
       onChunk: (text) => {
         fullReply += text;
-        res.write(`CHUNK|${text.replace(/\n/g, "\\n")}\n`);
+        const safeText = text.replace(/\n/g, "\\n");
+        res.write(`CHUNK|${safeText}\n`);
       }
     });
 
-    // 7. Save Memory (Securely)
+    // 6. Save (Async)
+    // We save the response to Redis so the NEXT request sees it.
     await DB.addToHistory(sessionId, 'user', message);
     await DB.addToHistory(sessionId, 'assistant', fullReply);
 
