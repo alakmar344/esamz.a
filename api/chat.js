@@ -187,8 +187,7 @@ export default async function handler(req, res) {
 
     // 3. SEARCH (Auto-trigger)
     let context = "";
-    const needsSearch = (message.includes("who is") || message.includes("latest") || message.includes("price of")  || message.includes("search the web")|| message.includes("news"));
-    
+   const needsSearch = (message.includes("who is") || message.includes("who are") || message.includes("what is") || message.includes("where is") || message.includes("when is") || message.includes("how much") || message.includes("latest") || message.includes("news") || message.includes("recent") || message.includes("update") || message.includes("today") || message.includes("trends") || message.includes("price of") || message.includes("stock") || message.includes("cost of") || message.includes("value of") || message.includes("weather") || message.includes("forecast") || message.includes("temperature") || message.includes("score") || message.includes("results") || message.includes("winner") || message.includes("standings") || message.includes("search") || message.includes("find") || message.includes("google") || message.includes("look up") || message.includes("schedule") || message.includes("release date") || message.includes("current") || message.includes("population") || message.includes("vs") || message.includes("compare") || message.includes("best") || message.includes("top 10"));
     if (needsSearch) {
       res.write("STATUS|SEARCHING\n");
       const searchRes = await googleSearch(message);
