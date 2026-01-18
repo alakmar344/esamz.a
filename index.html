@@ -1230,16 +1230,76 @@
         <div class="sidebar-header">
             <div class="brand">
                 <div class="logo">
-                    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                        <defs>
-                            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" style="stop-color:#d1d5db;stop-opacity:1" />
-                                <stop offset="100%" style="stop-color:#9ca3af;stop-opacity:1" />
-                            </linearGradient>
-                        </defs>
-                        <ellipse cx="85" cy="90" rx="45" ry="60" fill="url(#grad1)" opacity="0.8"/>
-                        <ellipse cx="115" cy="110" rx="45" ry="60" fill="url(#grad1)" opacity="0.6"/>
-                    </svg>
+                    <?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="900" viewBox="0 0 800 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- Background -->
+  <rect width="800" height="900" rx="40" fill="#0B1020"/>
+
+  <!-- Shield Outline -->
+  <path d="M200 140 Q400 40 600 140 V520 Q400 720 200 520 Z"
+        stroke="url(#shieldGradient)"
+        stroke-width="10"
+        fill="none"/>
+
+  <!-- Left Lock -->
+  <rect x="300" y="300" width="200" height="180" rx="24" fill="url(#lockGradient)"/>
+  <path d="M330 300 V260 Q400 210 470 260 V300"
+        stroke="#5FE3FF" stroke-width="12" fill="none"/>
+  <circle cx="400" cy="390" r="14" fill="#0B1020"/>
+  <rect x="392" y="390" width="16" height="50" rx="8" fill="#0B1020"/>
+
+  <!-- Lightning Bolt -->
+  <path d="M430 200 L360 420 H430 L370 650 L520 380 H440 L500 200 Z"
+        fill="url(#boltGradient)"/>
+
+  <!-- Circuit Lines Right -->
+  <path d="M470 260 H600" stroke="#5CFFB1" stroke-width="6"/>
+  <path d="M470 310 H620" stroke="#5CFFB1" stroke-width="6"/>
+  <path d="M470 360 H590" stroke="#5CFFB1" stroke-width="6"/>
+  <path d="M470 410 H620" stroke="#5CFFB1" stroke-width="6"/>
+  <path d="M470 460 H590" stroke="#5CFFB1" stroke-width="6"/>
+
+  <circle cx="620" cy="310" r="6" fill="#5CFFB1"/>
+  <circle cx="590" cy="360" r="6" fill="#5CFFB1"/>
+  <circle cx="620" cy="410" r="6" fill="#5CFFB1"/>
+  <circle cx="590" cy="460" r="6" fill="#5CFFB1"/>
+
+  <!-- Brand Text -->
+  <text x="400" y="820"
+        font-size="72"
+        font-family="Segoe UI, Arial, sans-serif"
+        fill="url(#textGradient)"
+        text-anchor="middle"
+        font-weight="600">
+    eSAMz AI
+  </text>
+
+  <!-- Gradients -->
+  <defs>
+    <linearGradient id="shieldGradient" x1="200" y1="140" x2="600" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#41DFFF"/>
+      <stop offset="1" stop-color="#5CFFB1"/>
+    </linearGradient>
+
+    <linearGradient id="lockGradient" x1="300" y1="300" x2="500" y2="480">
+      <stop stop-color="#2FA4FF"/>
+      <stop offset="1" stop-color="#00FFD5"/>
+    </linearGradient>
+
+    <linearGradient id="boltGradient" x1="360" y1="200" x2="520" y2="650">
+      <stop stop-color="#7CFF00"/>
+      <stop offset="1" stop-color="#00E0FF"/>
+    </linearGradient>
+
+    <linearGradient id="textGradient" x1="300" y1="780" x2="500" y2="850">
+      <stop stop-color="#41DFFF"/>
+      <stop offset="1" stop-color="#5CFFB1"/>
+    </linearGradient>
+  </defs>
+
+</svg>
+
                 </div>
                 <div class="brand-text">
                     <div class="brand-name">eSAMz AI</div>
@@ -1319,16 +1379,76 @@
         <div class="chat-container" id="chatContainer">
             <div class="welcome" id="welcomeScreen">
                 <div class="welcome-logo">
-                    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                        <defs>
-                            <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" style="stop-color:#d1d5db;stop-opacity:1" />
-                                <stop offset="100%" style="stop-color:#9ca3af;stop-opacity:1" />
-                            </linearGradient>
-                        </defs>
-                        <ellipse cx="85" cy="90" rx="45" ry="60" fill="url(#heroGrad)" opacity="0.8"/>
-                        <ellipse cx="115" cy="110" rx="45" ry="60" fill="url(#heroGrad)" opacity="0.6"/>
-                    </svg>
+                    <?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="900" viewBox="0 0 800 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- Background -->
+  <rect width="800" height="900" rx="40" fill="#0B1020"/>
+
+  <!-- Shield Outline -->
+  <path d="M200 140 Q400 40 600 140 V520 Q400 720 200 520 Z"
+        stroke="url(#shieldGradient)"
+        stroke-width="10"
+        fill="none"/>
+
+  <!-- Left Lock -->
+  <rect x="300" y="300" width="200" height="180" rx="24" fill="url(#lockGradient)"/>
+  <path d="M330 300 V260 Q400 210 470 260 V300"
+        stroke="#5FE3FF" stroke-width="12" fill="none"/>
+  <circle cx="400" cy="390" r="14" fill="#0B1020"/>
+  <rect x="392" y="390" width="16" height="50" rx="8" fill="#0B1020"/>
+
+  <!-- Lightning Bolt -->
+  <path d="M430 200 L360 420 H430 L370 650 L520 380 H440 L500 200 Z"
+        fill="url(#boltGradient)"/>
+
+  <!-- Circuit Lines Right -->
+  <path d="M470 260 H600" stroke="#5CFFB1" stroke-width="6"/>
+  <path d="M470 310 H620" stroke="#5CFFB1" stroke-width="6"/>
+  <path d="M470 360 H590" stroke="#5CFFB1" stroke-width="6"/>
+  <path d="M470 410 H620" stroke="#5CFFB1" stroke-width="6"/>
+  <path d="M470 460 H590" stroke="#5CFFB1" stroke-width="6"/>
+
+  <circle cx="620" cy="310" r="6" fill="#5CFFB1"/>
+  <circle cx="590" cy="360" r="6" fill="#5CFFB1"/>
+  <circle cx="620" cy="410" r="6" fill="#5CFFB1"/>
+  <circle cx="590" cy="460" r="6" fill="#5CFFB1"/>
+
+  <!-- Brand Text -->
+  <text x="400" y="820"
+        font-size="72"
+        font-family="Segoe UI, Arial, sans-serif"
+        fill="url(#textGradient)"
+        text-anchor="middle"
+        font-weight="600">
+    eSAMz AI
+  </text>
+
+  <!-- Gradients -->
+  <defs>
+    <linearGradient id="shieldGradient" x1="200" y1="140" x2="600" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#41DFFF"/>
+      <stop offset="1" stop-color="#5CFFB1"/>
+    </linearGradient>
+
+    <linearGradient id="lockGradient" x1="300" y1="300" x2="500" y2="480">
+      <stop stop-color="#2FA4FF"/>
+      <stop offset="1" stop-color="#00FFD5"/>
+    </linearGradient>
+
+    <linearGradient id="boltGradient" x1="360" y1="200" x2="520" y2="650">
+      <stop stop-color="#7CFF00"/>
+      <stop offset="1" stop-color="#00E0FF"/>
+    </linearGradient>
+
+    <linearGradient id="textGradient" x1="300" y1="780" x2="500" y2="850">
+      <stop stop-color="#41DFFF"/>
+      <stop offset="1" stop-color="#5CFFB1"/>
+    </linearGradient>
+  </defs>
+
+</svg>
+
                 </div>
                 <h1>Hello, Architect</h1>
                 <p>What do you want to build today?</p>
