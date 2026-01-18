@@ -187,7 +187,7 @@ export default async function handler(req, res) {
 
     // 3. SEARCH (Auto-trigger)
     let context = "";
-    const needsSearch = (message.includes("who is") || message.includes("latest") || message.includes("price of") || message.includes("news"));
+    const needsSearch = (message.includes("who is") || message.includes("latest") || message.includes("price of")  || message.includes("search the web")|| message.includes("news"));
     
     if (needsSearch) {
       res.write("STATUS|SEARCHING\n");
