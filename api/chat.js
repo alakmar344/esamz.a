@@ -82,13 +82,19 @@ async function checkRateLimit(identifier) {
 }
 
 // Helper: Database (Chat History)
+// Helper: Database (Chat History)
 const DB = {
   async getHistory(id) {
     const key = `chat:${id}`;
     try {
         const raw = await redis.lrange(key, 0, -1);
         return raw.map(item => {
-            try { return JSON.parse(item); } catch(e) { return null; }
+            try { 
+                const entry = JSON.parse(item); 
+                // FIX: Normalize legacy 'assistant' to 'ai' for consistency
+                if (entry.role === 'assistant') entry.role = 'ai';
+                return entry; 
+            } catch(e) { return null; }
         }).filter(x => x);
     } catch(e) { return []; }
   },
@@ -103,7 +109,6 @@ const DB = {
     await pipeline.exec();
   }
 };
-
 /* ================= 4. SEARCH TOOL ================= */
 async function googleSearch(query) {
   if (!process.env.SERPER_API_KEY) return null;
