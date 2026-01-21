@@ -1,5 +1,5 @@
 // api/chat.js
-// eSAMz v13 - OPTIMIZED STREAMING + SMART SEARCH
+// eSAMz v13 - OPTIMIZED STREAMING + SMART SEARCH + BACKEND BUFFER FIX
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -119,7 +119,7 @@ async function googleSearch(query) {
   } catch (e) { return null; }
 }
 
-/* ================= 5. AI ENGINE (BUFFERED) ================= */
+/* ================= 5. AI ENGINE (BUFFERED - FIXED) ================= */
 async function streamSarvamChat({ messages, onChunk }) {
   const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
     method: "POST",
@@ -137,18 +137,35 @@ async function streamSarvamChat({ messages, onChunk }) {
   
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
-  let buffer = ""; // <--- NEW: Buffer to prevent "180 chunks" jitter
   
+  // --- BACKEND BUFFER FIX START ---
+  let incomingBuffer = ""; // Buffer for incoming packets from Sarvam
+  let sendBuffer = "";     // Buffer for outgoing chunks to Client
+  // --- BACKEND BUFFER FIX END ---
+
   while (true) {
     const { done, value } = await reader.read();
     if (done) {
-        if (buffer) onChunk(buffer); // Flush remaining text
+        // Flush any remaining text on close
+        if (sendBuffer) {
+             const safeText = sendBuffer.replace(/\n/g, "\\n");
+             onChunk(safeText);
+             sendBuffer = "";
+        }
         break;
     }
 
-    const chunk = decoder.decode(value, { stream: true });
-    const lines = chunk.split("\n");
+    // --- BACKEND BUFFER FIX START ---
+    // 1. Decode and add to incoming buffer
+    incomingBuffer += decoder.decode(value, { stream: true });
     
+    // 2. Split into lines
+    const lines = incomingBuffer.split("\n");
+    
+    // 3. Keep the last incomplete line in the buffer
+    incomingBuffer = lines.pop();
+    // --- BACKEND BUFFER FIX END ---
+
     for (const line of lines) {
       if (line.startsWith("data: ") && !line.includes("[DONE]")) {
         try {
@@ -156,16 +173,21 @@ async function streamSarvamChat({ messages, onChunk }) {
           const txt = json.choices[0]?.delta?.content || "";
           
           if (txt) {
-            buffer += txt;
+            sendBuffer += txt;
             
             // SMART FLUSH: Only send if we have enough data or a natural pause
-            // This prevents sending 1 byte at a time to the frontend
-            if (buffer.length > 15 || buffer.includes(" ") || buffer.includes("\n") || buffer.includes(".")) {
-                onChunk(buffer);
-                buffer = "";
+            // This prevents sending 1 byte at a time to frontend
+            if (sendBuffer.length > 15 || sendBuffer.includes(" ") || sendBuffer.includes("\n") || sendBuffer.includes(".")) {
+                // Escape newlines for safe transport
+                const safeText = sendBuffer.replace(/\n/g, "\\n");
+                onChunk(safeText);
+                sendBuffer = "";
             }
           }
-        } catch (e) {}
+        } catch (e) {
+            // If JSON is broken (rare due to buffer, but possible), skip line silently
+            // console.error("JSON Parse error in stream:", e);
+        }
       }
     }
   }
@@ -205,7 +227,7 @@ export default async function handler(req, res) {
     let context = "";
     const lowerMsg = message.toLowerCase();
     
-    // Logic: Do not search if the user is asking about the project itself ("esamz", "alakmar")
+    // Logic: Do not search if user is asking about project itself ("esamz", "alakmar")
     // This stops Google from returning irrelevant global news.
     const isInternalQuery = lowerMsg.includes("esamz") || lowerMsg.includes("alakmar");
     
@@ -234,9 +256,8 @@ export default async function handler(req, res) {
       messages,
       onChunk: (text) => {
         fullReply += text;
-        // Escape newlines for safe transport over custom chunk protocol
-        const safeText = text.replace(/\n/g, "\\n");
-        res.write(`CHUNK|${safeText}\n`);
+        // The smart flush logic handles escaping, so we just write the chunk with the protocol
+        res.write(`CHUNK|${text}\n`);
       }
     });
 
