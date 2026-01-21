@@ -1,5 +1,5 @@
 // api/chat.js
-// eSAMz v13 - OPTIMIZED STREAMING + SMART SEARCH + ROBUST BUFFER FIX
+// eSAMz v13 - OPTIMIZED STREAMING + SMART SEARCH + ROBUST BUFFER FIX + WIKI GROUNDING
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -7,9 +7,9 @@ import { Redis } from "@upstash/redis";
 /* ================= 1. CONFIGURATION ================= */
 const redis = Redis.fromEnv();
 const CONSTANTS = {
-  SARVAM_MODEL: "sarvam-m", 
-  MAX_TOKENS: 4096, 
-  THREAD_LENGTH: 20, 
+  SARVAM_MODEL: "sarvam-m", // Ensure this model supports wiki_grounding
+  MAX_TOKENS: 4096,
+  THREAD_LENGTH: 20,
   SESSION_TTL: 1800, // 30 Minutes
   RATE_LIMIT: 10,    // 10 messages per minute
   RATE_TTL: 60       
@@ -35,15 +35,13 @@ INTELLIGENCE RULES
    Never guess intent.
    Never hallucinate meaning.
 
-2. If user's message is short (1–3 words), assume ambiguity and ask what they mean.
+2. If user asks a factual question, answer directly and clearly.
 
-3. If user asks a factual question, answer directly and clearly.
+3. If user asks for an explanation, explain in simple words.
 
-4. If user asks for an explanation, explain in simple words.
+4. If user asks for creative writing, write properly with structure.
 
-5. If user asks for creative writing, write properly with structure.
-
-6. Stay on topic. Do not drift.
+5. Stay on topic. Do not drift.
 
 STRICTLY FORBIDDEN PHRASES
 - "How can I assist you"
@@ -82,7 +80,6 @@ async function checkRateLimit(identifier) {
 }
 
 // Helper: Database (Chat History)
-// Helper: Database (Chat History)
 const DB = {
   async getHistory(id) {
     const key = `chat:${id}`;
@@ -109,6 +106,7 @@ const DB = {
     await pipeline.exec();
   }
 };
+
 /* ================= 4. SEARCH TOOL ================= */
 async function googleSearch(query) {
   if (!process.env.SERPER_API_KEY) return null;
@@ -124,17 +122,21 @@ async function googleSearch(query) {
   } catch (e) { return null; }
 }
 
-/* ================= 5. AI ENGINE (ROBUST BUFFERED - FINAL FIX) ================= */
-async function streamSarvamChat({ messages, onChunk }) {
+/* ================= 5. AI ENGINE (WIKI GROUNDING ENABLED) ================= */
+async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
   const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
     method: "POST",
-    headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
+    headers: { 
+      Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, 
+      "Content-Type": "application/json" 
+    },
     body: JSON.stringify({ 
       model: CONSTANTS.SARVAM_MODEL, 
       messages, 
-      temperature: 0.7, 
+      temperature: wikiGrounding ? 0.2 : 0.7, // Lower temp for grounded factual answers
       max_tokens: CONSTANTS.MAX_TOKENS, 
-      stream: true 
+      stream: true,
+      wiki_grounding: wikiGrounding // Enable wiki grounding if requested
     })
   });
   
@@ -200,9 +202,6 @@ async function streamSarvamChat({ messages, onChunk }) {
             sendBuffer += txt;
             
             // SIMPLIFIED FLUSH: Send chunks as they arrive to ensure integrity
-            // We remove the "smart flush" logic that was splitting words.
-            // Instead, we just send immediately or buffer slightly for performance.
-            // Sending immediately ensures no data is ever lost.
             const safeText = sendBuffer.replace(/\n/g, "\\n");
             onChunk(safeText);
             sendBuffer = "";
@@ -245,7 +244,7 @@ export default async function handler(req, res) {
     // 2. HISTORY
     const history = await DB.getHistory(sessionId);
 
-    // 3. SMART SEARCH (Fixed Hallucination)
+    // 3. SMART SEARCH + WIKI GROUNDING LOGIC
     let context = "";
     const lowerMsg = message.toLowerCase();
     
@@ -253,11 +252,14 @@ export default async function handler(req, res) {
     // This stops Google from returning irrelevant global news.
     const isInternalQuery = lowerMsg.includes("esamz") || lowerMsg.includes("alakmar");
     
+    // Trigger condition for Search and Grounding
     const needsSearch = (
         !isInternalQuery && // <--- Block search for internal topics
         (lowerMsg.includes("who is") || lowerMsg.includes("who are") || lowerMsg.includes("what is") || lowerMsg.includes("where is") || lowerMsg.includes("when is") || lowerMsg.includes("how much") || lowerMsg.includes("latest") || lowerMsg.includes("news") || lowerMsg.includes("recent") || lowerMsg.includes("update") || lowerMsg.includes("today") || lowerMsg.includes("trends") || lowerMsg.includes("price") || lowerMsg.includes("stock") || lowerMsg.includes("cost") || lowerMsg.includes("weather") || lowerMsg.includes("score") || lowerMsg.includes("winner") || lowerMsg.includes("google") || lowerMsg.includes("schedule") || lowerMsg.includes("release date") || lowerMsg.includes("current"))
     );
 
+    // Optional: Keep Serper for real-time web results (Google), 
+    // while Wiki Grounding handles general knowledge.
     if (needsSearch) {
       res.write("STATUS|SEARCHING\n");
       const searchRes = await googleSearch(message);
@@ -274,8 +276,12 @@ export default async function handler(req, res) {
     ];
 
     let fullReply = "";
+    
+    // Pass 'needsSearch' as 'wikiGrounding' trigger
+    // If the query triggered search, we also enable wiki_grounding on Sarvam side for better accuracy.
     await streamSarvamChat({
       messages,
+      wikiGrounding: needsSearch, // <--- Enabled Wiki Grounding here
       onChunk: (text) => {
         fullReply += text;
         // Protocol: CHUNK|text\n
