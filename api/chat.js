@@ -1,5 +1,5 @@
 // api/chat.js
-// eSAMz v13 - RESTORED PERSONALITY + STRICT LIMITS
+// eSAMz v13 - OPTIMIZED STREAMING + SMART SEARCH
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -9,13 +9,13 @@ const redis = Redis.fromEnv();
 const CONSTANTS = {
   SARVAM_MODEL: "sarvam-m", 
   MAX_TOKENS: 4096, 
-  THREAD_LENGTH: 20, // Keep memory short & fast
-  SESSION_TTL: 1800, // 30 Minutes (Matches Privacy Policy)
-  RATE_LIMIT: 10,    // <--- STRICT 10 MESSAGES PER MINUTE
-  RATE_TTL: 60       // Reset limit every 60s
+  THREAD_LENGTH: 20, 
+  SESSION_TTL: 1800, // 30 Minutes
+  RATE_LIMIT: 10,    // 10 messages per minute
+  RATE_TTL: 60       
 };
 
-/* ================= 2. RESTORED SYSTEM PROMPT ================= */
+/* ================= 2. SYSTEM PROMPT (UNTOUCHED) ================= */
 const SYSTEM_PROMPT = `
 You are eSAMz v11, created by Alakmar Teenwala.
 
@@ -66,7 +66,7 @@ STYLE
 
 /* ================= 3. UTILITIES ================= */
 
-// Helper: Get User ID (Session or IP)
+// Helper: Get User ID
 function getUserIdentifier(req, body) {
   if (body.sessionId) return `session:${body.sessionId}`;
   const ip = req.headers["x-forwarded-for"]?.split(",")[0] || "unknown_ip";
@@ -119,7 +119,7 @@ async function googleSearch(query) {
   } catch (e) { return null; }
 }
 
-/* ================= 5. AI ENGINE ================= */
+/* ================= 5. AI ENGINE (BUFFERED) ================= */
 async function streamSarvamChat({ messages, onChunk }) {
   const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
     method: "POST",
@@ -137,18 +137,34 @@ async function streamSarvamChat({ messages, onChunk }) {
   
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
+  let buffer = ""; // <--- NEW: Buffer to prevent "180 chunks" jitter
   
   while (true) {
     const { done, value } = await reader.read();
-    if (done) break;
-    const chunk = decoder.decode(value);
+    if (done) {
+        if (buffer) onChunk(buffer); // Flush remaining text
+        break;
+    }
+
+    const chunk = decoder.decode(value, { stream: true });
     const lines = chunk.split("\n");
+    
     for (const line of lines) {
       if (line.startsWith("data: ") && !line.includes("[DONE]")) {
         try {
           const json = JSON.parse(line.slice(6));
           const txt = json.choices[0]?.delta?.content || "";
-          if (txt) onChunk(txt);
+          
+          if (txt) {
+            buffer += txt;
+            
+            // SMART FLUSH: Only send if we have enough data or a natural pause
+            // This prevents sending 1 byte at a time to the frontend
+            if (buffer.length > 15 || buffer.includes(" ") || buffer.includes("\n") || buffer.includes(".")) {
+                onChunk(buffer);
+                buffer = "";
+            }
+          }
         } catch (e) {}
       }
     }
@@ -173,7 +189,7 @@ export default async function handler(req, res) {
     const message = rawBody.message || "";
     const sessionId = rawBody.sessionId || crypto.randomBytes(12).toString("hex");
 
-    // 1. SECURITY: Check Strict Rate Limit (10 per min)
+    // 1. SECURITY: Rate Limit
     const userKey = getUserIdentifier(req, rawBody);
     const isAllowed = await checkRateLimit(userKey);
     
@@ -185,9 +201,19 @@ export default async function handler(req, res) {
     // 2. HISTORY
     const history = await DB.getHistory(sessionId);
 
-    // 3. SEARCH (Auto-trigger)
+    // 3. SMART SEARCH (Fixed Hallucination)
     let context = "";
-   const needsSearch = (message.includes("who is") || message.includes("who are") || message.includes("what is") || message.includes("where is") || message.includes("when is") || message.includes("how much") || message.includes("latest") || message.includes("news") || message.includes("recent") || message.includes("update") || message.includes("today") || message.includes("trends") || message.includes("price of") || message.includes("stock") || message.includes("cost of") || message.includes("value of") || message.includes("weather") || message.includes("forecast") || message.includes("temperature") || message.includes("score") || message.includes("results") || message.includes("winner") || message.includes("standings") || message.includes("search") || message.includes("find") || message.includes("google") || message.includes("look up") || message.includes("schedule") || message.includes("release date") || message.includes("current") || message.includes("population") || message.includes("vs") || message.includes("compare") || message.includes("best") || message.includes("top 10"));
+    const lowerMsg = message.toLowerCase();
+    
+    // Logic: Do not search if the user is asking about the project itself ("esamz", "alakmar")
+    // This stops Google from returning irrelevant global news.
+    const isInternalQuery = lowerMsg.includes("esamz") || lowerMsg.includes("alakmar");
+    
+    const needsSearch = (
+        !isInternalQuery && // <--- Block search for internal topics
+        (lowerMsg.includes("who is") || lowerMsg.includes("who are") || lowerMsg.includes("what is") || lowerMsg.includes("where is") || lowerMsg.includes("when is") || lowerMsg.includes("how much") || lowerMsg.includes("latest") || lowerMsg.includes("news") || lowerMsg.includes("recent") || lowerMsg.includes("update") || lowerMsg.includes("today") || lowerMsg.includes("trends") || lowerMsg.includes("price") || lowerMsg.includes("stock") || lowerMsg.includes("cost") || lowerMsg.includes("weather") || lowerMsg.includes("score") || lowerMsg.includes("winner") || lowerMsg.includes("google") || lowerMsg.includes("schedule") || lowerMsg.includes("release date") || lowerMsg.includes("current"))
+    );
+
     if (needsSearch) {
       res.write("STATUS|SEARCHING\n");
       const searchRes = await googleSearch(message);
@@ -208,6 +234,7 @@ export default async function handler(req, res) {
       messages,
       onChunk: (text) => {
         fullReply += text;
+        // Escape newlines for safe transport over custom chunk protocol
         const safeText = text.replace(/\n/g, "\\n");
         res.write(`CHUNK|${safeText}\n`);
       }
