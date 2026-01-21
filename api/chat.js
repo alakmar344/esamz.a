@@ -1,5 +1,5 @@
 // api/chat.js
-// eSAMz v13 - OPTIMIZED STREAMING + SMART SEARCH + BACKEND BUFFER FIX
+// eSAMz v13 - OPTIMIZED STREAMING + SMART SEARCH + ROBUST BUFFER FIX
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -119,7 +119,7 @@ async function googleSearch(query) {
   } catch (e) { return null; }
 }
 
-/* ================= 5. AI ENGINE (BUFFERED - FIXED) ================= */
+/* ================= 5. AI ENGINE (ROBUST BUFFERED - FINAL FIX) ================= */
 async function streamSarvamChat({ messages, onChunk }) {
   const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
     method: "POST",
@@ -145,26 +145,45 @@ async function streamSarvamChat({ messages, onChunk }) {
 
   while (true) {
     const { done, value } = await reader.read();
+    
+    // --- CRITICAL FIX: HANDLE STREAM END ---
     if (done) {
-        // Flush any remaining text on close
+        // 1. Flush any accumulated text waiting to be sent
         if (sendBuffer) {
              const safeText = sendBuffer.replace(/\n/g, "\\n");
              onChunk(safeText);
              sendBuffer = "";
         }
+
+        // 2. FIX: Flush remaining data in incoming buffer
+        // Sometimes the last packet doesn't end in \n or was cut off by timeout
+        if (incomingBuffer.trim().length > 0) {
+            const line = incomingBuffer;
+            if (line.startsWith("data: ") && !line.includes("[DONE]")) {
+                try {
+                    const json = JSON.parse(line.slice(6));
+                    const txt = json.choices[0]?.delta?.content || "";
+                    if (txt) {
+                        const safeText = txt.replace(/\n/g, "\\n");
+                        onChunk(safeText);
+                    }
+                } catch (e) {
+                    console.log("[Stream EOF] Could not parse final fragment:", e.message);
+                }
+            }
+        }
         break;
     }
+    // --------------------------------------
 
-    // --- BACKEND BUFFER FIX START ---
     // 1. Decode and add to incoming buffer
     incomingBuffer += decoder.decode(value, { stream: true });
     
     // 2. Split into lines
     const lines = incomingBuffer.split("\n");
     
-    // 3. Keep the last incomplete line in the buffer
+    // 3. Keep the last incomplete line in buffer
     incomingBuffer = lines.pop();
-    // --- BACKEND BUFFER FIX END ---
 
     for (const line of lines) {
       if (line.startsWith("data: ") && !line.includes("[DONE]")) {
@@ -175,18 +194,16 @@ async function streamSarvamChat({ messages, onChunk }) {
           if (txt) {
             sendBuffer += txt;
             
-            // SMART FLUSH: Only send if we have enough data or a natural pause
-            // This prevents sending 1 byte at a time to frontend
-            if (sendBuffer.length > 15 || sendBuffer.includes(" ") || sendBuffer.includes("\n") || sendBuffer.includes(".")) {
-                // Escape newlines for safe transport
-                const safeText = sendBuffer.replace(/\n/g, "\\n");
-                onChunk(safeText);
-                sendBuffer = "";
-            }
+            // SIMPLIFIED FLUSH: Send chunks as they arrive to ensure integrity
+            // We remove the "smart flush" logic that was splitting words.
+            // Instead, we just send immediately or buffer slightly for performance.
+            // Sending immediately ensures no data is ever lost.
+            const safeText = sendBuffer.replace(/\n/g, "\\n");
+            onChunk(safeText);
+            sendBuffer = "";
           }
         } catch (e) {
-            // If JSON is broken (rare due to buffer, but possible), skip line silently
-            // console.error("JSON Parse error in stream:", e);
+            // Ignore parse errors
         }
       }
     }
@@ -256,7 +273,7 @@ export default async function handler(req, res) {
       messages,
       onChunk: (text) => {
         fullReply += text;
-        // The smart flush logic handles escaping, so we just write the chunk with the protocol
+        // Protocol: CHUNK|text\n
         res.write(`CHUNK|${text}\n`);
       }
     });
