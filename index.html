@@ -2082,12 +2082,23 @@ class App {
             let fullText = "";
             let searching = false;
 
+            // BUFFER FIX: Initialize buffer before the read loop
+            let buffer = "";
+
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
                 const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n');
+                
+                // BUFFER FIX: Append chunk to buffer
+                buffer += chunk;
+                
+                // BUFFER FIX: Split buffer by newlines
+                const lines = buffer.split('\n');
+                
+                // BUFFER FIX: Pop the last incomplete line back into buffer
+                buffer = lines.pop();
 
                 for (const line of lines) {
                     if (!line) continue;
@@ -2313,12 +2324,23 @@ fullText += content;
                 let fullText = "";
                 let searching = false;
 
+                // BUFFER FIX: Initialize buffer before the read loop
+                let buffer = "";
+
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
 
                     const chunk = decoder.decode(value, { stream: true });
-                    const lines = chunk.split('\n');
+
+                    // BUFFER FIX: Append chunk to buffer
+                    buffer += chunk;
+
+                    // BUFFER FIX: Split buffer by newlines
+                    const lines = buffer.split('\n');
+
+                    // BUFFER FIX: Pop the last incomplete line back into buffer
+                    buffer = lines.pop();
 
                     for (const line of lines) {
                         if (!line) continue;
