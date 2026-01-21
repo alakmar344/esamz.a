@@ -11,7 +11,6 @@
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-
   gtag('config', 'G-WRJ3NWVP5B');
 </script> 
 
@@ -2082,23 +2081,24 @@ class App {
             let fullText = "";
             let searching = false;
 
-            // BUFFER FIX: Initialize buffer before the read loop
+            // --- FRONTEND BUFFER FIX START ---
             let buffer = "";
+            // --- FRONTEND BUFFER FIX END ---
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                const chunk = decoder.decode(value, { stream: true });
+                // --- FRONTEND BUFFER FIX ---
+                // 1. Append chunk to buffer
+                buffer += decoder.decode(value, { stream: true });
                 
-                // BUFFER FIX: Append chunk to buffer
-                buffer += chunk;
-                
-                // BUFFER FIX: Split buffer by newlines
+                // 2. Split buffer by newlines
                 const lines = buffer.split('\n');
                 
-                // BUFFER FIX: Pop the last incomplete line back into buffer
-                buffer = lines.pop();
+                // 3. Pop the last incomplete line back into buffer
+                buffer = lines.pop() || ""; // Safety: handle empty buffer
+                // --- FRONTEND BUFFER FIX END ---
 
                 for (const line of lines) {
                     if (!line) continue;
@@ -2324,23 +2324,19 @@ fullText += content;
                 let fullText = "";
                 let searching = false;
 
-                // BUFFER FIX: Initialize buffer before the read loop
+                // --- FRONTEND BUFFER FIX START ---
                 let buffer = "";
+                // --- FRONTEND BUFFER FIX END ---
 
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
 
-                    const chunk = decoder.decode(value, { stream: true });
-
-                    // BUFFER FIX: Append chunk to buffer
-                    buffer += chunk;
-
-                    // BUFFER FIX: Split buffer by newlines
+                    // --- FRONTEND BUFFER FIX ---
+                    buffer += decoder.decode(value, { stream: true });
                     const lines = buffer.split('\n');
-
-                    // BUFFER FIX: Pop the last incomplete line back into buffer
-                    buffer = lines.pop();
+                    buffer = lines.pop() || ""; // Safety: handle undefined
+                    // --- FRONTEND BUFFER FIX END ---
 
                     for (const line of lines) {
                         if (!line) continue;
