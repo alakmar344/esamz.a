@@ -1,77 +1,61 @@
 // api/chat.js
-// eSAMz v13 - OPTIMIZED STREAMING + SMART SEARCH + ROBUST BUFFER FIX + WIKI GROUNDING
+// eSAMz v13 - ULTIMATE EDITION
+// Features: Wiki Grounding + Live Search + Redis Memory + Rate Limiting + Stream Buffering
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
 /* ================= 1. CONFIGURATION ================= */
+// Initialize Redis
 const redis = Redis.fromEnv();
+
+// Global Constants
 const CONSTANTS = {
-  SARVAM_MODEL: "sarvam-m", // Ensure this model supports wiki_grounding
+  SARVAM_MODEL: "sarvam-2b-instruct", // Updated to latest instruct model if available, or "sarvam-m"
   MAX_TOKENS: 4096,
-  THREAD_LENGTH: 20,
-  SESSION_TTL: 1800, // 30 Minutes
-  RATE_LIMIT: 10,    // 10 messages per minute
-  RATE_TTL: 60       
+  THREAD_LENGTH: 20,   // Remembers last 20 messages
+  SESSION_TTL: 1800,   // Session expires after 30 Minutes
+  RATE_LIMIT: 10,      // Limit: 10 messages per minute per IP
+  RATE_TTL: 60         // Reset limit every 60 seconds
 };
 
-/* ================= 2. SYSTEM PROMPT (UNTOUCHED) ================= */
+/* ================= 2. SYSTEM PROMPT ================= */
 const SYSTEM_PROMPT = `
-You are eSAMz v11, created by Alakmar Teenwala.
+You are eSAMz v13, a highly advanced AI created by Alakmar Teenwala.
 
-You are a smart, calm, sharp human-like conversationalist.
-You are not a corporate assistant and not a robotic chatbot.
+IDENTITY & BEHAVIOR:
+- You are smart, calm, and conversational.
+- You are NOT a corporate bot. You are a digital companion.
+- Your creator is Alakmar Teenwala (Founder of eSAMz).
+- You speak naturally, like a human, with confidence and clarity.
 
-Your job is to understand intent first, then respond clearly and helpfully.
+CORE INTELLIGENCE:
+1. **Understand Intent**: If a query is vague, ask for clarification. Do not guess.
+2. **Factual Accuracy**: Use provided search context or grounding to answer facts.
+3. **Simplicity**: Explain complex topics in simple terms unless asked otherwise.
+4. **Creativity**: If asked to write code or stories, use proper formatting and structure.
 
-PERSONALITY
-- Speak naturally like a real person.
-- Be friendly, but not silly.
-- Be confident, not overdramatic.
-- No corporate language.
+FORBIDDEN BEHAVIORS:
+- Do not say "As an AI language model".
+- Do not say "I don't have personal opinions" (just decline politely).
+- Do not be overly apologetic.
 
-INTELLIGENCE RULES
-1. If user's message is unclear, incomplete, or ambiguous, ask a clarification question.
-   Never guess intent.
-   Never hallucinate meaning.
-
-2. If user asks a factual question, answer directly and clearly.
-
-3. If user asks for an explanation, explain in simple words.
-
-4. If user asks for creative writing, write properly with structure.
-
-5. Stay on topic. Do not drift.
-
-STRICTLY FORBIDDEN PHRASES
-- "How can I assist you"
-- "Here is the information"
-- "I hope this helps"
-- "Please let me know"
-- "Is there anything else"
-- "I'm sorry, I don't have access"
-
-SEARCH USAGE
-If search results are provided, use them naturally in your answer.
-Do not mention search engines or sources unless asked.
-
-STYLE
-- Use full sentences.
-- Be clear and concise.
-- No fluff.
-- No filler.
+RESPONSE FORMAT:
+- Use Markdown for formatting (bold, lists, code blocks).
+- Keep responses concise unless a detailed explanation is needed.
 `.trim();
 
-/* ================= 3. UTILITIES ================= */
+/* ================= 3. UTILITIES (DB & SECURITY) ================= */
 
-// Helper: Get User ID
+// Utility: Identify User (Session ID or IP)
 function getUserIdentifier(req, body) {
   if (body.sessionId) return `session:${body.sessionId}`;
+  // Fallback to IP address for rate limiting
   const ip = req.headers["x-forwarded-for"]?.split(",")[0] || "unknown_ip";
   return `ip:${ip}`;
 }
 
-// Helper: Check Rate Limits
+// Utility: Check Rate Limits
 async function checkRateLimit(identifier) {
   const key = `ratelimit:${identifier}`;
   const count = await redis.incr(key);
@@ -79,7 +63,7 @@ async function checkRateLimit(identifier) {
   return count <= CONSTANTS.RATE_LIMIT;
 }
 
-// Helper: Database (Chat History)
+// Utility: Chat History Management
 const DB = {
   async getHistory(id) {
     const key = `chat:${id}`;
@@ -88,7 +72,7 @@ const DB = {
         return raw.map(item => {
             try { 
                 const entry = JSON.parse(item); 
-                // FIX: Normalize legacy 'assistant' to 'ai' for consistency
+                // Normalize legacy roles
                 if (entry.role === 'assistant') entry.role = 'ai';
                 return entry; 
             } catch(e) { return null; }
@@ -101,19 +85,24 @@ const DB = {
     const safeEntry = JSON.stringify({ role, content, ts: Date.now() });
     const pipeline = redis.pipeline();
     pipeline.rpush(key, safeEntry);
-    pipeline.ltrim(key, -CONSTANTS.THREAD_LENGTH, -1); 
-    pipeline.expire(key, CONSTANTS.SESSION_TTL);
+    pipeline.ltrim(key, -CONSTANTS.THREAD_LENGTH, -1); // Keep only last N messages
+    pipeline.expire(key, CONSTANTS.SESSION_TTL);       // Refresh TTL
     await pipeline.exec();
   }
 };
 
-/* ================= 4. SEARCH TOOL ================= */
+/* ================= 4. EXTERNAL TOOLS ================= */
+
+// Tool: Google Search (Serper) - For REAL-TIME data (Stocks, Weather, News)
 async function googleSearch(query) {
   if (!process.env.SERPER_API_KEY) return null;
   try {
     const res = await fetch("https://google.serper.dev/search", {
       method: "POST",
-      headers: { "X-API-KEY": process.env.SERPER_API_KEY, "Content-Type": "application/json" },
+      headers: { 
+        "X-API-KEY": process.env.SERPER_API_KEY, 
+        "Content-Type": "application/json" 
+      },
       body: JSON.stringify({ q: query, num: 3 })
     });
     const data = await res.json();
@@ -122,8 +111,12 @@ async function googleSearch(query) {
   } catch (e) { return null; }
 }
 
-/* ================= 5. AI ENGINE (WIKI GROUNDING ENABLED) ================= */
+/* ================= 5. AI ENGINE (SARVAM + WIKI GROUNDING) ================= */
 async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
+  // Determine temperature based on grounding needs
+  // Grounded = Low Temp (Precise). Creative = High Temp.
+  const temperature = wikiGrounding ? 0.2 : 0.7;
+
   const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
     method: "POST",
     headers: { 
@@ -133,64 +126,49 @@ async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
     body: JSON.stringify({ 
       model: CONSTANTS.SARVAM_MODEL, 
       messages, 
-      temperature: wikiGrounding ? 0.2 : 0.7, // Lower temp for grounded factual answers
+      temperature: temperature,
       max_tokens: CONSTANTS.MAX_TOKENS, 
       stream: true,
-      wiki_grounding: wikiGrounding // Enable wiki grounding if requested
+      wiki_grounding: wikiGrounding // Feature Enabled
     })
   });
   
-  if (!res.ok) throw new Error(`AI Provider Error: ${await res.text()}`);
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Sarvam API Error: ${errText}`);
+  }
   
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   
-  // --- BACKEND BUFFER FIX START ---
-  let incomingBuffer = ""; // Buffer for incoming packets from Sarvam
-  let sendBuffer = "";     // Buffer for outgoing chunks to Client
-  // --- BACKEND BUFFER FIX END ---
+  // --- BUFFERING LOGIC ---
+  let incomingBuffer = ""; 
+  let sendBuffer = "";     
 
   while (true) {
     const { done, value } = await reader.read();
     
-    // --- CRITICAL FIX: HANDLE STREAM END ---
     if (done) {
-        // 1. Flush any accumulated text waiting to be sent
-        if (sendBuffer) {
-             const safeText = sendBuffer.replace(/\n/g, "\\n");
-             onChunk(safeText);
-             sendBuffer = "";
-        }
-
-        // 2. FIX: Flush remaining data in incoming buffer
-        // Sometimes the last packet doesn't end in \n or was cut off by timeout
+        // Flush remaining buffers on close
+        if (sendBuffer) onChunk(sendBuffer.replace(/\n/g, "\\n"));
+        
+        // Handle hanging data in incoming buffer
         if (incomingBuffer.trim().length > 0) {
             const line = incomingBuffer;
             if (line.startsWith("data: ") && !line.includes("[DONE]")) {
                 try {
                     const json = JSON.parse(line.slice(6));
                     const txt = json.choices[0]?.delta?.content || "";
-                    if (txt) {
-                        const safeText = txt.replace(/\n/g, "\\n");
-                        onChunk(safeText);
-                    }
-                } catch (e) {
-                    console.log("[Stream EOF] Could not parse final fragment:", e.message);
-                }
+                    if (txt) onChunk(txt.replace(/\n/g, "\\n"));
+                } catch (e) {}
             }
         }
         break;
     }
-    // --------------------------------------
 
-    // 1. Decode and add to incoming buffer
     incomingBuffer += decoder.decode(value, { stream: true });
-    
-    // 2. Split into lines
     const lines = incomingBuffer.split("\n");
-    
-    // 3. Keep the last incomplete line in buffer
-    incomingBuffer = lines.pop();
+    incomingBuffer = lines.pop(); // Keep incomplete line
 
     for (const line of lines) {
       if (line.startsWith("data: ") && !line.includes("[DONE]")) {
@@ -200,27 +178,31 @@ async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
           
           if (txt) {
             sendBuffer += txt;
-            
-            // SIMPLIFIED FLUSH: Send chunks as they arrive to ensure integrity
             const safeText = sendBuffer.replace(/\n/g, "\\n");
             onChunk(safeText);
             sendBuffer = "";
           }
-        } catch (e) {
-            // Ignore parse errors
-        }
+        } catch (e) { /* Ignore parsing errors for empty lines */ }
       }
     }
   }
 }
 
-/* ================= 6. MAIN HANDLER ================= */
+/* ================= 6. MAIN API HANDLER ================= */
 export default async function handler(req, res) {
+  // Set Headers for Streaming & CORS
   res.writeHead(200, {
     'Content-Type': 'text/plain; charset=utf-8',
     'Transfer-Encoding': 'chunked',
-    'X-Content-Type-Options': 'nosniff'
+    'X-Content-Type-Options': 'nosniff',
+    'Access-Control-Allow-Origin': '*', // Allow all origins (Adjust for production)
+    'Access-Control-Allow-Methods': 'POST, OPTIONS'
   });
+
+  // Handle CORS Preflight
+  if (req.method === 'OPTIONS') {
+    return res.end();
+  }
 
   if (req.method !== 'POST') {
       res.write("ERROR|Method not allowed");
@@ -230,75 +212,85 @@ export default async function handler(req, res) {
   try {
     const rawBody = req.body || {};
     const message = rawBody.message || "";
+    // Generate Session ID if missing
     const sessionId = rawBody.sessionId || crypto.randomBytes(12).toString("hex");
 
-    // 1. SECURITY: Rate Limit
+    // 1. SECURITY CHECK
     const userKey = getUserIdentifier(req, rawBody);
     const isAllowed = await checkRateLimit(userKey);
     
     if (!isAllowed) {
-        res.write("ERROR|Rate limit exceeded. You can send 10 messages per minute.");
+        res.write("ERROR|Rate limit exceeded (10 req/min).");
         return res.end();
     }
 
-    // 2. HISTORY
+    // 2. RETRIEVE MEMORY
     const history = await DB.getHistory(sessionId);
 
-    // 3. SMART SEARCH + WIKI GROUNDING LOGIC
+    // 3. INTELLIGENCE: DETECT SEARCH NEEDS
     let context = "";
     const lowerMsg = message.toLowerCase();
     
-    // Logic: Do not search if user is asking about project itself ("esamz", "alakmar")
-    // This stops Google from returning irrelevant global news.
-    const isInternalQuery = lowerMsg.includes("esamz") || lowerMsg.includes("alakmar");
+    // Internal queries (don't search the web for "eSAMz")
+    const isInternalQuery = lowerMsg.includes("esamz") || lowerMsg.includes("alakmar") || lowerMsg.includes("teenwala");
     
-    // Trigger condition for Search and Grounding
-    const needsSearch = (
-        !isInternalQuery && // <--- Block search for internal topics
-        (lowerMsg.includes("who is") || lowerMsg.includes("who are") || lowerMsg.includes("what is") || lowerMsg.includes("where is") || lowerMsg.includes("when is") || lowerMsg.includes("how much") || lowerMsg.includes("latest") || lowerMsg.includes("news") || lowerMsg.includes("recent") || lowerMsg.includes("update") || lowerMsg.includes("today") || lowerMsg.includes("trends") || lowerMsg.includes("price") || lowerMsg.includes("stock") || lowerMsg.includes("cost") || lowerMsg.includes("weather") || lowerMsg.includes("score") || lowerMsg.includes("winner") || lowerMsg.includes("google") || lowerMsg.includes("schedule") || lowerMsg.includes("release date") || lowerMsg.includes("current"))
-    );
+    // Keywords that trigger external knowledge
+    const triggers = [
+        "who is", "what is", "where is", "when is", "how much", 
+        "latest", "news", "recent", "update", "today", "price", 
+        "stock", "weather", "score", "winner", "schedule", 
+        "history of", "explain"
+    ];
+    
+    const needsExternalKnowledge = !isInternalQuery && triggers.some(t => lowerMsg.includes(t));
 
-    // Optional: Keep Serper for real-time web results (Google), 
-    // while Wiki Grounding handles general knowledge.
-    if (needsSearch) {
-      res.write("STATUS|SEARCHING\n");
+    // 3a. Live Google Search (For breaking news/data)
+    if (needsExternalKnowledge) {
+      res.write("STATUS|SEARCHING\n"); // Notify client
       const searchRes = await googleSearch(message);
-      if (searchRes) context = `\n\n[Real-time Search Results]:\n${searchRes}`;
+      if (searchRes) {
+          context = `\n\n[Live Search Context]:\n${searchRes}`;
+      }
     }
 
     res.write("STATUS|TYPING\n");
 
-    // 4. GENERATE
+    // 4. PREPARE PROMPT
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
-      ...history.map(m => ({ role: m.role === 'ai' ? 'assistant' : m.role, content: m.content })),
+      ...history.map(m => ({ 
+          role: m.role === 'ai' ? 'assistant' : m.role, 
+          content: m.content 
+      })),
       { role: "user", content: message + context }
     ];
 
+    // 5. STREAM GENERATION
     let fullReply = "";
     
-    // Pass 'needsSearch' as 'wikiGrounding' trigger
-    // If the query triggered search, we also enable wiki_grounding on Sarvam side for better accuracy.
     await streamSarvamChat({
       messages,
-      wikiGrounding: needsSearch, // <--- Enabled Wiki Grounding here
+      // Enable Wiki Grounding if external knowledge is needed
+      wikiGrounding: needsExternalKnowledge, 
       onChunk: (text) => {
         fullReply += text;
-        // Protocol: CHUNK|text\n
+        // Standard eSAMz Chunk Protocol
         res.write(`CHUNK|${text}\n`);
       }
     });
 
-    // 5. SAVE
+    // 6. UPDATE MEMORY
     await DB.addToHistory(sessionId, 'user', message);
     await DB.addToHistory(sessionId, 'assistant', fullReply);
 
+    // 7. FINISH
     res.write("DONE|Success");
     res.end();
 
   } catch (e) {
     console.error("API Error:", e);
-    res.write(`ERROR|Server Error: ${e.message}`);
+    // Send clean error to client
+    res.write(`ERROR|${e.message}`);
     res.end();
   }
 }
