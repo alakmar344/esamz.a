@@ -11,7 +11,7 @@ const redis = Redis.fromEnv();
 
 // Global Constants
 const CONSTANTS = {
-  SARVAM_MODEL: "sarvam-2b-instruct", // Updated to latest instruct model if available, or "sarvam-m"
+  SARVAM_MODEL: "sarvam-m", // Updated to latest instruct model if available, or "sarvam-m"
   MAX_TOKENS: 4096,
   THREAD_LENGTH: 20,   // Remembers last 20 messages
   SESSION_TTL: 1800,   // Session expires after 30 Minutes
