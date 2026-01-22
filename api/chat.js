@@ -1,7 +1,6 @@
 // api/chat.js
-// eSAMz v13.3 - HYBRID SEARCH + ORIGINAL PERSONA
-// Logic: Wiki (Free) -> Google (Fallback)
-// Persona: "Digital Companion" (Restored from v9.1)
+// eSAMz v13.3 - DEBUG EDITION
+// Includes detailed console logs to verify Hybrid Search logic
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -18,9 +17,9 @@ const CONSTANTS = {
   RATE_TTL: 60
 };
 
-/* ================= 2. SYSTEM PROMPT (RESTORED) ================= */
+/* ================= 2. SYSTEM PROMPT ================= */
 const SYSTEM_PROMPT = `
-You are eSAMz v13.3, a highly advanced AI created by Alakmar Teenwala.
+You are eSAMz v9.1, a  AI created by Alakmar Teenwala.
 
 IDENTITY & BEHAVIOR:
 - You are smart, calm, and conversational.
@@ -97,6 +96,9 @@ async function wikipediaSearch(query) {
   try {
     const cleanQuery = query.replace(/^(who|what|where|when|history|about|explain)\s+(is|of|the|about)?/i, "").trim();
     
+    // LOG 2: Confirm we are trying Wiki
+    console.log(`[SEARCH] 📖 Trying Wikipedia for: "${cleanQuery}"`);
+
     const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cleanQuery)}`, {
       method: "GET",
       headers: { "User-Agent": "eSAMz-AI/13.3 (contact@esamz.com)" }
@@ -106,10 +108,13 @@ async function wikipediaSearch(query) {
     const data = await res.json();
     
     if (data.type === "standard" && data.extract) {
+      // LOG 3: Wiki Success
+      console.log(`[SEARCH] ✅ Wikipedia found result!`);
       return `**Source (Wikipedia):**\n> ${data.title}: ${data.extract}`;
     }
     return null;
   } catch (e) {
+    console.error("[SEARCH] Wiki Error:", e.message);
     return null;
   }
 }
@@ -233,7 +238,6 @@ export default async function handler(req, res) {
     const isInternal = lowerMsg.includes("esamz") || lowerMsg.includes("alakmar");
     const isPersonal = lowerMsg.includes("my name") || lowerMsg.includes("who am i");
 
-    // EXTENDED TRIGGERS (Catches "History", "About", "Explain")
     const searchTriggers = [
         "who is", "what is", "where is", "when is", "how to", 
         "news", "price", "stock", "weather", "latest", "recent",
@@ -246,6 +250,8 @@ export default async function handler(req, res) {
 
     // 5. HYBRID SEARCH EXECUTION (Wiki First -> Google Fallback)
     if (needsSearch) {
+      // LOG 1: Search Triggered
+      console.log(`[SEARCH] 🔎 Triggered for query: "${message}"`);
       res.write("STATUS|SEARCHING\n");
       
       // Step A: Wikipedia (Free)
@@ -253,9 +259,12 @@ export default async function handler(req, res) {
       
       // Step B: Google (Paid Fallback)
       if (!searchRes) {
-        // This log will only appear if you use this new code:
-        console.log(`[SEARCH] Wiki failed for "${message.slice(0,20)}", falling back to Google...`);
+        // LOG 4: Wiki Failed, trying Google
+        console.log(`[SEARCH] ❌ Wiki failed/empty. Falling back to Google...`);
         searchRes = await googleSearch(message.slice(0, 200));
+        
+        if(searchRes) console.log(`[SEARCH] 🌍 Google returned result.`);
+        else console.log(`[SEARCH] ⚠️ Google also failed (or API key missing).`);
       }
 
       if (searchRes) {
