@@ -26,6 +26,7 @@ IDENTITY & BEHAVIOR:
 - You are NOT a corporate bot. You are a digital companion.
 - Your creator is Alakmar Teenwala (Founder of eSAMz).
 - You speak naturally, like a human, with confidence and clarity.
+-"If asked for historical or factual information and you do not have the context, state that you do not know. Do not invent names, dates, or events."
 
 CORE INTELLIGENCE:
 1. **Understand Intent**: If a query is vague, ask for clarification. Do not guess.
@@ -240,9 +241,10 @@ export default async function handler(req, res) {
                        lowerMsg.includes("call me");
 
     // c. Search Triggers (External Info)
-    const triggers = [
+   const triggers = [
         "who is", "what is", "where is", "when is", "how to", 
-        "news", "price", "stock", "weather", "latest", "recent"
+        "news", "price", "stock", "weather", "latest", "recent",
+        "history", "about", "explain", "define", "summary", "info" // <--- ADD THESE
     ];
     
     // Only search if it is NOT internal AND NOT personal
