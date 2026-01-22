@@ -1,6 +1,6 @@
 // api/chat.js
-// eSAMz v13.1 - BULLETPROOF EDITION
-// Fixes: Robust History Parsing + Deep Logging + Sarvam Model Revert
+// eSAMz v13.2 - SMART SEARCH FIX
+// Fixes: Prevents web search for personal questions ("What is my name?")
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -9,7 +9,7 @@ import { Redis } from "@upstash/redis";
 const redis = Redis.fromEnv();
 
 const CONSTANTS = {
-  SARVAM_MODEL: "sarvam-m", // Kept safe model
+  SARVAM_MODEL: "sarvam-m", 
   MAX_TOKENS: 4096,
   THREAD_LENGTH: 20,
   SESSION_TTL: 1800,
@@ -19,7 +19,7 @@ const CONSTANTS = {
 
 /* ================= 2. SYSTEM PROMPT ================= */
 const SYSTEM_PROMPT = `
-You are eSAMz v13, a highly advanced AI created by Alakmar Teenwala.
+You are eSAMz v9.1, a highly advanced AI created by Alakmar Teenwala.
 
 IDENTITY & BEHAVIOR:
 - You are smart, calm, and conversational.
@@ -68,16 +68,12 @@ const DB = {
         const raw = await redis.lrange(key, 0, -1);
         return raw.map(item => {
             try { 
-                // CRITICAL FIX: Handle if item is ALREADY an object
                 if (typeof item === 'object' && item !== null) return item;
-                // Otherwise, parse the string
                 return JSON.parse(item); 
             } catch(e) { 
-                // If it fails, log the specific bad item but don't crash
-                console.error(`HISTORY CORRUPTION: Could not parse item: ${item}`, e);
                 return null; 
             }
-        }).filter(x => x); // Filter out nulls
+        }).filter(x => x); 
     } catch(e) { 
         console.error("REDIS READ ERROR:", e);
         return []; 
@@ -87,18 +83,12 @@ const DB = {
   async addToHistory(id, role, content) {
     const key = `chat:${id}`;
     try {
-        // Safety: Ensure content is a string
         const safeContent = typeof content === 'string' ? content : JSON.stringify(content);
         const truncated = safeContent.length > 15000 ? safeContent.substring(0, 15000) + "...[truncated]" : safeContent;
-        
-        // We always store as a JSON STRING
         const entryObj = { role, content: truncated, ts: Date.now() };
-        const safeEntry = JSON.stringify(entryObj);
         
-        console.log(`[DB WRITE] Saving to ${key}:`, safeEntry.substring(0, 50) + "...");
-
         const pipeline = redis.pipeline();
-        pipeline.rpush(key, safeEntry);
+        pipeline.rpush(key, JSON.stringify(entryObj));
         pipeline.ltrim(key, -CONSTANTS.THREAD_LENGTH, -1);
         pipeline.expire(key, CONSTANTS.SESSION_TTL);
         await pipeline.exec();
@@ -236,12 +226,29 @@ export default async function handler(req, res) {
     // 3. HISTORY
     const history = await DB.getHistory(sessionId);
 
-    // 4. CONTEXT
+    // 4. INTELLIGENCE: SMART SEARCH LOGIC (FIXED)
     let context = "";
     const lowerMsg = message.toLowerCase();
+    
+    // a. Internal (Bot Info)
     const isInternal = lowerMsg.includes("esamz") || lowerMsg.includes("alakmar");
-    const triggers = ["who", "what", "where", "when", "news", "price", "stock", "weather"];
-    const needsSearch = !isInternal && triggers.some(t => lowerMsg.includes(t)) && files.length === 0;
+    
+    // b. Personal (User Info) - NEW! <--- THIS FIXES YOUR ISSUE
+    const isPersonal = lowerMsg.includes("my name") || 
+                       lowerMsg.includes("who am i") || 
+                       lowerMsg.includes("my age") ||
+                       lowerMsg.includes("call me");
+
+    // c. Search Triggers (External Info)
+    const triggers = [
+        "who is", "what is", "where is", "when is", "how to", 
+        "news", "price", "stock", "weather", "latest", "recent"
+    ];
+    
+    // Only search if it is NOT internal AND NOT personal
+    const needsSearch = !isInternal && !isPersonal && 
+                        triggers.some(t => lowerMsg.includes(t)) && 
+                        files.length === 0;
 
     if (needsSearch) {
       res.write("STATUS|SEARCHING\n");
