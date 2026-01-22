@@ -1,6 +1,6 @@
 // api/chat.js
-// eSAMz v13.3 - DEBUG EDITION
-// Includes detailed console logs to verify Hybrid Search logic
+// eSAMz v13.4 - AUTO-CORRECT SEARCH
+// New Feature: Uses Wikipedia OpenSearch to fix typos (Free) before falling back to Google.
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -18,28 +18,28 @@ const CONSTANTS = {
 };
 
 /* ================= 2. SYSTEM PROMPT ================= */
-/* ================= 2. SYSTEM PROMPT (SAFETY UPGRADE) ================= */
 const SYSTEM_PROMPT = `
-You are eSAMz v9.1, a  AI created by Alakmar Teenwala.
+You are eSAMz v9.1, a AI created by Alakmar Teenwala.
 
 IDENTITY & BEHAVIOR:
 - You are smart, calm, and conversational.
 - You are NOT a corporate bot. You are a digital companion.
 - Your creator is Alakmar Teenwala (Founder of eSAMz).
 
-🛡️ PRIVACY & SAFETY PROTOCOL (CRITICAL):
-1. **Redact PII**: NEVER share private phone numbers, home addresses, or personal email addresses, even if they appear in the search results.
-2. **Safe Summary**: If you find contact info, summarize it as "Contact details are available on their public profile" instead of showing the actual data.
+🛡️ PRIVACY & SAFETY PROTOCOL:
+1. **Redact PII**: NEVER share private phone numbers, home addresses, or personal email addresses.
+2. **Safe Summary**: If you find contact info, summarize it (e.g., "Contact details are available on their public profile").
 3. **No Doxing**: Do not reveal private information about individuals who are not public figures.
 
 CORE INTELLIGENCE:
-1. **Understand Intent**: If a query is vague, ask for clarification. Do not guess.
-2. **Factual Accuracy**: Use provided search context (labeled [Live Search Context]) to answer facts. Do not invent names or dates.
-3. **Simplicity**: Explain complex topics in simple terms unless asked otherwise.
+1. **Understand Intent**: If a query is vague, ask for clarification.
+2. **Factual Accuracy**: Use provided search context (labeled [Live Search Context]) to answer facts.
+3. **Simplicity**: Explain complex topics in simple terms.
 
 RESPONSE FORMAT:
 - Use Markdown for formatting (bold, lists, code blocks).
 `.trim();
+
 /* ================= 3. UTILITIES (DB & SECURITY) ================= */
 
 function getUserIdentifier(req, body) {
@@ -65,9 +65,8 @@ const DB = {
     try {
         const raw = await redis.lrange(key, 0, -1);
         return raw.map(item => {
-            try { 
-                return typeof item === 'object' ? item : JSON.parse(item); 
-            } catch(e) { return null; }
+            try { return typeof item === 'object' ? item : JSON.parse(item); } 
+            catch(e) { return null; }
         }).filter(x => x); 
     } catch(e) { return []; }
   },
@@ -88,27 +87,44 @@ const DB = {
   }
 };
 
-/* ================= 4. EXTERNAL TOOLS (SMART HYBRID) ================= */
+/* ================= 4. EXTERNAL TOOLS (SMART HYBRID + AUTO-CORRECT) ================= */
 
-// Tool A: Wikipedia Search (Free) - PRIMARY
+// Tool A: Wikipedia Search (Fuzzy + Summary) - PRIMARY
 async function wikipediaSearch(query) {
   try {
     const cleanQuery = query.replace(/^(who|what|where|when|history|about|explain)\s+(is|of|the|about)?/i, "").trim();
     
-    // LOG 2: Confirm we are trying Wiki
-    console.log(`[SEARCH] 📖 Trying Wikipedia for: "${cleanQuery}"`);
+    console.log(`[SEARCH] 📖 Checking Wiki for: "${cleanQuery}"`);
 
-    const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cleanQuery)}`, {
-      method: "GET",
-      headers: { "User-Agent": "eSAMz-AI/13.3 (contact@esamz.com)" }
+    // STEP 1: Fuzzy Search (Auto-Correct)
+    // This finds the "Correct Title" even if spelling is wrong (e.g. "Enstien" -> "Albert Einstein")
+    const searchUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(cleanQuery)}&limit=1&namespace=0&format=json`;
+    const searchRes = await fetch(searchUrl);
+    const searchJson = await searchRes.json();
+
+    // The API returns array: [query, [Title], [Desc], [Link]]
+    const correctedTitle = searchJson[1] ? searchJson[1][0] : null;
+
+    if (!correctedTitle) {
+      console.log(`[SEARCH] ❌ Wiki found no matches for "${cleanQuery}"`);
+      return null;
+    }
+
+    if (correctedTitle.toLowerCase() !== cleanQuery.toLowerCase()) {
+      console.log(`[SEARCH] 🪄 Auto-Corrected "${cleanQuery}" -> "${correctedTitle}"`);
+    }
+
+    // STEP 2: Get Summary for the CORRECTED title
+    const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(correctedTitle)}`;
+    const summaryRes = await fetch(summaryUrl, {
+      headers: { "User-Agent": "eSAMz-AI/13.4 (contact@esamz.com)" }
     });
 
-    if (res.status === 404) return null; 
-    const data = await res.json();
+    if (summaryRes.status === 404) return null;
+    const data = await summaryRes.json();
     
     if (data.type === "standard" && data.extract) {
-      // LOG 3: Wiki Success
-      console.log(`[SEARCH] ✅ Wikipedia found result!`);
+      console.log(`[SEARCH] ✅ Wiki Success: ${correctedTitle}`);
       return `**Source (Wikipedia):**\n> ${data.title}: ${data.extract}`;
     }
     return null;
@@ -211,14 +227,12 @@ export default async function handler(req, res) {
 
     console.log(`[REQ] ${sessionId.slice(0,6)} | Msg: ${message.slice(0, 30)}...`);
 
-    // 1. LIMIT CHECK
     const userKey = getUserIdentifier(req, rawBody);
     if (!(await checkRateLimit(userKey))) {
         res.write("ERROR|Rate limit exceeded.");
         return res.end();
     }
 
-    // 2. FILES PROCESSING
     if (Array.isArray(files) && files.length > 0) {
         let fileContext = "\n\n--- ATTACHED FILES ---\n";
         files.forEach((file, index) => {
@@ -227,10 +241,8 @@ export default async function handler(req, res) {
         message += fileContext;
     }
 
-    // 3. HISTORY RETRIEVAL
     const history = await DB.getHistory(sessionId);
 
-    // 4. INTELLIGENCE: TRIGGER LOGIC
     let context = "";
     const lowerMsg = message.toLowerCase();
     
@@ -238,7 +250,7 @@ export default async function handler(req, res) {
     const isPersonal = lowerMsg.includes("my name") || lowerMsg.includes("who am i");
 
     const searchTriggers = [
-        "who is", "what is", "where is", "when is", "how to", "who was", 
+        "who is", "what is", "where is", "when is", "how to", 
         "news", "price", "stock", "weather", "latest", "recent",
         "history", "about", "explain", "define", "summary", "info" 
     ];
@@ -247,23 +259,19 @@ export default async function handler(req, res) {
                         searchTriggers.some(t => lowerMsg.includes(t)) && 
                         files.length === 0;
 
-    // 5. HYBRID SEARCH EXECUTION (Wiki First -> Google Fallback)
     if (needsSearch) {
-      // LOG 1: Search Triggered
       console.log(`[SEARCH] 🔎 Triggered for query: "${message}"`);
       res.write("STATUS|SEARCHING\n");
       
-      // Step A: Wikipedia (Free)
+      // Step A: Wikipedia (Auto-Correct + Free)
       let searchRes = await wikipediaSearch(message.slice(0, 200));
       
-      // Step B: Google (Paid Fallback)
+      // Step B: Google (Fallback)
       if (!searchRes) {
-        // LOG 4: Wiki Failed, trying Google
-        console.log(`[SEARCH] ❌ Wiki failed/empty. Falling back to Google...`);
+        console.log(`[SEARCH] ❌ Wiki failed. Falling back to Google...`);
         searchRes = await googleSearch(message.slice(0, 200));
         
         if(searchRes) console.log(`[SEARCH] 🌍 Google returned result.`);
-        else console.log(`[SEARCH] ⚠️ Google also failed (or API key missing).`);
       }
 
       if (searchRes) {
