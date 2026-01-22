@@ -1,27 +1,25 @@
 // api/chat.js
-// eSAMz v13 - ULTIMATE EDITION
-// Features: Wiki Grounding + Live Search + Redis Memory + Rate Limiting + Stream Buffering + FILE SUPPORT
+// eSAMz v13.1 - BULLETPROOF EDITION
+// Fixes: Robust History Parsing + Deep Logging + Sarvam Model Revert
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
 /* ================= 1. CONFIGURATION ================= */
-// Initialize Redis
 const redis = Redis.fromEnv();
 
-// Global Constants
 const CONSTANTS = {
-  SARVAM_MODEL: "sarvam-m", // Explicitly setting the latest model
+  SARVAM_MODEL: "sarvam-m", // Kept safe model
   MAX_TOKENS: 4096,
-  THREAD_LENGTH: 20,   // Remembers last 20 messages
-  SESSION_TTL: 1800,   // Session expires after 30 Minutes
-  RATE_LIMIT: 10,      // Limit: 10 messages per minute per IP
-  RATE_TTL: 60         // Reset limit every 60 seconds
+  THREAD_LENGTH: 20,
+  SESSION_TTL: 1800,
+  RATE_LIMIT: 10,
+  RATE_TTL: 60
 };
 
 /* ================= 2. SYSTEM PROMPT ================= */
 const SYSTEM_PROMPT = `
-You are eSAMz v9.1, a highly advanced AI created by Alakmar Teenwala.
+You are eSAMz v13, a highly advanced AI created by Alakmar Teenwala.
 
 IDENTITY & BEHAVIOR:
 - You are smart, calm, and conversational.
@@ -39,27 +37,18 @@ HANDLING FILES:
 - The user may attach files. Their content will be labeled "--- FILE: [Name] ---".
 - Read these files carefully to answer questions about code, text, or data.
 
-FORBIDDEN BEHAVIORS:
-- Do not say "As an AI language model".
-- Do not say "I don't have personal opinions" (just decline politely).
-- Do not be overly apologetic.
-
 RESPONSE FORMAT:
 - Use Markdown for formatting (bold, lists, code blocks).
-- Keep responses concise unless a detailed explanation is needed.
 `.trim();
 
 /* ================= 3. UTILITIES (DB & SECURITY) ================= */
 
-// Utility: Identify User (Session ID or IP)
 function getUserIdentifier(req, body) {
   if (body.sessionId) return `session:${body.sessionId}`;
-  // Fallback to IP address for rate limiting
   const ip = req.headers["x-forwarded-for"]?.split(",")[0] || "unknown_ip";
   return `ip:${ip}`;
 }
 
-// Utility: Check Rate Limits
 async function checkRateLimit(identifier) {
   try {
     const key = `ratelimit:${identifier}`;
@@ -67,12 +56,11 @@ async function checkRateLimit(identifier) {
     if (count === 1) await redis.expire(key, CONSTANTS.RATE_TTL);
     return count <= CONSTANTS.RATE_LIMIT;
   } catch (e) {
-    console.error("REDIS RATE LIMIT ERROR:", e);
-    return true; // Fail open (allow request) if Redis is down
+    console.error("REDIS LIMIT ERROR:", e);
+    return true; 
   }
 }
 
-// Utility: Chat History Management
 const DB = {
   async getHistory(id) {
     const key = `chat:${id}`;
@@ -80,17 +68,18 @@ const DB = {
         const raw = await redis.lrange(key, 0, -1);
         return raw.map(item => {
             try { 
-                const entry = JSON.parse(item); 
-                // Normalize legacy roles
-                if (entry.role === 'assistant') entry.role = 'ai';
-                return entry; 
+                // CRITICAL FIX: Handle if item is ALREADY an object
+                if (typeof item === 'object' && item !== null) return item;
+                // Otherwise, parse the string
+                return JSON.parse(item); 
             } catch(e) { 
-                console.error("JSON PARSE ERROR IN HISTORY:", e);
+                // If it fails, log the specific bad item but don't crash
+                console.error(`HISTORY CORRUPTION: Could not parse item: ${item}`, e);
                 return null; 
             }
-        }).filter(x => x);
+        }).filter(x => x); // Filter out nulls
     } catch(e) { 
-        console.error("REDIS GET HISTORY ERROR:", e);
+        console.error("REDIS READ ERROR:", e);
         return []; 
     }
   },
@@ -98,30 +87,31 @@ const DB = {
   async addToHistory(id, role, content) {
     const key = `chat:${id}`;
     try {
-        // Truncate content in history if it's too massive (save space)
-        // We keep the full context for the immediate turn, but history can be summarized
-        const storedContent = content.length > 15000 ? content.substring(0, 15000) + "...[truncated]" : content;
+        // Safety: Ensure content is a string
+        const safeContent = typeof content === 'string' ? content : JSON.stringify(content);
+        const truncated = safeContent.length > 15000 ? safeContent.substring(0, 15000) + "...[truncated]" : safeContent;
         
-        const safeEntry = JSON.stringify({ role, content: storedContent, ts: Date.now() });
+        // We always store as a JSON STRING
+        const entryObj = { role, content: truncated, ts: Date.now() };
+        const safeEntry = JSON.stringify(entryObj);
+        
+        console.log(`[DB WRITE] Saving to ${key}:`, safeEntry.substring(0, 50) + "...");
+
         const pipeline = redis.pipeline();
         pipeline.rpush(key, safeEntry);
-        pipeline.ltrim(key, -CONSTANTS.THREAD_LENGTH, -1); // Keep only last N messages
-        pipeline.expire(key, CONSTANTS.SESSION_TTL);       // Refresh TTL
+        pipeline.ltrim(key, -CONSTANTS.THREAD_LENGTH, -1);
+        pipeline.expire(key, CONSTANTS.SESSION_TTL);
         await pipeline.exec();
     } catch (e) {
-        console.error("REDIS ADD HISTORY ERROR:", e);
+        console.error("REDIS WRITE ERROR:", e);
     }
   }
 };
 
 /* ================= 4. EXTERNAL TOOLS ================= */
 
-// Tool: Google Search (Serper) - For REAL-TIME data
 async function googleSearch(query) {
-  if (!process.env.SERPER_API_KEY) {
-      console.warn("SEARCH SKIPPED: Missing SERPER_API_KEY");
-      return null;
-  }
+  if (!process.env.SERPER_API_KEY) return null;
   try {
     const res = await fetch("https://google.serper.dev/search", {
       method: "POST",
@@ -135,14 +125,13 @@ async function googleSearch(query) {
     if (!data.organic) return null;
     return data.organic.map(r => `> ${r.title}: ${r.snippet}`).join("\n");
   } catch (e) { 
-      console.error("GOOGLE SEARCH ERROR:", e);
+      console.error("SEARCH ERROR:", e);
       return null; 
   }
 }
 
-/* ================= 5. AI ENGINE (SARVAM + WIKI GROUNDING) ================= */
+/* ================= 5. AI ENGINE ================= */
 async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
-  // Determine temperature
   const temperature = wikiGrounding ? 0.2 : 0.7;
 
   try {
@@ -170,7 +159,6 @@ async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       
-      // --- BUFFERING LOGIC ---
       let incomingBuffer = ""; 
       let sendBuffer = "";     
 
@@ -178,14 +166,13 @@ async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
         const { done, value } = await reader.read();
         
         if (done) {
-            // Flush remaining buffers
             if (sendBuffer) onChunk(sendBuffer.replace(/\n/g, "\\n"));
             break;
         }
 
         incomingBuffer += decoder.decode(value, { stream: true });
         const lines = incomingBuffer.split("\n");
-        incomingBuffer = lines.pop(); // Keep incomplete line
+        incomingBuffer = lines.pop();
 
         for (const line of lines) {
           if (line.startsWith("data: ") && !line.includes("[DONE]")) {
@@ -195,25 +182,22 @@ async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
               
               if (txt) {
                 sendBuffer += txt;
-                // Minor optimization: only flush if buffer gets big enough or contains a space/punctuation
-                // But for now, direct flush is safer for responsiveness
                 const safeText = sendBuffer.replace(/\n/g, "\\n");
                 onChunk(safeText);
                 sendBuffer = "";
               }
-            } catch (e) { /* Ignore parsing errors for empty lines */ }
+            } catch (e) { }
           }
         }
       }
   } catch (e) {
-      console.error("STREAM SARVAM CHAT ERROR:", e);
-      throw e; // Re-throw to be handled by main handler
+      console.error("SARVAM STREAM ERROR:", e);
+      throw e;
   }
 }
 
 /* ================= 6. MAIN API HANDLER ================= */
 export default async function handler(req, res) {
-  // Set Headers for Streaming & CORS
   res.writeHead(200, {
     'Content-Type': 'text/plain; charset=utf-8',
     'Transfer-Encoding': 'chunked',
@@ -224,109 +208,76 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.end();
 
-  if (req.method !== 'POST') {
-      res.write("ERROR|Method not allowed");
-      return res.end();
-  }
-
   try {
     const rawBody = req.body || {};
     let message = rawBody.message || "";
-    const files = rawBody.files || []; // <--- NEW: Extract files
+    const files = rawBody.files || [];
     const sessionId = rawBody.sessionId || crypto.randomBytes(12).toString("hex");
 
-    console.log(`[REQ] Session: ${sessionId.slice(0,6)}... | Files: ${files.length} | Msg Len: ${message.length}`);
+    console.log(`[REQ] Session: ${sessionId.slice(0,6)}... | Files: ${files.length} | Msg: ${message.slice(0, 20)}...`);
 
-    // 1. SECURITY CHECK
+    // 1. LIMIT CHECK
     const userKey = getUserIdentifier(req, rawBody);
-    const isAllowed = await checkRateLimit(userKey);
-    
-    if (!isAllowed) {
-        console.warn(`[LIMIT] Rate limit exceeded for ${userKey}`);
-        res.write("ERROR|Rate limit exceeded (10 req/min).");
+    if (!(await checkRateLimit(userKey))) {
+        res.write("ERROR|Rate limit exceeded.");
         return res.end();
     }
 
-    // 2. PROCESS FILES (THE "EYE" FIX)
+    // 2. FILES
     if (Array.isArray(files) && files.length > 0) {
         let fileContext = "\n\n--- ATTACHED FILES ---\n";
         files.forEach((file, index) => {
-            // Limit generic large files to avoid blowing up context window too fast
             const content = file.content || "";
             fileContext += `\nFILE ${index + 1}: ${file.fileName} (${file.type})\n\`\`\`\n${content}\n\`\`\`\n`;
         });
         message += fileContext;
-        console.log(`[FILES] Appended ${files.length} files to message context.`);
     }
 
-    // 3. RETRIEVE MEMORY
+    // 3. HISTORY
     const history = await DB.getHistory(sessionId);
 
-    // 4. INTELLIGENCE: DETECT SEARCH NEEDS
+    // 4. CONTEXT
     let context = "";
     const lowerMsg = message.toLowerCase();
-    
-    // Internal queries check
-    const isInternalQuery = lowerMsg.includes("esamz") || lowerMsg.includes("alakmar") || lowerMsg.includes("teenwala");
-    
-    // Keywords
-    const triggers = [
-        "who is", "what is", "where is", "when is", "how much", 
-        "latest", "news", "recent", "update", "today", "price", 
-        "stock", "weather", "score", "winner", "schedule", 
-        "history of", "explain"
-    ];
-    
-    // Only search if not internal AND triggered AND no files attached (usually files imply coding/analysis task)
-    const needsExternalKnowledge = !isInternalQuery && triggers.some(t => lowerMsg.includes(t)) && files.length === 0;
+    const isInternal = lowerMsg.includes("esamz") || lowerMsg.includes("alakmar");
+    const triggers = ["who", "what", "where", "when", "news", "price", "stock", "weather"];
+    const needsSearch = !isInternal && triggers.some(t => lowerMsg.includes(t)) && files.length === 0;
 
-    // 4a. Live Google Search
-    if (needsExternalKnowledge) {
+    if (needsSearch) {
       res.write("STATUS|SEARCHING\n");
-      const searchRes = await googleSearch(message.slice(0, 200)); // Search only the first 200 chars (query)
-      if (searchRes) {
-          context = `\n\n[Live Search Context]:\n${searchRes}`;
-      }
+      const searchRes = await googleSearch(message.slice(0, 200)); 
+      if (searchRes) context = `\n\n[Live Search Context]:\n${searchRes}`;
     }
 
     res.write("STATUS|TYPING\n");
 
-    // 5. PREPARE PROMPT
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
-      ...history.map(m => ({ 
-          role: m.role === 'ai' ? 'assistant' : m.role, 
-          content: m.content 
-      })),
+      ...history.map(m => ({ role: m.role === 'ai' ? 'assistant' : m.role, content: m.content })),
       { role: "user", content: message + context }
     ];
 
-    // 6. STREAM GENERATION
     let fullReply = "";
     
     await streamSarvamChat({
       messages,
-      wikiGrounding: needsExternalKnowledge, 
+      wikiGrounding: needsSearch, 
       onChunk: (text) => {
         fullReply += text;
         res.write(`CHUNK|${text}\n`);
       }
     });
 
-    // 7. UPDATE MEMORY
-    // Store the ORIGINAL user message (with files appended) or just the text? 
-    // Usually better to store the full context so the AI remembers the code you sent in the next turn.
+    // 5. SAVE
     await DB.addToHistory(sessionId, 'user', message);
     await DB.addToHistory(sessionId, 'assistant', fullReply);
 
-    // 8. FINISH
     res.write("DONE|Success");
     res.end();
 
   } catch (e) {
-    console.error("FATAL API ERROR:", e);
-    // Send clean error to client
-    res.write(`ERROR|Internal Server Error: ${e.message}`);
+    console.error("FATAL ERROR:", e);
+    res.write(`ERROR|Server Error: ${e.message}`);
     res.end();
   }
 }
