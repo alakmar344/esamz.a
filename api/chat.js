@@ -1,6 +1,6 @@
 // api/chat.js
 // eSAMz v13 - ULTIMATE EDITION
-// Features: Wiki Grounding + Live Search + Redis Memory + Rate Limiting + Stream Buffering
+// Features: Wiki Grounding + Live Search + Redis Memory + Rate Limiting + Stream Buffering + FILE SUPPORT
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -11,7 +11,7 @@ const redis = Redis.fromEnv();
 
 // Global Constants
 const CONSTANTS = {
-  SARVAM_MODEL: "sarvam-m", // Updated to latest instruct model if available, or "sarvam-m"
+  SARVAM_MODEL: "sarvam-2.0-8b-instruct", // Explicitly setting the latest model
   MAX_TOKENS: 4096,
   THREAD_LENGTH: 20,   // Remembers last 20 messages
   SESSION_TTL: 1800,   // Session expires after 30 Minutes
@@ -35,6 +35,10 @@ CORE INTELLIGENCE:
 3. **Simplicity**: Explain complex topics in simple terms unless asked otherwise.
 4. **Creativity**: If asked to write code or stories, use proper formatting and structure.
 
+HANDLING FILES:
+- The user may attach files. Their content will be labeled "--- FILE: [Name] ---".
+- Read these files carefully to answer questions about code, text, or data.
+
 FORBIDDEN BEHAVIORS:
 - Do not say "As an AI language model".
 - Do not say "I don't have personal opinions" (just decline politely).
@@ -57,10 +61,15 @@ function getUserIdentifier(req, body) {
 
 // Utility: Check Rate Limits
 async function checkRateLimit(identifier) {
-  const key = `ratelimit:${identifier}`;
-  const count = await redis.incr(key);
-  if (count === 1) await redis.expire(key, CONSTANTS.RATE_TTL);
-  return count <= CONSTANTS.RATE_LIMIT;
+  try {
+    const key = `ratelimit:${identifier}`;
+    const count = await redis.incr(key);
+    if (count === 1) await redis.expire(key, CONSTANTS.RATE_TTL);
+    return count <= CONSTANTS.RATE_LIMIT;
+  } catch (e) {
+    console.error("REDIS RATE LIMIT ERROR:", e);
+    return true; // Fail open (allow request) if Redis is down
+  }
 }
 
 // Utility: Chat History Management
@@ -75,27 +84,44 @@ const DB = {
                 // Normalize legacy roles
                 if (entry.role === 'assistant') entry.role = 'ai';
                 return entry; 
-            } catch(e) { return null; }
+            } catch(e) { 
+                console.error("JSON PARSE ERROR IN HISTORY:", e);
+                return null; 
+            }
         }).filter(x => x);
-    } catch(e) { return []; }
+    } catch(e) { 
+        console.error("REDIS GET HISTORY ERROR:", e);
+        return []; 
+    }
   },
 
   async addToHistory(id, role, content) {
     const key = `chat:${id}`;
-    const safeEntry = JSON.stringify({ role, content, ts: Date.now() });
-    const pipeline = redis.pipeline();
-    pipeline.rpush(key, safeEntry);
-    pipeline.ltrim(key, -CONSTANTS.THREAD_LENGTH, -1); // Keep only last N messages
-    pipeline.expire(key, CONSTANTS.SESSION_TTL);       // Refresh TTL
-    await pipeline.exec();
+    try {
+        // Truncate content in history if it's too massive (save space)
+        // We keep the full context for the immediate turn, but history can be summarized
+        const storedContent = content.length > 15000 ? content.substring(0, 15000) + "...[truncated]" : content;
+        
+        const safeEntry = JSON.stringify({ role, content: storedContent, ts: Date.now() });
+        const pipeline = redis.pipeline();
+        pipeline.rpush(key, safeEntry);
+        pipeline.ltrim(key, -CONSTANTS.THREAD_LENGTH, -1); // Keep only last N messages
+        pipeline.expire(key, CONSTANTS.SESSION_TTL);       // Refresh TTL
+        await pipeline.exec();
+    } catch (e) {
+        console.error("REDIS ADD HISTORY ERROR:", e);
+    }
   }
 };
 
 /* ================= 4. EXTERNAL TOOLS ================= */
 
-// Tool: Google Search (Serper) - For REAL-TIME data (Stocks, Weather, News)
+// Tool: Google Search (Serper) - For REAL-TIME data
 async function googleSearch(query) {
-  if (!process.env.SERPER_API_KEY) return null;
+  if (!process.env.SERPER_API_KEY) {
+      console.warn("SEARCH SKIPPED: Missing SERPER_API_KEY");
+      return null;
+  }
   try {
     const res = await fetch("https://google.serper.dev/search", {
       method: "POST",
@@ -108,83 +134,80 @@ async function googleSearch(query) {
     const data = await res.json();
     if (!data.organic) return null;
     return data.organic.map(r => `> ${r.title}: ${r.snippet}`).join("\n");
-  } catch (e) { return null; }
+  } catch (e) { 
+      console.error("GOOGLE SEARCH ERROR:", e);
+      return null; 
+  }
 }
 
 /* ================= 5. AI ENGINE (SARVAM + WIKI GROUNDING) ================= */
 async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
-  // Determine temperature based on grounding needs
-  // Grounded = Low Temp (Precise). Creative = High Temp.
+  // Determine temperature
   const temperature = wikiGrounding ? 0.2 : 0.7;
 
-  const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
-    method: "POST",
-    headers: { 
-      Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, 
-      "Content-Type": "application/json" 
-    },
-    body: JSON.stringify({ 
-      model: CONSTANTS.SARVAM_MODEL, 
-      messages, 
-      temperature: temperature,
-      max_tokens: CONSTANTS.MAX_TOKENS, 
-      stream: true,
-      wiki_grounding: wikiGrounding // Feature Enabled
-    })
-  });
-  
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Sarvam API Error: ${errText}`);
-  }
-  
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  
-  // --- BUFFERING LOGIC ---
-  let incomingBuffer = ""; 
-  let sendBuffer = "";     
-
-  while (true) {
-    const { done, value } = await reader.read();
-    
-    if (done) {
-        // Flush remaining buffers on close
-        if (sendBuffer) onChunk(sendBuffer.replace(/\n/g, "\\n"));
-        
-        // Handle hanging data in incoming buffer
-        if (incomingBuffer.trim().length > 0) {
-            const line = incomingBuffer;
-            if (line.startsWith("data: ") && !line.includes("[DONE]")) {
-                try {
-                    const json = JSON.parse(line.slice(6));
-                    const txt = json.choices[0]?.delta?.content || "";
-                    if (txt) onChunk(txt.replace(/\n/g, "\\n"));
-                } catch (e) {}
-            }
-        }
-        break;
-    }
-
-    incomingBuffer += decoder.decode(value, { stream: true });
-    const lines = incomingBuffer.split("\n");
-    incomingBuffer = lines.pop(); // Keep incomplete line
-
-    for (const line of lines) {
-      if (line.startsWith("data: ") && !line.includes("[DONE]")) {
-        try {
-          const json = JSON.parse(line.slice(6));
-          const txt = json.choices[0]?.delta?.content || "";
-          
-          if (txt) {
-            sendBuffer += txt;
-            const safeText = sendBuffer.replace(/\n/g, "\\n");
-            onChunk(safeText);
-            sendBuffer = "";
-          }
-        } catch (e) { /* Ignore parsing errors for empty lines */ }
+  try {
+      const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
+        method: "POST",
+        headers: { 
+          Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, 
+          "Content-Type": "application/json" 
+        },
+        body: JSON.stringify({ 
+          model: CONSTANTS.SARVAM_MODEL, 
+          messages, 
+          temperature: temperature,
+          max_tokens: CONSTANTS.MAX_TOKENS, 
+          stream: true,
+          wiki_grounding: wikiGrounding 
+        })
+      });
+      
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Sarvam API Error (${res.status}): ${errText}`);
       }
-    }
+      
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      
+      // --- BUFFERING LOGIC ---
+      let incomingBuffer = ""; 
+      let sendBuffer = "";     
+
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) {
+            // Flush remaining buffers
+            if (sendBuffer) onChunk(sendBuffer.replace(/\n/g, "\\n"));
+            break;
+        }
+
+        incomingBuffer += decoder.decode(value, { stream: true });
+        const lines = incomingBuffer.split("\n");
+        incomingBuffer = lines.pop(); // Keep incomplete line
+
+        for (const line of lines) {
+          if (line.startsWith("data: ") && !line.includes("[DONE]")) {
+            try {
+              const json = JSON.parse(line.slice(6));
+              const txt = json.choices[0]?.delta?.content || "";
+              
+              if (txt) {
+                sendBuffer += txt;
+                // Minor optimization: only flush if buffer gets big enough or contains a space/punctuation
+                // But for now, direct flush is safer for responsiveness
+                const safeText = sendBuffer.replace(/\n/g, "\\n");
+                onChunk(safeText);
+                sendBuffer = "";
+              }
+            } catch (e) { /* Ignore parsing errors for empty lines */ }
+          }
+        }
+      }
+  } catch (e) {
+      console.error("STREAM SARVAM CHAT ERROR:", e);
+      throw e; // Re-throw to be handled by main handler
   }
 }
 
@@ -195,14 +218,11 @@ export default async function handler(req, res) {
     'Content-Type': 'text/plain; charset=utf-8',
     'Transfer-Encoding': 'chunked',
     'X-Content-Type-Options': 'nosniff',
-    'Access-Control-Allow-Origin': '*', // Allow all origins (Adjust for production)
+    'Access-Control-Allow-Origin': '*', 
     'Access-Control-Allow-Methods': 'POST, OPTIONS'
   });
 
-  // Handle CORS Preflight
-  if (req.method === 'OPTIONS') {
-    return res.end();
-  }
+  if (req.method === 'OPTIONS') return res.end();
 
   if (req.method !== 'POST') {
       res.write("ERROR|Method not allowed");
@@ -211,30 +231,45 @@ export default async function handler(req, res) {
 
   try {
     const rawBody = req.body || {};
-    const message = rawBody.message || "";
-    // Generate Session ID if missing
+    let message = rawBody.message || "";
+    const files = rawBody.files || []; // <--- NEW: Extract files
     const sessionId = rawBody.sessionId || crypto.randomBytes(12).toString("hex");
+
+    console.log(`[REQ] Session: ${sessionId.slice(0,6)}... | Files: ${files.length} | Msg Len: ${message.length}`);
 
     // 1. SECURITY CHECK
     const userKey = getUserIdentifier(req, rawBody);
     const isAllowed = await checkRateLimit(userKey);
     
     if (!isAllowed) {
+        console.warn(`[LIMIT] Rate limit exceeded for ${userKey}`);
         res.write("ERROR|Rate limit exceeded (10 req/min).");
         return res.end();
     }
 
-    // 2. RETRIEVE MEMORY
+    // 2. PROCESS FILES (THE "EYE" FIX)
+    if (Array.isArray(files) && files.length > 0) {
+        let fileContext = "\n\n--- ATTACHED FILES ---\n";
+        files.forEach((file, index) => {
+            // Limit generic large files to avoid blowing up context window too fast
+            const content = file.content || "";
+            fileContext += `\nFILE ${index + 1}: ${file.fileName} (${file.type})\n\`\`\`\n${content}\n\`\`\`\n`;
+        });
+        message += fileContext;
+        console.log(`[FILES] Appended ${files.length} files to message context.`);
+    }
+
+    // 3. RETRIEVE MEMORY
     const history = await DB.getHistory(sessionId);
 
-    // 3. INTELLIGENCE: DETECT SEARCH NEEDS
+    // 4. INTELLIGENCE: DETECT SEARCH NEEDS
     let context = "";
     const lowerMsg = message.toLowerCase();
     
-    // Internal queries (don't search the web for "eSAMz")
+    // Internal queries check
     const isInternalQuery = lowerMsg.includes("esamz") || lowerMsg.includes("alakmar") || lowerMsg.includes("teenwala");
     
-    // Keywords that trigger external knowledge
+    // Keywords
     const triggers = [
         "who is", "what is", "where is", "when is", "how much", 
         "latest", "news", "recent", "update", "today", "price", 
@@ -242,12 +277,13 @@ export default async function handler(req, res) {
         "history of", "explain"
     ];
     
-    const needsExternalKnowledge = !isInternalQuery && triggers.some(t => lowerMsg.includes(t));
+    // Only search if not internal AND triggered AND no files attached (usually files imply coding/analysis task)
+    const needsExternalKnowledge = !isInternalQuery && triggers.some(t => lowerMsg.includes(t)) && files.length === 0;
 
-    // 3a. Live Google Search (For breaking news/data)
+    // 4a. Live Google Search
     if (needsExternalKnowledge) {
-      res.write("STATUS|SEARCHING\n"); // Notify client
-      const searchRes = await googleSearch(message);
+      res.write("STATUS|SEARCHING\n");
+      const searchRes = await googleSearch(message.slice(0, 200)); // Search only the first 200 chars (query)
       if (searchRes) {
           context = `\n\n[Live Search Context]:\n${searchRes}`;
       }
@@ -255,7 +291,7 @@ export default async function handler(req, res) {
 
     res.write("STATUS|TYPING\n");
 
-    // 4. PREPARE PROMPT
+    // 5. PREPARE PROMPT
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
       ...history.map(m => ({ 
@@ -265,32 +301,32 @@ export default async function handler(req, res) {
       { role: "user", content: message + context }
     ];
 
-    // 5. STREAM GENERATION
+    // 6. STREAM GENERATION
     let fullReply = "";
     
     await streamSarvamChat({
       messages,
-      // Enable Wiki Grounding if external knowledge is needed
       wikiGrounding: needsExternalKnowledge, 
       onChunk: (text) => {
         fullReply += text;
-        // Standard eSAMz Chunk Protocol
         res.write(`CHUNK|${text}\n`);
       }
     });
 
-    // 6. UPDATE MEMORY
+    // 7. UPDATE MEMORY
+    // Store the ORIGINAL user message (with files appended) or just the text? 
+    // Usually better to store the full context so the AI remembers the code you sent in the next turn.
     await DB.addToHistory(sessionId, 'user', message);
     await DB.addToHistory(sessionId, 'assistant', fullReply);
 
-    // 7. FINISH
+    // 8. FINISH
     res.write("DONE|Success");
     res.end();
 
   } catch (e) {
-    console.error("API Error:", e);
+    console.error("FATAL API ERROR:", e);
     // Send clean error to client
-    res.write(`ERROR|${e.message}`);
+    res.write(`ERROR|Internal Server Error: ${e.message}`);
     res.end();
   }
 }
