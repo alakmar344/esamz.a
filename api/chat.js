@@ -250,7 +250,7 @@ export default async function handler(req, res) {
     const isPersonal = lowerMsg.includes("my name") || lowerMsg.includes("who am i");
 
     const searchTriggers = [
-        "who is", "what is", "where is", "when is", "how to", 
+        "who is", "what is", "where is", "when is", "how to","who was", 
         "news", "price", "stock", "weather", "latest", "recent",
         "history", "about", "explain", "define", "summary", "info" 
     ];
