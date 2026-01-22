@@ -92,17 +92,16 @@ const DB = {
 // Tool A: Wikipedia Search (Fuzzy + Summary) - PRIMARY
 async function wikipediaSearch(query) {
   try {
-    const cleanQuery = query.replace(/^(who|what|where|when|history|about|explain)\s+(is|of|the|about)?/i, "").trim();
+    // ⬇️ FIXED REGEX: Added 'was', 'were', 'are', 'to', 'define', 'summary'
+    const cleanQuery = query.replace(/^(who|what|where|when|how|history|about|explain|define|summary|info)\s+(is|was|are|were|of|the|about|to|do|does)?/i, "").trim();
     
     console.log(`[SEARCH] 📖 Checking Wiki for: "${cleanQuery}"`);
 
     // STEP 1: Fuzzy Search (Auto-Correct)
-    // This finds the "Correct Title" even if spelling is wrong (e.g. "Enstien" -> "Albert Einstein")
     const searchUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(cleanQuery)}&limit=1&namespace=0&format=json`;
     const searchRes = await fetch(searchUrl);
     const searchJson = await searchRes.json();
 
-    // The API returns array: [query, [Title], [Desc], [Link]]
     const correctedTitle = searchJson[1] ? searchJson[1][0] : null;
 
     if (!correctedTitle) {
@@ -114,7 +113,7 @@ async function wikipediaSearch(query) {
       console.log(`[SEARCH] 🪄 Auto-Corrected "${cleanQuery}" -> "${correctedTitle}"`);
     }
 
-    // STEP 2: Get Summary for the CORRECTED title
+    // STEP 2: Get Summary
     const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(correctedTitle)}`;
     const summaryRes = await fetch(summaryUrl, {
       headers: { "User-Agent": "eSAMz-AI/13.4 (contact@esamz.com)" }
