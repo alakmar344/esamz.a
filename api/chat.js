@@ -1,6 +1,7 @@
 // api/chat.js
-// eSAMz v13.3 - COST OPTIMIZED SEARCH
-// Strategy: Try Wikipedia (Free) First -> Fallback to Google (Paid)
+// eSAMz v13.3 - HYBRID SEARCH + ORIGINAL PERSONA
+// Logic: Wiki (Free) -> Google (Fallback)
+// Persona: "Digital Companion" (Restored from v9.1)
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -9,31 +10,36 @@ import { Redis } from "@upstash/redis";
 const redis = Redis.fromEnv();
 
 const CONSTANTS = {
-  SARVAM_MODEL: "sarvam-2.0-8b", 
-  MAX_TOKENS: 4096,
+  SARVAM_MODEL: "sarvam-m", 
+  MAX_TOKENS: 6096,
   THREAD_LENGTH: 20,
   SESSION_TTL: 1800,
   RATE_LIMIT: 20,
   RATE_TTL: 60
 };
 
-/* ================= 2. SYSTEM PROMPT ================= */
+/* ================= 2. SYSTEM PROMPT (RESTORED) ================= */
 const SYSTEM_PROMPT = `
-You are eSAMz v13.3, a professional AI created by Alakmar Teenwala.
+You are eSAMz v9.1, a ai created by Alakmar Teenwala.
 
 IDENTITY & BEHAVIOR:
-- You are smart, accurate, and concise.
+- You are smart, calm, and conversational.
+- You are NOT a corporate bot. You are a digital companion.
 - Your creator is Alakmar Teenwala (Founder of eSAMz).
-- You speak naturally but maintain professional formatting.
+- You speak naturally, like a human, with confidence and clarity.
 
-CRITICAL RULES FOR FACTS:
-1. **Zero Fabrication**: If asked for history, news, or facts and you lack context, admit it. DO NOT invent names, dates, or events.
-2. **Context First**: Use the "[Live Search Context]" provided below to answer questions. Prioritize this data over your training memory.
-3. **Citations**: If you use facts from the search context, mention them naturally.
+CORE INTELLIGENCE:
+1. **Understand Intent**: If a query is vague, ask for clarification. Do not guess.
+2. **Factual Accuracy**: Use provided search context (labeled [Live Search Context]) to answer facts. Do not invent names or dates.
+3. **Simplicity**: Explain complex topics in simple terms unless asked otherwise.
+4. **Creativity**: If asked to write code or stories, use proper formatting and structure.
+
+HANDLING FILES:
+- The user may attach files. Their content will be labeled "--- FILE: [Name] ---".
+- Read these files carefully to answer questions about code, text, or data.
 
 RESPONSE FORMAT:
-- Use Markdown (bold headers, bullet points).
-- For code, use standard code blocks.
+- Use Markdown for formatting (bold, lists, code blocks).
 `.trim();
 
 /* ================= 3. UTILITIES (DB & SECURITY) ================= */
@@ -89,7 +95,6 @@ const DB = {
 // Tool A: Wikipedia Search (Free) - PRIMARY
 async function wikipediaSearch(query) {
   try {
-    // Clean query to get just the topic (e.g., "History of Mauritius" -> "Mauritius")
     const cleanQuery = query.replace(/^(who|what|where|when|history|about|explain)\s+(is|of|the|about)?/i, "").trim();
     
     const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cleanQuery)}`, {
@@ -97,7 +102,7 @@ async function wikipediaSearch(query) {
       headers: { "User-Agent": "eSAMz-AI/13.3 (contact@esamz.com)" }
     });
 
-    if (res.status === 404) return null; // Not found
+    if (res.status === 404) return null; 
     const data = await res.json();
     
     if (data.type === "standard" && data.extract) {
@@ -131,7 +136,7 @@ async function googleSearch(query) {
 
 /* ================= 5. AI ENGINE ================= */
 async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
-  const temperature = wikiGrounding ? 0.3 : 0.7; // Lower temp for factual answers
+  const temperature = wikiGrounding ? 0.3 : 0.7; 
 
   try {
       const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
@@ -225,11 +230,9 @@ export default async function handler(req, res) {
     let context = "";
     const lowerMsg = message.toLowerCase();
     
-    // Filters
     const isInternal = lowerMsg.includes("esamz") || lowerMsg.includes("alakmar");
     const isPersonal = lowerMsg.includes("my name") || lowerMsg.includes("who am i");
 
-    // EXTENDED TRIGGERS
     const searchTriggers = [
         "who is", "what is", "where is", "when is", "how to", 
         "news", "price", "stock", "weather", "latest", "recent",
@@ -240,16 +243,15 @@ export default async function handler(req, res) {
                         searchTriggers.some(t => lowerMsg.includes(t)) && 
                         files.length === 0;
 
-    // 5. HYBRID SEARCH EXECUTION (Wiki First -> Google Fallback)
+    // 5. HYBRID SEARCH EXECUTION
     if (needsSearch) {
       res.write("STATUS|SEARCHING\n");
       
-      // Step A: Try Wikipedia (Free)
+      // Step A: Wikipedia (Free)
       let searchRes = await wikipediaSearch(message.slice(0, 200));
       
-      // Step B: Fallback to Google (Paid) if Wiki failed
+      // Step B: Google (Paid Fallback)
       if (!searchRes) {
-        console.log(`[SEARCH] Wiki failed for "${message.slice(0,20)}", falling back to Google...`);
         searchRes = await googleSearch(message.slice(0, 200));
       }
 
