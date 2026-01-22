@@ -20,14 +20,13 @@ const CONSTANTS = {
 
 /* ================= 2. SYSTEM PROMPT (RESTORED) ================= */
 const SYSTEM_PROMPT = `
-You are eSAMz v9.1, a ai created by Alakmar Teenwala.
+You are eSAMz v13.3, a highly advanced AI created by Alakmar Teenwala.
 
 IDENTITY & BEHAVIOR:
 - You are smart, calm, and conversational.
 - You are NOT a corporate bot. You are a digital companion.
 - Your creator is Alakmar Teenwala (Founder of eSAMz).
 - You speak naturally, like a human, with confidence and clarity.
--Do not refer to the search context itself in the final reply
 
 CORE INTELLIGENCE:
 1. **Understand Intent**: If a query is vague, ask for clarification. Do not guess.
@@ -234,6 +233,7 @@ export default async function handler(req, res) {
     const isInternal = lowerMsg.includes("esamz") || lowerMsg.includes("alakmar");
     const isPersonal = lowerMsg.includes("my name") || lowerMsg.includes("who am i");
 
+    // EXTENDED TRIGGERS (Catches "History", "About", "Explain")
     const searchTriggers = [
         "who is", "what is", "where is", "when is", "how to", 
         "news", "price", "stock", "weather", "latest", "recent",
@@ -244,7 +244,7 @@ export default async function handler(req, res) {
                         searchTriggers.some(t => lowerMsg.includes(t)) && 
                         files.length === 0;
 
-    // 5. HYBRID SEARCH EXECUTION
+    // 5. HYBRID SEARCH EXECUTION (Wiki First -> Google Fallback)
     if (needsSearch) {
       res.write("STATUS|SEARCHING\n");
       
@@ -253,6 +253,8 @@ export default async function handler(req, res) {
       
       // Step B: Google (Paid Fallback)
       if (!searchRes) {
+        // This log will only appear if you use this new code:
+        console.log(`[SEARCH] Wiki failed for "${message.slice(0,20)}", falling back to Google...`);
         searchRes = await googleSearch(message.slice(0, 200));
       }
 
