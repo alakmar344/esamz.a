@@ -1,6 +1,6 @@
 // api/chat.js
-// eSAMz v13.2 - SMART SEARCH FIX
-// Fixes: Prevents web search for personal questions ("What is my name?")
+// eSAMz v13.3 - COST OPTIMIZED SEARCH
+// Strategy: Try Wikipedia (Free) First -> Fallback to Google (Paid)
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -9,37 +9,31 @@ import { Redis } from "@upstash/redis";
 const redis = Redis.fromEnv();
 
 const CONSTANTS = {
-  SARVAM_MODEL: "sarvam-m", 
+  SARVAM_MODEL: "sarvam-2.0-8b", 
   MAX_TOKENS: 4096,
   THREAD_LENGTH: 20,
   SESSION_TTL: 1800,
-  RATE_LIMIT: 10,
+  RATE_LIMIT: 20,
   RATE_TTL: 60
 };
 
 /* ================= 2. SYSTEM PROMPT ================= */
 const SYSTEM_PROMPT = `
-You are eSAMz v9.1, a highly advanced AI created by Alakmar Teenwala.
+You are eSAMz v13.3, a professional AI created by Alakmar Teenwala.
 
 IDENTITY & BEHAVIOR:
-- You are smart, calm, and conversational.
-- You are NOT a corporate bot. You are a digital companion.
+- You are smart, accurate, and concise.
 - Your creator is Alakmar Teenwala (Founder of eSAMz).
-- You speak naturally, like a human, with confidence and clarity.
--"If asked for historical or factual information and you do not have the context, state that you do not know. Do not invent names, dates, or events."
+- You speak naturally but maintain professional formatting.
 
-CORE INTELLIGENCE:
-1. **Understand Intent**: If a query is vague, ask for clarification. Do not guess.
-2. **Factual Accuracy**: Use provided search context or grounding to answer facts.
-3. **Simplicity**: Explain complex topics in simple terms unless asked otherwise.
-4. **Creativity**: If asked to write code or stories, use proper formatting and structure.
-
-HANDLING FILES:
-- The user may attach files. Their content will be labeled "--- FILE: [Name] ---".
-- Read these files carefully to answer questions about code, text, or data.
+CRITICAL RULES FOR FACTS:
+1. **Zero Fabrication**: If asked for history, news, or facts and you lack context, admit it. DO NOT invent names, dates, or events.
+2. **Context First**: Use the "[Live Search Context]" provided below to answer questions. Prioritize this data over your training memory.
+3. **Citations**: If you use facts from the search context, mention them naturally.
 
 RESPONSE FORMAT:
-- Use Markdown for formatting (bold, lists, code blocks).
+- Use Markdown (bold headers, bullet points).
+- For code, use standard code blocks.
 `.trim();
 
 /* ================= 3. UTILITIES (DB & SECURITY) ================= */
@@ -57,7 +51,6 @@ async function checkRateLimit(identifier) {
     if (count === 1) await redis.expire(key, CONSTANTS.RATE_TTL);
     return count <= CONSTANTS.RATE_LIMIT;
   } catch (e) {
-    console.error("REDIS LIMIT ERROR:", e);
     return true; 
   }
 }
@@ -69,23 +62,17 @@ const DB = {
         const raw = await redis.lrange(key, 0, -1);
         return raw.map(item => {
             try { 
-                if (typeof item === 'object' && item !== null) return item;
-                return JSON.parse(item); 
-            } catch(e) { 
-                return null; 
-            }
+                return typeof item === 'object' ? item : JSON.parse(item); 
+            } catch(e) { return null; }
         }).filter(x => x); 
-    } catch(e) { 
-        console.error("REDIS READ ERROR:", e);
-        return []; 
-    }
+    } catch(e) { return []; }
   },
 
   async addToHistory(id, role, content) {
     const key = `chat:${id}`;
     try {
         const safeContent = typeof content === 'string' ? content : JSON.stringify(content);
-        const truncated = safeContent.length > 15000 ? safeContent.substring(0, 15000) + "...[truncated]" : safeContent;
+        const truncated = safeContent.length > 20000 ? safeContent.substring(0, 20000) + "...[truncated]" : safeContent;
         const entryObj = { role, content: truncated, ts: Date.now() };
         
         const pipeline = redis.pipeline();
@@ -93,14 +80,36 @@ const DB = {
         pipeline.ltrim(key, -CONSTANTS.THREAD_LENGTH, -1);
         pipeline.expire(key, CONSTANTS.SESSION_TTL);
         await pipeline.exec();
-    } catch (e) {
-        console.error("REDIS WRITE ERROR:", e);
-    }
+    } catch (e) { console.error("REDIS WRITE ERROR:", e); }
   }
 };
 
-/* ================= 4. EXTERNAL TOOLS ================= */
+/* ================= 4. EXTERNAL TOOLS (SMART HYBRID) ================= */
 
+// Tool A: Wikipedia Search (Free) - PRIMARY
+async function wikipediaSearch(query) {
+  try {
+    // Clean query to get just the topic (e.g., "History of Mauritius" -> "Mauritius")
+    const cleanQuery = query.replace(/^(who|what|where|when|history|about|explain)\s+(is|of|the|about)?/i, "").trim();
+    
+    const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cleanQuery)}`, {
+      method: "GET",
+      headers: { "User-Agent": "eSAMz-AI/13.3 (contact@esamz.com)" }
+    });
+
+    if (res.status === 404) return null; // Not found
+    const data = await res.json();
+    
+    if (data.type === "standard" && data.extract) {
+      return `**Source (Wikipedia):**\n> ${data.title}: ${data.extract}`;
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Tool B: Google Search (Serper) - FALLBACK (Costly)
 async function googleSearch(query) {
   if (!process.env.SERPER_API_KEY) return null;
   try {
@@ -114,16 +123,15 @@ async function googleSearch(query) {
     });
     const data = await res.json();
     if (!data.organic) return null;
-    return data.organic.map(r => `> ${r.title}: ${r.snippet}`).join("\n");
+    return "**Source (Google):**\n" + data.organic.map(r => `> ${r.title}: ${r.snippet}`).join("\n");
   } catch (e) { 
-      console.error("SEARCH ERROR:", e);
       return null; 
   }
 }
 
 /* ================= 5. AI ENGINE ================= */
 async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
-  const temperature = wikiGrounding ? 0.2 : 0.7;
+  const temperature = wikiGrounding ? 0.3 : 0.7; // Lower temp for factual answers
 
   try {
       const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
@@ -137,8 +145,7 @@ async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
           messages, 
           temperature: temperature,
           max_tokens: CONSTANTS.MAX_TOKENS, 
-          stream: true,
-          wiki_grounding: wikiGrounding 
+          stream: true
         })
       });
       
@@ -149,34 +156,22 @@ async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
       
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      
-      let incomingBuffer = ""; 
-      let sendBuffer = "";     
+      let buffer = ""; 
 
       while (true) {
         const { done, value } = await reader.read();
-        
-        if (done) {
-            if (sendBuffer) onChunk(sendBuffer.replace(/\n/g, "\\n"));
-            break;
-        }
+        if (done) break;
 
-        incomingBuffer += decoder.decode(value, { stream: true });
-        const lines = incomingBuffer.split("\n");
-        incomingBuffer = lines.pop();
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop(); 
 
         for (const line of lines) {
           if (line.startsWith("data: ") && !line.includes("[DONE]")) {
             try {
               const json = JSON.parse(line.slice(6));
               const txt = json.choices[0]?.delta?.content || "";
-              
-              if (txt) {
-                sendBuffer += txt;
-                const safeText = sendBuffer.replace(/\n/g, "\\n");
-                onChunk(safeText);
-                sendBuffer = "";
-              }
+              if (txt) onChunk(txt.replace(/\n/g, "\\n")); 
             } catch (e) { }
           }
         }
@@ -205,7 +200,7 @@ export default async function handler(req, res) {
     const files = rawBody.files || [];
     const sessionId = rawBody.sessionId || crypto.randomBytes(12).toString("hex");
 
-    console.log(`[REQ] Session: ${sessionId.slice(0,6)}... | Files: ${files.length} | Msg: ${message.slice(0, 20)}...`);
+    console.log(`[REQ] ${sessionId.slice(0,6)} | Msg: ${message.slice(0, 30)}...`);
 
     // 1. LIMIT CHECK
     const userKey = getUserIdentifier(req, rawBody);
@@ -214,48 +209,53 @@ export default async function handler(req, res) {
         return res.end();
     }
 
-    // 2. FILES
+    // 2. FILES PROCESSING
     if (Array.isArray(files) && files.length > 0) {
         let fileContext = "\n\n--- ATTACHED FILES ---\n";
         files.forEach((file, index) => {
-            const content = file.content || "";
-            fileContext += `\nFILE ${index + 1}: ${file.fileName} (${file.type})\n\`\`\`\n${content}\n\`\`\`\n`;
+            fileContext += `\nFILE ${index + 1}: ${file.fileName}\n\`\`\`\n${file.content}\n\`\`\`\n`;
         });
         message += fileContext;
     }
 
-    // 3. HISTORY
+    // 3. HISTORY RETRIEVAL
     const history = await DB.getHistory(sessionId);
 
-    // 4. INTELLIGENCE: SMART SEARCH LOGIC (FIXED)
+    // 4. INTELLIGENCE: TRIGGER LOGIC
     let context = "";
     const lowerMsg = message.toLowerCase();
     
-    // a. Internal (Bot Info)
+    // Filters
     const isInternal = lowerMsg.includes("esamz") || lowerMsg.includes("alakmar");
-    
-    // b. Personal (User Info) - NEW! <--- THIS FIXES YOUR ISSUE
-    const isPersonal = lowerMsg.includes("my name") || 
-                       lowerMsg.includes("who am i") || 
-                       lowerMsg.includes("my age") ||
-                       lowerMsg.includes("call me");
+    const isPersonal = lowerMsg.includes("my name") || lowerMsg.includes("who am i");
 
-    // c. Search Triggers (External Info)
-   const triggers = [
+    // EXTENDED TRIGGERS
+    const searchTriggers = [
         "who is", "what is", "where is", "when is", "how to", 
         "news", "price", "stock", "weather", "latest", "recent",
-        "history", "about", "explain", "define", "summary", "info" // <--- ADD THESE
+        "history", "about", "explain", "define", "summary", "info" 
     ];
     
-    // Only search if it is NOT internal AND NOT personal
     const needsSearch = !isInternal && !isPersonal && 
-                        triggers.some(t => lowerMsg.includes(t)) && 
+                        searchTriggers.some(t => lowerMsg.includes(t)) && 
                         files.length === 0;
 
+    // 5. HYBRID SEARCH EXECUTION (Wiki First -> Google Fallback)
     if (needsSearch) {
       res.write("STATUS|SEARCHING\n");
-      const searchRes = await googleSearch(message.slice(0, 200)); 
-      if (searchRes) context = `\n\n[Live Search Context]:\n${searchRes}`;
+      
+      // Step A: Try Wikipedia (Free)
+      let searchRes = await wikipediaSearch(message.slice(0, 200));
+      
+      // Step B: Fallback to Google (Paid) if Wiki failed
+      if (!searchRes) {
+        console.log(`[SEARCH] Wiki failed for "${message.slice(0,20)}", falling back to Google...`);
+        searchRes = await googleSearch(message.slice(0, 200));
+      }
+
+      if (searchRes) {
+        context = `\n\n[Live Search Context]:\n${searchRes}\n(Use this info to answer. Do not hallucinate.)`;
+      }
     }
 
     res.write("STATUS|TYPING\n");
@@ -270,14 +270,13 @@ export default async function handler(req, res) {
     
     await streamSarvamChat({
       messages,
-      wikiGrounding: needsSearch, 
+      wikiGrounding: !!context, 
       onChunk: (text) => {
         fullReply += text;
         res.write(`CHUNK|${text}\n`);
       }
     });
 
-    // 5. SAVE
     await DB.addToHistory(sessionId, 'user', message);
     await DB.addToHistory(sessionId, 'assistant', fullReply);
 
