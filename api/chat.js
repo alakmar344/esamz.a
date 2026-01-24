@@ -1,6 +1,6 @@
 // api/chat.js
 // eSAMz v13.4 - AUTO-CORRECT SEARCH
-// Modified: Non-streaming response (buffered) + Cleaned newlines + Fixed Syntax Errors
+// Modified: Smart Buffering (Sentences) + Preserved Newlines
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -286,16 +286,29 @@ export default async function handler(req, res) {
     ];
 
     let fullReply = "";
-    
+    let sentenceBuffer = "";
+
     await streamSarvamChat({
       messages,
       wikiGrounding: !!context, 
       onChunk: (text) => {
         fullReply += text;
+        sentenceBuffer += text;
+
+        // SMART FLUSH: Flush if we hit a sentence end or newline
+        // This makes chunks bigger (human readable)
+        if (sentenceBuffer.match(/[.!?\n]/)) {
+            // FIX: We escape \n to \\n so your frontend logic keeps the chunk on one line
+            res.write(`CHUNK|${sentenceBuffer.replace(/\n/g, "\\n")}\n`);
+            sentenceBuffer = ""; // Reset buffer
+        }
       }
     });
 
-    res.write(`CHUNK|${fullReply}\n`); 
+    // Flush any remaining text in the buffer
+    if (sentenceBuffer.trim().length > 0) {
+        res.write(`CHUNK|${sentenceBuffer.replace(/\n/g, "\\n")}\n`);
+    }
 
     await DB.addToHistory(sessionId, 'user', message);
     await DB.addToHistory(sessionId, 'assistant', fullReply);
