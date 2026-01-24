@@ -1,6 +1,6 @@
 // api/chat.js
 // eSAMz v13.4 - AUTO-CORRECT SEARCH
-// New Feature: Uses Wikipedia OpenSearch to fix typos (Free) before falling back to Google.
+// Modified: Non-streaming response (buffered) + Cleaned newlines
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -40,6 +40,7 @@ You are strictly prohibited from generating Personally Identifiable Information 
 ## FORMATTING STANDARDS
 * Use Markdown features to make text scannable (Headers, **Bold**, Lists).
 * Do not use code blocks for standard text.
+`;
 
 /* ================= 3. UTILITIES (DB & SECURITY) ================= */
 
@@ -93,7 +94,6 @@ const DB = {
 // Tool A: Wikipedia Search (Fuzzy + Summary) - PRIMARY
 async function wikipediaSearch(query) {
   try {
-    // ⬇️ FIXED REGEX: Added 'was', 'were', 'are', 'to', 'define', 'summary'
     const cleanQuery = query.replace(/^(who|what|where|when|how|history|about|explain|define|summary|info)\s+(is|was|are|were|of|the|about|to|do|does)?/i, "").trim();
     
     console.log(`[SEARCH] 📖 Checking Wiki for: "${cleanQuery}"`);
@@ -138,175 +138,4 @@ async function wikipediaSearch(query) {
 async function googleSearch(query) {
   if (!process.env.SERPER_API_KEY) return null;
   try {
-    const res = await fetch("https://google.serper.dev/search", {
-      method: "POST",
-      headers: { 
-        "X-API-KEY": process.env.SERPER_API_KEY, 
-        "Content-Type": "application/json" 
-      },
-      body: JSON.stringify({ q: query, num: 3 })
-    });
-    const data = await res.json();
-    if (!data.organic) return null;
-    return "**Source (Google):**\n" + data.organic.map(r => `> ${r.title}: ${r.snippet}`).join("\n");
-  } catch (e) { 
-      return null; 
-  }
-}
-
-/* ================= 5. AI ENGINE ================= */
-async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
-  const temperature = wikiGrounding ? 0.3 : 0.7; 
-
-  try {
-      const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
-        method: "POST",
-        headers: { 
-          Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, 
-          "Content-Type": "application/json" 
-        },
-        body: JSON.stringify({ 
-          model: CONSTANTS.SARVAM_MODEL, 
-          messages, 
-          temperature: temperature,
-          max_tokens: CONSTANTS.MAX_TOKENS, 
-          stream: true
-        })
-      });
-      
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`Sarvam API Error (${res.status}): ${errText}`);
-      }
-      
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = ""; 
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop(); 
-
-        for (const line of lines) {
-          if (line.startsWith("data: ") && !line.includes("[DONE]")) {
-            try {
-              const json = JSON.parse(line.slice(6));
-              const txt = json.choices[0]?.delta?.content || "";
-              if (txt) onChunk(txt.replace(/\n/g, "\\n")); 
-            } catch (e) { }
-          }
-        }
-      }
-  } catch (e) {
-      console.error("SARVAM STREAM ERROR:", e);
-      throw e;
-  }
-}
-
-/* ================= 6. MAIN API HANDLER ================= */
-export default async function handler(req, res) {
-  res.writeHead(200, {
-    'Content-Type': 'text/plain; charset=utf-8',
-    'Transfer-Encoding': 'chunked',
-    'X-Content-Type-Options': 'nosniff',
-    'Access-Control-Allow-Origin': '*', 
-    'Access-Control-Allow-Methods': 'POST, OPTIONS'
-  });
-
-  if (req.method === 'OPTIONS') return res.end();
-
-  try {
-    const rawBody = req.body || {};
-    let message = rawBody.message || "";
-    const files = rawBody.files || [];
-    const sessionId = rawBody.sessionId || crypto.randomBytes(12).toString("hex");
-
-    console.log(`[REQ] ${sessionId.slice(0,6)} | Msg: ${message.slice(0, 30)}...`);
-
-    const userKey = getUserIdentifier(req, rawBody);
-    if (!(await checkRateLimit(userKey))) {
-        res.write("ERROR|Rate limit exceeded.");
-        return res.end();
-    }
-
-    if (Array.isArray(files) && files.length > 0) {
-        let fileContext = "\n\n--- ATTACHED FILES ---\n";
-        files.forEach((file, index) => {
-            fileContext += `\nFILE ${index + 1}: ${file.fileName}\n\`\`\`\n${file.content}\n\`\`\`\n`;
-        });
-        message += fileContext;
-    }
-
-    const history = await DB.getHistory(sessionId);
-
-    let context = "";
-    const lowerMsg = message.toLowerCase();
-    
-    const isInternal = lowerMsg.includes("esamz") || lowerMsg.includes("alakmar");
-    const isPersonal = lowerMsg.includes("my name") || lowerMsg.includes("who am i");
-
-    const searchTriggers = [
-        "who is", "what is", "where is", "when is", "how to","who was", 
-        "news", "price", "stock", "weather", "latest", "recent",
-        "history", "about", "explain", "define", "summary", "info" 
-    ];
-    
-    const needsSearch = !isInternal && !isPersonal && 
-                        searchTriggers.some(t => lowerMsg.includes(t)) && 
-                        files.length === 0;
-
-    if (needsSearch) {
-      console.log(`[SEARCH] 🔎 Triggered for query: "${message}"`);
-      res.write("STATUS|SEARCHING\n");
-      
-      // Step A: Wikipedia (Auto-Correct + Free)
-      let searchRes = await wikipediaSearch(message.slice(0, 200));
-      
-      // Step B: Google (Fallback)
-      if (!searchRes) {
-        console.log(`[SEARCH] ❌ Wiki failed. Falling back to Google...`);
-        searchRes = await googleSearch(message.slice(0, 200));
-        
-        if(searchRes) console.log(`[SEARCH] 🌍 Google returned result.`);
-      }
-
-      if (searchRes) {
-        context = `\n\n[Live Search Context]:\n${searchRes}\n(Use this info to answer. Do not hallucinate.)`;
-      }
-    }
-
-    res.write("STATUS|TYPING\n");
-
-    const messages = [
-      { role: "system", content: SYSTEM_PROMPT },
-      ...history.map(m => ({ role: m.role === 'ai' ? 'assistant' : m.role, content: m.content })),
-      { role: "user", content: message + context }
-    ];
-
-    let fullReply = "";
-    
-    await streamSarvamChat({
-      messages,
-      wikiGrounding: !!context, 
-      onChunk: (text) => {
-        fullReply += text;
-        res.write(`CHUNK|${text}\n`);
-      }
-    });
-
-    await DB.addToHistory(sessionId, 'user', message);
-    await DB.addToHistory(sessionId, 'assistant', fullReply);
-
-    res.write("DONE|Success");
-    res.end();
-
-  } catch (e) {
-    console.error("FATAL ERROR:", e);
-    res.write(`ERROR|Server Error: ${e.message}`);
-    res.end();
-  }
-}
+    const res = await fetch("
