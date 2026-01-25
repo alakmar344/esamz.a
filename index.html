@@ -493,7 +493,7 @@
         .chat-container { 
             flex: 1;
             overflow-y: auto;
-            padding: 48px 24px 24px; /* Bottom padding adjusted */
+            padding: 48px 24px 24px; /* Reduced bottom padding */
             scroll-behavior: smooth;
             display: flex;
             flex-direction: column;
@@ -643,7 +643,7 @@
         }
 
         .message-status .mini-spinner {
-            width: 12px;
+            width:  12px;
             height: 12px;
             border: 2px solid var(--border-subtle);
             border-top-color: var(--text-primary);
@@ -709,25 +709,20 @@
             color: var(--text-primary);
         }
 
-        /* --- FLOATING INPUT AREA --- */
+        /* --- INPUT AREA --- */
         .input-container { 
-            /* FIX: Use Flexbox to center horizontally */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            
-            /* Constrain width to match chat content (800px) so it aligns perfectly */
+            /* FIX: Block-level centering to match chat alignment exactly */
             width: 100%;
             max-width: 800px;
-            
-            margin: 0 24px 24px; /* Space from edges */
+            margin: 0 auto; /* This ensures it centers in the column */
+            padding: 0 24px 24px; /* Space from edges */
             z-index: 100;
-            pointer-events: none; /* Let clicks pass through padding if any */
+            /* Removed justify-content: center to prevent layout conflicts */
         }
 
         .input-wrapper { 
             width: 100%;
-            max-width: 800px;
+            max-width: 800px; /* Keep constraint for the capsule itself */
             background: var(--bg-input);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
@@ -975,7 +970,7 @@
                 position: fixed;
                 inset: 0;
                 background: rgba(0, 0, 0, 0.8);
-                z-index: 150;
+                z-index:  150;
                 opacity: 0;
                 pointer-events: none;
                 transition: opacity 0.3s;
@@ -987,7 +982,7 @@
                 background: none;
                 border: none;
                 color: var(--text-primary);
-                font-size: 24px;
+                font-size:  bar-content; /* FIX: Increased size for visibility */
                 padding: 8px;
             }
             
@@ -1002,21 +997,23 @@
                 font-size: 24px;
             }
             
-            .chat-container { padding: 24px 16px 100px; }
+            .chat-container { padding: 24px 16px 100px; /* Adjusted for mobile */
             .message { margin-bottom: 40px; gap: 12px; }
             .welcome h1 { font-size: 28px; }
             .ocr-status { bottom: 80px; }
-            .input-container { padding: 0 16px 16px; }
+            .input-container { 
+                padding: 0 16px 16px; /* Adjusted padding */
+                margin-bottom: 80px; /* Push up from bottom */
+            }
         }
         
         .privacy-disclaimer {
             /* FIX: Static positioning to prevent overlap/errors */
             position: relative;
-            margin-top: 12px; /* Gap above input wrapper */
+            margin-top: 12px; /* Ensure spacing above input wrapper */
             text-align: center;
             font-size: 11px;
             color: var(--text-muted);
-            /* Ensure it doesn't block input */
             pointer-events: none; 
             z-index: 10; 
         }
@@ -1047,7 +1044,7 @@
                 </div>
                 <div class="brand-text">
                     <div class="brand-name">eSAMz AI</div>
-                    <div class="brand-version">Pro v9.1</div>
+                    <div class="brand-version">v9.1</div>
                 </div>
             </div>
             <button class="btn-new" id="btnNewChat">
@@ -1078,7 +1075,7 @@
             <a href="https://esamz.info/aboutus" target="_blank" rel="noopener" class="nav-item">
                 <span class="icon">ℹ️</span> About
             </a>
-             <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" class="nav-item">
+             <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" class="view-item">
                 <span class="icon">🔒</span> Privacy
             </a>
             <a href="https://forms.gle/HUrbqLp3YFdHUxyd8" target="_blank" rel="noopener" class="nav-item">
@@ -1122,14 +1119,12 @@
                             <button class="input-btn" id="btnWelcomeVoice" title="Voice">🎤</button>
                             <textarea id="welcomeInput" rows="1" placeholder="Message eSAMz..."></textarea>
                             <button class="input-btn primary" id="btnWelcomeSend">→</button>
-                        </div>
-                        <div class="char-counter" id="welcomeCharCounter">0 / 4000</div>
-                    </div>
+                
                 </div>
             </div>
         </div>
 
-        <!-- FIXED: Disclaimer moved inside container, static position -->
+        <!-- FIXED: Centered input container with block alignment -->
         <div class="input-container" id="chatInputContainer" style="display: none;">
             <div class="input-wrapper" id="inputWrapper">
                 <div class="file-preview" id="filePreview"></div>
@@ -1144,6 +1139,7 @@
                 <div class="char-counter" id="charCounter">0 / 4000</div>
             </div>
             
+            <!-- Disclaimer positioned naturally below the input -->
             <div class="privacy-disclaimer">
                 eSAMz AI can make mistakes. Consider checking important information. <br>
                 <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener">Privacy Policy</a> • 
