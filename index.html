@@ -493,7 +493,7 @@
         .chat-container { 
             flex: 1;
             overflow-y: auto;
-            padding: 48px 24px 160px; /* Extra bottom padding for floating input */
+            padding: 48px 24px 120px; /* Bottom padding adjusted */
             scroll-behavior: smooth;
             display: flex;
             flex-direction: column;
@@ -709,19 +709,17 @@
             color: var(--text-primary);
         }
 
-        /* --- FLOATING INPUT AREA --- */
-      /* --- FLOATING INPUT AREA --- */
-.input-container { 
-    position: absolute; /* <--- FIX: Anchors it to the chat area, not the screen */
-    bottom: 24px;
-    left: 0;
-    right: 0;
-    padding: 0 24px;
-    pointer-events: none;
-    z-index: 100;
-    display: flex;
-    justify-content: center;
-}
+        /* --- INPUT AREA --- */
+        .input-container { 
+            /* FIX: Relative positioning to respect layout flow */
+            position: relative;
+            margin: 0 24px 24px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
         .input-wrapper { 
             width: 100%;
             max-width: 800px;
@@ -736,7 +734,6 @@
             gap: 8px;
             box-shadow: var(--shadow-float);
             transition: border-color 0.2s, box-shadow 0.2s;
-            pointer-events: auto; /* Re-enable clicks on capsule */
         }
 
         /* Focused State: Glowing Border */
@@ -999,27 +996,36 @@
                 font-size: 24px;
             }
             
-            .chat-container { padding: 24px 16px 140px; }
+            .chat-container { padding: 24px 16px 100px; }
             .message { margin-bottom: 40px; gap: 12px; }
             .welcome h1 { font-size: 28px; }
             .ocr-status { bottom: 80px; }
-            .input-container { padding: 0 16px; bottom: 16px; }
+            .input-container { padding: 0 16px 16px; }
             .privacy-disclaimer { font-size: 11px; }
         }
         
         .privacy-disclaimer {
-            position: fixed;
-            bottom: 4px;
+            position: absolute;
+            bottom: -20px; /* Pull it down slightly */
             left: 0;
             right: 0;
             text-align: center;
             font-size: 11px;
             color: var(--text-muted);
-            pointer-events: none;
-            z-index: 90;
+            /* FIX: Ensure it doesn't block clicks to input */
+            pointer-events: none; 
+            z-index: 10; 
         }
-        .privacy-disclaimer a { color: var(--text-secondary); text-decoration: none; }
-        .privacy-disclaimer a:hover { color: var(--text-primary); }
+
+        .privacy-disclaimer a { 
+            color: var(--text-secondary); 
+            text-decoration: none; 
+        }
+        
+        .privacy-disclaimer a:hover { 
+            color: var(--text-primary); 
+            text-decoration: underline; 
+        }
     </style>
 </head>
 <body>
@@ -1132,6 +1138,8 @@
                 </div>
                 <div class="char-counter" id="charCounter">0 / 4000</div>
             </div>
+            
+            <!-- FIX: Disclaimer moved to bottom of input-container with z-index control -->
             <div class="privacy-disclaimer">
                 eSAMz AI can make mistakes. Consider checking important information. <br>
                 <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener">Privacy Policy</a> • 
