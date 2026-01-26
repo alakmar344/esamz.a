@@ -709,21 +709,25 @@
             color: var(--text-primary);
         }
 
-        /* --- INPUT AREA --- */
+        /* --- FLOATING INPUT AREA --- */
         .input-container { 
-            /* FIX: Block-level centering to match chat alignment exactly */
-            display: block;
+            /* FIX: Use Flexbox to center horizontally */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            
+            /* Constrain width to match chat content (800px) so it aligns perfectly */
             width: 100%;
             max-width: 800px;
-            margin: 0 auto; /* Block level centering */
-            padding: 0 24px 24px; /* Space from edges */
+            
+            margin: 0 24px 24px; /* Space from edges */
             z-index: 100;
             pointer-events: none; /* Let clicks pass through padding if any */
         }
 
         .input-wrapper { 
             width: 100%;
-            max-width: 800px; /* Keep constraint to match chat content width */
+            max-width: 800px;
             background: var(--bg-input);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
@@ -736,7 +740,6 @@
             box-shadow: var(--shadow-float);
             transition: border-color 0.2s, box-shadow 0.2s;
             pointer-events: auto; /* Re-enable clicks on capsule */
-            position: relative;
         }
 
         /* Focused State: Glowing Border */
@@ -826,7 +829,7 @@
         @keyframes pulse-red {
             0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
             70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
 
         textarea { 
@@ -999,7 +1002,7 @@
                 font-size: 24px;
             }
             
-            .chat-container { padding: 24px 16px 100px; /* Adjusted padding */
+            .chat-container { padding: 24px 16px 100px; }
             .message { margin-bottom: 40px; gap: 12px; }
             .welcome h1 { font-size: 28px; }
             .ocr-status { bottom: 80px; }
@@ -1007,11 +1010,13 @@
         }
         
         .privacy-disclaimer {
+            /* FIX: Static positioning to prevent overlap/errors */
             position: relative;
             margin-top: 12px; /* Gap above input wrapper */
             text-align: center;
             font-size: 11px;
             color: var(--text-muted);
+            /* Ensure it doesn't block input */
             pointer-events: none; 
             z-index: 10; 
         }
@@ -1037,7 +1042,7 @@
             <div class="brand">
                 <div class="logo">
                     <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5-1.25L12 11zm0 2.5l-5-2.5-5 2.5-5 2.5 2.5-5-2.5-5 2.5-5-2.5-5-2.5z"/>
+                        <path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-5-2.5-5 2.5L12 22l10-8.5-5-2.5-5 2.5z"/>
                     </svg>
                 </div>
                 <div class="brand-text">
@@ -1104,7 +1109,7 @@
             <div class="welcome" id="welcomeScreen">
                 <div class="welcome-logo">
                      <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5-1.25L12 11zm0 2.5l-5-2.5-5-2.5-5-2.5-5-2.5-5 2.5z"/>
+                        <path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-5-2.5-5 2.5L12 22l10-8.5-5-2.5-5 2.5z"/>
                     </svg>
                 </div>
                 <h1>How can I help you today?</h1>
@@ -1124,7 +1129,7 @@
             </div>
         </div>
 
-        <!-- FIX: Hidden input wrapper when welcome screen is shown -->
+        <!-- FIXED: Disclaimer moved inside container, static position -->
         <div class="input-container" id="chatInputContainer" style="display: none;">
             <div class="input-wrapper" id="inputWrapper">
                 <div class="file-preview" id="filePreview"></div>
@@ -1139,7 +1144,6 @@
                 <div class="char-counter" id="charCounter">0 / 4000</div>
             </div>
             
-            <!-- Disclaimer moved inside container -->
             <div class="privacy-disclaimer">
                 eSAMz AI can make mistakes. Consider checking important information. <br>
                 <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener">Privacy Policy</a> • 
@@ -1206,7 +1210,6 @@ class App {
             messageCount: 0,
             maxChars: 4000,
             isMobile: window.innerWidth <= 768,
-            sidebarCollapsed: false,
             isProcessing: false,
             uploadContext: null,
             isRecording: false
@@ -1427,7 +1430,7 @@ class App {
                 this.showOcrStatus(false);
                 alert(`Processing failed: ${file.name}`);
                 const idx = files.findIndex(f => f.file === file);
-                if (idx !== -1) files.splice(idx, 1);
+                if (idx !== -1) files.splice(idx,1);
                 this.renderFiles(files, preview, isWelcome);
             }
         }
@@ -1536,530 +1539,9 @@ class App {
 
         const displayText = constructedPayload.userMessage + (constructedPayload.files.length > 0 ? 
             '\n\n' + constructedPayload.files.map(f => {
-                let icon = f.type === 'image' ? '🖼️' : (f.type === 'code' ? '💻' : '📄';
-                return `**${icon} File:** ${f.fileName}\n\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`
-        }
-    </style>
-</head>
-<body>
-
-    <div class="overlay" id="overlay"></div>
-
-    <aside class="sidebar" id="sidebar">
-        <button class="mobile-close" id="closeSidebar">×</button>
-        <div class="sidebar-header">
-            <div class="brand">
-                <div class="logo">
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5-1.25L12 11zm0 2.5l-5-2.5-5-2.5-5 2.5L12 11zm0 2.5l-5-2.5-5-2.5-5-2.5-5-2.5-2.5-2.5-2.5-5-2.5-2.5-2.5-5-2.5-5z"/>
-                    </svg>
-                </div>
-                <div class="brand-text">
-                    <div class="brand-name">eSAMz AI</div>
-                    <div class="brand-version">Pro v9.1</div>
-                </div>
-            </div>
-            <button class="btn-new" id="btnNewChat">
-                <span>+</span> New Conversation
-            </button>
-        </div>
-        
-        <div class="nav-section">
-            <div class="nav-label">History</div>
-            <div id="historyList"></div>
-
-            <div class="nav-label">System</div>
-            <button class="nav-item" id="btnExportModal">
-                <span class="icon">↓</span> Export Data
-            </button>
-            <button class="nav-item" id="btnClearCache">
-                <span class="icon">×</span> Clear History
-            </button>
-            <a href="https://esamz.info" target="_blank" rel="noopener" class="nav-item">
-                <span class="icon">🌐</span> Website
-            </button>
-            <a href="https://esamz.info/termsofservice" target="_blank" rel="noopener" class="nav-item">
-                <span class="icon">📝</span> Terms
-            </button>
-            <a href="https://esamz.info/docs" target="_blank" rel="noopener" class="nav-item">
-                <span class="icon">📚</span> Docs
-            </button>
-            <a href="https://esamz.info/aboutus" target="_blank" rel="noopener" class="nav-item">
-                <span class="icon">ℹ️</span> About
-            </a>
-             <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" class="nav-item">
-                <span class="icon">🔒</span> Privacy
-            </a>
-            <a href="https://forms.gle/HUrbqLp3YFdHUxyd8" target="_blank" rel="noopener" class="nav-item">
-                <span class="icon">✎</span> Feedback
-            </a>
-        </div>
-
-        <div class="sidebar-footer">
-            <div class="footer-copyright">
-                © 2025 eSAMz AI
-            </div>
-        </div>
-    </aside>
-
-    <main class="main-content">
-        <header>
-            <div class="header-left">
-                <button class="mobile-toggle" id="openSidebar">☰</button>
-                <div class="status-indicator">
-                    <span class="status-dot"></span>
-                    <span id="statusText">Online</span>
-                </div>
-                <button class="btn-secondary" id="btnClearChat">Clear Chat</button>
-        </header>
-
-        <div class="chat-container" id="chatContainer">
-            <div class="welcome" id="welcomeScreen">
-                <div class="welcome-logo">
-                     <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5-1.25L12 11zm0 2.5l-5-2.5-5-2.5-2.5-2.5-2.5-2.5-2.5L12 22l10-8.5-5-2.5-5-2.5-5-2.5-2.5-5-2.5-5-2.5-5-2.5-2.5-5-2.5z"/>
-                    </svg>
-                </div>
-                <h1>How can I help you today?</h1>
-                <p>I'm ready to assist with coding, writing, and analysis.</p>
-                <div style="width: 100%; max-width: 600px; margin: 0 auto;">
-                    <div class="input-wrapper" id="welcomeInputWrapper">
-                        <div class="file-preview" id="welcomeFilePreview"></div>
-                        <div class="input-row">
-                            <button class="input-btn" id="btnWelcomeUpload" title="Upload">📎</button>
-                            <button class="input-btn" id="btnWelcomeVoice" title="Voice">🎤</button>
-                            <textarea id="welcomeInput" rows="1" placeholder="Message eSAMz..."></textarea>
-                            <button class="input-btn primary" id="btnWelcomeSend">→</button>
-                        </div>
-                        <div class="char-counter" id="welcomeCharCounter">0 / 4000</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- HIDDEN input wrapper when welcome screen is shown -->
-        <div class="input-container" id="chatInputContainer" style="display: none;">
-            <div class="input-wrapper" id="inputWrapper">
-                <div class="file-preview" id="filePreview"></div>
-                <div class="input-row">
-                    <button class="input-btn" id="btnUpload" title="Upload">📎</button>
-                    <button class="input-btn" id="btnVoice" title="Voice">🎤</button>
-                    <input type="file" id="fileInput" hidden multiple 
-                           accept=".txt,.md,.js,.py,.html,.css,.json,.java,.cpp,.c,.ts,.jsx,.tsx,.php,.rb,.go,.rs,.swift,.kt,.xml,.yaml,.yml,.sh,.sql,.csv,.log,.ini,.conf,.png,.jpg,.jpeg,.gif,.bmp,.webp">
-                    <textarea id="userInput" rows="1" placeholder="Message eSAMz..."></textarea>
-                    <button class="input-btn primary" id="btnSend">→</button>
-                </div>
-                <div class="char-counter" id="charCounter">0 / 4000</div>
-            </div>
-            
-            <!-- Disclaimer moved inside container -->
-            <div class="privacy-disclaimer">
-                eSAMz AI can make mistakes. Consider checking important information. <br>
-                <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener">Privacy Policy</a> • 
-                <a href="https://esamz.info/termsofservice" target="_blank" rel="noopener">Terms</a>
-            </div>
-        </div>
-
-    </main>
-    
-    <div class="ocr-status" id="ocrStatus">
-        <div class="ocr-spinner"></div>
-        <span id="ocrStatusText">Scanning...</span>
-    </div>
-
-    <dialog id="exportDialog">
-        <div class="modal-header">
-            <h3>Export Conversation</h3>
-            <button class="btn-secondary" style="border:none; padding:8px;" id="closeDialog">×</button>
-        </div>
-        <div class="modal-body">
-            <button class="export-option" onclick="app.exportChat('txt')">📄 Plain Text</button>
-            <button class="export-option" onclick="app.exportChat('md')">📝 Markdown</button>
-            <button class="export-option" onclick="app.exportChat('html')">🌐 HTML Document</button>
-        </div>
-    </dialog>
-
-    <script>
-        // Intent detection (client side)
-        function detectIntent({ text, files }) {
-            if (files && files.length > 0) return "file";
-            const codeTriggers = ["code", "rewrite", "refactor", "fix", "bug", "error", "html", "css", "js", "python", "api", "backend", "frontend", "json", "schema", "build", "design"];
-            const t = text.toLowerCase();
-            if (codeTriggers.some(k => t.includes(k))) return "code";
-            return "chat";
-        }
-
-class App {
-    constructor() {
-        this.dom = {
-            chat: document.getElementById('chatContainer'),
-            input: document.getElementById('userInput'),
-            welcomeInput: document.getElementById('welcomeInput'),
-            welcome: document.getElementById('welcomeScreen'),
-            history: document.getElementById('historyList'),
-            preview: document.getElementById('filePreview'),
-            welcomePreview: document.getElementById('welcomeFilePreview'),
-            sidebar: document.getElementById('sidebar'),
-            overlay: document.getElementById('overlay'),
-            wrapper: document.getElementById('inputWrapper'),
-            welcomeWrapper: document.getElementById('welcomeInputWrapper'),
-            dialog: document.getElementById('exportDialog'),
-            chatInputContainer: document.getElementById('chatInputContainer'),
-            mainContent: document.querySelector('.main-content'),
-            charCounter: document.getElementById('charCounter'),
-            welcomeCharCounter: document.getElementById('welcomeCharCounter'),
-            ocrStatus: document.getElementById('ocrStatus'),
-            ocrStatusText: document.getElementById('ocrStatusText'),
-            statusText: document.getElementById('statusText')
-        };
-
-        this.state = {
-            chatId: null,
-            files: [],
-            welcomeFiles: [],
-            messageCount: 0,
-            maxChars: 4000,
-            isMobile: window.innerWidth <= 768,
-            sidebarCollapsed: false,
-            isProcessing: false,
-            uploadContext: null,
-            isRecording: false
-        };
-
-        this.storageKey = 'esamz_conversations_v12';
-        this.maxStorageSize = 5 * 1024 * 1024;
-        
-        this.fileTypes = {
-            text: ['txt', 'md', 'csv', 'log', 'ini', 'conf', 'yaml', 'yml', 'xml', 'json'],
-            code: ['js', 'py', 'html', 'css', 'java', 'cpp', 'c', 'ts', 'jsx', 'tsx', 'php', 'rb', 'go', 'rs', 'swift', 'kt', 'sh', 'sql'],
-            image: ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp']
-        };
-
-        this.initSpeechRecognition();
-        this.init();
-    }
-
-    initSpeechRecognition() {
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            this.recognition = new SpeechRecognition();
-            this.recognition.continuous = false;
-            this.recognition.lang = 'en-US';
-            this.recognition.interimResults = false;
-
-            this.recognition.onstart = () => {
-                this.state.isRecording = true;
-                this.updateMicUI(true);
-                if (this.dom.statusText) this.dom.statusText.innerText = "Listening...";
-            };
-
-            this.recognition.onend = () => {
-                this.state.isRecording = false;
-                this.updateMicUI(false);
-                if (this.dom.statusText) this.dom.statusText.innerText = "Online";
-            };
-
-            this.recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                const activeInput = this.dom.chatInputContainer.style.display === 'none' ? this.dom.welcomeInput : this.dom.input;
-                const currentText = activeInput.value;
-                activeInput.value = currentText ? currentText + ' ' + transcript : transcript;
-                activeInput.dispatchEvent(new Event('input'));
-            };
-
-            this.recognition.onerror = (event) => {
-                console.error('Speech error', event.error);
-                this.state.isRecording = false;
-                this.updateMicUI(false);
-                if (this.dom.statusText) this.dom.statusText.innerText = "Error";
-            };
-        } else {
-            console.warn('Speech Recognition API not supported.');
-            document.querySelectorAll('#btnVoice, #btnWelcomeVoice').forEach(btn => btn.style.display = 'none');
-        }
-    }
-
-    toggleRecording() {
-        if (!this.recognition) return alert("Browser does not support voice input.");
-        if (this.state.isRecording) this.recognition.stop();
-        else this.recognition.start();
-    }
-
-    updateMicUI(isRecording) {
-        const micBtns = [document.getElementById('btnVoice'), document.getElementById('btnWelcomeVoice')];
-        micBtns.forEach(btn => {
-            if (isRecording) btn.classList.add('recording');
-            else btn.classList.remove('recording');
-        });
-    }
-
-    init() {
-        this.loadHistory();
-        this.setupEvents();
-        this.setupDragDrop();
-        this.dom.welcomeInput.focus();
-        
-        window.addEventListener('resize', () => {
-            this.state.isMobile = window.innerWidth <= 768;
-            if (!this.state.isMobile) {
-                this.dom.sidebar.classList.remove('mobile-open');
-                this.dom.overlay.classList.remove('active');
-            }
-        });
-    }
-
-    setupEvents() {
-        document.getElementById('btnWelcomeSend').addEventListener('click', () => this.handleWelcomeSend());
-        document.getElementById('btnWelcomeUpload').addEventListener('click', () => {
-            this.state.uploadContext = 'welcome';
-            document.getElementById('fileInput').click();
-        });
-        const welcomeMic = document.getElementById('btnWelcomeVoice');
-        if(welcomeMic) welcomeMic.addEventListener('click', () => this.toggleRecording());
-        
-        this.dom.welcomeInput.addEventListener('keydown', e => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.handleWelcomeSend();
-            }
-        });
-        this.dom.welcomeInput.addEventListener('input', () => {
-            this.autoResize(this.dom.welcomeInput);
-            this.updateCharCounter(this.dom.welcomeInput, this.dom.welcomeCharCounter);
-        });
-
-        document.getElementById('btnSend').addEventListener('click', () => this.handleSend());
-        document.getElementById('btnUpload').addEventListener('click', () => {
-            this.state.uploadContext = 'chat';
-            document.getElementById('fileInput').click();
-        });
-        const chatMic = document.getElementById('btnVoice');
-        if(chatMic) chatMic.addEventListener('click', () => this.toggleRecording());
-        
-        this.dom.input.addEventListener('keydown', e => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.handleSend();
-            }
-        });
-        this.dom.input.addEventListener('input', () => {
-            this.autoResize(this.dom.input);
-            this.updateCharCounter(this.dom.input, this.dom.charCounter);
-        });
-
-        document.getElementById('openSidebar').addEventListener('click', () => this.toggleSidebar(true));
-        document.getElementById('closeSidebar').addEventListener('click', () => this.toggleSidebar(false));
-        this.dom.overlay.addEventListener('click', () => this.toggleSidebar(false));
-
-        document.getElementById('btnNewChat').addEventListener('click', () => this.newChat());
-        document.getElementById('btnClearChat').addEventListener('click', () => this.clearChat());
-        document.getElementById('btnClearCache').addEventListener('click', () => this.clearAllData());
-
-        document.getElementById('fileInput').addEventListener('change', e => {
-            const isWelcome = this.state.uploadContext === 'welcome';
-            this.handleFiles(e.target.files, isWelcome);
-            e.target.value = ''; 
-            this.state.uploadContext = null;
-        });
-
-        document.getElementById('btnExportModal').addEventListener('click', () => this.dom.dialog.showModal());
-        document.getElementById('closeDialog').addEventListener('click', () => this.dom.dialog.close());
-    }
-
-        // ... (rest of setupEvents remains same) ...
-    }
-
-    setupDragDrop() {
-        [this.dom.wrapper, this.dom.welcomeWrapper].forEach(wrapper => {
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => wrapper.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); }));
-            wrapper.addEventListener('dragenter', () => { wrapper.style.borderColor = '#52525b'; });
-            wrapper.addEventListener('dragleave', () => { wrapper.style.borderColor = 'var(--border-subtle)'; });
-            wrapper.addEventListener('drop', e => {
-                wrapper.style.borderColor = 'var(--border-subtle)';
-                this.handleFiles(e.dataTransfer.files, wrapper === this.dom.welcomeWrapper);
-            });
-        });
-    }
-
-    autoResize(textarea) {
-        textarea.style.height = 'auto';
-        textarea.style.height = Math.min(textarea.scrollHeight, 150) + 'px';
-    }
-
-    updateCharCounter(textarea, counter) {
-        const len = textarea.value.length;
-        counter.innerText = `${len} / ${this.state.maxChars}`;
-        counter.className = 'char-counter' + (len > this.state.maxChars ? ' danger' : len > this.state.maxChars * 0.9 ? ' warning' : '');
-    }
-
-    async handleFiles(fileList, isWelcome) {
-        if (!fileList || fileList.length === 0) return;
-        const files = isWelcome ? this.state.welcomeFiles : this.state.files;
-        const preview = isWelcome ? this.dom.welcomePreview : this.dom.preview;
-        
-        for (const file of fileList) {
-            if (!file || !file.name) continue;
-            const ext = file.name.split('.').pop().toLowerCase();
-            
-            let category = 'unknown';
-            if (this.fileTypes.text.includes(ext)) category = 'text';
-            else if (this.fileTypes.code.includes(ext)) category = 'code';
-            else if (this.fileTypes.image.includes(ext)) category = 'image';
-            
-            if (category === 'unknown') {
-                alert(`Unsupported file: .${ext}`);
-                continue;
-            }
-
-            if (file.size > 10 * 1024 * 1024) {
-                alert(`File too large: ${file.name}`);
-                continue;
-            }
-
-            try {
-                let content = '';
-                let type = 'text';
-                if (category === 'image') {
-                    files.push({ file, textExtracted: '', type: 'image', status: 'processing' });
-                    this.renderFiles(files, preview, isWelcome);
-                    this.showOcrStatus(true, `Scanning ${file.name}...`);
-                    content = await this.performOCR(file);
-                    this.showOcrStatus(false);
-                } else {
-                    content = await this.readTextFile(file);
-                    type = category;
-                }
-
-                const idx = files.findIndex(f => f.file === file);
-                if (idx !== -1) {
-                    files[idx].textExtracted = content;
-                    files[idx].status = 'done';
-                    files[idx].type = type;
-                } else {
-                    files.push({ file, textExtracted: content, type, status: 'done' });
-                }
-                this.renderFiles(files, preview, isWelcome);
-            } catch (error) {
-                console.error(error);
-                this.showOcrStatus(false);
-                alert(`Processing failed: ${file.name}`);
-                const idx = files.findIndex(f => f.file === file);
-                if (idx !== -1) files.splice(idx, 1);
-                this.renderFiles(files, preview, isWelcome);
-            }
-        }
-    }
-
-    async performOCR(file) {
-        try {
-            const worker = await Tesseract.createWorker({
-                logger: m => {
-                    if (m.status === 'recognizing text') {
-                        const progress = Math.round(m.progress * 100);
-                        this.dom.ocrStatusText.innerText = `Scanning... ${progress}%`;
-                    }
-                }
-            });
-            await worker.loadLanguage('eng');
-            await worker.initialize('eng');
-            await worker.setParameters({
-                tessedit_pageseg_mode: Tesseract.PSM.AUTO,
-                preserve_interword_spaces: '1',
-            });
-            const ret = await worker.recognize(file);
-            await worker.terminate();
-            return ret.data.text || "";
-        } catch (e) {
-            console.error("OCR Error:", e);
-            throw new Error("OCR failed.");
-        }
-    }
-
-    showOcrStatus(show, text = "") {
-        if (show) {
-            this.dom.ocrStatusText.innerText = text;
-            this.dom.ocrStatus.classList.add('visible');
-        } else {
-            this.dom.ocrStatus.classList.remove('visible');
-        }
-    }
-
-    readTextFile(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = () => reject(new Error('Read failed'));
-            reader.readAsText(file);
-        });
-    }
-
-    renderFiles(files, preview, isWelcome) {
-        preview.innerHTML = '';
-        files.forEach((item, idx) => {
-            if (!item || !item.file) return;
-            let icon = '📄';
-            if (item.type === 'code') icon = '💻';
-            else if (item.type === 'image') icon = '🖼️';
-            
-            const chip = document.createElement('div');
-            chip.className = `file-chip ${item.type}`;
-            chip.innerHTML = `<span>${icon}</span> <span style="overflow:hidden;text-overflow:ellipsis;max-width:120px;">${item.file.name}</span> <button onclick="app.removeFile(${idx}, ${isWelcome})">×</button>`;
-            preview.appendChild(chip);
-        });
-    }
-
-    removeFile(idx, isWelcome) {
-        if (isWelcome) {
-            this.state.welcomeFiles.splice(idx, 1);
-            this.renderFiles(this.state.welcomeFiles, this.dom.welcomePreview, true);
-        } else {
-            this.state.files.splice(idx, 1);
-            this.renderFiles(this.state.files, this.dom.preview, false);
-        }
-    }
-
-    async handleWelcomeSend() {
-        const text = this.dom.welcomeInput.value.trim();
-        if (!text && this.state.welcomeFiles.length === 0) return;
-        if (this.state.welcomeFiles.some(f => f.status === 'processing')) return alert("Please wait for scan to complete.");
-        if (text.length > this.state.maxChars) return alert("Message too long.");
-
-        this.dom.welcome.style.display = 'none';
-        this.dom.chatInputContainer.style.display = 'block';
-        if (this.state.isMobile) this.toggleSidebar(false);
-
-        this.state.files = [...this.state.welcomeFiles];
-        this.state.welcomeFiles = [];
-        
-        this.createChatSession(text);
-        await this.sendMessage(text);
-
-        this.dom.input.value = '';
-        this.dom.input.style.height = 'auto';
-        this.updateCharCounter(this.dom.input, this.dom.charCounter);
-    }
-
-    async sendMessage(userText) {
-        if (this.state.isProcessing) return;
-        if (!userText && this.state.files.length === 0) return;
-        if (this.state.files.some(f => f.status === 'processing')) return alert("Please wait for scan to complete.");
-
-        const constructedPayload = {
-            userMessage: userText || '',
-            files: this.state.files.map(f => ({ fileName: f.file.name, content: f.textExtracted, type: f.type }))
-        };
-
-        const intent = detectIntent({ text: userText, files: this.state.files });
-
-        const displayText = constructedPayload.userMessage + (constructedPayload.files.length > 0 ? 
-            '\n\n' + constructedPayload.files.map(f => {
-                let icon = f.type === 'image' ? '🖼️' : (f.type === 'code' ? '💻' : '📄';
-                return `**${icon} File:** ${f.fileName}\n\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\ `\`\`\ `\n`;
-`` ` : '');
+                let icon = f.type === 'image' ? '🖼️' : (f.type === 'code' ? '💻' : '📄');
+                return `**${icon} File:** ${f.fileName}\n\`\`\`\n${f.content}\n\`\`\``;
             }).join('\n') : '');
-        }) : '');
-        }) : '');
-    }
 
         this.addMessage(displayText, 'user');
         this.appendToHistory('user', displayText);
@@ -2090,19 +1572,16 @@ class App {
             const decoder = new TextDecoder("utf-8");
             let fullText = "";
             let buffer = "";
-            let nextSplit = 0;
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-
                 buffer += decoder.decode(value, { stream: true });
                 const lines = buffer.split('\n');
                 buffer = lines.pop() || "";
 
                 for (const line of lines) {
                     if (!line) continue;
-                    
                     const separatorIndex = line.indexOf('|');
                     if (separatorIndex === -1) continue;
 
@@ -2126,7 +1605,7 @@ class App {
                         let content = data.replace(/\\n/g, '\n');
                         
                         // 2. Now safe to split delimiters
-                        nextSplit = content.indexOf('CHUNK|');
+                        let nextSplit = content.indexOf('CHUNK|');
                         while (nextSplit !== -1) {
                             fullText += content.substring(0, nextSplit);
                             content = content.substring(nextSplit + 6);
@@ -2136,6 +1615,9 @@ class App {
                         // 3. Append remaining
                         fullText += content;
                         // --- CRITICAL FIX END ---
+
+                        bubbleContent.innerText = fullText;
+                        this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
                     } else if (type === 'ERROR') {
                         throw new Error(data);
                     }
@@ -2148,14 +1630,12 @@ class App {
                 } else {
                     bubbleContent.innerHTML = (fullText || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 }
-
                 if (window.Prism && typeof Prism.highlightAllUnder === 'function') {
                     Prism.highlightAllUnder(aiMessageDiv);
                 }
             } catch (e) {
                 console.error('Markdown final parse failed', e);
             }
-
             this.addMessageActions(aiMessageDiv);
             this.appendToHistory('ai', fullText);
         } catch (error) {
@@ -2193,7 +1673,7 @@ class App {
         actionsDiv.className = 'message-actions';
         actionsDiv.innerHTML = `
             <button class="action-btn" onclick="app.copyText(this)">Copy</button>
-            <button class="action-btn regenerate" onclick="app.regenerateResponse(this)">Regenerate</button>
+            <button class="action-btn" onclick="app.regenerateResponse(this)">Regenerate</button>
         `;
         contentDiv.appendChild(actionsDiv);
     }
@@ -2207,6 +1687,7 @@ class App {
         this.dom.input.value = '';
         this.dom.input.style.height = 'auto';
         this.updateCharCounter(this.dom.input, this.dom.charCounter);
+
         this.sendMessage(text);
     }
 
@@ -2226,7 +1707,7 @@ class App {
             htmlContent = (text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
         
-        const regenerateBtn = showRegenerate ? '<button class="action-btn regenerate" onclick="app.regenerateResponse(this)">Regenerate</button>' : '';
+        const regenerateBtn = showRegenerate ? '<button class="action-btn" onclick="app.regenerateResponse(this)">Regenerate</button>' : '';
       
         div.innerHTML = `
             <div class="message-avatar">${avatar}</div>
@@ -2281,6 +1762,7 @@ class App {
                 });
                 
                 if (!response.ok) throw new Error(`Server error: ${response.status}`);
+                
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder("utf-8");
                 let fullText = "";
@@ -2330,6 +1812,7 @@ class App {
                             // 3. Append remaining
                             fullText += content;
                             // --- CRITICAL FIX END ---
+
                             bubbleContent.innerText = fullText;
                             this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
                         } else if (type === 'ERROR') {
@@ -2352,16 +1835,16 @@ class App {
                 }
                 
                 this.addMessageActions(aiMessageDiv);
-                this.appendToHistory('ai', fullText);
-        } catch (error) {
-            console.error('Regenerate failed:', error);
-            const errorMessage = `**Regeneration Error:** ${error.message}`;
-            bubbleContent.innerHTML = marked.parse(errorMessage);
-            this.addMessageActions(aiMessageDiv);
-            this.appendToHistory('ai', errorMessage);
-        } finally {
-            this.state.isProcessing = false;
-            if (this.dom.statusText) this.dom.statusText.innerText = "Online";
+                
+            } catch (error) {
+                console.error('Regenerate failed:', error);
+                const errorMessage = `**Regeneration Error:** ${error.message}`;
+                bubbleContent.innerHTML = marked.parse(errorMessage);
+                this.addMessageActions(aiMessageDiv);
+            } finally {
+                this.state.isProcessing = false;
+                if (this.dom.statusText) this.dom.statusText.innerText = "Online";
+            }
         }
     }
 
@@ -2421,9 +1904,10 @@ class App {
                 chat.messages.push({ role, content, ts: Date.now() });
                 chat.updated = Date.now();
                 this.saveHistory(history);
-            } catch (e) {
-                console.error('Failed to save message:', e);
             }
+        } catch (e) {
+            console.error('Failed to save message:', e);
+        }
     }
 
     loadChat(chatId) {
@@ -2431,7 +1915,7 @@ class App {
             const history = this.getHistory();
             const chat = history.find(c => c.id === chatId);
             if (!chat) return;
-
+            
             this.state.chatId = chatId;
             this.state.messageCount = chat.messages.length;
             
@@ -2463,10 +1947,9 @@ class App {
                         <div class="message-bubble">${htmlContent}</div>
                         ${m.role === 'ai' ? `<div class="message-actions">
                             <button class="action-btn" onclick="app.copyText(this)">Copy</button>
-                            <button class="action-btn regenerate" onclick="app.regenerateResponse(this)">Regenerate</button>
+                            ${isLastAI ? '<button class="action-btn" onclick="app.regenerateResponse(this)">Regenerate</button>' : ''}
                         </div>` : ''}
-                    </div>
-                </div>`;
+                    </div>`;
                 messagesContainer.appendChild(div);
             });
             
@@ -2474,7 +1957,7 @@ class App {
             this.dom.chat.appendChild(messagesContainer);
             this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
             
-            if (window.Prism && typeof Prism.highlightAllUnder === 'function') {
+            if (window.Prism && typeof Prism.highlightAll === 'function') {
                 Prism.highlightAll();
             }
             
@@ -2537,7 +2020,7 @@ class App {
             
             const data = JSON.stringify(history);
             if (data.length > this.maxStorageSize) {
-                history.sort((a, b) => (b.updated || b.created) - (a.updated || b.created) - (a.updated || a.created));
+                history.sort((a, b) => (b.updated || b.created) - (a.updated || a.created));
                 history.splice(50);
                 localStorage.setItem(this.storageKey, JSON.stringify(history));
                 console.warn('Storage limit reached. Truncated history to 50 items.');
@@ -2555,7 +2038,8 @@ class App {
             const data = localStorage.getItem(this.storageKey);
             if (data && data.length > this.maxStorageSize * 0.9) {
                 console.warn('Storage is near limit. Consider clearing old conversations.');
-            } catch (e) {
+            }
+        } catch (e) {
             console.error('Storage check failed:', e);
         }
     }
@@ -2598,7 +2082,6 @@ class App {
 
     clearAllData() {
         if (!confirm('Delete ALL conversation history? This cannot be undone.')) return;
-        
         try {
             localStorage.clear();
             location.reload();
@@ -2658,7 +2141,6 @@ class App {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>eSAMz AI Conversation Export</title>
     <style>
@@ -2679,14 +2161,9 @@ class App {
         .message {
             margin: 2rem 0;
             padding: 1.5rem;
-            background: rgba(15, 23, 42, 0.7);
+            background: #161618;
             border-radius: 12px;
             border: 1px solid #27272a;
-            background: #161618;
-            border-radius: 8px;
-            padding: 1.5rem;
-            overflow-x: auto;
-            border-top: 1px solid #27272a;
         }
         .message-header {
             font-weight: 600;
@@ -2705,6 +2182,7 @@ class App {
         }
         code {
             font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9em;
         }
         .footer {
             margin-top: 3rem;
@@ -2716,69 +2194,48 @@ class App {
         }
     </style>
 </head>
-</head>
 <body>
-
-    <div class="overlay" id="overlay"></div>
-
-    <aside class="sidebar" id="sidebar">
-        <button class="mobile-close" id="closeSidebar">×</button>
-        <div class="sidebar-header">
-            <div class="brand">
-                <div class="logo">
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2L2 7l10 5 10-5-10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5-1.25L12 11zm0 2.5l-5-2.5-1.25L12 11zm0 2.5l-5-2.5-5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-5-2.5-5-2.5-5-2.5-2.5-2.5-2.5-5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5.2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5.2.5-2.5-2.5-2.5.2.5.5-2.5-2.5-2.5-2.5.2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5.2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5-2.5.2.5-2.5-2.5-2.5-2.5-2.5-2.5.2.5-2.5-2.5-2.5-2.5.5-2.5-2.5-2.5.5-2.5-2.5-2.5-2.5-2.5.5.2.5-2.5-2.5.2.5-2.5-2.5-2.5-2.5-2.5.2.5.5.2.5.5.2.5.5.2.5.2.5.5.2.5.5.2.5.5.2.5.2.5.5.2.5.5.2.5.2.5.2.5.2.5.5.2.5.5.2.5.5.2.5.5.2.5.2.5.5.5.2.5.5.5.2.5.5.2.5.5.2.5.5.5.5.5.5.5.5.5.5.5.2.5.5.5.2.5.5.5.5.2.5.5.5.5.2.5.5.5.5.5.2.5.5.2.5.5.5.2.5.5.5.2.5.5.5.5.5.5.5.5.5.2.5.5.5.2.5.5.5.5.5.2.5.5.5.5.2.5.5.5.5.5.5.5.5.5.5.2.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\ "\`\`\`\ "\`\`\`\`\`\`\ "\`\`\`\ "\`\ "\` \`\`\`\`\`\ "\`\` " : "\`\`\`\`\` "\`\`\`\` "\`\`\`</g; </div>
-
-        .input-wrapper, #welcomeWrapper {
-            width: 100%;
-            max-width: 700px;
+    <h1>eSAMz AI Conversation</h1>
+    <p style="color: #94a3b8;">Exported on ${new Date().toLocaleString()}</p>
+    ${messages.map(el => {
+        const who = el.classList.contains('user') ? 'You' : 'eSAMz AI';
+        const cls = el.classList.contains('user') ? 'user' : 'ai';
+        const content = el.querySelector('.message-bubble')?.innerHTML || '';
+        return `<div class="message ${cls}">
+            <div class="message-header">${who}</div>
+            <div>${content}</div>
+        </div>`;
+    }).join('')}
+    <div class="footer">
+        Exported from eSAMz AI © 2025
+    </div>
+</body>
+</html>`;
+            this.download(filename + '.html', html);
         }
+        
+        this.dom.dialog.close();
+    }
 
-        /* --- MESSAGES */
-        .message { 
-            display: flex;
-            gap: 24px;
-            margin-bottom: 40px;
-            max-width: 100%;
-            max-width: 100%;
+    download(name, content) {
+        try {
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = name;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            console.error('Download failed:', e);
+            alert('Failed to download file');
         }
+    }
+}
 
-        .message.user {
-            flex-direction: row-reverse;
-        }
-
-        .message-avatar { 
-            width: 32px;
-            height: 32px;
-            flex-shrink: 0;
-            border-radius: 50%;
-            display: grid;
-            place-items: center;
-            font-size: 13px;
-            font-weight: 600;
-            /* AI Avatar: Gradient Circle */
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            border: 1px solid rgba(255, 255,255,0.1);
-            color: #fff;
-        }
-
-        .message.user .message-avatar { 
-            /* User Avatar: Simple Grey Circle */
-            background: var(--border-subtle);
-            color: var(--text-secondary);
-            border: none;
-        }
-
-        .message-content { 
-            flex: 1;
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* USER BUBBLE: Pill Shape */
-        .message.user .message-bubble { 
-            background: var(--bg-user-pill);
-            border-radius: 24px;
-            padding: 10px 20px;
-            color: #e5e5e5e5-1.25L12 8.5l-2.5-1.25L12 8.5l-2.5-1.25L12 8.5l-2.5-1.25L12 11zm0 2.5l-2.5-2.5-1.25L12 8.5l-2.5-1.25L12 11zm0 2.5l-2.5-1.25L12 11zm0 2.5l-2.5-1.25L12 8.5l-2.5-1.25L12 8.5l-2.5-1.25L12 11zm0 2.5l-2.5-1.25L12 8.5l-2.5-1.25L12 11zm0 2.5l-2.5-1.25L12 8.5l-2.5-1.25L12 8.5l-2.5-1.25L12 8.5l-2.5-1.25L12 11zm0 2.5l-1.25L12 8.5l-2.5-1.25L12 8.5l-2.5-1.25L12 8.5l-2.5-1.25L12 11zm0 2.5l-2.5-1.25L12 8.5l-2.5-1.25L12 8.5l-2.5-1.25L12 8.5-2.5-1.25L12 11zm0 2.5-1.25L12 8.5l-2.5-1.25L12 8.5l-2.5-1.25L12 8.5l-2.5-1.25L12 8.5-1.25L12 8.5-1.25L12 11zm0 2.5-1.25L12 8.5-2.5-1.25L12 8.5l-2.5-1.25L12 8.5-1.25L12 8.5-2.5-1.25L12 8.5-2.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L 8.5-1.25L12 8.5-1.25L12 8.5-1.25L 12 8.5-1.25L 12 8.5-1.25L 8.5-1.25L 8.5-1.25L 12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L 12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L 12 8.5-1.25L 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L12 8.5-1.25L 8.5-1.25L12 8.5-1.25L 8.5-1.25L 12 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 12 8.5-1.25L 8.5-1.25L12 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L12 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 12 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 12 8.5-1.25L 8.5-1.25L 12 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.25.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25L 8.5-1.25.25.8.5-1.25L 8.5-1.25.25.8.5-1.25L 8.5-1.25L 8.5-1.25.25L 8.5-1.25.25L 8.5-1.25L 8.5-1.25.25L 8.5-1.25.25.8.5-1.25.25.8.5-1.25.25.8.5-1.25.25.8.5-1.25.25.8.5-1.25.25.8.5-1.25.25.8.5-1.25.25.8.5-1.25.25.25.8.5.25.25.8.5-1.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.25.5.25.25.25.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5
+const app = new App();
+    </script>
+</body>
+</html>
