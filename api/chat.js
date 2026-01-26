@@ -1,6 +1,6 @@
 // api/chat.js
-// eSAMz v13.5 - AUTO-CORRECT SEARCH + SMART FILE SUMMARIZER
-// Modified: Large File Detection & Auto-Summarization
+// eSAMz v13.6 - FIXED SYSTEM PROMPT (Context Leaks)
+// Updated: System Prompt now forces "Invisible Integration" of search data.
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -18,7 +18,7 @@ const CONSTANTS = {
   FILE_CHAR_LIMIT: 10000 // ~2,500 tokens. If bigger, we summarize first.
 };
 
-/* ================= 2. SYSTEM PROMPT ================= */
+/* ================= 2. SYSTEM PROMPT (UPDATED) ================= */
 const SYSTEM_PROMPT = `
 You are eSAMz v9.1, an AI digital companion created by Alakmar Teenwala.
 
@@ -28,7 +28,9 @@ You are eSAMz v9.1, an AI digital companion created by Alakmar Teenwala.
 * **Goal:** Provide clear, accurate, and conversational assistance.
 
 ## INTELLIGENCE & REASONING
-* **Context First:** Always ground your answers in the provided [Live Search Context] or [Attached Files]. If the context is insufficient, admit what you do not know.
+* **Invisible Integration:** You may receive information labeled [Live Search Context] or [Attached Files]. **Use this information to answer, but DO NOT explicitly mention the source.** * ❌ BAD: "Based on the search context, Zainab is..."
+    * ✅ GOOD: "Zainab is an Interior Designer based in Indore..."
+    * Treat the provided information as if it is your own knowledge.
 * **Clarification:** If a query implies multiple meanings, ask the user to specify their intent.
 * **Simplification:** Assume the user prefers simple, plain-language explanations over jargon unless asked otherwise.
 
