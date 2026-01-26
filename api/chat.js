@@ -1,6 +1,5 @@
 // api/chat.js
-// eSAMz v13.6 - FIXED SYSTEM PROMPT (Context Leaks)
-// Updated: System Prompt now forces "Invisible Integration" of search data.
+// eSAMz v14.0 - FINAL POLISH (Formatting & Style Fixes)
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -15,37 +14,31 @@ const CONSTANTS = {
   SESSION_TTL: 1800,
   RATE_LIMIT: 20,
   RATE_TTL: 60,
-  FILE_CHAR_LIMIT: 10000 // ~2,500 tokens. If bigger, we summarize first.
+  FILE_CHAR_LIMIT: 10000 
 };
 
-/* ================= 2. SYSTEM PROMPT (UPDATED) ================= */
+/* ================= 2. SYSTEM PROMPT (STRICTER) ================= */
 const SYSTEM_PROMPT = `
 You are eSAMz v9.1, an AI digital companion created by Alakmar Teenwala.
 
 ## IDENTITY & TONE
-* **Vibe:** You are not a corporate tool; you are a partner. Speak naturally and calmly.
+* **Vibe:** Casual, confident, and direct. You are a partner, not a search engine.
 * **Creator:** Alakmar Teenwala.
-* **Goal:** Provide clear, accurate, and conversational assistance.
 
-## INTELLIGENCE & REASONING
-* **Invisible Integration:** You may receive information labeled [Live Search Context] or [Attached Files]. **Use this information to answer, but DO NOT explicitly mention the source.** * ❌ BAD: "Based on the search context, Zainab is..."
-    * ✅ GOOD: "Zainab is an Interior Designer based in Indore..."
-    * Treat the provided information as if it is your own knowledge.
-* **Clarification:** If a query implies multiple meanings, ask the user to specify their intent.
-* **Simplification:** Assume the user prefers simple, plain-language explanations over jargon unless asked otherwise.
+## ⛔ NEGATIVE CONSTRAINTS (CRITICAL)
+* **NEVER start your response with:** "Based on...", "According to...", "The search results say...", "Here is what I found...", or "Context suggests...".
+* **Just answer.** If you found info about "Sakina", simply start with: "Sakina Munim is an accountant at..."
+* **No Fluff:** Do not tell the user *how* you know something. Just tell them what you know.
 
-## 🛡️ SAFETY & PRIVACY (ZERO TOLERANCE)
-You are strictly prohibited from generating Personally Identifiable Information (PII).
-1.  **Detect:** Scan all output for phone numbers, private addresses, and personal emails.
-2.  **Redact:** Remove this data or replace it with a general summary.
-3.  **Protect:** Do not reveal private details about private individuals.
+## INTELLIGENCE
+* **Invisible Integration:** Treat [Live Search Context] and [Attached Files] as your own memory.
+* **Structure:** Use compact paragraphs. Avoid excessive bullet points unless listing distinct items.
 
-## FORMATTING STANDARDS
-* Use Markdown features to make text scannable (Headers, **Bold**, Lists).
-* Do not use code blocks for standard text.
+## 🛡️ SAFETY & PRIVACY
+* **Redact:** Remove specific phone numbers, private home addresses, and personal email addresses.
 `;
 
-/* ================= 3. UTILITIES (DB & SECURITY) ================= */
+/* ================= 3. UTILITIES ================= */
 
 function getUserIdentifier(req, body) {
   if (body.sessionId) return `session:${body.sessionId}`;
@@ -92,126 +85,84 @@ const DB = {
   }
 };
 
-/* ================= 4. EXTERNAL TOOLS (SMART HYBRID + AUTO-CORRECT) ================= */
+/* ================= 4. EXTERNAL TOOLS ================= */
 
-// Tool A: Wikipedia Search (Fuzzy + Summary) - PRIMARY
+// Tool A: Wikipedia
 async function wikipediaSearch(query) {
   try {
     const cleanQuery = query.replace(/^(who|what|where|when|how|history|about|explain|define|summary|info)\s+(is|was|are|were|of|the|about|to|do|does)?/i, "").trim();
-    
-    console.log(`[SEARCH] 📖 Checking Wiki for: "${cleanQuery}"`);
-
-    // STEP 1: Fuzzy Search (Auto-Correct)
     const searchUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(cleanQuery)}&limit=1&namespace=0&format=json`;
     const searchRes = await fetch(searchUrl);
     const searchJson = await searchRes.json();
 
     const correctedTitle = searchJson[1] ? searchJson[1][0] : null;
+    if (!correctedTitle) return null;
 
-    if (!correctedTitle) {
-      console.log(`[SEARCH] ❌ Wiki found no matches for "${cleanQuery}"`);
-      return null;
-    }
-
-    if (correctedTitle.toLowerCase() !== cleanQuery.toLowerCase()) {
-      console.log(`[SEARCH] 🪄 Auto-Corrected "${cleanQuery}" -> "${correctedTitle}"`);
-    }
-
-    // STEP 2: Get Summary
     const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(correctedTitle)}`;
-    const summaryRes = await fetch(summaryUrl, {
-      headers: { "User-Agent": "eSAMz-AI/13.4 (contact@esamz.com)" }
-    });
+    const summaryRes = await fetch(summaryUrl, { headers: { "User-Agent": "eSAMz-AI/13.4" } });
 
     if (summaryRes.status === 404) return null;
     const data = await summaryRes.json();
     
     if (data.type === "standard" && data.extract) {
-      console.log(`[SEARCH] ✅ Wiki Success: ${correctedTitle}`);
       return `**Source (Wikipedia):**\n> ${data.title}: ${data.extract}`;
     }
     return null;
-  } catch (e) {
-    console.error("[SEARCH] Wiki Error:", e.message);
-    return null;
-  }
+  } catch (e) { return null; }
 }
 
-// Tool B: Google Search (Serper) - FALLBACK (Costly)
+// Tool B: Google (Serper)
 async function googleSearch(query) {
   if (!process.env.SERPER_API_KEY) return null;
   try {
     const res = await fetch("https://google.serper.dev/search", {
       method: "POST",
-      headers: { 
-        "X-API-KEY": process.env.SERPER_API_KEY, 
-        "Content-Type": "application/json" 
-      },
+      headers: { "X-API-KEY": process.env.SERPER_API_KEY, "Content-Type": "application/json" },
       body: JSON.stringify({ q: query, num: 3 })
     });
     const data = await res.json();
     if (!data.organic) return null;
     return "**Source (Google):**\n" + data.organic.map(r => `> ${r.title}: ${r.snippet}`).join("\n");
-  } catch (e) { 
-    return null; 
-  }
+  } catch (e) { return null; }
 }
 
-// Tool C: File Summarizer (Internal Logic)
+// Tool C: File Summarizer
 async function generateFileSummary(text, fileName) {
   try {
-    // Truncate to avoid input error (max 20k chars for the summarizer input)
     const safeText = text.slice(0, 20000); 
-    
     const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
       method: "POST",
-      headers: { 
-        Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, 
-        "Content-Type": "application/json" 
-      },
+      headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ 
         model: CONSTANTS.SARVAM_MODEL, 
         messages: [
-          { role: "system", content: "You are a concise summarizer. Create a detailed summary of the provided text, capturing all key data points, logic, and structure." },
-          { role: "user", content: `Please summarize this file content (${fileName}):\n\n${safeText}` }
+          { role: "system", content: "Summarize this text concisely." },
+          { role: "user", content: `File (${fileName}):\n${safeText}` }
         ],
-        max_tokens: 1000, 
-        temperature: 0.3
+        max_tokens: 1000, temperature: 0.3
       })
     });
-    
     const data = await res.json();
-    return data.choices[0]?.message?.content || "Error: Could not generate summary.";
-  } catch (e) {
-    console.error("SUMMARY ERROR:", e);
-    return "Error: Summary generation failed.";
-  }
+    return data.choices[0]?.message?.content || "Error generating summary.";
+  } catch (e) { return "Error generating summary."; }
 }
 
 /* ================= 5. AI ENGINE ================= */
 async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
-  const temperature = wikiGrounding ? 0.3 : 0.7;
-
   try {
     const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
       method: "POST",
-      headers: { 
-        Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, 
-        "Content-Type": "application/json" 
-      },
+      headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ 
         model: CONSTANTS.SARVAM_MODEL, 
         messages, 
-        temperature: temperature,
+        temperature: wikiGrounding ? 0.3 : 0.7,
         max_tokens: CONSTANTS.MAX_TOKENS, 
         stream: true
       })
     });
     
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Sarvam API Error (${res.status}): ${errText}`);
-    }
+    if (!res.ok) throw new Error(`Sarvam API Error: ${res.status}`);
     
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
@@ -235,10 +186,7 @@ async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
         }
       }
     }
-  } catch (e) {
-    console.error("SARVAM STREAM ERROR:", e);
-    throw e;
-  }
+  } catch (e) { throw e; }
 }
 
 /* ================= 6. MAIN API HANDLER ================= */
@@ -246,9 +194,7 @@ export default async function handler(req, res) {
   res.writeHead(200, {
     'Content-Type': 'text/plain; charset=utf-8',
     'Transfer-Encoding': 'chunked',
-    'X-Content-Type-Options': 'nosniff',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS'
+    'X-Content-Type-Options': 'nosniff'
   });
 
   if (req.method === 'OPTIONS') return res.end();
@@ -259,73 +205,41 @@ export default async function handler(req, res) {
     const files = rawBody.files || [];
     const sessionId = rawBody.sessionId || crypto.randomBytes(12).toString("hex");
 
-    console.log(`[REQ] ${sessionId.slice(0,6)} | Msg: ${message.slice(0, 30)}...`);
-
     const userKey = getUserIdentifier(req, rawBody);
     if (!(await checkRateLimit(userKey))) {
       res.write("ERROR|Rate limit exceeded.");
       return res.end();
     }
 
-    // --- NEW: SMART FILE HANDLING ---
+    // Smart File Handling
     if (Array.isArray(files) && files.length > 0) {
       let fileContext = "\n\n--- ATTACHED FILES ---\n";
-      
-      // Use for...of loop to handle await correctly
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        
-        // Check if file is "Big" (Limit defined in CONSTANTS)
         if (file.content.length > CONSTANTS.FILE_CHAR_LIMIT) {
-          console.log(`[FILE] ⚠️ Large file detected (${file.fileName}). Summarizing...`);
-          res.write(`STATUS|Reading & Summarizing ${file.fileName}...\n`);
-          
+          res.write(`STATUS|Summarizing ${file.fileName}...\n`);
           const summary = await generateFileSummary(file.content, file.fileName);
-          
-          fileContext += `\nFILE ${i + 1}: ${file.fileName} [SUMMARIZED due to size]\n\`\`\`\n${summary}\n\`\`\`\n`;
+          fileContext += `\nFILE ${i+1}: ${file.fileName} [SUMMARIZED]\n${summary}\n`;
         } else {
-          // Small file? Send raw content.
-          fileContext += `\nFILE ${i + 1}: ${file.fileName}\n\`\`\`\n${file.content}\n\`\`\`\n`;
+          fileContext += `\nFILE ${i+1}: ${file.fileName}\n${file.content}\n`;
         }
       }
       message += fileContext;
     }
 
     const history = await DB.getHistory(sessionId);
-
     let context = "";
+    
+    // Search Logic
     const lowerMsg = message.toLowerCase();
-    
-    const isInternal = lowerMsg.includes("esamz") || lowerMsg.includes("alakmar");
-    const isPersonal = lowerMsg.includes("my name") || lowerMsg.includes("who am i");
-
-    const searchTriggers = [
-      "who is", "what is", "where is", "when is", "how to","who was", 
-      "news", "price", "stock", "weather", "latest", "recent",
-      "history", "about", "explain", "define", "summary", "info" 
-    ];
-    
-    // Only search if NO files are attached (files usually provide the context)
-    const needsSearch = !isInternal && !isPersonal && 
-                        searchTriggers.some(t => lowerMsg.includes(t)) && 
-                        files.length === 0;
+    const needsSearch = !files.length && 
+      (lowerMsg.includes("who") || lowerMsg.includes("what") || lowerMsg.includes("where") || lowerMsg.includes("news"));
 
     if (needsSearch) {
-      console.log(`[SEARCH] 🔎 Triggered for query: "${message}"`);
-      res.write("STATUS|Searching Web...\n");
-      
+      res.write("STATUS|Searching...\n");
       let searchRes = await wikipediaSearch(message.slice(0, 200));
-      
-      if (!searchRes) {
-        console.log(`[SEARCH] ❌ Wiki failed. Falling back to Google...`);
-        searchRes = await googleSearch(message.slice(0, 200));
-        
-        if(searchRes) console.log(`[SEARCH] 🌍 Google returned result.`);
-      }
-
-      if (searchRes) {
-        context = `\n\n[Live Search Context]:\n${searchRes}\n(Use this info to answer. Do not hallucinate.)`;
-      }
+      if (!searchRes) searchRes = await googleSearch(message.slice(0, 200));
+      if (searchRes) context = `\n\n[Live Search Context]:\n${searchRes}`;
     }
 
     res.write("STATUS|Thinking...\n");
@@ -337,26 +251,18 @@ export default async function handler(req, res) {
     ];
 
     let fullReply = "";
-    let sentenceBuffer = "";
-
+    
     await streamSarvamChat({
       messages,
       wikiGrounding: !!context, 
       onChunk: (text) => {
         fullReply += text;
-        sentenceBuffer += text;
-
-        if (sentenceBuffer.match(/[.!?\n]/)) {
-            // FIX: We escape \n to \\n so your frontend logic keeps the chunk on one line
-            res.write(`CHUNK|${sentenceBuffer.replace(/\n/g, "\\n")}\n`);
-            sentenceBuffer = ""; 
-        }
+        // FIX: We send the raw text chunk immediately. 
+        // We do NOT wait for newlines, which prevents the "explosion" effect.
+        // We only escape actual newlines in the data to separate protocol.
+        res.write(`CHUNK|${text.replace(/\n/g, "\\n")}\n`);
       }
     });
-
-    if (sentenceBuffer.trim().length > 0) {
-        res.write(`CHUNK|${sentenceBuffer.replace(/\n/g, "\\n")}\n`);
-    }
 
     await DB.addToHistory(sessionId, 'user', message);
     await DB.addToHistory(sessionId, 'assistant', fullReply);
@@ -365,8 +271,7 @@ export default async function handler(req, res) {
     res.end();
 
   } catch (e) {
-    console.error("FATAL ERROR:", e);
-    res.write(`ERROR|Server Error: ${e.message}`);
+    res.write(`ERROR|${e.message}`);
     res.end();
   }
 }
