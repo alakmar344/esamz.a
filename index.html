@@ -622,24 +622,65 @@
             border: 1px solid transparent;
         }
 
-        /* AI BUBBLE: No-Bubble */
+        /* AI BUBBLE: Typography & Spacing Fixes */
         .message.ai .message-bubble { 
             background: transparent !important;
             border: none !important;
             padding: 0 !important;
-            line-height: 1.75 !important;
+            
+            /* Tighter line-height for cohesive feel */
+            line-height: 1.6 !important; 
             color: var(--text-primary);
+        }
+
+        /* Fixing Markdown Elements Spacing */
+        .message.ai .message-bubble p {
+            margin-bottom: 0.75em; /* Tighter paragraph gap */
+            margin-top: 0;
+        }
+
+        .message.ai .message-bubble p:last-child {
+            margin-bottom: 0; /* No trailing space */
+        }
+
+        /* Override pre-wrap for rendered HTML blocks to prevent double spacing */
+        .message.ai .message-bubble p,
+        .message.ai .message-bubble ul,
+        .message.ai .message-bubble ol,
+        .message.ai .message-bubble li,
+        .message.ai .message-bubble h1,
+        .message.ai .message-bubble h2,
+        .message.ai .message-bubble h3 {
+            white-space: normal; 
+        }
+
+        .message.ai .message-bubble ul,
+        .message.ai .message-bubble ol {
+            margin-bottom: 0.75em;
+            padding-left: 1.5em;
+            margin-top: 0.5em;
+        }
+
+        .message.ai .message-bubble li {
+            margin-bottom: 0.3em; /* Tighter list items */
         }
 
         .message.ai .message-bubble h1,
         .message.ai .message-bubble h2,
         .message.ai .message-bubble h3 {
-            margin-top: 1.5em;
-            margin-bottom: 0.5em;
+            margin-top: 1.5em; /* Bring closer to previous text */
+            margin-bottom: 0.5em; /* Tighter to following text */
             font-weight: 600;
             color: #f4f4f5;
         }
         
+        /* Ensure headings don't float if first element */
+        .message.ai .message-bubble h1:first-child,
+        .message.ai .message-bubble h2:first-child,
+        .message.ai .message-bubble h3:first-child {
+            margin-top: 0;
+        }
+
         .message-status {
             display: inline-flex;
             align-items: center;
