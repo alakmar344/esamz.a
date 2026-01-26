@@ -1,6 +1,6 @@
 // api/chat.js
-// eSAMz v13.4 - AUTO-CORRECT SEARCH
-// Modified: Smart Buffering (Sentences) + Preserved Newlines
+// eSAMz v13.5 - AUTO-CORRECT SEARCH + SMART FILE SUMMARIZER
+// Modified: Large File Detection & Auto-Summarization
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -14,7 +14,8 @@ const CONSTANTS = {
   THREAD_LENGTH: 20,
   SESSION_TTL: 1800,
   RATE_LIMIT: 20,
-  RATE_TTL: 60
+  RATE_TTL: 60,
+  FILE_CHAR_LIMIT: 10000 // ~2,500 tokens. If bigger, we summarize first.
 };
 
 /* ================= 2. SYSTEM PROMPT ================= */
@@ -27,14 +28,14 @@ You are eSAMz v9.1, an AI digital companion created by Alakmar Teenwala.
 * **Goal:** Provide clear, accurate, and conversational assistance.
 
 ## INTELLIGENCE & REASONING
-* **Context First:** Always ground your answers in the provided [Live Search Context]. If the context is insufficient, admit what you do not know rather than making it up.
+* **Context First:** Always ground your answers in the provided [Live Search Context] or [Attached Files]. If the context is insufficient, admit what you do not know.
 * **Clarification:** If a query implies multiple meanings, ask the user to specify their intent.
 * **Simplification:** Assume the user prefers simple, plain-language explanations over jargon unless asked otherwise.
 
 ## 🛡️ SAFETY & PRIVACY (ZERO TOLERANCE)
 You are strictly prohibited from generating Personally Identifiable Information (PII).
 1.  **Detect:** Scan all output for phone numbers, private addresses, and personal emails.
-2.  **Redact:** Remove this data or replace it with a general summary (e.g., "[Contact info redacted - see public profile]").
+2.  **Redact:** Remove this data or replace it with a general summary.
 3.  **Protect:** Do not reveal private details about private individuals.
 
 ## FORMATTING STANDARDS
@@ -154,6 +155,37 @@ async function googleSearch(query) {
   }
 }
 
+// Tool C: File Summarizer (Internal Logic)
+async function generateFileSummary(text, fileName) {
+  try {
+    // Truncate to avoid input error (max 20k chars for the summarizer input)
+    const safeText = text.slice(0, 20000); 
+    
+    const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
+      method: "POST",
+      headers: { 
+        Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, 
+        "Content-Type": "application/json" 
+      },
+      body: JSON.stringify({ 
+        model: CONSTANTS.SARVAM_MODEL, 
+        messages: [
+          { role: "system", content: "You are a concise summarizer. Create a detailed summary of the provided text, capturing all key data points, logic, and structure." },
+          { role: "user", content: `Please summarize this file content (${fileName}):\n\n${safeText}` }
+        ],
+        max_tokens: 1000, 
+        temperature: 0.3
+      })
+    });
+    
+    const data = await res.json();
+    return data.choices[0]?.message?.content || "Error: Could not generate summary.";
+  } catch (e) {
+    console.error("SUMMARY ERROR:", e);
+    return "Error: Summary generation failed.";
+  }
+}
+
 /* ================= 5. AI ENGINE ================= */
 async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
   const temperature = wikiGrounding ? 0.3 : 0.7;
@@ -233,11 +265,27 @@ export default async function handler(req, res) {
       return res.end();
     }
 
+    // --- NEW: SMART FILE HANDLING ---
     if (Array.isArray(files) && files.length > 0) {
       let fileContext = "\n\n--- ATTACHED FILES ---\n";
-      files.forEach((file, index) => {
-        fileContext += `\nFILE ${index + 1}: ${file.fileName}\n\`\`\`\n${file.content}\n\`\`\`\n`;
-      });
+      
+      // Use for...of loop to handle await correctly
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        // Check if file is "Big" (Limit defined in CONSTANTS)
+        if (file.content.length > CONSTANTS.FILE_CHAR_LIMIT) {
+          console.log(`[FILE] ⚠️ Large file detected (${file.fileName}). Summarizing...`);
+          res.write(`STATUS|Reading & Summarizing ${file.fileName}...\n`);
+          
+          const summary = await generateFileSummary(file.content, file.fileName);
+          
+          fileContext += `\nFILE ${i + 1}: ${file.fileName} [SUMMARIZED due to size]\n\`\`\`\n${summary}\n\`\`\`\n`;
+        } else {
+          // Small file? Send raw content.
+          fileContext += `\nFILE ${i + 1}: ${file.fileName}\n\`\`\`\n${file.content}\n\`\`\`\n`;
+        }
+      }
       message += fileContext;
     }
 
@@ -255,13 +303,14 @@ export default async function handler(req, res) {
       "history", "about", "explain", "define", "summary", "info" 
     ];
     
+    // Only search if NO files are attached (files usually provide the context)
     const needsSearch = !isInternal && !isPersonal && 
                         searchTriggers.some(t => lowerMsg.includes(t)) && 
                         files.length === 0;
 
     if (needsSearch) {
       console.log(`[SEARCH] 🔎 Triggered for query: "${message}"`);
-      res.write("STATUS|SEARCHING\n");
+      res.write("STATUS|Searching Web...\n");
       
       let searchRes = await wikipediaSearch(message.slice(0, 200));
       
@@ -277,7 +326,7 @@ export default async function handler(req, res) {
       }
     }
 
-    res.write("STATUS|TYPING\n");
+    res.write("STATUS|Thinking...\n");
 
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
@@ -295,17 +344,14 @@ export default async function handler(req, res) {
         fullReply += text;
         sentenceBuffer += text;
 
-        // SMART FLUSH: Flush if we hit a sentence end or newline
-        // This makes chunks bigger (human readable)
         if (sentenceBuffer.match(/[.!?\n]/)) {
             // FIX: We escape \n to \\n so your frontend logic keeps the chunk on one line
             res.write(`CHUNK|${sentenceBuffer.replace(/\n/g, "\\n")}\n`);
-            sentenceBuffer = ""; // Reset buffer
+            sentenceBuffer = ""; 
         }
       }
     });
 
-    // Flush any remaining text in the buffer
     if (sentenceBuffer.trim().length > 0) {
         res.write(`CHUNK|${sentenceBuffer.replace(/\n/g, "\\n")}\n`);
     }
