@@ -1736,16 +1736,20 @@
                 const intent = detectIntent(constructedPayload.userMessage, this.state.files);
 
                 // ... inside sendMessage(userText) ...
+                // ... inside sendMessage(userText) function ...
 
 let displayText = constructedPayload.userMessage;
+
 if (constructedPayload.files.length > 0) {
-    // FIX: Use \n for newlines inside single quotes
+    // FIX: Use '\n' for newlines instead of breaking the string line
     displayText += '\n\n' + constructedPayload.files.map(f => {
         let icon = f.type === 'image' ? '🖼️' : (f.type === 'code' ? '💻' : '📄');
-        // FIX: Construct the markdown string properly
+        
+        // FIX: Construct the markdown string using \n for newlines
         return '**' + icon + ' File:** ' + f.fileName + '\n```\n' + f.content + '\n```';
     }).join('\n');
 }
+
 
                 this.addMessage(displayText, 'user');
                 this.appendToHistory('user', displayText);
