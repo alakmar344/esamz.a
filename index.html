@@ -239,7 +239,7 @@
         
         /* 
          * Fix 1: Body Layout 
-         * Ensure the app takes full height and handles scrolling correctly 
+         * Ensure app takes full height and handles scrolling correctly 
          */
         body { 
             background: var(--bg-main);
@@ -628,22 +628,24 @@
             border: none !important;
             padding: 0 !important;
             
-            /* Tighter line-height for cohesive feel */
-            line-height: 1.6 !important; 
+            /* Ultra-tight line-height */
+            line-height: 1.4 !important; 
             color: var(--text-primary);
         }
 
-        /* Fixing Markdown Elements Spacing */
+        /* Fixing Markdown Elements Spacing - Ultra Compact */
         .message.ai .message-bubble p {
-            margin-bottom: 0.75em; /* Tighter paragraph gap */
+            margin-bottom: 0.5em; /* Tight paragraph gap */
             margin-top: 0;
         }
 
-        .message.ai .message-bubble p:last-child {
-            margin-bottom: 0; /* No trailing space */
+        /* IMPORTANT: Remove bottom margin from the LAST element inside the bubble */
+        /* This ensures buttons appear "just after text" */
+        .message.ai .message-bubble > *:last-child {
+            margin-bottom: 0 !important;
         }
 
-        /* Override pre-wrap for rendered HTML blocks to prevent double spacing */
+        /* Override pre-wrap for rendered HTML blocks */
         .message.ai .message-bubble p,
         .message.ai .message-bubble ul,
         .message.ai .message-bubble ol,
@@ -656,20 +658,20 @@
 
         .message.ai .message-bubble ul,
         .message.ai .message-bubble ol {
-            margin-bottom: 0.75em;
+            margin-bottom: 0.5em; /* Tight list spacing */
             padding-left: 1.5em;
             margin-top: 0.5em;
         }
 
         .message.ai .message-bubble li {
-            margin-bottom: 0.3em; /* Tighter list items */
+            margin-bottom: 0.2em; /* Tight list items */
         }
 
         .message.ai .message-bubble h1,
         .message.ai .message-bubble h2,
         .message.ai .message-bubble h3 {
-            margin-top: 1.5em; /* Bring closer to previous text */
-            margin-bottom: 0.5em; /* Tighter to following text */
+            margin-top: 1.2em; /* Pull headings closer to previous text */
+            margin-bottom: 0.4em; /* Pull text closer under headings */
             font-weight: 600;
             color: #f4f4f5;
         }
@@ -708,10 +710,15 @@
             border: 1px solid var(--border-subtle);
             border-radius: 8px;
             padding: 16px;
-            margin: 24px 0;
+            margin: 16px 0; /* Reduced from 24px to prevent huge gaps */
             overflow-x: auto;
             font-size: 14px;
             font-family: 'JetBrains Mono', monospace;
+        }
+        
+        /* Specific fix for last-child code block */
+        .message-bubble pre:last-child {
+            margin-bottom: 0;
         }
 
         .message-bubble code {
@@ -726,13 +733,14 @@
             font-size: 0.9em;
         }
 
-        /* ACTIONS */
+        /* ACTIONS - Just After Text */
         .message-actions { 
             display: flex;
-            gap: 16px;
-            margin-top: 16px;
-            opacity: 0;
+            gap: 12px;
+            margin-top: 2px !important; /* Ultra tight spacing, "just after line ends" */
+            opacity: 0; 
             transition: opacity 0.2s;
+            align-items: center;
         }
 
         .message:hover .message-actions {
@@ -744,14 +752,20 @@
             border: none;
             color: var(--text-muted);
             cursor: pointer;
-            font-size: 12px;
-            padding: 4px 0;
+            padding: 4px; /* Hit area */
+            margin: 0;
             border-radius: 4px;
-            font-weight: 500;
+            transition: color 0.2s;
             display: flex;
             align-items: center;
-            gap: 6px;
-            transition: color 0.2s;
+            justify-content: center;
+        }
+
+        /* SVG Icon Styling */
+        .action-btn svg {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
         }
 
         .action-btn:hover {
@@ -1742,9 +1756,14 @@ class App {
         const contentDiv = messageDiv.querySelector('.message-content');
         const actionsDiv = document.createElement('div');
         actionsDiv.className = 'message-actions';
+        // Using SVG symbols only
         actionsDiv.innerHTML = `
-            <button class="action-btn" onclick="app.copyText(this)">Copy</button>
-            <button class="action-btn" onclick="app.regenerateResponse(this)">Regenerate</button>
+            <button class="action-btn" title="Copy" onclick="app.copyText(this)">
+                <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+            </button>
+            <button class="action-btn" title="Regenerate" onclick="app.regenerateResponse(this)">
+                <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+            </button>
         `;
         contentDiv.appendChild(actionsDiv);
     }
@@ -1778,14 +1797,18 @@ class App {
             htmlContent = (text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
         
-        const regenerateBtn = showRegenerate ? '<button class="action-btn" onclick="app.regenerateResponse(this)">Regenerate</button>' : '';
+        // Inline SVGs for history loading
+        const copyIcon = `<svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>`;
+        const regenIcon = showRegenerate ? `<svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>` : '';
+        
+        const regenerateBtn = showRegenerate ? `<button class="action-btn" title="Regenerate" onclick="app.regenerateResponse(this)">${regenIcon}</button>` : '';
       
         div.innerHTML = `
             <div class="message-avatar">${avatar}</div>
             <div class="message-content">
                 <div class="message-bubble">${htmlContent}</div>
                 ${sender === 'ai' ? `<div class="message-actions">
-                    <button class="action-btn" onclick="app.copyText(this)">Copy</button>
+                    <button class="action-btn" title="Copy" onclick="app.copyText(this)">${copyIcon}</button>
                     ${regenerateBtn}
                 </div>` : ''}
             </div>`;
@@ -2004,14 +2027,18 @@ class App {
                 }
                 
                 const isLastAI = m.role === 'ai' && chat.messages.indexOf(m) === chat.messages.length - 1;
+
+                // Icons for history
+                const copyIcon = `<svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>`;
+                const regenIcon = `<svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>`;
                 
                 div.innerHTML = `
                     <div class="message-avatar">${avatar}</div>
                     <div class="message-content">
                         <div class="message-bubble">${htmlContent}</div>
                         ${m.role === 'ai' ? `<div class="message-actions">
-                            <button class="action-btn" onclick="app.copyText(this)">Copy</button>
-                            ${isLastAI ? '<button class="action-btn" onclick="app.regenerateResponse(this)">Regenerate</button>' : ''}
+                            <button class="action-btn" title="Copy" onclick="app.copyText(this)">${copyIcon}</button>
+                            ${isLastAI ? `<button class="action-btn" title="Regenerate" onclick="app.regenerateResponse(this)">${regenIcon}</button>` : ''}
                         </div>` : ''}
                     </div>`;
                 messagesContainer.appendChild(div);
@@ -2163,13 +2190,16 @@ class App {
         
         const text = bubble.innerText;
         navigator.clipboard.writeText(text).then(() => {
-            const orig = btn.innerText;
-            btn.innerText = 'Copied!';
-            setTimeout(() => {
-                if (btn.innerText === 'Copied!') {
-                    btn.innerText = orig;
-                }
-            }, 2000);
+            // Find SVG inside button
+            const svg = btn.querySelector('svg');
+            if(svg) {
+                // Change fill color to indicate success
+                const originalFill = svg.style.fill;
+                svg.style.fill = '#22c55e'; // Green
+                setTimeout(() => {
+                    svg.style.fill = originalFill || 'currentColor';
+                }, 2000);
+            }
         }).catch(err => {
             console.error('Failed to copy:', err);
         });
