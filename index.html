@@ -789,7 +789,7 @@
         .message-actions { 
             display: flex;
             gap: 8px;
-            margin-top: 4px !important; /* Tight spacing */
+            margin-top: 4px !important;
             opacity: 0; 
             transition: opacity 0.2s;
             align-items: center;
@@ -1347,7 +1347,7 @@
 
     <script>
         // Intent detection (client side)
-        function detectIntent({ text, files }) {
+        function detectIntent(text, files) {
             if (files && files.length > 0) return "file";
             const codeTriggers = ["code", "rewrite", "refactor", "fix", "bug", "error", "html", "css", "js", "python", "api", "backend", "frontend", "json", "schema", "build", "design"];
             const t = text.toLowerCase();
@@ -1355,1105 +1355,1044 @@
             return "chat";
         }
 
-class App {
-    constructor() {
-        this.dom = {
-            chat: document.getElementById('chatContainer'),
-            input: document.getElementById('userInput'),
-            welcomeInput: document.getElementById('welcomeInput'),
-            welcome: document.getElementById('welcomeScreen'),
-            history: document.getElementById('historyList'),
-            preview: document.getElementById('filePreview'),
-            welcomePreview: document.getElementById('welcomeFilePreview'),
-            sidebar: document.getElementById('sidebar'),
-            overlay: document.getElementById('overlay'),
-            wrapper: document.getElementById('inputWrapper'),
-            welcomeWrapper: document.getElementById('welcomeInputWrapper'),
-            dialog: document.getElementById('exportDialog'),
-            chatInputContainer: document.getElementById('chatInputContainer'),
-            mainContent: document.querySelector('.main-content'),
-            charCounter: document.getElementById('charCounter'),
-            welcomeCharCounter: document.getElementById('welcomeCharCounter'),
-            ocrStatus: document.getElementById('ocrStatus'),
-            ocrStatusText: document.getElementById('ocrStatusText'),
-            statusText: document.getElementById('statusText')
-        };
+        class App {
+            constructor() {
+                this.dom = {
+                    chat: document.getElementById('chatContainer'),
+                    input: document.getElementById('userInput'),
+                    welcomeInput: document.getElementById('welcomeInput'),
+                    welcome: document.getElementById('welcomeScreen'),
+                    history: document.getElementById('historyList'),
+                    preview: document.getElementById('filePreview'),
+                    welcomePreview: document.getElementById('welcomeFilePreview'),
+                    sidebar: document.getElementById('sidebar'),
+                    overlay: document.getElementById('overlay'),
+                    wrapper: document.getElementById('inputWrapper'),
+                    welcomeWrapper: document.getElementById('welcomeInputWrapper'),
+                    dialog: document.getElementById('exportDialog'),
+                    chatInputContainer: document.getElementById('chatInputContainer'),
+                    mainContent: document.querySelector('.main-content'),
+                    charCounter: document.getElementById('charCounter'),
+                    welcomeCharCounter: document.getElementById('welcomeCharCounter'),
+                    ocrStatus: document.getElementById('ocrStatus'),
+                    ocrStatusText: document.getElementById('ocrStatusText'),
+                    statusText: document.getElementById('statusText')
+                };
 
-        this.state = {
-            chatId: null,
-            files: [],
-            welcomeFiles: [],
-            messageCount: 0,
-            maxChars: 4000,
-            isMobile: window.innerWidth <= 768,
-            isProcessing: false,
-            uploadContext: null,
-            isRecording: false,
-            abortController: null, // NEW: For stopping generation
-            currentReader: null    // NEW: For stopping generation
-        };
+                this.state = {
+                    chatId: null,
+                    files: [],
+                    welcomeFiles: [],
+                    messageCount: 0,
+                    maxChars: 4000,
+                    isMobile: window.innerWidth <= 768,
+                    isProcessing: false,
+                    uploadContext: null,
+                    isRecording: false,
+                    abortController: null,
+                    currentReader: null
+                };
 
-        this.storageKey = 'esamz_conversations_v12';
-        this.maxStorageSize = 5 * 1024 * 1024;
+                this.storageKey = 'esamz_conversations_v12';
+                this.maxStorageSize = 5 * 1024 * 1024;
 
-        this.fileTypes = {
-            text: ['txt', 'md', 'csv', 'log', 'ini', 'conf', 'yaml', 'yml', 'xml', 'json'],
-            code: ['js', 'py', 'html', 'css', 'java', 'cpp', 'c', 'ts', 'jsx', 'tsx', 'php', 'rb', 'go', 'rs', 'swift', 'kt', 'sh', 'sql'],
-            image: ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp']
-        };
+                this.fileTypes = {
+                    text: ['txt', 'md', 'csv', 'log', 'ini', 'conf', 'yaml', 'yml', 'xml', 'json'],
+                    code: ['js', 'py', 'html', 'css', 'java', 'cpp', 'c', 'ts', 'jsx', 'tsx', 'php', 'rb', 'go', 'rs', 'swift', 'kt', 'sh', 'sql'],
+                    image: ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp']
+                };
 
-        this.initSpeechRecognition();
-        this.init();
-    }
-
-    initSpeechRecognition() {
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            this.recognition = new SpeechRecognition();
-            this.recognition.continuous = false;
-            this.recognition.lang = 'en-US';
-            this.recognition.interimResults = false;
-
-            this.recognition.onstart = () => {
-                this.state.isRecording = true;
-                this.updateMicUI(true);
-                if (this.dom.statusText) this.dom.statusText.innerText = "Listening...";
-            };
-
-            this.recognition.onend = () => {
-                this.state.isRecording = false;
-                this.updateMicUI(false);
-                if (this.dom.statusText) this.dom.statusText.innerText = "Online";
-            };
-
-            this.recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                const activeInput = this.dom.chatInputContainer.style.display === 'none' ? this.dom.welcomeInput : this.dom.input;
-                const currentText = activeInput.value;
-                activeInput.value = currentText ? currentText + ' ' + transcript : transcript;
-                activeInput.dispatchEvent(new Event('input'));
-            };
-
-            this.recognition.onerror = (event) => {
-                console.error('Speech error', event.error);
-                this.state.isRecording = false;
-                this.updateMicUI(false);
-                if (this.dom.statusText) this.dom.statusText.innerText = "Error";
-            };
-        } else {
-            console.warn('Speech Recognition API not supported.');
-            document.querySelectorAll('#btnVoice, #btnWelcomeVoice').forEach(btn => btn.style.display = 'none');
-        }
-    }
-
-    toggleRecording() {
-        if (!this.recognition) return alert("Browser does not support voice input.");
-        if (this.state.isRecording) this.recognition.stop();
-        else this.recognition.start();
-    }
-
-    updateMicUI(isRecording) {
-        const micBtns = [document.getElementById('btnVoice'), document.getElementById('btnWelcomeVoice')];
-        micBtns.forEach(btn => {
-            if (isRecording) btn.classList.add('recording');
-            else btn.classList.remove('recording');
-        });
-    }
-
-    init() {
-        this.loadHistory();
-        this.setupEvents();
-        this.setupDragDrop();
-        this.dom.welcomeInput.focus();
-
-        window.addEventListener('resize', () => {
-            this.state.isMobile = window.innerWidth <= 768;
-            if (!this.state.isMobile) {
-                this.dom.sidebar.classList.remove('mobile-open');
-                this.dom.overlay.classList.remove('active');
-            }
-        });
-    }
-
-    setupEvents() {
-        document.getElementById('btnWelcomeSend').addEventListener('click', () => this.handleWelcomeSend());
-        document.getElementById('btnWelcomeUpload').addEventListener('click', () => {
-            this.state.uploadContext = 'welcome';
-            document.getElementById('fileInput').click();
-        });
-        const welcomeMic = document.getElementById('btnWelcomeVoice');
-        if(welcomeMic) welcomeMic.addEventListener('click', () => this.toggleRecording());
-
-        this.dom.welcomeInput.addEventListener('keydown', e => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.handleWelcomeSend();
-            }
-        });
-        this.dom.welcomeInput.addEventListener('input', () => {
-            this.autoResize(this.dom.welcomeInput);
-            this.updateCharCounter(this.dom.welcomeInput, this.dom.welcomeCharCounter);
-        });
-
-        document.getElementById('btnSend').addEventListener('click', () => this.handleSend());
-        document.getElementById('btnUpload').addEventListener('click', () => {
-            this.state.uploadContext = 'chat';
-            document.getElementById('fileInput').click();
-        });
-        const chatMic = document.getElementById('btnVoice');
-        if(chatMic) chatMic.addEventListener('click', () => this.toggleRecording());
-
-        this.dom.input.addEventListener('keydown', e => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.handleSend();
-            }
-        });
-        this.dom.input.addEventListener('input', () => {
-            this.autoResize(this.dom.input);
-            this.updateCharCounter(this.dom.input, this.dom.charCounter);
-        });
-
-        document.getElementById('openSidebar').addEventListener('click', () => this.toggleSidebar(true));
-        document.getElementById('closeSidebar').addEventListener('click', () => this.toggleSidebar(false));
-        this.dom.overlay.addEventListener('click', () => this.toggleSidebar(false));
-
-        document.getElementById('btnNewChat').addEventListener('click', () => this.newChat());
-        document.getElementById('btnClearChat').addEventListener('click', () => this.clearChat());
-        document.getElementById('btnClearCache').addEventListener('click', () => this.clearAllData());
-
-        document.getElementById('fileInput').addEventListener('change', e => {
-            const isWelcome = this.state.uploadContext === 'welcome';
-            this.handleFiles(e.target.files, isWelcome);
-            e.target.value = ''; 
-            this.state.uploadContext = null;
-        });
-
-        document.getElementById('btnExportModal').addEventListener('click', () => this.dom.dialog.showModal());
-        document.getElementById('closeDialog').addEventListener('click', () => this.dom.dialog.close());
-    }
-
-    setupDragDrop() {
-        [this.dom.wrapper, this.dom.welcomeWrapper].forEach(wrapper => {
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => wrapper.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); }));
-            wrapper.addEventListener('dragenter', () => { wrapper.style.borderColor = 'var(--accent-primary)'; });
-            wrapper.addEventListener('dragleave', () => { wrapper.style.borderColor = 'var(--glass-border)'; });
-            wrapper.addEventListener('drop', e => {
-                wrapper.style.borderColor = 'var(--glass-border)';
-                this.handleFiles(e.dataTransfer.files, wrapper === this.dom.welcomeWrapper);
-            });
-        });
-    }
-
-    autoResize(textarea) {
-        textarea.style.height = 'auto';
-        textarea.style.height = Math.min(textarea.scrollHeight, 150) + 'px';
-    }
-
-    updateCharCounter(textarea, counter) {
-        const len = textarea.value.length;
-        counter.innerText = `${len} / ${this.state.maxChars}`;
-        counter.className = 'char-counter' + (len > this.state.maxChars ? ' danger' : len > this.state.maxChars*0.9 ? ' warning' : '');
-    }
-
-    async handleFiles(fileList, isWelcome) {
-        if (!fileList || fileList.length === 0) return;
-        const files = isWelcome ? this.state.welcomeFiles : this.state.files;
-        const preview = isWelcome ? this.dom.welcomePreview : this.dom.preview;
-
-        for (const file of fileList) {
-            if (!file || !file.name) continue;
-            const ext = file.name.split('.').pop().toLowerCase();
-
-            let category = 'unknown';
-            if (this.fileTypes.text.includes(ext)) category = 'text';
-            else if (this.fileTypes.code.includes(ext)) category = 'code';
-            else if (this.fileTypes.image.includes(ext)) category = 'image';
-
-            if (category === 'unknown') {
-                alert(`Unsupported file: .${ext}`);
-                continue;
+                this.initSpeechRecognition();
+                this.init();
             }
 
-            if (file.size > 10 * 1024 * 1024) {
-                alert(`File too large: ${file.name}`);
-                continue;
-            }
+            initSpeechRecognition() {
+                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    this.recognition = new SpeechRecognition();
+                    this.recognition.continuous = false;
+                    this.recognition.lang = 'en-US';
+                    this.recognition.interimResults = false;
 
-            try {
-                let content = '';
-                let type = 'text';
-                if (category === 'image') {
-                    files.push({ file, textExtracted: '', type: 'image', status: 'processing' });
-                    this.renderFiles(files, preview, isWelcome);
-                    this.showOcrStatus(true, `Scanning ${file.name}...`);
-                    content = await this.performOCR(file);
-                    this.showOcrStatus(false);
+                    this.recognition.onstart = () => {
+                        this.state.isRecording = true;
+                        this.updateMicUI(true);
+                        if (this.dom.statusText) this.dom.statusText.innerText = "Listening...";
+                    };
+
+                    this.recognition.onend = () => {
+                        this.state.isRecording = false;
+                        this.updateMicUI(false);
+                        if (this.dom.statusText) this.dom.statusText.innerText = "Online";
+                    };
+
+                    this.recognition.onresult = (event) => {
+                        const transcript = event.results[0][0].transcript;
+                        const activeInput = this.dom.chatInputContainer.style.display === 'none' ? this.dom.welcomeInput : this.dom.input;
+                        const currentText = activeInput.value;
+                        activeInput.value = currentText ? currentText + ' ' + transcript : transcript;
+                        activeInput.dispatchEvent(new Event('input'));
+                    };
+
+                    this.recognition.onerror = (event) => {
+                        console.error('Speech error', event.error);
+                        this.state.isRecording = false;
+                        this.updateMicUI(false);
+                        if (this.dom.statusText) this.dom.statusText.innerText = "Error";
+                    };
                 } else {
-                    content = await this.readTextFile(file);
-                    type = category;
+                    console.warn('Speech Recognition API not supported.');
+                    document.querySelectorAll('#btnVoice, #btnWelcomeVoice').forEach(btn => btn.style.display = 'none');
                 }
-
-                const idx = files.findIndex(f => f.file === file);
-                if (idx !== -1) {
-                    files[idx].textExtracted = content;
-                    files[idx].status = 'done';
-                    files[idx].type = type;
-                } else {
-                    files.push({ file, textExtracted: content, type, status: 'done' });
-                }
-                this.renderFiles(files, preview, isWelcome);
-            } catch (error) {
-                console.error(error);
-                this.showOcrStatus(false);
-                alert(`Processing failed: ${file.name}`);
-                const idx = files.findIndex(f => f.file === file);
-                if (idx !== -1) files.splice(idx,1);
-                this.renderFiles(files, preview, isWelcome);
             }
-        }
-    }
 
-    async performOCR(file) {
-        try {
-            const worker = await Tesseract.createWorker({
-                logger: m => {
-                    if (m.status === 'recognizing text') {
-                        const progress = Math.round(m.progress * 100);
-                        this.dom.ocrStatusText.innerText = `Scanning... ${progress}%`;
+            toggleRecording() {
+                if (!this.recognition) return alert("Browser does not support voice input.");
+                if (this.state.isRecording) this.recognition.stop();
+                else this.recognition.start();
+            }
+
+            updateMicUI(isRecording) {
+                const micBtns = [document.getElementById('btnVoice'), document.getElementById('btnWelcomeVoice')];
+                micBtns.forEach(btn => {
+                    if (isRecording) btn.classList.add('recording');
+                    else btn.classList.remove('recording');
+                });
+            }
+
+            init() {
+                this.loadHistory();
+                this.setupEvents();
+                this.setupDragDrop();
+                this.dom.welcomeInput.focus();
+
+                window.addEventListener('resize', () => {
+                    this.state.isMobile = window.innerWidth <= 768;
+                    if (!this.state.isMobile) {
+                        this.dom.sidebar.classList.remove('mobile-open');
+                        this.dom.overlay.classList.remove('active');
                     }
-                }
-            });
-            await worker.loadLanguage('eng');
-            await worker.initialize('eng');
-            await worker.setParameters({
-                tessedit_pageseg_mode: Tesseract.PSM.AUTO,
-                preserve_interword_spaces: '1',
-            });
-            const ret = await worker.recognize(file);
-            await worker.terminate();
-            return ret.data.text || "";
-        } catch (e) {
-            console.error("OCR Error:", e);
-            throw new Error("OCR failed.");
-        }
-    }
+                });
+            }
 
-    showOcrStatus(show, text = "") {
-        if (show) {
-            this.dom.ocrStatusText.innerText = text;
-            this.dom.ocrStatus.classList.add('visible');
-        } else {
-            this.dom.ocrStatus.classList.remove('visible');
-        }
-    }
+            setupEvents() {
+                document.getElementById('btnWelcomeSend').addEventListener('click', () => this.handleWelcomeSend());
+                document.getElementById('btnWelcomeUpload').addEventListener('click', () => {
+                    this.state.uploadContext = 'welcome';
+                    document.getElementById('fileInput').click();
+                });
+                const welcomeMic = document.getElementById('btnWelcomeVoice');
+                if(welcomeMic) welcomeMic.addEventListener('click', () => this.toggleRecording());
 
-    readTextFile(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = () => reject(new Error('Read failed'));
-            reader.readAsText(file);
-        });
-    }
-
-    renderFiles(files, preview, isWelcome) {
-        preview.innerHTML = '';
-        files.forEach((item, idx) => {
-            if (!item || !item.file) return;
-            let icon = '📄';
-            if (item.type === 'code') icon = '💻';
-            else if (item.type === 'image') icon = '🖼️';
-
-            const chip = document.createElement('div');
-            chip.className = `file-chip ${item.type}`;
-            chip.innerHTML = `<span>${icon}</span> <span style="overflow:hidden;text-overflow:ellipsis;max-width:120px;">${item.file.name}</span> <button onclick="app.removeFile(${idx}, ${isWelcome})">×</button>`;
-            preview.appendChild(chip);
-        });
-    }
-
-    removeFile(idx, isWelcome) {
-        if (isWelcome) {
-            this.state.welcomeFiles.splice(idx, 1);
-            this.renderFiles(this.state.welcomeFiles, this.dom.welcomePreview, true);
-        } else {
-            this.state.files.splice(idx, 1);
-            this.renderFiles(this.state.files, this.dom.preview, false);
-        }
-    }
-
-    async handleWelcomeSend() {
-        const text = this.dom.welcomeInput.value.trim();
-        if (!text && this.state.welcomeFiles.length === 0) return;
-        if (this.state.welcomeFiles.some(f => f.status === 'processing')) return alert("Please wait for scan to complete.");
-        if (text.length > this.state.maxChars) return alert("Message too long.");
-
-        this.dom.welcome.style.display = 'none';
-        this.dom.chatInputContainer.style.display = 'block';
-        if (this.state.isMobile) this.toggleSidebar(false);
-
-        this.state.files = [...this.state.welcomeFiles];
-        this.state.welcomeFiles = [];
-
-        this.createChatSession(text);
-        await this.sendMessage(text);
-
-        this.dom.input.value = '';
-        this.dom.input.style.height = 'auto';
-        this.updateCharCounter(this.dom.input, this.dom.charCounter);
-    }
-
-    // NEW: Stop generation method
-    stopGeneration() {
-        if (this.state.abortController) {
-            this.state.abortController.abort();
-            this.state.abortController = null;
-        }
-        if (this.state.currentReader) {
-            this.state.currentReader.cancel().catch(() => {});
-            this.state.currentReader = null;
-        }
-        this.state.isProcessing = false;
-        if (this.dom.statusText) this.dom.statusText.innerText = "Stopped";
-
-        // Remove stop button and show regenerate
-        const stopBtn = document.querySelector('.stop-btn');
-        if (stopBtn) {
-            const actionsDiv = stopBtn.parentElement;
-            stopBtn.remove();
-            this.addMessageActions(actionsDiv.parentElement.parentElement, true);
-        }
-    }
-
-    async sendMessage(userText) {
-        if (this.state.isProcessing) return;
-        if (!userText && this.state.files.length === 0) return;
-        if (this.state.files.some(f => f.status === 'processing')) return alert("Please wait for scan to complete.");
-
-        const constructedPayload = {
-            userMessage: userText || '',
-            files: this.state.files.map(f => ({ fileName: f.file.name, content: f.textExtracted, type: f.type }))
-        };
-
-        const intent = detectIntent({ text: userText, files: this.state.files });
-
-        const displayText = constructedPayload.userMessage + (constructedPayload.files.length > 0 ? 
-            '
-
-' + constructedPayload.files.map(f => {
-                let icon = f.type === 'image' ? '🖼️' : (f.type === 'code' ? '💻' : '📄');
-                return `**${icon} File:** ${f.fileName}
-\`\`\`
-${f.content}
-\`\`\``;
-            }).join('
-') : '');
-
-        this.addMessage(displayText, 'user');
-        this.appendToHistory('user', displayText);
-        this.state.messageCount++;
-
-        this.state.files = [];
-        this.renderFiles(this.state.files, this.dom.preview, false);
-        this.state.isProcessing = true;
-
-        // NEW: Create abort controller for stopping
-        this.state.abortController = new AbortController();
-
-        const aiMessageDiv = this.addStreamingMessage();
-        const bubbleContent = aiMessageDiv.querySelector('.message-content-text');
-        const statusBadge = aiMessageDiv.querySelector('.message-status');
-
-        // NEW: Add stop button
-        const contentDiv = aiMessageDiv.querySelector('.message-content');
-        const stopActionsDiv = document.createElement('div');
-        stopActionsDiv.className = 'message-actions';
-        stopActionsDiv.style.opacity = '1';
-        stopActionsDiv.innerHTML = `
-            <button class="stop-btn" title="Stop generating">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>
-                Stop
-            </button>
-        `;
-        stopActionsDiv.querySelector('.stop-btn').addEventListener('click', () => this.stopGeneration());
-        contentDiv.appendChild(stopActionsDiv);
-
-        try {
-           const response = await fetch("/api/chat", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    message: constructedPayload.userMessage,
-                    intent: intent,
-                    files: constructedPayload.files,
-                    sessionId: this.state.chatId
-                }),
-                signal: this.state.abortController.signal
-            });
-
-            if (!response.ok) throw new Error(`Server error: ${response.status}`);
-
-            this.state.currentReader = response.body.getReader();
-            const decoder = new TextDecoder("utf-8");
-            let fullText = "";
-            let buffer = "";
-
-            while (true) {
-                const { done, value } = await this.state.currentReader.read();
-                if (done) break;
-
-                // FIX: Properly handle stream chunks to prevent cutoff
-                const chunk = decoder.decode(value, { stream: true });
-                buffer += chunk;
-
-                // Process complete lines
-                const lines = buffer.split('
-');
-                buffer = lines.pop() || "";
-
-                for (const line of lines) {
-                    if (!line.trim()) continue;
-
-                    const separatorIndex = line.indexOf('|');
-                    if (separatorIndex === -1) continue;
-
-                    const type = line.substring(0, separatorIndex);
-                    const data = line.substring(separatorIndex + 1);
-
-                    if (type === 'STATUS') {
-                        if (data === 'SEARCHING') {
-                            if (statusBadge) {
-                                statusBadge.style.display = 'inline-flex';
-                                statusBadge.innerHTML = `<div class="mini-spinner"></div> Searching...`;
-                            }
-                            if (this.dom.statusText) this.dom.statusText.innerText = "Searching...";
-                        } else if (data === 'TYPING') {
-                            if (statusBadge) statusBadge.style.display = 'none';
-                            if (this.dom.statusText) this.dom.statusText.innerText = "Typing...";
-                        }
-                    } else if (type === 'CHUNK') {
-                        // FIX: Properly decode escaped newlines and handle text
-                        let content = data.replace(/\n/g, '
-');
-                        fullText += content;
-
-                        // Update display
-                        if (bubbleContent) {
-                            bubbleContent.textContent = fullText;
-                            this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
-                        }
-                    } else if (type === 'ERROR') {
-                        throw new Error(data);
+                this.dom.welcomeInput.addEventListener('keydown', e => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.handleWelcomeSend();
                     }
-                }
-            }
-
-            // FIX: Process any remaining buffer content
-            if (buffer.trim()) {
-                const separatorIndex = buffer.indexOf('|');
-                if (separatorIndex !== -1) {
-                    const type = buffer.substring(0, separatorIndex);
-                    const data = buffer.substring(separatorIndex + 1);
-                    if (type === 'CHUNK') {
-                        fullText += data.replace(/\n/g, '
-');
-                    }
-                }
-            }
-
-            // Remove stop button and add normal actions
-            stopActionsDiv.remove();
-
-            try {
-                if (marked && typeof marked.parse === 'function') {
-                    bubbleContent.innerHTML = marked.parse(fullText || '');
-                } else {
-                    bubbleContent.textContent = fullText || '';
-                }
-                if (window.Prism && typeof Prism.highlightAllUnder === 'function') {
-                    Prism.highlightAllUnder(aiMessageDiv);
-                }
-            } catch (e) {
-                console.error('Markdown final parse failed', e);
-                bubbleContent.textContent = fullText;
-            }
-            this.addMessageActions(aiMessageDiv);
-            this.appendToHistory('ai', fullText);
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                // User stopped the generation
-                const currentText = bubbleContent.textContent || '';
-                this.appendToHistory('ai', currentText + '\n\n[Stopped by user]');
-            } else {
-                console.error('API request failed:', error);
-                stopActionsDiv.remove();
-                const errorMessage = `**API Error:** ${error.message}\n\nThe request could not be completed.`;
-                if (marked && typeof marked.parse === 'function') {
-                    bubbleContent.innerHTML = marked.parse(errorMessage);
-                } else {
-                    bubbleContent.textContent = errorMessage;
-                }
-                this.addMessageActions(aiMessageDiv);
-                this.appendToHistory('ai', errorMessage);
-            }
-        } finally {
-            this.state.isProcessing = false;
-            this.state.abortController = null;
-            this.state.currentReader = null;
-            if (this.dom.statusText) this.dom.statusText.innerText = "Online";
-            this.checkStorageSize();
-        }
-    }
-
-    addStreamingMessage() {
-        const div = document.createElement('div');
-        div.className = 'message ai';
-        div.innerHTML = `
-            <div class="message-avatar">eS</div>
-            <div class="message-content">
-                <div class="message-status" style="display:none"></div>
-                <div class="message-bubble">
-                    <div class="message-content-text"></div>
-                </div>
-            </div>`;
-        this.dom.chat.appendChild(div);
-        this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
-        return div;
-    }
-
-    addMessageActions(messageDiv, includeRegenerate = false) {
-        const contentDiv = messageDiv.querySelector('.message-content');
-
-        // Remove existing actions if any
-        const existingActions = contentDiv.querySelector('.message-actions');
-        if (existingActions) existingActions.remove();
-
-        const actionsDiv = document.createElement('div');
-        actionsDiv.className = 'message-actions';
-
-        const copyIcon = `<svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>`;
-        const regenIcon = `<svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>`;
-
-        actionsDiv.innerHTML = `
-            <button class="action-btn" title="Copy" onclick="app.copyText(this)">${copyIcon}</button>
-            ${includeRegenerate ? `<button class="action-btn" title="Regenerate" onclick="app.regenerateResponse(this)">${regenIcon}</button>` : ''}
-        `;
-        contentDiv.appendChild(actionsDiv);
-    }
-
-    handleSend() {
-        const text = this.dom.input.value.trim();
-        if (!text && this.state.files.length === 0) return;
-        if (text.length > this.state.maxChars) return alert("Message too long.");
-        if (this.state.isProcessing) return;
-
-        this.dom.input.value = '';
-        this.dom.input.style.height = 'auto';
-        this.updateCharCounter(this.dom.input, this.dom.charCounter);
-
-        this.sendMessage(text);
-    }
-
-    addMessage(text, sender, showRegenerate = false) {
-        const div = document.createElement('div');
-        div.className = `message ${sender}`;
-        const avatar = sender === 'user' ? 'U' : 'eS';
-
-        let htmlContent;
-        try {
-            if (marked && typeof marked.parse === 'function') {
-                htmlContent = marked.parse(text || '');
-            } else {
-                htmlContent = (text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            }
-        } catch (error) {
-            htmlContent = (text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        }
-
-        const copyIcon = `<svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>`;
-        const regenIcon = showRegenerate ? `<svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>` : '';
-
-        const regenerateBtn = showRegenerate ? `<button class="action-btn" title="Regenerate" onclick="app.regenerateResponse(this)">${regenIcon}</button>` : '';
-
-        div.innerHTML = `
-            <div class="message-avatar">${avatar}</div>
-            <div class="message-content">
-                <div class="message-bubble">${htmlContent}</div>
-                ${sender === 'ai' ? `<div class="message-actions">
-                    <button class="action-btn" title="Copy" onclick="app.copyText(this)">${copyIcon}</button>
-                    ${regenerateBtn}
-                </div>` : ''}
-            </div>`;
-
-        this.dom.chat.appendChild(div);
-        this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
-
-        if (window.Prism && typeof Prism.highlightAllUnder === 'function') {
-            Prism.highlightAllUnder(div);
-        }
-
-        return div;
-    }
-
-    async regenerateResponse(btn) {
-        if (this.state.isProcessing) return;
-
-        const messageEl = btn.closest('.message');
-        const messages = Array.from(this.dom.chat.querySelectorAll('.message'));
-        const index = messages.indexOf(messageEl);
-
-        if (index > 0) {
-            const userMessageEl = messages[index - 1];
-            const userText = userMessageEl.querySelector('.message-bubble')?.innerText || '';
-
-            messageEl.remove();
-
-            const aiMessageDiv = this.addStreamingMessage();
-            const bubbleContent = aiMessageDiv.querySelector('.message-content-text');
-            const statusBadge = aiMessageDiv.querySelector('.message-status');
-
-            this.state.isProcessing = true;
-            this.state.abortController = new AbortController();
-
-            // Add stop button for regeneration too
-            const contentDiv = aiMessageDiv.querySelector('.message-content');
-            const stopActionsDiv = document.createElement('div');
-            stopActionsDiv.className = 'message-actions';
-            stopActionsDiv.style.opacity = '1';
-            stopActionsDiv.innerHTML = `
-                <button class="stop-btn" title="Stop generating">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>
-                    Stop
-                </button>
-            `;
-            stopActionsDiv.querySelector('.stop-btn').addEventListener('click', () => this.stopGeneration());
-            contentDiv.appendChild(stopActionsDiv);
-
-            try {
-                const intent = detectIntent({ text: userText, files: [] });
-
-                const response = await fetch("/api/chat", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        message: userText,
-                        intent: intent,
-                        files: []
-                    }),
-                    signal: this.state.abortController.signal
+                });
+                this.dom.welcomeInput.addEventListener('input', () => {
+                    this.autoResize(this.dom.welcomeInput);
+                    this.updateCharCounter(this.dom.welcomeInput, this.dom.welcomeCharCounter);
                 });
 
-                if (!response.ok) throw new Error(`Server error: ${response.status}`);
+                document.getElementById('btnSend').addEventListener('click', () => this.handleSend());
+                document.getElementById('btnUpload').addEventListener('click', () => {
+                    this.state.uploadContext = 'chat';
+                    document.getElementById('fileInput').click();
+                });
+                const chatMic = document.getElementById('btnVoice');
+                if(chatMic) chatMic.addEventListener('click', () => this.toggleRecording());
 
-                this.state.currentReader = response.body.getReader();
-                const decoder = new TextDecoder("utf-8");
-                let fullText = "";
-                let buffer = "";
+                this.dom.input.addEventListener('keydown', e => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.handleSend();
+                    }
+                });
+                this.dom.input.addEventListener('input', () => {
+                    this.autoResize(this.dom.input);
+                    this.updateCharCounter(this.dom.input, this.dom.charCounter);
+                });
 
-                while (true) {
-                    const { done, value } = await this.state.currentReader.read();
-                    if (done) break;
+                document.getElementById('openSidebar').addEventListener('click', () => this.toggleSidebar(true));
+                document.getElementById('closeSidebar').addEventListener('click', () => this.toggleSidebar(false));
+                this.dom.overlay.addEventListener('click', () => this.toggleSidebar(false));
 
-                    const chunk = decoder.decode(value, { stream: true });
-                    buffer += chunk;
-                    const lines = buffer.split('
-');
-                    buffer = lines.pop() || "";
+                document.getElementById('btnNewChat').addEventListener('click', () => this.newChat());
+                document.getElementById('btnClearChat').addEventListener('click', () => this.clearChat());
+                document.getElementById('btnClearCache').addEventListener('click', () => this.clearAllData());
 
-                    for (const line of lines) {
-                        if (!line.trim()) continue;
+                document.getElementById('fileInput').addEventListener('change', e => {
+                    const isWelcome = this.state.uploadContext === 'welcome';
+                    this.handleFiles(e.target.files, isWelcome);
+                    e.target.value = ''; 
+                    this.state.uploadContext = null;
+                });
 
-                        const separatorIndex = line.indexOf('|');
-                        if (separatorIndex === -1) continue;
+                document.getElementById('btnExportModal').addEventListener('click', () => this.dom.dialog.showModal());
+                document.getElementById('closeDialog').addEventListener('click', () => this.dom.dialog.close());
+            }
 
-                        const type = line.substring(0, separatorIndex);
-                        const data = line.substring(separatorIndex + 1);
+            setupDragDrop() {
+                [this.dom.wrapper, this.dom.welcomeWrapper].forEach(wrapper => {
+                    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => wrapper.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); }));
+                    wrapper.addEventListener('dragenter', () => { wrapper.style.borderColor = 'var(--accent-primary)'; });
+                    wrapper.addEventListener('dragleave', () => { wrapper.style.borderColor = 'var(--glass-border)'; });
+                    wrapper.addEventListener('drop', e => {
+                        wrapper.style.borderColor = 'var(--glass-border)';
+                        this.handleFiles(e.dataTransfer.files, wrapper === this.dom.welcomeWrapper);
+                    });
+                });
+            }
 
-                        if (type === 'STATUS') {
-                            if (data === 'SEARCHING') {
-                                if (statusBadge) {
-                                    statusBadge.style.display = 'inline-flex';
-                                    statusBadge.innerHTML = `<div class="mini-spinner"></div> Searching...`;
-                                }
-                                if (this.dom.statusText) this.dom.statusText.innerText = "Searching...";
-                            } else if (data === 'TYPING') {
-                                if (statusBadge) statusBadge.style.display = 'none';
-                                if (this.dom.statusText) this.dom.statusText.innerText = "Typing...";
+            autoResize(textarea) {
+                textarea.style.height = 'auto';
+                textarea.style.height = Math.min(textarea.scrollHeight, 150) + 'px';
+            }
+
+            updateCharCounter(textarea, counter) {
+                const len = textarea.value.length;
+                counter.innerText = len + ' / ' + this.state.maxChars;
+                counter.className = 'char-counter' + (len > this.state.maxChars ? ' danger' : len > this.state.maxChars*0.9 ? ' warning' : '');
+            }
+
+            async handleFiles(fileList, isWelcome) {
+                if (!fileList || fileList.length === 0) return;
+                const files = isWelcome ? this.state.welcomeFiles : this.state.files;
+                const preview = isWelcome ? this.dom.welcomePreview : this.dom.preview;
+
+                for (const file of fileList) {
+                    if (!file || !file.name) continue;
+                    const ext = file.name.split('.').pop().toLowerCase();
+
+                    let category = 'unknown';
+                    if (this.fileTypes.text.includes(ext)) category = 'text';
+                    else if (this.fileTypes.code.includes(ext)) category = 'code';
+                    else if (this.fileTypes.image.includes(ext)) category = 'image';
+
+                    if (category === 'unknown') {
+                        alert('Unsupported file: .' + ext);
+                        continue;
+                    }
+
+                    if (file.size > 10 * 1024 * 1024) {
+                        alert('File too large: ' + file.name);
+                        continue;
+                    }
+
+                    try {
+                        let content = '';
+                        let type = 'text';
+                        if (category === 'image') {
+                            files.push({ file: file, textExtracted: '', type: 'image', status: 'processing' });
+                            this.renderFiles(files, preview, isWelcome);
+                            this.showOcrStatus(true, 'Scanning ' + file.name + '...');
+                            content = await this.performOCR(file);
+                            this.showOcrStatus(false);
+                        } else {
+                            content = await this.readTextFile(file);
+                            type = category;
+                        }
+
+                        const idx = files.findIndex(f => f.file === file);
+                        if (idx !== -1) {
+                            files[idx].textExtracted = content;
+                            files[idx].status = 'done';
+                            files[idx].type = type;
+                        } else {
+                            files.push({ file: file, textExtracted: content, type: type, status: 'done' });
+                        }
+                        this.renderFiles(files, preview, isWelcome);
+                    } catch (error) {
+                        console.error(error);
+                        this.showOcrStatus(false);
+                        alert('Processing failed: ' + file.name);
+                        const idx = files.findIndex(f => f.file === file);
+                        if (idx !== -1) files.splice(idx,1);
+                        this.renderFiles(files, preview, isWelcome);
+                    }
+                }
+            }
+
+            async performOCR(file) {
+                try {
+                    const worker = await Tesseract.createWorker({
+                        logger: m => {
+                            if (m.status === 'recognizing text') {
+                                const progress = Math.round(m.progress * 100);
+                                this.dom.ocrStatusText.innerText = 'Scanning... ' + progress + '%';
                             }
-                        } else if (type === 'CHUNK') {
-                            let content = data.replace(/\n/g, '
-');
-                            fullText += content;
-                            bubbleContent.textContent = fullText;
-                            this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
-                        } else if (type === 'ERROR') {
-                            throw new Error(data);
                         }
-                    }
+                    });
+                    await worker.loadLanguage('eng');
+                    await worker.initialize('eng');
+                    await worker.setParameters({
+                        tessedit_pageseg_mode: Tesseract.PSM.AUTO,
+                        preserve_interword_spaces: '1',
+                    });
+                    const ret = await worker.recognize(file);
+                    await worker.terminate();
+                    return ret.data.text || "";
+                } catch (e) {
+                    console.error("OCR Error:", e);
+                    throw new Error("OCR failed.");
+                }
+            }
+
+            showOcrStatus(show, text) {
+                if (show) {
+                    this.dom.ocrStatusText.innerText = text;
+                    this.dom.ocrStatus.classList.add('visible');
+                } else {
+                    this.dom.ocrStatus.classList.remove('visible');
+                }
+            }
+
+            readTextFile(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = () => reject(new Error('Read failed'));
+                    reader.readAsText(file);
+                });
+            }
+
+            renderFiles(files, preview, isWelcome) {
+                preview.innerHTML = '';
+                files.forEach((item, idx) => {
+                    if (!item || !item.file) return;
+                    let icon = '📄';
+                    if (item.type === 'code') icon = '💻';
+                    else if (item.type === 'image') icon = '🖼️';
+
+                    const chip = document.createElement('div');
+                    chip.className = 'file-chip ' + item.type;
+                    chip.innerHTML = '<span>' + icon + '</span> <span style="overflow:hidden;text-overflow:ellipsis;max-width:120px;">' + item.file.name + '</span> <button onclick="app.removeFile(' + idx + ', ' + isWelcome + ')">×</button>';
+                    preview.appendChild(chip);
+                });
+            }
+
+            removeFile(idx, isWelcome) {
+                if (isWelcome) {
+                    this.state.welcomeFiles.splice(idx, 1);
+                    this.renderFiles(this.state.welcomeFiles, this.dom.welcomePreview, true);
+                } else {
+                    this.state.files.splice(idx, 1);
+                    this.renderFiles(this.state.files, this.dom.preview, false);
+                }
+            }
+
+            async handleWelcomeSend() {
+                const text = this.dom.welcomeInput.value.trim();
+                if (!text && this.state.welcomeFiles.length === 0) return;
+                if (this.state.welcomeFiles.some(f => f.status === 'processing')) return alert("Please wait for scan to complete.");
+                if (text.length > this.state.maxChars) return alert("Message too long.");
+
+                this.dom.welcome.style.display = 'none';
+                this.dom.chatInputContainer.style.display = 'block';
+                if (this.state.isMobile) this.toggleSidebar(false);
+
+                this.state.files = [...this.state.welcomeFiles];
+                this.state.welcomeFiles = [];
+
+                this.createChatSession(text);
+                await this.sendMessage(text);
+
+                this.dom.input.value = '';
+                this.dom.input.style.height = 'auto';
+                this.updateCharCounter(this.dom.input, this.dom.charCounter);
+            }
+
+            stopGeneration() {
+                if (this.state.abortController) {
+                    this.state.abortController.abort();
+                    this.state.abortController = null;
+                }
+                if (this.state.currentReader) {
+                    this.state.currentReader.cancel().catch(() => {});
+                    this.state.currentReader = null;
+                }
+                this.state.isProcessing = false;
+                if (this.dom.statusText) this.dom.statusText.innerText = "Stopped";
+
+                const stopBtn = document.querySelector('.stop-btn');
+                if (stopBtn) {
+                    const actionsDiv = stopBtn.parentElement;
+                    stopBtn.remove();
+                    this.addMessageActions(actionsDiv.parentElement.parentElement, true);
+                }
+            }
+
+            async sendMessage(userText) {
+                if (this.state.isProcessing) return;
+                if (!userText && this.state.files.length === 0) return;
+                if (this.state.files.some(f => f.status === 'processing')) return alert("Please wait for scan to complete.");
+
+                const constructedPayload = {
+                    userMessage: userText || '',
+                    files: this.state.files.map(f => ({ fileName: f.file.name, content: f.textExtracted, type: f.type }))
+                };
+
+                const intent = detectIntent(constructedPayload.userMessage, this.state.files);
+
+                let displayText = constructedPayload.userMessage;
+                if (constructedPayload.files.length > 0) {
+                    displayText += '
+
+' + constructedPayload.files.map(f => {
+                        let icon = f.type === 'image' ? '🖼️' : (f.type === 'code' ? '💻' : '📄');
+                        return '**' + icon + ' File:** ' + f.fileName + '
+```
+' + f.content + '
+```';
+                    }).join('
+');
                 }
 
-                if (buffer.trim()) {
-                    const separatorIndex = buffer.indexOf('|');
-                    if (separatorIndex !== -1) {
-                        const type = buffer.substring(0, separatorIndex);
-                        const data = buffer.substring(separatorIndex + 1);
-                        if (type === 'CHUNK') {
-                            fullText += data.replace(/\n/g, '
-');
-                        }
-                    }
-                }
+                this.addMessage(displayText, 'user');
+                this.appendToHistory('user', displayText);
+                this.state.messageCount++;
 
-                stopActionsDiv.remove();
+                this.state.files = [];
+                this.renderFiles(this.state.files, this.dom.preview, false);
+                this.state.isProcessing = true;
+
+                this.state.abortController = new AbortController();
+
+                const aiMessageDiv = this.addStreamingMessage();
+                const bubbleContent = aiMessageDiv.querySelector('.message-content-text');
+                const statusBadge = aiMessageDiv.querySelector('.message-status');
+
+                const contentDiv = aiMessageDiv.querySelector('.message-content');
+                const stopActionsDiv = document.createElement('div');
+                stopActionsDiv.className = 'message-actions';
+                stopActionsDiv.style.opacity = '1';
+                stopActionsDiv.innerHTML = '<button class="stop-btn" title="Stop generating"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>Stop</button>';
+                stopActionsDiv.querySelector('.stop-btn').addEventListener('click', () => this.stopGeneration());
+                contentDiv.appendChild(stopActionsDiv);
 
                 try {
-                    if (marked && typeof marked.parse === 'function') {
-                        bubbleContent.innerHTML = marked.parse(fullText || '');
-                    } else {
-                        bubbleContent.textContent = fullText || '';
-                    }
-                    if (window.Prism && typeof Prism.highlightAllUnder === 'function') {
-                        Prism.highlightAllUnder(aiMessageDiv);
-                    }
-                } catch (e) {
-                    console.error('Markdown final parse failed', e);
-                }
+                    const response = await fetch("/api/chat", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            message: constructedPayload.userMessage,
+                            intent: intent,
+                            files: constructedPayload.files,
+                            sessionId: this.state.chatId
+                        }),
+                        signal: this.state.abortController.signal
+                    });
 
-                this.addMessageActions(aiMessageDiv);
+                    if (!response.ok) throw new Error('Server error: ' + response.status);
 
-            } catch (error) {
-                if (error.name === 'AbortError') {
-                    const currentText = bubbleContent.textContent || '';
-                    this.appendToHistory('ai', currentText + '\n\n[Stopped by user]');
-                } else {
-                    console.error('Regenerate failed:', error);
+                    this.state.currentReader = response.body.getReader();
+                    const decoder = new TextDecoder("utf-8");
+                    let fullText = "";
+                    let buffer = "";
+
+                    while (true) {
+                        const { done, value } = await this.state.currentReader.read();
+                        if (done) break;
+
+                        const chunk = decoder.decode(value, { stream: true });
+                        buffer += chunk;
+
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || "";
+
+                        for (const line of lines) {
+                            if (!line.trim()) continue;
+
+                            const separatorIndex = line.indexOf('|');
+                            if (separatorIndex === -1) continue;
+
+                            const type = line.substring(0, separatorIndex);
+                            const data = line.substring(separatorIndex + 1);
+
+                            if (type === 'STATUS') {
+                                if (data === 'SEARCHING') {
+                                    if (statusBadge) {
+                                        statusBadge.style.display = 'inline-flex';
+                                        statusBadge.innerHTML = '<div class="mini-spinner"></div> Searching...';
+                                    }
+                                    if (this.dom.statusText) this.dom.statusText.innerText = "Searching...";
+                                } else if (data === 'TYPING') {
+                                    if (statusBadge) statusBadge.style.display = 'none';
+                                    if (this.dom.statusText) this.dom.statusText.innerText = "Typing...";
+                                }
+                            } else if (type === 'CHUNK') {
+                                const content = data.replace(/\\n/g, '\n');
+                                fullText += content;
+
+                                if (bubbleContent) {
+                                    bubbleContent.textContent = fullText;
+                                    this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
+                                }
+                            } else if (type === 'ERROR') {
+                                throw new Error(data);
+                            }
+                        }
+                    }
+
+                    if (buffer.trim()) {
+                        const separatorIndex = buffer.indexOf('|');
+                        if (separatorIndex !== -1) {
+                            const type = buffer.substring(0, separatorIndex);
+                            const data = buffer.substring(separatorIndex + 1);
+                            if (type === 'CHUNK') {
+                                fullText += data.replace(/\\n/g, '\n');
+                            }
+                        }
+                    }
+
                     stopActionsDiv.remove();
-                    const errorMessage = `**Regeneration Error:** ${error.message}`;
-                    if (marked && typeof marked.parse === 'function') {
-                        bubbleContent.innerHTML = marked.parse(errorMessage);
-                    } else {
-                        bubbleContent.textContent = errorMessage;
+
+                    try {
+                        if (typeof marked !== 'undefined' && marked.parse) {
+                            bubbleContent.innerHTML = marked.parse(fullText || '');
+                        } else {
+                            bubbleContent.textContent = fullText || '';
+                        }
+                        if (window.Prism && Prism.highlightAllUnder) {
+                            Prism.highlightAllUnder(aiMessageDiv);
+                        }
+                    } catch (e) {
+                        console.error('Markdown final parse failed', e);
+                        bubbleContent.textContent = fullText;
                     }
                     this.addMessageActions(aiMessageDiv);
+                    this.appendToHistory('ai', fullText);
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        const currentText = bubbleContent.textContent || '';
+                        this.appendToHistory('ai', currentText + '\n\n[Stopped by user]');
+                    } else {
+                        console.error('API request failed:', error);
+                        stopActionsDiv.remove();
+                        const errorMessage = '**API Error:** ' + error.message + '\n\nThe request could not be completed.';
+                        if (typeof marked !== 'undefined' && marked.parse) {
+                            bubbleContent.innerHTML = marked.parse(errorMessage);
+                        } else {
+                            bubbleContent.textContent = errorMessage;
+                        }
+                        this.addMessageActions(aiMessageDiv);
+                        this.appendToHistory('ai', errorMessage);
+                    }
+                } finally {
+                    this.state.isProcessing = false;
+                    this.state.abortController = null;
+                    this.state.currentReader = null;
+                    if (this.dom.statusText) this.dom.statusText.innerText = "Online";
+                    this.checkStorageSize();
                 }
-            } finally {
-                this.state.isProcessing = false;
-                this.state.abortController = null;
-                this.state.currentReader = null;
-                if (this.dom.statusText) this.dom.statusText.innerText = "Online";
             }
-        }
-    }
 
-    loadHistory() {
-        try {
-            const raw = localStorage.getItem(this.storageKey);
-            const history = raw ? JSON.parse(raw) : [];
-            if (Array.isArray(history)) {
-                history.slice(0, 50).forEach(chat => this.renderHistoryItem(chat));
-            }
-            return history;
-        } catch (e) {
-            console.error('Failed to load history:', e);
-            localStorage.removeItem(this.storageKey);
-            return [];
-        }
-    }
-
-    renderHistoryItem(chat) {
-        const btn = document.createElement('button');
-        btn.className = 'nav-item';
-        btn.innerHTML = `
-            <span class="icon">💬</span> 
-            ${this.escapeHtml(chat.title)}
-            <button class="nav-item-delete" onclick="event.stopPropagation(); app.deleteChat('${chat.id}')">×</button>
-        `;
-        btn.onclick = () => this.loadChat(chat.id);
-        this.dom.history.appendChild(btn);
-    }
-
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    createChatSession(firstText) {
-        this.state.chatId = Date.now().toString();
-        const title = (firstText || 'New Chat').slice(0, 35) + ((firstText || '').length > 35 ? '…' : '');
-        const chat = { 
-            id: this.state.chatId, 
-            title, 
-            messages: [], 
-            created: Date.now(),
-            updated: Date.now()
-        };
-        this.saveChat(chat);
-        this.renderHistoryItem(chat);
-    }
-
-    appendToHistory(role, content) {
-        try {
-            if (!this.state.chatId) return;
-            const history = this.getHistory();
-            const chat = history.find(c => c.id === this.state.chatId);
-            if (chat) {
-                chat.messages.push({ role, content, ts: Date.now() });
-                chat.updated = Date.now();
-                this.saveHistory(history);
-            }
-        } catch (e) {
-            console.error('Failed to save message:', e);
-        }
-    }
-
-    loadChat(chatId) {
-        try {
-            const history = this.getHistory();
-            const chat = history.find(c => c.id === chatId);
-            if (!chat) return;
-
-            this.state.chatId = chatId;
-            this.state.messageCount = chat.messages.length;
-
-            this.dom.welcome.style.display = 'none';
-            this.dom.chatInputContainer.style.display = 'block';
-
-            const messagesContainer = document.createElement('div');
-            chat.messages.forEach((m, idx) => {
+            addStreamingMessage() {
                 const div = document.createElement('div');
-                div.className = `message ${m.role}`;
-                const avatar = m.role === 'user' ? 'U' : 'eS';
+                div.className = 'message ai';
+                div.innerHTML = '<div class="message-avatar">eS</div><div class="message-content"><div class="message-status" style="display:none"></div><div class="message-bubble"><div class="message-content-text"></div></div></div>';
+                this.dom.chat.appendChild(div);
+                this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
+                return div;
+            }
+
+            addMessageActions(messageDiv, includeRegenerate) {
+                const contentDiv = messageDiv.querySelector('.message-content');
+
+                const existingActions = contentDiv.querySelector('.message-actions');
+                if (existingActions) existingActions.remove();
+
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'message-actions';
+
+                const copyIcon = '<svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>';
+                const regenIcon = '<svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>';
+
+                let html = '<button class="action-btn" title="Copy" onclick="app.copyText(this)">' + copyIcon + '</button>';
+                if (includeRegenerate) {
+                    html += '<button class="action-btn" title="Regenerate" onclick="app.regenerateResponse(this)">' + regenIcon + '</button>';
+                }
+
+                actionsDiv.innerHTML = html;
+                contentDiv.appendChild(actionsDiv);
+            }
+
+            handleSend() {
+                const text = this.dom.input.value.trim();
+                if (!text && this.state.files.length === 0) return;
+                if (text.length > this.state.maxChars) return alert("Message too long.");
+                if (this.state.isProcessing) return;
+
+                this.dom.input.value = '';
+                this.dom.input.style.height = 'auto';
+                this.updateCharCounter(this.dom.input, this.dom.charCounter);
+
+                this.sendMessage(text);
+            }
+
+            addMessage(text, sender, showRegenerate) {
+                const div = document.createElement('div');
+                div.className = 'message ' + sender;
+                const avatar = sender === 'user' ? 'U' : 'eS';
 
                 let htmlContent;
                 try {
-                    if (marked && typeof marked.parse === 'function') {
-                        htmlContent = marked.parse(m.content || '');
+                    if (typeof marked !== 'undefined' && marked.parse) {
+                        htmlContent = marked.parse(text || '');
                     } else {
-                        htmlContent = (m.content || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                        htmlContent = (text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                     }
                 } catch (error) {
-                    htmlContent = (m.content || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    htmlContent = (text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 }
 
-                const isLastAI = m.role === 'ai' && idx === chat.messages.length - 1;
+                const copyIcon = '<svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>';
+                const regenIcon = showRegenerate ? '<svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>' : '';
 
-                const copyIcon = `<svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>`;
-                const regenIcon = `<svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>`;
+                const regenerateBtn = showRegenerate ? '<button class="action-btn" title="Regenerate" onclick="app.regenerateResponse(this)">' + regenIcon + '</button>' : '';
 
-                div.innerHTML = `
-                    <div class="message-avatar">${avatar}</div>
-                    <div class="message-content">
-                        <div class="message-bubble">${htmlContent}</div>
-                        ${m.role === 'ai' ? `<div class="message-actions">
-                            <button class="action-btn" title="Copy" onclick="app.copyText(this)">${copyIcon}</button>
-                            ${isLastAI ? `<button class="action-btn" title="Regenerate" onclick="app.regenerateResponse(this)">${regenIcon}</button>` : ''}
-                        </div>` : ''}
-                    </div>`;
-                messagesContainer.appendChild(div);
-            });
+                div.innerHTML = '<div class="message-avatar">' + avatar + '</div><div class="message-content"><div class="message-bubble">' + htmlContent + '</div>' + (sender === 'ai' ? '<div class="message-actions"><button class="action-btn" title="Copy" onclick="app.copyText(this)">' + copyIcon + '</button>' + regenerateBtn + '</div>' : '') + '</div>';
 
-            this.dom.chat.innerHTML = '';
-            this.dom.chat.appendChild(messagesContainer);
-            this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
+                this.dom.chat.appendChild(div);
+                this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
 
-            if (window.Prism && typeof Prism.highlightAll === 'function') {
-                Prism.highlightAll();
+                if (window.Prism && Prism.highlightAllUnder) {
+                    Prism.highlightAllUnder(div);
+                }
+
+                return div;
             }
 
-            this.toggleSidebar(false);
+            async regenerateResponse(btn) {
+                if (this.state.isProcessing) return;
 
-        } catch (error) {
-            console.error('Failed to load chat:', error);
-        }
-    }
+                const messageEl = btn.closest('.message');
+                const messages = Array.from(this.dom.chat.querySelectorAll('.message'));
+                const index = messages.indexOf(messageEl);
 
-    deleteChat(chatId) {
-        if (!confirm('Delete this conversation?')) return;
+                if (index > 0) {
+                    const userMessageEl = messages[index - 1];
+                    const userText = userMessageEl.querySelector('.message-bubble')?.innerText || '';
 
-        try {
-            let history = this.getHistory();
-            history = history.filter(c => c.id !== chatId);
-            this.saveHistory(history);
+                    messageEl.remove();
 
-            this.dom.history.innerHTML = '';
-            history.forEach(c => this.renderHistoryItem(c));
+                    const aiMessageDiv = this.addStreamingMessage();
+                    const bubbleContent = aiMessageDiv.querySelector('.message-content-text');
+                    const statusBadge = aiMessageDiv.querySelector('.message-status');
 
-            if (this.state.chatId === chatId) {
+                    this.state.isProcessing = true;
+                    this.state.abortController = new AbortController();
+
+                    const contentDiv = aiMessageDiv.querySelector('.message-content');
+                    const stopActionsDiv = document.createElement('div');
+                    stopActionsDiv.className = 'message-actions';
+                    stopActionsDiv.style.opacity = '1';
+                    stopActionsDiv.innerHTML = '<button class="stop-btn" title="Stop generating"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>Stop</button>';
+                    stopActionsDiv.querySelector('.stop-btn').addEventListener('click', () => this.stopGeneration());
+                    contentDiv.appendChild(stopActionsDiv);
+
+                    try {
+                        const intent = detectIntent(userText, []);
+
+                        const response = await fetch("/api/chat", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                message: userText,
+                                intent: intent,
+                                files: []
+                            }),
+                            signal: this.state.abortController.signal
+                        });
+
+                        if (!response.ok) throw new Error('Server error: ' + response.status);
+
+                        this.state.currentReader = response.body.getReader();
+                        const decoder = new TextDecoder("utf-8");
+                        let fullText = "";
+                        let buffer = "";
+
+                        while (true) {
+                            const { done, value } = await this.state.currentReader.read();
+                            if (done) break;
+
+                            const chunk = decoder.decode(value, { stream: true });
+                            buffer += chunk;
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop() || "";
+
+                            for (const line of lines) {
+                                if (!line.trim()) continue;
+
+                                const separatorIndex = line.indexOf('|');
+                                if (separatorIndex === -1) continue;
+
+                                const type = line.substring(0, separatorIndex);
+                                const data = line.substring(separatorIndex + 1);
+
+                                if (type === 'STATUS') {
+                                    if (data === 'SEARCHING') {
+                                        if (statusBadge) {
+                                            statusBadge.style.display = 'inline-flex';
+                                            statusBadge.innerHTML = '<div class="mini-spinner"></div> Searching...';
+                                        }
+                                        if (this.dom.statusText) this.dom.statusText.innerText = "Searching...";
+                                    } else if (data === 'TYPING') {
+                                        if (statusBadge) statusBadge.style.display = 'none';
+                                        if (this.dom.statusText) this.dom.statusText.innerText = "Typing...";
+                                    }
+                                } else if (type === 'CHUNK') {
+                                    const content = data.replace(/\\n/g, '\n');
+                                    fullText += content;
+                                    bubbleContent.textContent = fullText;
+                                    this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
+                                } else if (type === 'ERROR') {
+                                    throw new Error(data);
+                                }
+                            }
+                        }
+
+                        if (buffer.trim()) {
+                            const separatorIndex = buffer.indexOf('|');
+                            if (separatorIndex !== -1) {
+                                const type = buffer.substring(0, separatorIndex);
+                                const data = buffer.substring(separatorIndex + 1);
+                                if (type === 'CHUNK') {
+                                    fullText += data.replace(/\\n/g, '\n');
+                                }
+                            }
+                        }
+
+                        stopActionsDiv.remove();
+
+                        try {
+                            if (typeof marked !== 'undefined' && marked.parse) {
+                                bubbleContent.innerHTML = marked.parse(fullText || '');
+                            } else {
+                                bubbleContent.textContent = fullText || '';
+                            }
+                            if (window.Prism && Prism.highlightAllUnder) {
+                                Prism.highlightAllUnder(aiMessageDiv);
+                            }
+                        } catch (e) {
+                            console.error('Markdown final parse failed', e);
+                        }
+
+                        this.addMessageActions(aiMessageDiv);
+
+                    } catch (error) {
+                        if (error.name === 'AbortError') {
+                            const currentText = bubbleContent.textContent || '';
+                            this.appendToHistory('ai', currentText + '\n\n[Stopped by user]');
+                        } else {
+                            console.error('Regenerate failed:', error);
+                            stopActionsDiv.remove();
+                            const errorMessage = '**Regeneration Error:** ' + error.message;
+                            if (typeof marked !== 'undefined' && marked.parse) {
+                                bubbleContent.innerHTML = marked.parse(errorMessage);
+                            } else {
+                                bubbleContent.textContent = errorMessage;
+                            }
+                            this.addMessageActions(aiMessageDiv);
+                        }
+                    } finally {
+                        this.state.isProcessing = false;
+                        this.state.abortController = null;
+                        this.state.currentReader = null;
+                        if (this.dom.statusText) this.dom.statusText.innerText = "Online";
+                    }
+                }
+            }
+
+            loadHistory() {
+                try {
+                    const raw = localStorage.getItem(this.storageKey);
+                    const history = raw ? JSON.parse(raw) : [];
+                    if (Array.isArray(history)) {
+                        history.slice(0, 50).forEach(chat => this.renderHistoryItem(chat));
+                    }
+                    return history;
+                } catch (e) {
+                    console.error('Failed to load history:', e);
+                    localStorage.removeItem(this.storageKey);
+                    return [];
+                }
+            }
+
+            renderHistoryItem(chat) {
+                const btn = document.createElement('button');
+                btn.className = 'nav-item';
+                btn.innerHTML = '<span class="icon">💬</span> ' + this.escapeHtml(chat.title) + '<button class="nav-item-delete" onclick="event.stopPropagation(); app.deleteChat(' + "'" + chat.id + "'" + ')">×</button>';
+                btn.onclick = () => this.loadChat(chat.id);
+                this.dom.history.appendChild(btn);
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            createChatSession(firstText) {
+                this.state.chatId = Date.now().toString();
+                const title = (firstText || 'New Chat').slice(0, 35) + ((firstText || '').length > 35 ? '…' : '');
+                const chat = { 
+                    id: this.state.chatId, 
+                    title: title, 
+                    messages: [], 
+                    created: Date.now(),
+                    updated: Date.now()
+                };
+                this.saveChat(chat);
+                this.renderHistoryItem(chat);
+            }
+
+            appendToHistory(role, content) {
+                try {
+                    if (!this.state.chatId) return;
+                    const history = this.getHistory();
+                    const chat = history.find(c => c.id === this.state.chatId);
+                    if (chat) {
+                        chat.messages.push({ role: role, content: content, ts: Date.now() });
+                        chat.updated = Date.now();
+                        this.saveHistory(history);
+                    }
+                } catch (e) {
+                    console.error('Failed to save message:', e);
+                }
+            }
+
+            loadChat(chatId) {
+                try {
+                    const history = this.getHistory();
+                    const chat = history.find(c => c.id === chatId);
+                    if (!chat) return;
+
+                    this.state.chatId = chatId;
+                    this.state.messageCount = chat.messages.length;
+
+                    this.dom.welcome.style.display = 'none';
+                    this.dom.chatInputContainer.style.display = 'block';
+
+                    const messagesContainer = document.createElement('div');
+                    chat.messages.forEach((m, idx) => {
+                        const div = document.createElement('div');
+                        div.className = 'message ' + m.role;
+                        const avatar = m.role === 'user' ? 'U' : 'eS';
+
+                        let htmlContent;
+                        try {
+                            if (typeof marked !== 'undefined' && marked.parse) {
+                                htmlContent = marked.parse(m.content || '');
+                            } else {
+                                htmlContent = (m.content || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                            }
+                        } catch (error) {
+                            htmlContent = (m.content || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                        }
+
+                        const isLastAI = m.role === 'ai' && idx === chat.messages.length - 1;
+
+                        const copyIcon = '<svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>';
+                        const regenIcon = '<svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>';
+
+                        div.innerHTML = '<div class="message-avatar">' + avatar + '</div><div class="message-content"><div class="message-bubble">' + htmlContent + '</div>' + (m.role === 'ai' ? '<div class="message-actions"><button class="action-btn" title="Copy" onclick="app.copyText(this)">' + copyIcon + '</button>' + (isLastAI ? '<button class="action-btn" title="Regenerate" onclick="app.regenerateResponse(this)">' + regenIcon + '</button>' : '') + '</div>' : '') + '</div>';
+                        messagesContainer.appendChild(div);
+                    });
+
+                    this.dom.chat.innerHTML = '';
+                    this.dom.chat.appendChild(messagesContainer);
+                    this.dom.chat.scrollTop = this.dom.chat.scrollHeight;
+
+                    if (window.Prism && Prism.highlightAll) {
+                        Prism.highlightAll();
+                    }
+
+                    this.toggleSidebar(false);
+
+                } catch (error) {
+                    console.error('Failed to load chat:', error);
+                }
+            }
+
+            deleteChat(chatId) {
+                if (!confirm('Delete this conversation?')) return;
+
+                try {
+                    let history = this.getHistory();
+                    history = history.filter(c => c.id !== chatId);
+                    this.saveHistory(history);
+
+                    this.dom.history.innerHTML = '';
+                    history.forEach(c => this.renderHistoryItem(c));
+
+                    if (this.state.chatId === chatId) {
+                        this.newChat();
+                    }
+
+                } catch (e) {
+                    console.error('Failed to delete chat:', e);
+                }
+            }
+
+            getHistory() {
+                try {
+                    const data = localStorage.getItem(this.storageKey);
+                    if (!data) return [];
+
+                    const parsed = JSON.parse(data);
+                    return Array.isArray(parsed) ? parsed : [];
+                } catch (e) {
+                    console.error('Failed to parse history:', e);
+                    return [];
+                }
+            }
+
+            saveChat(chat) {
+                if (!chat || !chat.id) return;
+
+                const history = this.getHistory();
+                history.unshift(chat);
+                if (history.length > 100) {
+                    history.splice(100);
+                }
+                this.saveHistory(history);
+            }
+
+            saveHistory(history) {
+                try {
+                    if (!Array.isArray(history)) {
+                        throw new Error('History must be an array');
+                    }
+
+                    const data = JSON.stringify(history);
+                    if (data.length > this.maxStorageSize) {
+                        history.sort((a, b) => (b.updated || b.created) - (a.updated || a.created));
+                        history.splice(50);
+                        localStorage.setItem(this.storageKey, JSON.stringify(history));
+                        console.warn('Storage limit reached. Truncated history to 50 items.');
+                    } else {
+                        localStorage.setItem(this.storageKey, data);
+                    }
+                } catch (e) {
+                    console.error('Failed to save history:', e);
+                    alert('Storage limit reached. Please clear some history.');
+                }
+            }
+
+            checkStorageSize() {
+                try {
+                    const data = localStorage.getItem(this.storageKey);
+                    if (data && data.length > this.maxStorageSize * 0.9) {
+                        console.warn('Storage is near limit. Consider clearing old conversations.');
+                    }
+                } catch (e) {
+                    console.error('Storage check failed:', e);
+                }
+            }
+
+            toggleSidebar(open) {
+                if (!this.state.isMobile) return;
+                if (open) {
+                    this.dom.sidebar.classList.add('mobile-open');
+                    this.dom.overlay.classList.add('active');
+                } else {
+                    this.dom.sidebar.classList.remove('mobile-open');
+                    this.dom.overlay.classList.remove('active');
+                }
+            }
+
+            newChat() {
+                this.state.chatId = null;
+                this.state.messageCount = 0;
+                this.state.files = [];
+                this.state.welcomeFiles = [];
+
+                if (this.state.abortController) {
+                    this.state.abortController.abort();
+                }
+
+                this.dom.chatInputContainer.style.display = 'none';
+                this.dom.chat.innerHTML = '';
+                this.dom.chat.appendChild(this.dom.welcome);
+                this.dom.welcome.style.display = 'flex';
+
+                this.dom.welcomeInput.value = '';
+                this.dom.welcomeInput.style.height = 'auto';
+                this.dom.welcomePreview.innerHTML = '';
+                this.updateCharCounter(this.dom.welcomeInput, this.dom.welcomeCharCounter);
+
+                this.toggleSidebar(false);
+                this.dom.welcomeInput.focus();
+            }
+
+            clearChat() {
+                if (this.state.messageCount > 0 && !confirm('Clear current conversation?')) return;
                 this.newChat();
             }
 
-        } catch (e) {
-            console.error('Failed to delete chat:', e);
-        }
-    }
-
-    getHistory() {
-        try {
-            const data = localStorage.getItem(this.storageKey);
-            if (!data) return [];
-
-            const parsed = JSON.parse(data);
-            return Array.isArray(parsed) ? parsed : [];
-        } catch (e) {
-            console.error('Failed to parse history:', e);
-            return [];
-        }
-    }
-
-    saveChat(chat) {
-        if (!chat || !chat.id) return;
-
-        const history = this.getHistory();
-        history.unshift(chat);
-        if (history.length > 100) {
-            history.splice(100);
-        }
-        this.saveHistory(history);
-    }
-
-    saveHistory(history) {
-        try {
-            if (!Array.isArray(history)) {
-                throw new Error('History must be an array');
+            clearAllData() {
+                if (!confirm('Delete ALL conversation history? This cannot be undone.')) return;
+                try {
+                    localStorage.clear();
+                    location.reload();
+                } catch (e) {
+                    console.error('Failed to clear storage:', e);
+                }
             }
 
-            const data = JSON.stringify(history);
-            if (data.length > this.maxStorageSize) {
-                history.sort((a, b) => (b.updated || b.created) - (a.updated || a.created));
-                history.splice(50);
-                localStorage.setItem(this.storageKey, JSON.stringify(history));
-                console.warn('Storage limit reached. Truncated history to 50 items.');
-            } else {
-                localStorage.setItem(this.storageKey, data);
+            copyText(btn) {
+                const messageEl = btn.closest('.message');
+                if (!messageEl) return;
+
+                const bubble = messageEl.querySelector('.message-bubble');
+                if (!bubble) return;
+
+                const text = bubble.innerText;
+                navigator.clipboard.writeText(text).then(() => {
+                    const svg = btn.querySelector('svg');
+                    if(svg) {
+                        const originalPath = svg.innerHTML;
+                        svg.innerHTML = '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>';
+                        svg.style.fill = '#22c55e';
+                        setTimeout(() => {
+                            svg.innerHTML = originalPath;
+                            svg.style.fill = 'currentColor';
+                        }, 2000);
+                    }
+                }).catch(err => {
+                    console.error('Failed to copy:', err);
+                });
             }
-        } catch (e) {
-            console.error('Failed to save history:', e);
-            alert('Storage limit reached. Please clear some history.');
-        }
-    }
 
-    checkStorageSize() {
-        try {
-            const data = localStorage.getItem(this.storageKey);
-            if (data && data.length > this.maxStorageSize * 0.9) {
-                console.warn('Storage is near limit. Consider clearing old conversations.');
-            }
-        } catch (e) {
-            console.error('Storage check failed:', e);
-        }
-    }
+            exportChat(type) {
+                const messages = Array.from(document.querySelectorAll('.message')).filter(el => !el.id.startsWith('thinking'));
 
-    toggleSidebar(open) {
-        if (!this.state.isMobile) return;
-        if (open) {
-            this.dom.sidebar.classList.add('mobile-open');
-            this.dom.overlay.classList.add('active');
-        } else {
-            this.dom.sidebar.classList.remove('mobile-open');
-            this.dom.overlay.classList.remove('active');
-        }
-    }
+                if (messages.length === 0) {
+                    alert('No conversation to export');
+                    return;
+                }
 
-    newChat() {
-        this.state.chatId = null;
-        this.state.messageCount = 0;
-        this.state.files = [];
-        this.state.welcomeFiles = [];
+                const msgs = messages.map(el => {
+                    const who = el.classList.contains('user') ? 'User' : 'eSAMz AI';
+                    const txt = el.querySelector('.message-bubble')?.innerText || '';
+                    return '[' + who + ']: ' + txt;
+                }).join('\n\n');
 
-        // Abort any ongoing generation
-        if (this.state.abortController) {
-            this.state.abortController.abort();
-        }
+                const filename = 'esamz-export-' + Date.now();
 
-        this.dom.chatInputContainer.style.display = 'none';
-        this.dom.chat.innerHTML = '';
-        this.dom.chat.appendChild(this.dom.welcome);
-        this.dom.welcome.style.display = 'flex';
-
-        this.dom.welcomeInput.value = '';
-        this.dom.welcomeInput.style.height = 'auto';
-        this.dom.welcomePreview.innerHTML = '';
-        this.updateCharCounter(this.dom.welcomeInput, this.dom.welcomeCharCounter);
-
-        this.toggleSidebar(false);
-        this.dom.welcomeInput.focus();
-    }
-
-    clearChat() {
-        if (this.state.messageCount > 0 && !confirm('Clear current conversation?')) return;
-        this.newChat();
-    }
-
-    clearAllData() {
-        if (!confirm('Delete ALL conversation history? This cannot be undone.')) return;
-        try {
-            localStorage.clear();
-            location.reload();
-        } catch (e) {
-            console.error('Failed to clear storage:', e);
-        }
-    }
-
-    copyText(btn) {
-        const messageEl = btn.closest('.message');
-        if (!messageEl) return;
-
-        const bubble = messageEl.querySelector('.message-bubble');
-        if (!bubble) return;
-
-        const text = bubble.innerText;
-        navigator.clipboard.writeText(text).then(() => {
-            const svg = btn.querySelector('svg');
-            if(svg) {
-                const originalPath = svg.innerHTML;
-                svg.innerHTML = '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>'; // Checkmark
-                svg.style.fill = '#22c55e';
-                setTimeout(() => {
-                    svg.innerHTML = originalPath;
-                    svg.style.fill = 'currentColor';
-                }, 2000);
-            }
-        }).catch(err => {
-            console.error('Failed to copy:', err);
-        });
-    }
-
-    exportChat(type) {
-        const messages = Array.from(document.querySelectorAll('.message')).filter(el => !el.id.startsWith('thinking'));
-
-        if (messages.length === 0) {
-            alert('No conversation to export');
-            return;
-        }
-
-        const msgs = messages.map(el => {
-            const who = el.classList.contains('user') ? 'User' : 'eSAMz AI';
-            const txt = el.querySelector('.message-bubble')?.innerText || '';
-            return `[${who}]: ${txt}`;
-        }).join('
-
-');
-
-        const filename = `esamz-export-${Date.now()}`;
-
-        if (type === 'txt') {
-            this.download(filename + '.txt', msgs);
-        } else if (type === 'md') {
-            const markdown = messages.map(el => {
-                const who = el.classList.contains('user') ? '**You**' : '**eSAMz AI**';
-                const txt = el.querySelector('.message-bubble')?.innerText || '';
-                return `${who}
-
-${txt}`;
-            }).join('
-
----
-
-');
-            this.download(filename + '.md', markdown);
-        } else if (type === 'html') {
-            const html = `<!DOCTYPE html>
+                if (type === 'txt') {
+                    this.download(filename + '.txt', msgs);
+                } else if (type === 'md') {
+                    const markdown = messages.map(el => {
+                        const who = el.classList.contains('user') ? '**You**' : '**eSAMz AI**';
+                        const txt = el.querySelector('.message-bubble')?.innerText || '';
+                        return who + '\n\n' + txt;
+                    }).join('\n\n---\n\n');
+                    this.download(filename + '.md', markdown);
+                } else if (type === 'html') {
+                    const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -2529,31 +2468,31 @@ ${txt}`;
     </div>
 </body>
 </html>`;
-            this.download(filename + '.html', html);
+                    this.download(filename + '.html', html);
+                }
+
+                this.dom.dialog.close();
+            }
+
+            download(name, content) {
+                try {
+                    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = name;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                } catch (e) {
+                    console.error('Download failed:', e);
+                    alert('Failed to download file');
+                }
+            }
         }
 
-        this.dom.dialog.close();
-    }
-
-    download(name, content) {
-        try {
-            const blob = new Blob([content], { type: 'text/plain;charset=utf-8';
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = name;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        } catch (e) {
-            console.error('Download failed:', e);
-            alert('Failed to download file');
-        }
-    }
-}
-
-const app = new App();
+        const app = new App();
     </script>
 </body>
 </html>
