@@ -58,11 +58,16 @@ async function checkRateLimit(identifier) {
     return true;
   }
 }
+/* ================= 3. UTILITIES (HARDCODED TIMEOUT) ================= */
 
 const DB = {
   async getHistory(id) {
     const key = `chat:${id}`;
     try {
+      // OPTIONAL: Uncomment the line below if you want 'reading' to ALSO extend the session. 
+      // Currently, only 'talking' keeps the memory alive.
+      // await redis.expire(key, 1800); 
+
       const raw = await redis.lrange(key, 0, -1);
       return raw.map(item => {
         try { return typeof item === 'object' ? item : JSON.parse(item); }
@@ -75,18 +80,30 @@ const DB = {
     const key = `chat:${id}`;
     try {
       const safeContent = typeof content === 'string' ? content : JSON.stringify(content);
+      // Hard limit 20k chars to prevent memory bloating
       const truncated = safeContent.length > 20000 ? safeContent.substring(0, 20000) + "...[truncated]" : safeContent;
       const entryObj = { role, content: truncated, ts: Date.now() };
       
       const pipeline = redis.pipeline();
+      
+      // 1. Add new message
       pipeline.rpush(key, JSON.stringify(entryObj));
-      pipeline.ltrim(key, -CONSTANTS.THREAD_LENGTH, -1);
-      pipeline.expire(key, CONSTANTS.SESSION_TTL);
+      
+      // 2. Trim to last 20 messages (Keep memory light)
+      pipeline.ltrim(key, -20, -1); 
+      
+      // 3. HARDCODED EXPIRATION: 1800 Seconds (30 Minutes)
+      // This resets the timer to 30 mins every time a message is sent.
+      pipeline.expire(key, 1800); 
+      
       await pipeline.exec();
+      
+      // Debug log to confirm it's working (View this in your Vercel/Server logs)
+      console.log(`[Redis] Refreshed TTL for ${id} to 1800s`);
+      
     } catch (e) { console.error("REDIS WRITE ERROR:", e); }
   }
 };
-
 /* ================= 4. EXTERNAL TOOLS ================= */
 
 // Tool A: Wikipedia
