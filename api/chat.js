@@ -36,13 +36,7 @@ You are eSAMz v9.1, an AI digital companion created by Alakmar Teenwala.
 
 ## 🛡️ SAFETY & PRIVACY
 * **Redact:** Remove specific phone numbers, private home addresses, and personal email addresses.
-...
-## AGENTIC CAPABILITIES
-You are connected to a local Python environment.
-* If the user asks for a calculation, file manipulation, or system task, WRITE PYTHON CODE.
-* Wrap code in \`\`\`python ... \`\`\` blocks.
-* The user's system will execute this code and show you the result.
-* Assume you have access to standard libraries (os, sys, math, random).
+
 `;
 
 /* ================= 3. UTILITIES ================= */
