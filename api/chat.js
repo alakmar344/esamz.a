@@ -1,5 +1,5 @@
 // api/chat.js
-// eSAMz v14.3 - FINAL SECURITY (Internal Key + Hash Check)
+// eSAMz v14.4 - ROBUST FIX (Safe Auth + Debug Mode)
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -47,39 +47,42 @@ function getUserIdentifier(req, body) {
   return `ip:${ip}`;
 }
 
-// --- DUAL SECURITY VALIDATION ---
+// --- UNIVERSAL SAFE COMPARE (Works in all environments) ---
+// Replaces crypto.timingSafeEqual to prevent crashing on Edge/Old Node
+function secureCompare(a, b) {
+  if (!a || !b || a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= (a.charCodeAt(i) ^ b.charCodeAt(i));
+  }
+  return mismatch === 0;
+}
+
 function validateSecurity(req) {
-  // 1. Get Headers from Request
-  const clientKey = req.headers["x-esamz-key"];
-  const clientHash = req.headers["x-esamz-hash"];
-
-  // 2. Get Secrets from Environment
-  // These MUST match the keys you provided in your .env file
-  const serverKey = process.env.ESAMZ_INTERNAL_KEY; 
-  const serverHash = process.env.ESAMZ_KEY_HASH;
-
-  // 3. Fail if anything is missing
-  if (!clientKey || !clientHash || !serverKey || !serverHash) return false;
-
-  // 4. CHECK 1: Validate Internal Key (Direct String Match)
-  // Checks for: emz_prd_337e741bb144edc83446a3be7d9804a5b7f0162665722d86
-  if (clientKey !== serverKey) return false;
-
-  // 5. CHECK 2: Validate Hash Format (Must be 64 chars, hex)
-  // Checks for: e88245b05ea000469954d11a5fde13479a63c9364411993b8d43154d1f1e6bd2
-  const hashRegex = /^[a-f0-9]{64}$/i;
-  if (!hashRegex.test(clientHash)) return false;
-
-  // 6. CHECK 3: Secure Hash Comparison (Timing-Safe)
   try {
-    const clientBuffer = Buffer.from(clientHash.toLowerCase());
-    const serverBuffer = Buffer.from(serverHash.toLowerCase());
+    const clientKey = req.headers["x-esamz-key"];
+    const clientHash = req.headers["x-esamz-hash"];
     
-    // Ensure lengths match before comparing to avoid errors
-    if (clientBuffer.length !== serverBuffer.length) return false;
-    
-    return crypto.timingSafeEqual(clientBuffer, serverBuffer);
+    // Check Env Vars
+    const serverKey = process.env.ESAMZ_INTERNAL_KEY; 
+    const serverHash = process.env.ESAMZ_KEY_HASH;
+
+    if (!serverKey || !serverHash) {
+        console.error("Missing Server Environment Variables");
+        return "MISSING_ENV"; // Debugging flag
+    }
+
+    if (!clientKey || !clientHash) return false;
+
+    // Check 1: Key
+    if (clientKey !== serverKey) return false;
+
+    // Check 2: Hash (Using manual safe compare)
+    if (!secureCompare(clientHash, serverHash)) return false;
+
+    return true;
   } catch (e) {
+    console.error("Auth Error:", e);
     return false;
   }
 }
@@ -91,7 +94,7 @@ async function checkRateLimit(identifier) {
     if (count === 1) await redis.expire(key, CONSTANTS.RATE_TTL);
     return count <= CONSTANTS.RATE_LIMIT;
   } catch (e) {
-    return true; // Fail open if Redis is down
+    return true; 
   }
 }
 
@@ -203,6 +206,7 @@ async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
     
     if (!res.ok) throw new Error(`Sarvam API Error: ${res.status}`);
     
+    // Robust Stream Reader
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
@@ -212,16 +216,20 @@ async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop();
+      let lines = buffer.split("\n");
+      // Keep the last partial line in the buffer
+      buffer = lines.pop(); 
 
       for (const line of lines) {
-        if (line.startsWith("data: ") && !line.includes("[DONE]")) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith("data: ") && !trimmed.includes("[DONE]")) {
           try {
-            const json = JSON.parse(line.slice(6));
+            const json = JSON.parse(trimmed.slice(6));
             const txt = json.choices[0]?.delta?.content || "";
             if (txt) onChunk(txt);
-          } catch (e) { }
+          } catch (e) {
+            // Ignore parse errors from partial chunks
+          }
         }
       }
     }
@@ -242,8 +250,14 @@ export default async function handler(req, res) {
     const rawBody = req.body || {};
     
     // --- DUAL SECURITY CHECK ---
-    // Must pass both Internal Key check AND Hash check
-    if (!validateSecurity(req)) {
+    const authStatus = validateSecurity(req);
+    
+    if (authStatus === "MISSING_ENV") {
+       res.write("ERROR|Server Misconfiguration: Missing Environment Keys.");
+       return res.end();
+    }
+    
+    if (authStatus === false) {
       res.write("ERROR|Unauthorized: Invalid Security Credentials.");
       return res.end();
     }
@@ -309,14 +323,19 @@ export default async function handler(req, res) {
       }
     });
 
-    await DB.addToHistory(sessionId, 'user', message);
-    await DB.addToHistory(sessionId, 'assistant', fullReply);
-
-    res.write("DONE|Success");
+    if (!fullReply) {
+       res.write("ERROR|AI returned empty response.");
+    } else {
+       await DB.addToHistory(sessionId, 'user', message);
+       await DB.addToHistory(sessionId, 'assistant', fullReply);
+       res.write("DONE|Success");
+    }
+    
     res.end();
 
   } catch (e) {
-    res.write(`ERROR|${e.message}`);
+    // Catch-all error handler
+    res.write(`ERROR|System Error: ${e.message}`);
     res.end();
   }
 }
