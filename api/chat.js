@@ -1,5 +1,5 @@
 // api/chat.js
-// eSAMz v14.2 - DUAL LAYER SECURITY (Key + Hash)
+// eSAMz v14.3 - FINAL SECURITY (Internal Key + Hash Check)
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -49,21 +49,24 @@ function getUserIdentifier(req, body) {
 
 // --- DUAL SECURITY VALIDATION ---
 function validateSecurity(req) {
-  // 1. Get Headers
+  // 1. Get Headers from Request
   const clientKey = req.headers["x-esamz-key"];
   const clientHash = req.headers["x-esamz-hash"];
 
-  // 2. Get Server Secrets
-  const serverKey = process.env.ESAMZ_ACCESS_KEY;    // Simple password
-  const serverHash = process.env.ESAMZ_SECRET_HASH;  // 64-char Hex Hash
+  // 2. Get Secrets from Environment
+  // These MUST match the keys you provided in your .env file
+  const serverKey = process.env.ESAMZ_INTERNAL_KEY; 
+  const serverHash = process.env.ESAMZ_KEY_HASH;
 
   // 3. Fail if anything is missing
   if (!clientKey || !clientHash || !serverKey || !serverHash) return false;
 
-  // 4. CHECK 1: Validate Simple Key (Direct String Match)
+  // 4. CHECK 1: Validate Internal Key (Direct String Match)
+  // Checks for: emz_prd_337e741bb144edc83446a3be7d9804a5b7f0162665722d86
   if (clientKey !== serverKey) return false;
 
   // 5. CHECK 2: Validate Hash Format (Must be 64 chars, hex)
+  // Checks for: e88245b05ea000469954d11a5fde13479a63c9364411993b8d43154d1f1e6bd2
   const hashRegex = /^[a-f0-9]{64}$/i;
   if (!hashRegex.test(clientHash)) return false;
 
@@ -239,7 +242,7 @@ export default async function handler(req, res) {
     const rawBody = req.body || {};
     
     // --- DUAL SECURITY CHECK ---
-    // Must pass both simple Key check AND Hash check
+    // Must pass both Internal Key check AND Hash check
     if (!validateSecurity(req)) {
       res.write("ERROR|Unauthorized: Invalid Security Credentials.");
       return res.end();
