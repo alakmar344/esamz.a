@@ -9,7 +9,7 @@ import { Redis } from "@upstash/redis";
 const redis = Redis.fromEnv();
 
 const CONSTANTS = {
-  SARVAM_MODEL: "sarvam-2b-v0.5", // Updated to a safe default model
+  SARVAM_MODEL: "sarvam-m", // Updated to a safe default model
   MAX_TOKENS: 1000,
   THREAD_LENGTH: 10,
   SESSION_TTL: 1800,
