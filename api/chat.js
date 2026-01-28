@@ -1,5 +1,5 @@
 // api/chat.js
-// eSAMz v14.0 - FINAL POLISH (Formatting & Style Fixes)
+// eSAMz v14.2 - DUAL LAYER SECURITY (Key + Hash)
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -17,7 +17,7 @@ const CONSTANTS = {
   FILE_CHAR_LIMIT: 10000 
 };
 
-/* ================= 2. SYSTEM PROMPT (STRICTER) ================= */
+/* ================= 2. SYSTEM PROMPT ================= */
 const SYSTEM_PROMPT = `
 You are eSAMz v9.1, an AI digital companion created by Alakmar Teenwala.
 
@@ -37,15 +37,48 @@ You are eSAMz v9.1, an AI digital companion created by Alakmar Teenwala.
 
 ## 🛡️ SAFETY & PRIVACY
 * **Redact:** Remove specific phone numbers, private home addresses, and personal email addresses.
-
 `;
 
-/* ================= 3. UTILITIES ================= */
+/* ================= 3. SECURITY & UTILITIES ================= */
 
 function getUserIdentifier(req, body) {
   if (body.sessionId) return `session:${body.sessionId}`;
   const ip = req.headers["x-forwarded-for"]?.split(",")[0] || "unknown_ip";
   return `ip:${ip}`;
+}
+
+// --- DUAL SECURITY VALIDATION ---
+function validateSecurity(req) {
+  // 1. Get Headers
+  const clientKey = req.headers["x-esamz-key"];
+  const clientHash = req.headers["x-esamz-hash"];
+
+  // 2. Get Server Secrets
+  const serverKey = process.env.ESAMZ_ACCESS_KEY;    // Simple password
+  const serverHash = process.env.ESAMZ_SECRET_HASH;  // 64-char Hex Hash
+
+  // 3. Fail if anything is missing
+  if (!clientKey || !clientHash || !serverKey || !serverHash) return false;
+
+  // 4. CHECK 1: Validate Simple Key (Direct String Match)
+  if (clientKey !== serverKey) return false;
+
+  // 5. CHECK 2: Validate Hash Format (Must be 64 chars, hex)
+  const hashRegex = /^[a-f0-9]{64}$/i;
+  if (!hashRegex.test(clientHash)) return false;
+
+  // 6. CHECK 3: Secure Hash Comparison (Timing-Safe)
+  try {
+    const clientBuffer = Buffer.from(clientHash.toLowerCase());
+    const serverBuffer = Buffer.from(serverHash.toLowerCase());
+    
+    // Ensure lengths match before comparing to avoid errors
+    if (clientBuffer.length !== serverBuffer.length) return false;
+    
+    return crypto.timingSafeEqual(clientBuffer, serverBuffer);
+  } catch (e) {
+    return false;
+  }
 }
 
 async function checkRateLimit(identifier) {
@@ -55,19 +88,14 @@ async function checkRateLimit(identifier) {
     if (count === 1) await redis.expire(key, CONSTANTS.RATE_TTL);
     return count <= CONSTANTS.RATE_LIMIT;
   } catch (e) {
-    return true;
+    return true; // Fail open if Redis is down
   }
 }
-/* ================= 3. UTILITIES (HARDCODED TIMEOUT) ================= */
 
 const DB = {
   async getHistory(id) {
     const key = `chat:${id}`;
     try {
-      // OPTIONAL: Uncomment the line below if you want 'reading' to ALSO extend the session. 
-      // Currently, only 'talking' keeps the memory alive.
-      // await redis.expire(key, 1800); 
-
       const raw = await redis.lrange(key, 0, -1);
       return raw.map(item => {
         try { return typeof item === 'object' ? item : JSON.parse(item); }
@@ -80,30 +108,19 @@ const DB = {
     const key = `chat:${id}`;
     try {
       const safeContent = typeof content === 'string' ? content : JSON.stringify(content);
-      // Hard limit 20k chars to prevent memory bloating
       const truncated = safeContent.length > 20000 ? safeContent.substring(0, 20000) + "...[truncated]" : safeContent;
       const entryObj = { role, content: truncated, ts: Date.now() };
       
       const pipeline = redis.pipeline();
-      
-      // 1. Add new message
       pipeline.rpush(key, JSON.stringify(entryObj));
-      
-      // 2. Trim to last 20 messages (Keep memory light)
-      pipeline.ltrim(key, -20, -1); 
-      
-      // 3. HARDCODED EXPIRATION: 1800 Seconds (30 Minutes)
-      // This resets the timer to 30 mins every time a message is sent.
-      pipeline.expire(key, 1800); 
+      pipeline.ltrim(key, -CONSTANTS.THREAD_LENGTH, -1); 
+      pipeline.expire(key, CONSTANTS.SESSION_TTL); 
       
       await pipeline.exec();
-      
-      // Debug log to confirm it's working (View this in your Vercel/Server logs)
-      console.log(`[Redis] Refreshed TTL for ${id} to 1800s`);
-      
     } catch (e) { console.error("REDIS WRITE ERROR:", e); }
   }
 };
+
 /* ================= 4. EXTERNAL TOOLS ================= */
 
 // Tool A: Wikipedia
@@ -118,7 +135,7 @@ async function wikipediaSearch(query) {
     if (!correctedTitle) return null;
 
     const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(correctedTitle)}`;
-    const summaryRes = await fetch(summaryUrl, { headers: { "User-Agent": "eSAMz-AI/13.4" } });
+    const summaryRes = await fetch(summaryUrl, { headers: { "User-Agent": "eSAMz-AI/14.0" } });
 
     if (summaryRes.status === 404) return null;
     const data = await summaryRes.json();
@@ -220,6 +237,15 @@ export default async function handler(req, res) {
 
   try {
     const rawBody = req.body || {};
+    
+    // --- DUAL SECURITY CHECK ---
+    // Must pass both simple Key check AND Hash check
+    if (!validateSecurity(req)) {
+      res.write("ERROR|Unauthorized: Invalid Security Credentials.");
+      return res.end();
+    }
+    // ---------------------------
+
     let message = rawBody.message || "";
     const files = rawBody.files || [];
     const sessionId = rawBody.sessionId || crypto.randomBytes(12).toString("hex");
@@ -276,9 +302,6 @@ export default async function handler(req, res) {
       wikiGrounding: !!context, 
       onChunk: (text) => {
         fullReply += text;
-        // FIX: We send the raw text chunk immediately. 
-        // We do NOT wait for newlines, which prevents the "explosion" effect.
-        // We only escape actual newlines in the data to separate protocol.
         res.write(`CHUNK|${text.replace(/\n/g, "\\n")}\n`);
       }
     });
