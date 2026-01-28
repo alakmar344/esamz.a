@@ -1,6 +1,5 @@
 // api/chat.js
-// eSAMz v14.6 - CONNECTIVITY TEST (No Streaming)
-// Use this to check if the AI is actually responding.
+// eSAMz v14.9 - FULL STREAMING (Documentation Compliant)
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -9,9 +8,9 @@ import { Redis } from "@upstash/redis";
 const redis = Redis.fromEnv();
 
 const CONSTANTS = {
-  SARVAM_MODEL: "sarvam-m", // Updated to a safe default model
-  MAX_TOKENS: 1000,
-  THREAD_LENGTH: 10,
+  SARVAM_MODEL: "sarvam-m", 
+  MAX_TOKENS: 4096,
+  THREAD_LENGTH: 20,
   SESSION_TTL: 1800,
   RATE_LIMIT: 20,
   RATE_TTL: 60,
@@ -21,7 +20,9 @@ const CONSTANTS = {
 /* ================= 2. SYSTEM PROMPT ================= */
 const SYSTEM_PROMPT = `
 You are eSAMz v9.1, an AI digital companion created by Alakmar Teenwala.
-Answer directly and concisely.
+Vibe: Casual, confident, and direct. Partner, not a search engine.
+Creator: Alakmar Teenwala.
+Negative Constraints: NEVER start responses with "Based on...", "According to...", etc. Just answer.
 `;
 
 /* ================= 3. SECURITY & UTILITIES ================= */
@@ -30,6 +31,15 @@ function getUserIdentifier(req, body) {
   if (body.sessionId) return `session:${body.sessionId}`;
   const ip = req.headers["x-forwarded-for"]?.split(",")[0] || "unknown_ip";
   return `ip:${ip}`;
+}
+
+function secureCompare(a, b) {
+  if (!a || !b || a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= (a.charCodeAt(i) ^ b.charCodeAt(i));
+  }
+  return mismatch === 0;
 }
 
 function validateSecurity(req) {
@@ -42,14 +52,11 @@ function validateSecurity(req) {
     if (!serverKey || !serverHash) return "MISSING_ENV";
     if (!clientKey || !clientHash) return false;
 
-    // Simple Direct Check (Debug Mode)
     if (clientKey !== serverKey) return false;
-    if (clientHash !== serverHash) return false;
+    if (!secureCompare(clientHash, serverHash)) return false;
 
     return true;
-  } catch (e) {
-    return false;
-  }
+  } catch (e) { return false; }
 }
 
 async function checkRateLimit(identifier) {
@@ -87,34 +94,92 @@ const DB = {
   }
 };
 
-/* ================= 4. MAIN HANDLER ================= */
-export default async function handler(req, res) {
-  // Standard JSON Response (No Streaming)
-  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+/* ================= 4. AI ENGINE (STREAMING IMPLEMENTATION) ================= */
+async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
+  const payload = { 
+    model: CONSTANTS.SARVAM_MODEL, 
+    messages, 
+    max_tokens: CONSTANTS.MAX_TOKENS, 
+    stream: true
+  };
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  // Logic from Sarvam Documentation
+  if (wikiGrounding) {
+    payload.temperature = 0.2;
+    payload.wiki_grounding = true;
+  } else {
+    payload.temperature = 0.7;
+    payload.reasoning_effort = "medium"; // Enabling thinking mode
+  }
+
+  const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`API ${res.status}: ${errorText}`);
+  }
+  
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    let lines = buffer.split("\n");
+    buffer = lines.pop(); 
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith("data: ") && !trimmed.includes("[DONE]")) {
+        try {
+          const json = JSON.parse(trimmed.slice(6));
+          const txt = json.choices[0]?.delta?.content || "";
+          if (txt) onChunk(txt);
+        } catch (e) { /* Partial chunk */ }
+      }
+    }
+  }
+}
+
+/* ================= 5. MAIN HANDLER ================= */
+export default async function handler(req, res) {
+  res.writeHead(200, {
+    'Content-Type': 'text/plain; charset=utf-8',
+    'Transfer-Encoding': 'chunked',
+    'X-Content-Type-Options': 'nosniff'
+  });
+
+  if (req.method === 'OPTIONS') return res.end();
 
   try {
     const rawBody = req.body || {};
-    
-    // --- SECURITY CHECK ---
     const authStatus = validateSecurity(req);
+    
     if (authStatus === "MISSING_ENV") {
-       return res.status(500).send("ERROR|Server: Missing ESAMZ_INTERNAL_KEY or ESAMZ_KEY_HASH in .env");
+      res.write("ERROR|Server: Check .env configuration.");
+      return res.end();
     }
     if (authStatus === false) {
-      return res.status(401).send("ERROR|Unauthorized: Security Check Failed.");
+      res.write("ERROR|Unauthorized: Security credentials invalid.");
+      return res.end();
     }
 
-    let message = rawBody.message || "";
+    const message = rawBody.message || "";
     const sessionId = rawBody.sessionId || crypto.randomBytes(12).toString("hex");
 
     const userKey = getUserIdentifier(req, rawBody);
     if (!(await checkRateLimit(userKey))) {
-      return res.status(429).send("ERROR|Rate limit exceeded.");
+      res.write("ERROR|Rate limit exceeded.");
+      return res.end();
     }
 
-    // --- NON-STREAMING AI REQUEST ---
     const history = await DB.getHistory(sessionId);
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
@@ -122,40 +187,33 @@ export default async function handler(req, res) {
       { role: "user", content: message }
     ];
 
-    // Debug: Print what we are sending
-    console.log("Sending to Sarvam:", JSON.stringify(messages));
+    res.write("STATUS|Thinking...\n");
 
-    const aiRes = await fetch("https://api.sarvam.ai/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        model: CONSTANTS.SARVAM_MODEL, // Ensure this model exists in your Sarvam plan
-        messages, 
-        max_tokens: 500, 
-        stream: false // <--- CRITICAL: Streaming is OFF
-      })
+    let fullReply = "";
+    let hasStarted = false;
+
+    await streamSarvamChat({
+      messages,
+      wikiGrounding: false, 
+      onChunk: (text) => {
+        hasStarted = true;
+        fullReply += text;
+        res.write(`CHUNK|${text.replace(/\n/g, "\\n")}\n`);
+      }
     });
 
-    if (!aiRes.ok) {
-        const errText = await aiRes.text();
-        return res.status(500).send(`ERROR|AI API Failed: ${aiRes.status} - ${errText}`);
+    if (!hasStarted) {
+      res.write("ERROR|AI sent no content.");
+    } else {
+      await DB.addToHistory(sessionId, 'user', message);
+      await DB.addToHistory(sessionId, 'assistant', fullReply);
+      res.write("DONE|Success");
     }
-
-    const aiData = await aiRes.json();
-    const fullReply = aiData.choices?.[0]?.message?.content || "";
-
-    if (!fullReply) {
-        return res.status(500).send("ERROR|AI returned empty content.");
-    }
-
-    // Save to Memory
-    await DB.addToHistory(sessionId, 'user', message);
-    await DB.addToHistory(sessionId, 'assistant', fullReply);
-
-    // Send the whole thing at once
-    res.status(200).send("DONE|" + fullReply);
+    
+    res.end();
 
   } catch (e) {
-    res.status(500).send(`ERROR|System Critical: ${e.message}`);
+    res.write(`ERROR|${e.message}`);
+    res.end();
   }
 }
