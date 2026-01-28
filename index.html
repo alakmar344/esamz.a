@@ -59,7 +59,7 @@
            1. DESIGN TOKENS & RESET
            ========================================= */
         :root {
-            /* Dark Mode (Default) - Monochrome Deep Dark (Zinc/Slate Scale) */
+            /* Monochrome Deep Dark (Zinc/Slate Scale) */
             --bg-root: #09090b;       /* Zinc 950 */
             --bg-surface: #18181b;    /* Zinc 900 */
             --bg-hover: #27272a;      /* Zinc 800 */
@@ -87,36 +87,7 @@
             --ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
         }
 
-        /* Light Mode Theme */
-        [data-theme="light"] {
-            --bg-root: #ffffff;       /* White */
-            --bg-surface: #f4f4f5;    /* Zinc 100 */
-            --bg-hover: #e4e4e7;      /* Zinc 200 */
-            
-            --border-subtle: #e4e4e7; /* Zinc 200 */
-            --border-focus: #a1a1aa;  /* Zinc 400 */
-            
-            --text-primary: #18181b;  /* Zinc 900 */
-            --text-secondary: #52525b;/* Zinc 600 */
-            --text-muted: #a1a1aa;    /* Zinc 400 */
-            --text-code: #27272a;     /* Zinc 800 */
-
-            /* Accents (Subtle) */
-            --accent-bg: rgba(0, 0, 0, 0.05);
-            --accent-border: rgba(0, 0, 0, 0.1);
-        }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        /* Smooth theme transitions */
-        * {
-            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
-        }
-        
-        /* Prevent transitions on page load */
-        .preload * {
-            transition: none !important;
-        }
         
         body { 
             background-color: var(--bg-root);
@@ -253,7 +224,7 @@
             height: var(--header-height); padding: 0 16px;
             display: flex; align-items: center; justify-content: space-between;
             border-bottom: 1px solid var(--border-subtle);
-            background: var(--bg-root);
+            background: rgba(9, 9, 11, 0.8); /* Very subtle blur base */
             backdrop-filter: blur(8px);
             z-index: 50;
             position: sticky; top: 0;
@@ -340,7 +311,7 @@
 
         /* Code Blocks */
         .code-block-wrapper {
-            background: var(--bg-surface);
+            background: #0d0d0d; /* Slightly lighter than root */
             border: 1px solid var(--border-subtle);
             border-radius: var(--radius-md);
             margin: 1em 0;
@@ -349,7 +320,7 @@
         .code-header {
             display: flex; justify-content: space-between; align-items: center;
             padding: 8px 12px; border-bottom: 1px solid var(--border-subtle);
-            background: var(--bg-hover);
+            background: #111;
             font-size: 11px; color: var(--text-muted);
             font-family: 'Inter', sans-serif;
         }
@@ -504,7 +475,7 @@
     </style>
 <base target="_blank">
 </head>
-<body class="preload">
+<body>
 
     <!-- Toast Container -->
     <div id="toast-container"></div>
@@ -555,15 +526,7 @@
                     <span id="statusText">Ready</span>
                 </div>
             </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <button class="btn-base btn-secondary" id="themeToggle" title="Toggle theme">
-                    <svg id="themeIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <!-- Moon icon (default, shown in dark mode) -->
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                    </svg>
-                </button>
-                <button class="btn-base btn-secondary" id="btnClearChat">Clear Chat</button>
-            </div>
+            <button class="btn-base btn-secondary" id="btnClearChat">Clear Chat</button>
         </header>
 
         <div class="chat-container">
@@ -1119,48 +1082,6 @@
                 document.getElementById('exportDialog').close();
             }
         }
-
-        // ===================================
-        // THEME TOGGLE FUNCTIONALITY
-        // ===================================
-        
-        // Remove preload class after page loads to enable transitions
-        window.addEventListener('load', () => {
-            document.body.classList.remove('preload');
-        });
-        
-        // Check for saved theme preference or default to 'dark'
-        const currentTheme = localStorage.getItem('theme') || 'dark';
-        document.documentElement.setAttribute('data-theme', currentTheme);
-
-        // Update icon based on current theme
-        function updateThemeIcon(theme) {
-            const icon = document.getElementById('themeIcon');
-            if (theme === 'light') {
-                // Sun icon for light mode
-                icon.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
-            } else {
-                // Moon icon for dark mode
-                icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
-            }
-        }
-
-        // Initialize icon
-        updateThemeIcon(currentTheme);
-
-        // Theme toggle button event
-        document.getElementById('themeToggle').addEventListener('click', function() {
-            const currentTheme = document.documentElement.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            
-            document.documentElement.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            updateThemeIcon(newTheme);
-        });
-
-        // ===================================
-        // APP INITIALIZATION
-        // ===================================
 
         const app = new App();
     </script>
