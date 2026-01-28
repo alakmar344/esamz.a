@@ -1,5 +1,5 @@
 // api/chat.js
-// eSAMz v14.4 - ROBUST FIX (Safe Auth + Debug Mode)
+// eSAMz v14.5 - DEEP DEBUG EDITION (Finds the silent error)
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -8,7 +8,7 @@ import { Redis } from "@upstash/redis";
 const redis = Redis.fromEnv();
 
 const CONSTANTS = {
-  SARVAM_MODEL: "sarvam-m",
+  SARVAM_MODEL: "sarvam-m", // Make sure this model name is correct for your plan
   MAX_TOKENS: 6096,
   THREAD_LENGTH: 20,
   SESSION_TTL: 1800,
@@ -20,23 +20,10 @@ const CONSTANTS = {
 /* ================= 2. SYSTEM PROMPT ================= */
 const SYSTEM_PROMPT = `
 You are eSAMz v9.1, an AI digital companion created by Alakmar Teenwala.
-
-## IDENTITY & TONE
-* **Vibe:** Casual, confident, and direct. You are a partner, not a search engine.
+* **Vibe:** Casual, confident, and direct.
 * **Creator:** Alakmar Teenwala.
-
-## ⛔ NEGATIVE CONSTRAINTS (CRITICAL)
-* **NEVER start your response with:** "Based on...", "According to...", "The search results say...", "Here is what I found...", or "Context suggests...".
-* **Just answer.** If you found info about "Sakina", simply start with: "Sakina Munim is an accountant at..."
-* **No Fluff:** Do not tell the user *how* you know something. Just tell them what you know.
-
-## INTELLIGENCE
-* **Invisible Integration:** Treat [Live Search Context] and [Attached Files] as your own memory.
-* **Structure:** Use compact paragraphs. Avoid excessive bullet points unless listing distinct items.
-* **answer:** for every input user gives see if it is connected to conversation talk in that context try not to shift context very often
-
-## 🛡️ SAFETY & PRIVACY
-* **Redact:** Remove specific phone numbers, private home addresses, and personal email addresses.
+* **Refusal:** If asked for illegal acts, politely refuse.
+* **Privacy:** Redact all phone numbers and personal emails.
 `;
 
 /* ================= 3. SECURITY & UTILITIES ================= */
@@ -47,8 +34,7 @@ function getUserIdentifier(req, body) {
   return `ip:${ip}`;
 }
 
-// --- UNIVERSAL SAFE COMPARE (Works in all environments) ---
-// Replaces crypto.timingSafeEqual to prevent crashing on Edge/Old Node
+// SAFE COMPARE (Works in all Node/Edge environments)
 function secureCompare(a, b) {
   if (!a || !b || a.length !== b.length) return false;
   let mismatch = 0;
@@ -62,27 +48,19 @@ function validateSecurity(req) {
   try {
     const clientKey = req.headers["x-esamz-key"];
     const clientHash = req.headers["x-esamz-hash"];
-    
-    // Check Env Vars
     const serverKey = process.env.ESAMZ_INTERNAL_KEY; 
     const serverHash = process.env.ESAMZ_KEY_HASH;
 
-    if (!serverKey || !serverHash) {
-        console.error("Missing Server Environment Variables");
-        return "MISSING_ENV"; // Debugging flag
-    }
-
+    if (!serverKey || !serverHash) return "MISSING_ENV";
     if (!clientKey || !clientHash) return false;
 
-    // Check 1: Key
+    // Check 1: Internal Key
     if (clientKey !== serverKey) return false;
-
-    // Check 2: Hash (Using manual safe compare)
+    // Check 2: Hash
     if (!secureCompare(clientHash, serverHash)) return false;
 
     return true;
   } catch (e) {
-    console.error("Auth Error:", e);
     return false;
   }
 }
@@ -93,9 +71,7 @@ async function checkRateLimit(identifier) {
     const count = await redis.incr(key);
     if (count === 1) await redis.expire(key, CONSTANTS.RATE_TTL);
     return count <= CONSTANTS.RATE_LIMIT;
-  } catch (e) {
-    return true; 
-  }
+  } catch (e) { return true; }
 }
 
 const DB = {
@@ -116,44 +92,17 @@ const DB = {
       const safeContent = typeof content === 'string' ? content : JSON.stringify(content);
       const truncated = safeContent.length > 20000 ? safeContent.substring(0, 20000) + "...[truncated]" : safeContent;
       const entryObj = { role, content: truncated, ts: Date.now() };
-      
       const pipeline = redis.pipeline();
       pipeline.rpush(key, JSON.stringify(entryObj));
       pipeline.ltrim(key, -CONSTANTS.THREAD_LENGTH, -1); 
       pipeline.expire(key, CONSTANTS.SESSION_TTL); 
-      
       await pipeline.exec();
-    } catch (e) { console.error("REDIS WRITE ERROR:", e); }
+    } catch (e) { console.error("REDIS ERROR:", e); }
   }
 };
 
 /* ================= 4. EXTERNAL TOOLS ================= */
-
-// Tool A: Wikipedia
-async function wikipediaSearch(query) {
-  try {
-    const cleanQuery = query.replace(/^(who|what|where|when|how|history|about|explain|define|summary|info)\s+(is|was|are|were|of|the|about|to|do|does)?/i, "").trim();
-    const searchUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(cleanQuery)}&limit=1&namespace=0&format=json`;
-    const searchRes = await fetch(searchUrl);
-    const searchJson = await searchRes.json();
-
-    const correctedTitle = searchJson[1] ? searchJson[1][0] : null;
-    if (!correctedTitle) return null;
-
-    const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(correctedTitle)}`;
-    const summaryRes = await fetch(summaryUrl, { headers: { "User-Agent": "eSAMz-AI/14.0" } });
-
-    if (summaryRes.status === 404) return null;
-    const data = await summaryRes.json();
-    
-    if (data.type === "standard" && data.extract) {
-      return `**Source (Wikipedia):**\n> ${data.title}: ${data.extract}`;
-    }
-    return null;
-  } catch (e) { return null; }
-}
-
-// Tool B: Google (Serper)
+// Simplified tools for stability
 async function googleSearch(query) {
   if (!process.env.SERPER_API_KEY) return null;
   try {
@@ -168,29 +117,13 @@ async function googleSearch(query) {
   } catch (e) { return null; }
 }
 
-// Tool C: File Summarizer
-async function generateFileSummary(text, fileName) {
-  try {
-    const safeText = text.slice(0, 20000); 
-    const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        model: CONSTANTS.SARVAM_MODEL, 
-        messages: [
-          { role: "system", content: "Summarize this text concisely." },
-          { role: "user", content: `File (${fileName}):\n${safeText}` }
-        ],
-        max_tokens: 1000, temperature: 0.3
-      })
-    });
-    const data = await res.json();
-    return data.choices[0]?.message?.content || "Error generating summary.";
-  } catch (e) { return "Error generating summary."; }
-}
+/* ================= 5. AI ENGINE (DEBUG MODE) ================= */
+async function streamSarvamChat({ messages, onChunk }) {
+  // 1. CHECK API KEY
+  if (!process.env.SARVAM_API_KEY) {
+    throw new Error("SERVER CONFIG ERROR: SARVAM_API_KEY is missing in .env");
+  }
 
-/* ================= 5. AI ENGINE ================= */
-async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
   try {
     const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
       method: "POST",
@@ -198,15 +131,18 @@ async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
       body: JSON.stringify({ 
         model: CONSTANTS.SARVAM_MODEL, 
         messages, 
-        temperature: wikiGrounding ? 0.3 : 0.7,
+        temperature: 0.7,
         max_tokens: CONSTANTS.MAX_TOKENS, 
         stream: true
       })
     });
     
-    if (!res.ok) throw new Error(`Sarvam API Error: ${res.status}`);
+    // 2. CATCH API ERRORS (e.g. 401, 429)
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Sarvam API Failed [${res.status}]: ${errorText}`);
+    }
     
-    // Robust Stream Reader
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
@@ -217,7 +153,6 @@ async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
 
       buffer += decoder.decode(value, { stream: true });
       let lines = buffer.split("\n");
-      // Keep the last partial line in the buffer
       buffer = lines.pop(); 
 
       for (const line of lines) {
@@ -227,44 +162,41 @@ async function streamSarvamChat({ messages, onChunk, wikiGrounding }) {
             const json = JSON.parse(trimmed.slice(6));
             const txt = json.choices[0]?.delta?.content || "";
             if (txt) onChunk(txt);
-          } catch (e) {
-            // Ignore parse errors from partial chunks
-          }
+          } catch (e) { /* Ignore partial JSON */ }
         }
       }
     }
   } catch (e) { throw e; }
 }
 
-/* ================= 6. MAIN API HANDLER ================= */
+/* ================= 6. MAIN HANDLER ================= */
 export default async function handler(req, res) {
+  // Force flush headers immediately
   res.writeHead(200, {
     'Content-Type': 'text/plain; charset=utf-8',
     'Transfer-Encoding': 'chunked',
     'X-Content-Type-Options': 'nosniff'
   });
+  res.flushHeaders(); // Important for Vercel buffering
 
   if (req.method === 'OPTIONS') return res.end();
 
   try {
     const rawBody = req.body || {};
     
-    // --- DUAL SECURITY CHECK ---
+    // --- SECURITY CHECK ---
     const authStatus = validateSecurity(req);
-    
     if (authStatus === "MISSING_ENV") {
-       res.write("ERROR|Server Misconfiguration: Missing Environment Keys.");
+       res.write("ERROR|Server: Missing ESAMZ_INTERNAL_KEY or ESAMZ_KEY_HASH in .env");
        return res.end();
     }
-    
     if (authStatus === false) {
-      res.write("ERROR|Unauthorized: Invalid Security Credentials.");
+      res.write("ERROR|Unauthorized: Security Check Failed.");
       return res.end();
     }
-    // ---------------------------
+    // ----------------------
 
     let message = rawBody.message || "";
-    const files = rawBody.files || [];
     const sessionId = rawBody.sessionId || crypto.randomBytes(12).toString("hex");
 
     const userKey = getUserIdentifier(req, rawBody);
@@ -273,34 +205,13 @@ export default async function handler(req, res) {
       return res.end();
     }
 
-    // Smart File Handling
-    if (Array.isArray(files) && files.length > 0) {
-      let fileContext = "\n\n--- ATTACHED FILES ---\n";
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (file.content.length > CONSTANTS.FILE_CHAR_LIMIT) {
-          res.write(`STATUS|Summarizing ${file.fileName}...\n`);
-          const summary = await generateFileSummary(file.content, file.fileName);
-          fileContext += `\nFILE ${i+1}: ${file.fileName} [SUMMARIZED]\n${summary}\n`;
-        } else {
-          fileContext += `\nFILE ${i+1}: ${file.fileName}\n${file.content}\n`;
-        }
-      }
-      message += fileContext;
-    }
-
+    // --- SEARCH LOGIC ---
     const history = await DB.getHistory(sessionId);
     let context = "";
     
-    // Search Logic
-    const lowerMsg = message.toLowerCase();
-    const needsSearch = !files.length && 
-      (lowerMsg.includes("who") || lowerMsg.includes("what") || lowerMsg.includes("where") || lowerMsg.includes("news"));
-
-    if (needsSearch) {
-      res.write("STATUS|Searching...\n");
-      let searchRes = await wikipediaSearch(message.slice(0, 200));
-      if (!searchRes) searchRes = await googleSearch(message.slice(0, 200));
+    if (message.length > 5 && (message.includes("who") || message.includes("what") || message.includes("news"))) {
+      res.write("STATUS|Searching Google...\n");
+      const searchRes = await googleSearch(message.slice(0, 200));
       if (searchRes) context = `\n\n[Live Search Context]:\n${searchRes}`;
     }
 
@@ -313,18 +224,26 @@ export default async function handler(req, res) {
     ];
 
     let fullReply = "";
-    
-    await streamSarvamChat({
-      messages,
-      wikiGrounding: !!context, 
-      onChunk: (text) => {
-        fullReply += text;
-        res.write(`CHUNK|${text.replace(/\n/g, "\\n")}\n`);
-      }
-    });
+    let hasStarted = false;
 
-    if (!fullReply) {
-       res.write("ERROR|AI returned empty response.");
+    // --- STREAM WITH ERROR CATCHING ---
+    try {
+      await streamSarvamChat({
+        messages,
+        onChunk: (text) => {
+          hasStarted = true;
+          fullReply += text;
+          res.write(`CHUNK|${text.replace(/\n/g, "\\n")}\n`);
+        }
+      });
+    } catch (streamError) {
+      // THIS WILL PRINT THE EXACT API ERROR TO YOUR CHAT
+      res.write(`ERROR|AI Error: ${streamError.message}`);
+      return res.end();
+    }
+
+    if (!hasStarted) {
+       res.write("ERROR|AI returned OK but sent no text data.");
     } else {
        await DB.addToHistory(sessionId, 'user', message);
        await DB.addToHistory(sessionId, 'assistant', fullReply);
@@ -334,8 +253,7 @@ export default async function handler(req, res) {
     res.end();
 
   } catch (e) {
-    // Catch-all error handler
-    res.write(`ERROR|System Error: ${e.message}`);
+    res.write(`ERROR|System Critical: ${e.message}`);
     res.end();
   }
 }
