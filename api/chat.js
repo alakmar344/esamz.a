@@ -1,5 +1,6 @@
 // api/chat.js
-// eSAMz v14.5 - DEEP DEBUG EDITION (Finds the silent error)
+// eSAMz v14.6 - CONNECTIVITY TEST (No Streaming)
+// Use this to check if the AI is actually responding.
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -8,9 +9,9 @@ import { Redis } from "@upstash/redis";
 const redis = Redis.fromEnv();
 
 const CONSTANTS = {
-  SARVAM_MODEL: "sarvam-m", // Make sure this model name is correct for your plan
-  MAX_TOKENS: 6096,
-  THREAD_LENGTH: 20,
+  SARVAM_MODEL: "sarvam-2b-v0.5", // Updated to a safe default model
+  MAX_TOKENS: 1000,
+  THREAD_LENGTH: 10,
   SESSION_TTL: 1800,
   RATE_LIMIT: 20,
   RATE_TTL: 60,
@@ -20,10 +21,7 @@ const CONSTANTS = {
 /* ================= 2. SYSTEM PROMPT ================= */
 const SYSTEM_PROMPT = `
 You are eSAMz v9.1, an AI digital companion created by Alakmar Teenwala.
-* **Vibe:** Casual, confident, and direct.
-* **Creator:** Alakmar Teenwala.
-* **Refusal:** If asked for illegal acts, politely refuse.
-* **Privacy:** Redact all phone numbers and personal emails.
+Answer directly and concisely.
 `;
 
 /* ================= 3. SECURITY & UTILITIES ================= */
@@ -32,16 +30,6 @@ function getUserIdentifier(req, body) {
   if (body.sessionId) return `session:${body.sessionId}`;
   const ip = req.headers["x-forwarded-for"]?.split(",")[0] || "unknown_ip";
   return `ip:${ip}`;
-}
-
-// SAFE COMPARE (Works in all Node/Edge environments)
-function secureCompare(a, b) {
-  if (!a || !b || a.length !== b.length) return false;
-  let mismatch = 0;
-  for (let i = 0; i < a.length; i++) {
-    mismatch |= (a.charCodeAt(i) ^ b.charCodeAt(i));
-  }
-  return mismatch === 0;
 }
 
 function validateSecurity(req) {
@@ -54,10 +42,9 @@ function validateSecurity(req) {
     if (!serverKey || !serverHash) return "MISSING_ENV";
     if (!clientKey || !clientHash) return false;
 
-    // Check 1: Internal Key
+    // Simple Direct Check (Debug Mode)
     if (clientKey !== serverKey) return false;
-    // Check 2: Hash
-    if (!secureCompare(clientHash, serverHash)) return false;
+    if (clientHash !== serverHash) return false;
 
     return true;
   } catch (e) {
@@ -90,8 +77,7 @@ const DB = {
     const key = `chat:${id}`;
     try {
       const safeContent = typeof content === 'string' ? content : JSON.stringify(content);
-      const truncated = safeContent.length > 20000 ? safeContent.substring(0, 20000) + "...[truncated]" : safeContent;
-      const entryObj = { role, content: truncated, ts: Date.now() };
+      const entryObj = { role, content: safeContent, ts: Date.now() };
       const pipeline = redis.pipeline();
       pipeline.rpush(key, JSON.stringify(entryObj));
       pipeline.ltrim(key, -CONSTANTS.THREAD_LENGTH, -1); 
@@ -101,85 +87,12 @@ const DB = {
   }
 };
 
-/* ================= 4. EXTERNAL TOOLS ================= */
-// Simplified tools for stability
-async function googleSearch(query) {
-  if (!process.env.SERPER_API_KEY) return null;
-  try {
-    const res = await fetch("https://google.serper.dev/search", {
-      method: "POST",
-      headers: { "X-API-KEY": process.env.SERPER_API_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({ q: query, num: 3 })
-    });
-    const data = await res.json();
-    if (!data.organic) return null;
-    return "**Source (Google):**\n" + data.organic.map(r => `> ${r.title}: ${r.snippet}`).join("\n");
-  } catch (e) { return null; }
-}
-
-/* ================= 5. AI ENGINE (DEBUG MODE) ================= */
-async function streamSarvamChat({ messages, onChunk }) {
-  // 1. CHECK API KEY
-  if (!process.env.SARVAM_API_KEY) {
-    throw new Error("SERVER CONFIG ERROR: SARVAM_API_KEY is missing in .env");
-  }
-
-  try {
-    const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        model: CONSTANTS.SARVAM_MODEL, 
-        messages, 
-        temperature: 0.7,
-        max_tokens: CONSTANTS.MAX_TOKENS, 
-        stream: true
-      })
-    });
-    
-    // 2. CATCH API ERRORS (e.g. 401, 429)
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`Sarvam API Failed [${res.status}]: ${errorText}`);
-    }
-    
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      let lines = buffer.split("\n");
-      buffer = lines.pop(); 
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (trimmed.startsWith("data: ") && !trimmed.includes("[DONE]")) {
-          try {
-            const json = JSON.parse(trimmed.slice(6));
-            const txt = json.choices[0]?.delta?.content || "";
-            if (txt) onChunk(txt);
-          } catch (e) { /* Ignore partial JSON */ }
-        }
-      }
-    }
-  } catch (e) { throw e; }
-}
-
-/* ================= 6. MAIN HANDLER ================= */
+/* ================= 4. MAIN HANDLER ================= */
 export default async function handler(req, res) {
-  // Force flush headers immediately
-  res.writeHead(200, {
-    'Content-Type': 'text/plain; charset=utf-8',
-    'Transfer-Encoding': 'chunked',
-    'X-Content-Type-Options': 'nosniff'
-  });
-  res.flushHeaders(); // Important for Vercel buffering
+  // Standard JSON Response (No Streaming)
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
 
-  if (req.method === 'OPTIONS') return res.end();
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
     const rawBody = req.body || {};
@@ -187,73 +100,62 @@ export default async function handler(req, res) {
     // --- SECURITY CHECK ---
     const authStatus = validateSecurity(req);
     if (authStatus === "MISSING_ENV") {
-       res.write("ERROR|Server: Missing ESAMZ_INTERNAL_KEY or ESAMZ_KEY_HASH in .env");
-       return res.end();
+       return res.status(500).send("ERROR|Server: Missing ESAMZ_INTERNAL_KEY or ESAMZ_KEY_HASH in .env");
     }
     if (authStatus === false) {
-      res.write("ERROR|Unauthorized: Security Check Failed.");
-      return res.end();
+      return res.status(401).send("ERROR|Unauthorized: Security Check Failed.");
     }
-    // ----------------------
 
     let message = rawBody.message || "";
     const sessionId = rawBody.sessionId || crypto.randomBytes(12).toString("hex");
 
     const userKey = getUserIdentifier(req, rawBody);
     if (!(await checkRateLimit(userKey))) {
-      res.write("ERROR|Rate limit exceeded.");
-      return res.end();
+      return res.status(429).send("ERROR|Rate limit exceeded.");
     }
 
-    // --- SEARCH LOGIC ---
+    // --- NON-STREAMING AI REQUEST ---
     const history = await DB.getHistory(sessionId);
-    let context = "";
-    
-    if (message.length > 5 && (message.includes("who") || message.includes("what") || message.includes("news"))) {
-      res.write("STATUS|Searching Google...\n");
-      const searchRes = await googleSearch(message.slice(0, 200));
-      if (searchRes) context = `\n\n[Live Search Context]:\n${searchRes}`;
-    }
-
-    res.write("STATUS|Thinking...\n");
-
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
       ...history.map(m => ({ role: m.role === 'ai' ? 'assistant' : m.role, content: m.content })),
-      { role: "user", content: message + context }
+      { role: "user", content: message }
     ];
 
-    let fullReply = "";
-    let hasStarted = false;
+    // Debug: Print what we are sending
+    console.log("Sending to Sarvam:", JSON.stringify(messages));
 
-    // --- STREAM WITH ERROR CATCHING ---
-    try {
-      await streamSarvamChat({
-        messages,
-        onChunk: (text) => {
-          hasStarted = true;
-          fullReply += text;
-          res.write(`CHUNK|${text.replace(/\n/g, "\\n")}\n`);
-        }
-      });
-    } catch (streamError) {
-      // THIS WILL PRINT THE EXACT API ERROR TO YOUR CHAT
-      res.write(`ERROR|AI Error: ${streamError.message}`);
-      return res.end();
+    const aiRes = await fetch("https://api.sarvam.ai/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        model: CONSTANTS.SARVAM_MODEL, // Ensure this model exists in your Sarvam plan
+        messages, 
+        max_tokens: 500, 
+        stream: false // <--- CRITICAL: Streaming is OFF
+      })
+    });
+
+    if (!aiRes.ok) {
+        const errText = await aiRes.text();
+        return res.status(500).send(`ERROR|AI API Failed: ${aiRes.status} - ${errText}`);
     }
 
-    if (!hasStarted) {
-       res.write("ERROR|AI returned OK but sent no text data.");
-    } else {
-       await DB.addToHistory(sessionId, 'user', message);
-       await DB.addToHistory(sessionId, 'assistant', fullReply);
-       res.write("DONE|Success");
+    const aiData = await aiRes.json();
+    const fullReply = aiData.choices?.[0]?.message?.content || "";
+
+    if (!fullReply) {
+        return res.status(500).send("ERROR|AI returned empty content.");
     }
-    
-    res.end();
+
+    // Save to Memory
+    await DB.addToHistory(sessionId, 'user', message);
+    await DB.addToHistory(sessionId, 'assistant', fullReply);
+
+    // Send the whole thing at once
+    res.status(200).send("DONE|" + fullReply);
 
   } catch (e) {
-    res.write(`ERROR|System Critical: ${e.message}`);
-    res.end();
+    res.status(500).send(`ERROR|System Critical: ${e.message}`);
   }
 }
