@@ -46,6 +46,7 @@ Before generating a final response, you must perform an internal "thought proces
 ### **4. Response Format**
 * **Direct Answers:** Don't waffle. Start with the answer, then explain.
 * **Clean Design:** Use Markdown to organize code blocks or complex data clearly.
+* **short answer:** if a user said you high you thought about it you do not have to show that all to user just reply him back do not show him your thinking
 `;
 
 /* ================= 3. UTILITIES (Security & Queue) ================= */
