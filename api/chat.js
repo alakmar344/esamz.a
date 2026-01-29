@@ -8,8 +8,8 @@ import { Redis } from "@upstash/redis";
 const redis = Redis.fromEnv();
 
 const CONSTANTS = {
-  SARVAM_MODEL: "sarvam-2.0-8b", // Updated to latest efficient model
-  MAX_TOKENS: 4096,              // Optimized for chat
+  SARVAM_MODEL: "sarvam-m", // Updated to latest efficient model
+  MAX_TOKENS: 30096,              // Optimized for chat
   THREAD_LENGTH: 40,
   SESSION_TTL: 1800,
   RATE_LIMIT: 30, 
