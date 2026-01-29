@@ -9,7 +9,7 @@ const redis = Redis.fromEnv();
 
 const CONSTANTS = {
   SARVAM_MODEL: "sarvam-m",
-  MAX_TOKENS: 30,096,
+  MAX_TOKENS: 30096,
   THREAD_LENGTH: 40,
   SESSION_TTL: 1800,
   RATE_LIMIT: 10, // Max 20 msgs per minute per IP
