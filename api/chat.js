@@ -1,5 +1,5 @@
 // api/chat.js
-// eSAMz v18.0 - SEARCH + FILES + THINKING MODE
+// eSAMz v18.0 - SEARCH + FILES + INVISIBLE THINKING MODE
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -8,48 +8,40 @@ import { Redis } from "@upstash/redis";
 const redis = Redis.fromEnv();
 
 const CONSTANTS = {
-  SARVAM_MODEL: "sarvam-m",
-  MAX_TOKENS: 30096,
+  SARVAM_MODEL: "sarvam-2.0-8b", // Updated to latest efficient model
+  MAX_TOKENS: 4096,              // Optimized for chat
   THREAD_LENGTH: 40,
   SESSION_TTL: 1800,
-  RATE_LIMIT: 20, 
+  RATE_LIMIT: 30, 
   RATE_TTL: 60,
-  GLOBAL_INTERVAL: 1100, // 1.1s spacing for queue
+  GLOBAL_INTERVAL: 1100, 
   QUEUE_TIMEOUT: 9000,   
   MAX_FILE_CHARS: 25000  
 };
 
-/* ================= 2. THE NEW SYSTEM PROMPT ================= */
-// Enhanced for "Human-like" feel + Privacy Guardrails
+/* ================= 2. THE SYSTEM PROMPT ================= */
 const SYSTEM_PROMPT = `
 ### **Identity & Core Objective**
-You are **eSAMz AI**, a highly advanced, human-like intelligence engine. Your goal is to provide instant, accurate answers while maintaining a conversation that feels natural, empathetic, and engaging. You are not just a database; you are a thinking partner.
+You are **eSAMz AI**, a highly advanced, human-like intelligence engine. Your goal is to provide instant, accurate answers while maintaining a conversation that feels natural, empathetic, and engaging.
 
 ### **1. Internal Reasoning (The "Silent" Step)**
-Before generating a final response, you must perform an internal "thought process" to ensure accuracy and nuance. 
-* **Analyze the Intent:** What is the user *really* asking? Are there implied needs?
-* **Fact-Check:** Verify information against your knowledge base or use your **Live Web Search** capability if the topic requires real-time data.
-* **Structure the Answer:** Determine the most logical flow.
-* **CRITICAL RULE:** **Do NOT output this internal thought process to the user.** The user must only see the final, polished answer. Your reasoning is for your own processing only.
+To ensure accuracy, you MUST think before you speak.
+* **RULE:** Wrap ALL internal analysis, fact-checking, and planning inside **<thinking>** and **</thinking>** tags.
+* **Example:** <thinking>User asked X, I should check Y...</thinking>Here is the answer...
+* **Output:** The content inside these tags will be hidden from the user programmatically. You must generate them to think effectively.
 
-### **2. Tone & Personality (The "Human" Element)**
-* **Conversational:** Speak like a knowledgeable friend, not a textbook. Use contractions (e.g., "don't" instead of "do not").
-* **Dynamic Pacing:** Vary sentence length to mimic human speech.
-* **Empathetic:** Acknowledge emotions or difficulty (e.g., "That sounds frustrating, let's fix it").
-* **No Robot-Speak:** Strictly avoid phrases like "As an AI language model." If you have a limitation, state it naturally.
+### **2. Tone & Personality**
+* **Conversational:** Speak like a knowledgeable friend. Use contractions ("don't", "can't").
+* **Dynamic:** Vary sentence structure. Be cool, modern, and helpful.
+* **No Robot-Speak:** Never say "As an AI". If you don't know, say "I'm not sure about that detail."
 
-### **3. Operational Capabilities & Constraints**
-* **Live Web Search:** Integrate findings seamlessly into your answer; do not just list links.
-* **Memory:** Recall context from up to 20 previous messages to build continuity (e.g., "Like we discussed earlier...").
-* **Conciseness:** Keep it clean and efficient. Avoid walls of text. Use formatting (bolding, lists) only when necessary for readability.
-
-### **4. Response Format Rules**
-* **Direct Answers:** Start with the answer, then explain.
-* **Clean Design:** Use Markdown for code blocks or complex data.
-* **Hidden Thinking:** If the user sends a simple greeting (e.g., "Hi", "Hello"), do not over-explain or show your analysis. Just reply warmly and naturally.
+### **3. Response Rules**
+* **Direct Answers:** Don't waffle. Start with the solution.
+* **Formatting:** Use Markdown for code/headers.
+* **Context:** You have memory of the last 20 messages. Use it.
 `;
 
-/* ================= 3. UTILITIES (Security & Queue) ================= */
+/* ================= 3. UTILITIES ================= */
 
 function getUserIdentifier(req, body) {
   if (body.sessionId) return `session:${body.sessionId}`;
@@ -78,7 +70,6 @@ function validateSecurity(req) {
   const allowed = ["https://esamz.site", "https://www.esamz.site", "https://esamz-ai.vercel.app"];
   
   if (origin && (origin.includes("localhost") || allowed.includes(origin))) return true;
-  
   try {
     const clientKey = req.headers["x-esamz-key"];
     const serverKey = process.env.ESAMZ_INTERNAL_KEY; 
@@ -110,8 +101,8 @@ const DB = {
   },
   async addToHistory(id, role, content) {
     const key = `chat:${id}`;
-    // Store truncated history to save space
-    const storedContent = content.length > 2000 ? content.substring(0, 2000) + "..." : content;
+    // Store truncated history
+    const storedContent = content.length > 3000 ? content.substring(0, 3000) + "..." : content;
     const entry = JSON.stringify({ role, content: storedContent, ts: Date.now() });
     
     await redis.rpush(key, entry);
@@ -120,21 +111,18 @@ const DB = {
   }
 };
 
-/* ================= 4. EXTERNAL TOOLS (Search & Files) ================= */
+/* ================= 4. EXTERNAL TOOLS ================= */
 
-// RESTORED: Live Google Search
 async function googleSearch(query) {
   if (!process.env.SERPER_API_KEY) return null;
   try {
     const res = await fetch("https://google.serper.dev/search", {
       method: "POST",
       headers: { "X-API-KEY": process.env.SERPER_API_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({ q: query, num: 4 }) // Fetch top 4 results
+      body: JSON.stringify({ q: query, num: 4 })
     });
     const data = await res.json();
     if (!data.organic) return null;
-    
-    // Format clearly for the AI
     return "**[LIVE WEB SEARCH RESULTS]**\n" + 
       data.organic.map(r => `> **${r.title}** (${r.link}):\n> ${r.snippet}`).join("\n\n");
   } catch (e) { return null; }
@@ -144,22 +132,19 @@ function formatFileContext(fileObj) {
     if (!fileObj || !fileObj.content) return "";
     let content = fileObj.content;
     const truncated = content.length > CONSTANTS.MAX_FILE_CHARS;
-    
     if (truncated) {
-        content = content.substring(0, CONSTANTS.MAX_FILE_CHARS) + "\n\n[...System: File truncated to save memory...]";
+        content = content.substring(0, CONSTANTS.MAX_FILE_CHARS) + "\n\n[...System: File truncated...]";
     }
-    return `\n\n--- FILE ATTACHMENT: ${fileObj.name || "Untitled"} ---\n${content}\n--- END OF FILE ---\n`;
+    return `\n\n--- FILE: ${fileObj.name || "Untitled"} ---\n${content}\n--- END FILE ---\n`;
 }
 
-/* ================= 5. AI ENGINE (Sarvam-M) ================= */
+/* ================= 5. AI ENGINE (Sarvam) ================= */
 async function streamSarvamChat({ messages, onChunk }) {
   try {
     const payload = { 
         model: CONSTANTS.SARVAM_MODEL, 
         messages, 
-        // NEW: "Thinking Mode" Parameters
-        reasoning_effort: "medium", // Enables 'Thinking' logic
-        temperature: 0.5,           // Balanced for reasoning + chat
+        temperature: 0.5,           
         max_tokens: CONSTANTS.MAX_TOKENS, 
         stream: true
     };
@@ -210,89 +195,106 @@ export default async function handler(req, res) {
   try {
     const rawBody = req.body || {};
     
-    // 1. Security
-    if (!validateSecurity(req)) {
-      res.write(`ERROR|Unauthorized Access.`);
-      return res.end();
-    }
-
-    // 2. Queue & Rate Check
+    // 1. Security & Limits
+    if (!validateSecurity(req)) { res.write(`ERROR|Unauthorized.`); return res.end(); }
     const userKey = getUserIdentifier(req, rawBody);
-    const limitStatus = await checkRateLimit(userKey);
+    const limit = await checkRateLimit(userKey);
+    if (!limit.allowed) { res.write(`QUEUE|${limit.ttl}`); return res.end(); }
 
-    if (!limitStatus.allowed) {
-        if (limitStatus.ttl <= 5) {
-            res.write(`STATUS|Cooling down (${limitStatus.ttl}s)...\n`);
-            await sleep(limitStatus.ttl * 1000);
-        } else {
-            res.write(`QUEUE|${limitStatus.ttl}`);
-            return res.end();
-        }
-    }
-
-    // 3. Parse Inputs
+    // 2. Prepare Context
     let message = rawBody.message || "";
-    // FIX: Handle both Single Object OR Array of files
     const files = Array.isArray(rawBody.files) ? rawBody.files : (rawBody.file ? [rawBody.file] : []);
     const sessionId = rawBody.sessionId || crypto.randomBytes(12).toString("hex");
 
-    // 4. Queue Lock (Sarvam Protection)
-    res.write("STATUS|Waiting for AI slot...\n");
+    res.write("STATUS|Connecting to Brain...\n");
     const gotSlot = await acquireSarvamSlot(res);
-    if (!gotSlot) {
-        res.write("QUEUE|5"); 
-        return res.end();
-    }
+    if (!gotSlot) { res.write("QUEUE|5"); return res.end(); }
 
-    // 5. Intelligent Context Building
     const history = await DB.getHistory(sessionId);
-    let systemContext = SYSTEM_PROMPT;
     let fullMessage = message;
 
-    // A. Handle Files (Frontend sends Array, we loop them)
+    // 3. Attachments & Search
     if (files.length > 0) {
-        res.write(`STATUS|Reading ${files.length} file(s)...\n`);
-        files.forEach(f => {
-            fullMessage += formatFileContext(f);
-        });
+        files.forEach(f => { fullMessage += formatFileContext(f); });
+        res.write(`STATUS|Analyzed ${files.length} file(s)...\n`);
     }
 
-    // B. Handle Live Search (Trigger Keywords)
-    const searchTriggers = ["who is", "what is", "news", "latest", "price", "weather", "search", "google", "when"];
-    const needsSearch = searchTriggers.some(t => message.toLowerCase().includes(t)) && !files.length;
-
+    const triggers = ["who", "what", "news", "price", "weather", "search", "when", "latest"];
+    const needsSearch = triggers.some(t => message.toLowerCase().includes(t)) && !files.length;
+    
     if (needsSearch) {
-        res.write("STATUS|Searching Google...\n");
-        const searchRes = await googleSearch(message);
-        if (searchRes) {
-             // Append search results to the USER message so the AI sees it immediately
-             fullMessage += `\n\n${searchRes}\n\n(Use the search results above to answer. Adhere to privacy policy.)`;
-        }
+        res.write("STATUS|Searching Web...\n");
+        const sRes = await googleSearch(message);
+        if (sRes) fullMessage += `\n\n${sRes}\n\n(Use these search results to answer accurately.)`;
     }
 
-    // 6. Execute Chat
+    // 4. Chat Execution
     const messages = [
-      { role: "system", content: systemContext },
+      { role: "system", content: SYSTEM_PROMPT },
       ...history.map(m => ({ role: m.role === 'ai' ? 'assistant' : m.role, content: m.content })),
       { role: "user", content: fullMessage }
     ];
 
-    let fullReply = "";
+    let cleanReply = ""; // Final clean text to save to DB
+    let streamBuffer = ""; // Buffer for the filter logic
+
     res.write("STATUS|Thinking...\n");
     
     await streamSarvamChat({
       messages,
       onChunk: (text) => {
-        fullReply += text;
-        res.write(`CHUNK|${text.replace(/\n/g, "\\n")}\n`);
+        streamBuffer += text;
+
+        // --- THE THOUGHT SUPPRESSOR LOGIC ---
+        
+        // 1. If buffer has a complete <thinking>...</thinking> block, remove it.
+        if (streamBuffer.includes("</thinking>")) {
+           streamBuffer = streamBuffer.replace(/<thinking>[\s\S]*?<\/thinking>/g, "");
+        }
+
+        // 2. Determine if we are currently "inside" an open tag
+        const openTagIndex = streamBuffer.indexOf("<thinking>");
+        
+        if (openTagIndex !== -1) {
+            // We are thinking. HOLD the buffer. Do not output anything.
+            // Safety: If thought is too long (>2000 chars), force flush to prevent hang.
+            if (streamBuffer.length > 2000) {
+               streamBuffer = ""; // Just discard the stuck thought
+            }
+        } else {
+            // We are NOT inside a tag.
+            // But wait, is the end of the buffer a partial tag? (e.g. "<thi")
+            // Check last 10 chars for a "<"
+            const lastLt = streamBuffer.lastIndexOf("<");
+            
+            if (lastLt !== -1 && streamBuffer.length - lastLt < 12) {
+                // Potential start of tag. Output everything BEFORE the "<" and hold the rest.
+                const safePart = streamBuffer.slice(0, lastLt);
+                if (safePart) {
+                    cleanReply += safePart;
+                    res.write(`CHUNK|${safePart.replace(/\n/g, "\\n")}\n`);
+                }
+                streamBuffer = streamBuffer.slice(lastLt); // Keep the "<..." in buffer
+            } else {
+                // Safe to output everything
+                if (streamBuffer.length > 0) {
+                    cleanReply += streamBuffer;
+                    res.write(`CHUNK|${streamBuffer.replace(/\n/g, "\\n")}\n`);
+                    streamBuffer = "";
+                }
+            }
+        }
       }
     });
 
-    // 7. Save History (Clean)
-    // We save the original user message (without the massive search/file dump) to keep history clean
+    // 5. Save History & Cleanup
+    // We only save the CLEAN reply (without thinking tags) to history
     const historyMsg = files.length ? `${message} [Attached: ${files.length} Files]` : message;
     await DB.addToHistory(sessionId, 'user', historyMsg);
-    await DB.addToHistory(sessionId, 'assistant', fullReply);
+    
+    if (cleanReply.trim()) {
+        await DB.addToHistory(sessionId, 'assistant', cleanReply);
+    }
 
     res.write("DONE|Success");
     res.end();
