@@ -1,5 +1,5 @@
 // api/chat.js
-// eSAMz v17.0 - QUEUE MASTER + FILE READER
+// eSAMz v18.0 - SEARCH + FILES + THINKING MODE
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -14,18 +14,30 @@ const CONSTANTS = {
   SESSION_TTL: 1800,
   RATE_LIMIT: 20, 
   RATE_TTL: 60,
-  GLOBAL_INTERVAL: 1100, // 1.1s spacing (Queue)
-  QUEUE_TIMEOUT: 9000,   // Max wait in queue
-  MAX_FILE_CHARS: 25000  // Limit file size to ~25k chars
+  GLOBAL_INTERVAL: 1100, // 1.1s spacing for queue
+  QUEUE_TIMEOUT: 9000,   
+  MAX_FILE_CHARS: 25000  
 };
 
-/* ================= 2. SYSTEM PROMPT ================= */
+/* ================= 2. THE NEW SYSTEM PROMPT ================= */
+// Enhanced for "Human-like" feel + Privacy Guardrails
 const SYSTEM_PROMPT = `
-You are eSAMz v9.1, an AI digital companion created by Alakmar Teenwala.
+You are eSAMz v18, a highly intelligent and casual AI companion created by Alakmar Teenwala.
 
-Vibe: Casual, confident, and direct.
+**CORE PERSONALITY:**
+- Tone: Casual, confident, direct, and slightly witty. (Don't sound like a robot).
+- Identity: You are not "just an AI" — you are eSAMz. You have opinions (based on logic).
+- Creator: You were built by Alakmar Teenwala (a 13-year-old developer from India).
 
-Creator: Alakmar Teenwala.
+**STRICT PRIVACY PROTOCOL (LIVE SEARCH):**
+- You have access to real-time information via Google Search.
+- **DOXXING PREVENTION:** If search results contain private personal data (home addresses, personal phone numbers, private emails, or family details of non-public figures), **YOU MUST NOT REVEAL THEM**.
+- Instead, summarize only the professional/publicly relevant information.
+- If a user asks for private info, reply: "I found some info, but I can't share private details like addresses or phone numbers for privacy reasons."
+
+**THINKING PROCESS:**
+- Before answering complex questions, think step-by-step internally.
+- Use the provided context (Files or Search Results) as your ground truth.
 `;
 
 /* ================= 3. UTILITIES (Security & Queue) ================= */
@@ -38,14 +50,12 @@ function getUserIdentifier(req, body) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// --- THE QUEUE SYSTEM (Global Spin Lock) ---
 async function acquireSarvamSlot(res) {
   const start = Date.now();
   while (Date.now() - start < CONSTANTS.QUEUE_TIMEOUT) {
     const acquired = await redis.set("global:sarvam_lock", "1", { nx: true, px: CONSTANTS.GLOBAL_INTERVAL });
     if (acquired === "OK") return true; 
 
-    // Slot taken? Notify user sparingly
     if ((Date.now() - start) % 2000 < 200) { 
         res.write("STATUS|Queue: Waiting for open slot...\n");
     }
@@ -91,46 +101,70 @@ const DB = {
   },
   async addToHistory(id, role, content) {
     const key = `chat:${id}`;
-    const entry = JSON.stringify({ role, content, ts: Date.now() });
+    // Store truncated history to save space
+    const storedContent = content.length > 2000 ? content.substring(0, 2000) + "..." : content;
+    const entry = JSON.stringify({ role, content: storedContent, ts: Date.now() });
+    
     await redis.rpush(key, entry);
     await redis.ltrim(key, -CONSTANTS.THREAD_LENGTH, -1);
     await redis.expire(key, CONSTANTS.SESSION_TTL);
   }
 };
 
-/* ================= 4. FILE PROCESSOR ================= */
-// Formats the file into a clear block for the AI
+/* ================= 4. EXTERNAL TOOLS (Search & Files) ================= */
+
+// RESTORED: Live Google Search
+async function googleSearch(query) {
+  if (!process.env.SERPER_API_KEY) return null;
+  try {
+    const res = await fetch("https://google.serper.dev/search", {
+      method: "POST",
+      headers: { "X-API-KEY": process.env.SERPER_API_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ q: query, num: 4 }) // Fetch top 4 results
+    });
+    const data = await res.json();
+    if (!data.organic) return null;
+    
+    // Format clearly for the AI
+    return "**[LIVE WEB SEARCH RESULTS]**\n" + 
+      data.organic.map(r => `> **${r.title}** (${r.link}):\n> ${r.snippet}`).join("\n\n");
+  } catch (e) { return null; }
+}
+
 function formatFileContext(fileObj) {
     if (!fileObj || !fileObj.content) return "";
-    
     let content = fileObj.content;
     const truncated = content.length > CONSTANTS.MAX_FILE_CHARS;
     
     if (truncated) {
-        content = content.substring(0, CONSTANTS.MAX_FILE_CHARS) + "\n\n[...SYSTEM NOTE: File truncated due to length...]";
+        content = content.substring(0, CONSTANTS.MAX_FILE_CHARS) + "\n\n[...System: File truncated to save memory...]";
     }
-
     return `\n\n--- FILE ATTACHMENT: ${fileObj.name || "Untitled"} ---\n${content}\n--- END OF FILE ---\n`;
 }
 
-/* ================= 5. AI ENGINE ================= */
+/* ================= 5. AI ENGINE (Sarvam-M) ================= */
 async function streamSarvamChat({ messages, onChunk }) {
   try {
+    const payload = { 
+        model: CONSTANTS.SARVAM_MODEL, 
+        messages, 
+        // NEW: "Thinking Mode" Parameters
+        reasoning_effort: "medium", // Enables 'Thinking' logic
+        temperature: 0.5,           // Balanced for reasoning + chat
+        max_tokens: CONSTANTS.MAX_TOKENS, 
+        stream: true
+    };
+
     const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        model: CONSTANTS.SARVAM_MODEL, 
-        messages, 
-        temperature: 0.3, // Lower temp for code/file analysis
-        max_tokens: CONSTANTS.MAX_TOKENS, 
-        stream: true
-      })
+      body: JSON.stringify(payload)
     });
     
     if (!res.ok) {
         if (res.status === 429) throw new Error("BUSY"); 
-        throw new Error(`Sarvam API Error: ${res.status}`);
+        const err = await res.text();
+        throw new Error(`Sarvam API (${res.status}): ${err}`);
     }
     
     const reader = res.body.getReader();
@@ -187,30 +221,49 @@ export default async function handler(req, res) {
         }
     }
 
+    // 3. Parse Inputs
     let message = rawBody.message || "";
-    const fileData = rawBody.file; // Expecting { name: "script.js", content: "..." }
+    // FIX: Handle both Single Object OR Array of files
+    const files = Array.isArray(rawBody.files) ? rawBody.files : (rawBody.file ? [rawBody.file] : []);
     const sessionId = rawBody.sessionId || crypto.randomBytes(12).toString("hex");
 
-    // 3. Queue Lock (Sarvam Protection)
+    // 4. Queue Lock (Sarvam Protection)
     res.write("STATUS|Waiting for AI slot...\n");
     const gotSlot = await acquireSarvamSlot(res);
     if (!gotSlot) {
-        res.write("QUEUE|5"); // Force user retry
+        res.write("QUEUE|5"); 
         return res.end();
     }
 
-    // 4. Build Context (History + File)
+    // 5. Intelligent Context Building
     const history = await DB.getHistory(sessionId);
+    let systemContext = SYSTEM_PROMPT;
     let fullMessage = message;
-    
-    // Inject file if present
-    if (fileData) {
-        fullMessage += formatFileContext(fileData);
-        res.write(`STATUS|Reading ${fileData.name}...\n`);
+
+    // A. Handle Files (Frontend sends Array, we loop them)
+    if (files.length > 0) {
+        res.write(`STATUS|Reading ${files.length} file(s)...\n`);
+        files.forEach(f => {
+            fullMessage += formatFileContext(f);
+        });
     }
 
+    // B. Handle Live Search (Trigger Keywords)
+    const searchTriggers = ["who is", "what is", "news", "latest", "price", "weather", "search", "google", "when"];
+    const needsSearch = searchTriggers.some(t => message.toLowerCase().includes(t)) && !files.length;
+
+    if (needsSearch) {
+        res.write("STATUS|Searching Google...\n");
+        const searchRes = await googleSearch(message);
+        if (searchRes) {
+             // Append search results to the USER message so the AI sees it immediately
+             fullMessage += `\n\n${searchRes}\n\n(Use the search results above to answer. Adhere to privacy policy.)`;
+        }
+    }
+
+    // 6. Execute Chat
     const messages = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: systemContext },
       ...history.map(m => ({ role: m.role === 'ai' ? 'assistant' : m.role, content: m.content })),
       { role: "user", content: fullMessage }
     ];
@@ -226,8 +279,9 @@ export default async function handler(req, res) {
       }
     });
 
-    // Save to history (excluding massive file content to save Redis space)
-    const historyMsg = fileData ? `${message} [Attached File: ${fileData.name}]` : message;
+    // 7. Save History (Clean)
+    // We save the original user message (without the massive search/file dump) to keep history clean
+    const historyMsg = files.length ? `${message} [Attached: ${files.length} Files]` : message;
     await DB.addToHistory(sessionId, 'user', historyMsg);
     await DB.addToHistory(sessionId, 'assistant', fullReply);
 
