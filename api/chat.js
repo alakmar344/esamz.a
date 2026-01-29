@@ -14,7 +14,7 @@ const CONSTANTS = {
   SESSION_TTL: 1800,
   RATE_LIMIT: 10, // Max 20 msgs per minute per IP
   RATE_TTL: 60,
-  FILE_CHAR_LIMIT: 10000 
+  FILE_CHAR_LIMIT: 20000 
 };
 
 /* ================= 2. SYSTEM PROMPT ================= */
