@@ -2,17 +2,16 @@ import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
 /* ================= CONFIGURATION ================= */
-console.log("--> System: Initializing eSAMz Backend v3...");
+console.log("--> System: Initializing eSAMz Backend v4 (Fixed Context)...");
 const redis = Redis.fromEnv();
 
 const CONSTANTS = {
   SARVAM_MODEL: "sarvam-m",
   MAX_HISTORY: 50,
-  SESSION_TTL: 1800 // 30 minutes
+  SESSION_TTL: 1800
 };
 
-/* ================= 1. TRIGGER SYSTEM ================= */
-// Words that trigger the need for external data
+/* ================= 1. TRIGGER SYSTEM (SMARTER) ================= */
 const TRIGGERS = [
   "who", "what", "where", "when", "why", "how", "which",
   "weather", "temperature", "news", "latest", "today", "now", "update",
@@ -23,12 +22,27 @@ const TRIGGERS = [
   "vs", "versus", "diff", "difference", "code", "install", "error"
 ];
 
+// Heuristic: Skip search if it's a vague follow-up question to prevent hallucinations (like the "Jacob Bett" issue)
+function isVagueFollowUp(text) {
+  const lower = text.toLowerCase().trim();
+  const pronouns = ["he", "she", "it", "they", "his", "her", "their", "who", "what", "which"];
+  const words = lower.split(" ");
+  
+  // If the message is short (< 10 words) AND starts/contains a pronoun, assume it's a follow-up about the *current* topic.
+  // We rely on the AI's internal memory/history instead of searching for "his nickname".
+  if (words.length < 10 && words.some(w => pronouns.includes(w))) {
+    return true; 
+  }
+  return false;
+}
+
 function shouldSearch(text) {
+  if (isVagueFollowUp(text)) return false; // Skip search for follow-ups
   const lower = text.toLowerCase();
   return TRIGGERS.some(t => lower.includes(t));
 }
 
-/* ================= 2. SEARCH TOOLS (WIKIPEDIA -> SERPER) ================= */
+/* ================= 2. SEARCH TOOLS (WATERFALL) ================= */
 const TOOLS = {
   async smartSearch(query) {
     let context = "";
@@ -41,14 +55,12 @@ const TOOLS = {
 
       if (titles.length > 0 && descriptions[0]) {
         const desc = descriptions[0];
-        // Check if it's a valid definition and not a disambiguation page
-        if (desc.length > 30 && !desc.includes("may refer to") && !desc.includes("refers to")) {
+        if (desc.length > 30 && !desc.includes("may refer to")) {
           context = `SOURCE (Wikipedia): ${titles[0]} - ${desc} (Read more: ${links[0]})`;
           return context;
         }
       }
     } catch (e) {
-      // Silent fail, move to Serper
       console.log(`Wiki fallback triggered: ${e.message}`);
     }
 
@@ -74,7 +86,6 @@ const TOOLS = {
 };
 
 /* ================= ADDON: TEXT STRIPPER ================= */
-// Ensures that the "Memory" in Redis doesn't get polluted with robotic filler
 function sanitizeResponse(text) {
   const fillerPhrases = [
     "Checking my database",
@@ -94,16 +105,14 @@ function sanitizeResponse(text) {
   return cleanText.trim();
 }
 
-/* ================= 3. DATABASE LAYER (REDIS MEMORY) ================= */
+/* ================= 3. DATABASE LAYER (REDIS) ================= */
 const DB = {
   async getContext(id) {
-    // Retrieve identity (name) and history simultaneously
     const [name, history] = await Promise.all([
       redis.get(`identity:${id}`),
       redis.lrange(`chat:${id}`, 0, -1)
     ]);
     
-    // Parse history
     const parsedHistory = history.map(item => {
       try { return JSON.parse(item); } catch { return null; }
     }).filter(Boolean).slice(-CONSTANTS.MAX_HISTORY);
@@ -115,25 +124,17 @@ const DB = {
     const cleanAiMsg = sanitizeResponse(aiMsg);
 
     const pipeline = redis.pipeline();
-    
-    // Save identity if detected
     if (detectedName) pipeline.set(`identity:${id}`, detectedName, { ex: CONSTANTS.SESSION_TTL });
-    
-    // Append to chat history
     pipeline.rpush(`chat:${id}`, JSON.stringify({ role: "user", content: userMsg }));
     pipeline.rpush(`chat:${id}`, JSON.stringify({ role: "assistant", content: cleanAiMsg }));
-    
-    // Maintain list size and expiration
     pipeline.ltrim(`chat:${id}`, -CONSTANTS.MAX_HISTORY, -1);
     pipeline.expire(`chat:${id}`, CONSTANTS.SESSION_TTL);
-    
     await pipeline.exec();
   }
 };
 
 /* ================= 4. MAIN HANDLER ================= */
 export default async function handler(req, res) {
-  // Setup headers for streaming
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Transfer-Encoding': 'chunked' });
 
   try {
@@ -145,21 +146,20 @@ export default async function handler(req, res) {
         return;
     }
 
-    // 1. Load Context from Redis
+    // 1. Load Context
     const { name: storedName, history } = await DB.getContext(sessionId);
     const userName = storedName || "User";
 
-    // 2. Perform Search (Silent Waterfall) - No robotic "STATUS" updates
+    // 2. Perform Search (Only if not a vague follow-up)
     let contextData = "";
     if (shouldSearch(message)) {
-      // This happens in the background before AI generation
       const searchResults = await TOOLS.smartSearch(message);
       if (searchResults) {
         contextData = `\n\n[CONTEXT_INFORMATION]:\n${searchResults}\n[END_CONTEXT]`;
       }
     }
 
-    // 3. Construct System Prompt
+    // 3. Construct System Prompt (Fixed Logic)
     const systemPrompt = `
 You are eSAMz AI, a highly advanced, human-like intelligence engine created by Alakmar Teenwala. 
 Your goal is to provide instant, accurate answers while maintaining a conversation that feels natural, empathetic, and engaging.
@@ -167,7 +167,10 @@ Your goal is to provide instant, accurate answers while maintaining a conversati
 ### CORE RULES:
 1. BE NATURAL: Speak like a knowledgeable friend. Use contractions (e.g., "don't"). Vary sentence structure.
 2. NO ROBOTIC FILLER: Do NOT say "As an AI", "I do not have feelings", "I searched the web", or "Based on the results". 
-3. USE CONTEXT SILENTLY: If information is provided in [CONTEXT_INFORMATION], use it directly in your answer as if you already knew it. Do not mention the source.
+3. CONTEXT CONSISTENCY (CRITICAL):
+   - If the user asks a follow-up question (e.g., "Who is he?", "What is his nickname?"), look at the **Chat History** to identify the subject (e.g., Nikola Tesla).
+   - If provided [CONTEXT_INFORMATION] from the web describes a DIFFERENT entity than the one in the chat history (e.g., history discusses Tesla, search shows "Jacob Bett"), **IGNORE the search results**.
+   - Do NOT hallucinate. If search data is irrelevant, answer using your internal knowledge of the subject in history.
 4. BE CONCISE: Answer directly without unnecessary fluff.
 5. PERSONALITY: You are helpful, precise, and slightly casual but professional.
 `;
@@ -179,7 +182,7 @@ Your goal is to provide instant, accurate answers while maintaining a conversati
       { role: "user", content: message }
     ];
 
-    // 4. Call AI (Sarvam)
+    // 4. Call AI
     const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
@@ -192,7 +195,7 @@ Your goal is to provide instant, accurate answers while maintaining a conversati
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let finalAiReply = "";
-    let buffer = ""; // Buffer to handle split chunks
+    let buffer = "";
 
     while (true) {
       const { done, value } = await reader.read();
@@ -200,10 +203,8 @@ Your goal is to provide instant, accurate answers while maintaining a conversati
 
       const chunk = decoder.decode(value, { stream: true });
       buffer += chunk;
-      
-      // Split by lines to handle SSE format
       const lines = buffer.split("\n");
-      buffer = lines.pop() || ""; // Keep the last incomplete line in buffer
+      buffer = lines.pop() || "";
 
       for (const line of lines) {
         if (line.startsWith("data: ") && !line.includes("[DONE]")) {
@@ -214,17 +215,14 @@ Your goal is to provide instant, accurate answers while maintaining a conversati
             
             if (txt) {
               finalAiReply += txt;
-              // Send chunk to frontend (replace newlines for JSON safety if needed, but usually raw text is fine)
               res.write(`CHUNK|${txt.replace(/\n/g, "\\n")}\n`);
             }
-          } catch (e) {
-            // Ignore parse errors for partial chunks
-          }
+          } catch (e) {}
         }
       }
     }
 
-    // 6. Save to Redis (Cleaned)
+    // 6. Save to Redis
     await DB.saveInteraction(sessionId, message, finalAiReply, null);
 
     res.write("DONE|Success");
