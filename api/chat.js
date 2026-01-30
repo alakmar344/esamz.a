@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
 /* ================= CONFIGURATION ================= */
-console.log("--> System: Initializing eSAMz Backend v15 (Buffer Handling)...");
+console.log("--> System: Initializing eSAMz Backend v16 (Raw Dump)...");
 const redis = Redis.fromEnv();
 
 const CONSTANTS = {
@@ -19,27 +19,32 @@ function sanitizeInput(str) {
 }
 
 function repairHistory(item) {
-  // 1. HANDLE BUFFERS (The source of the crash)
+  // 1. HANDLE BUFFERS
   let strItem = "";
   if (typeof item === 'string') {
     strItem = item;
   } else if (Buffer.isBuffer(item)) {
-    // If Redis returns a Buffer, convert it to UTF-8 string
     strItem = item.toString('utf-8');
   } else {
-    // Fallback for any other weird types
     strItem = String(item);
   }
 
-  // 2. Check for [object Object] string
+  // 2. TRIM to remove weird whitespace
+  strItem = strItem.trim();
+
   if (strItem === '[object Object]') return null;
 
-  // 3. Try standard JSON parse
+  // 3. LOG THE RAW DATA (So we can see what's wrong)
+  // This stringifies the string, escaping all invisible chars (like \u0000)
+  const escapedItem = JSON.stringify(strItem);
+  console.error(`[PARSE FAIL] Raw Data: ${escapedItem}`);
+
+  // 4. Try standard JSON parse
   try { 
     return JSON.parse(strItem); 
   } catch (e) {}
 
-  // 4. ROBUST REPAIR REGEX
+  // 5. ROBUST REPAIR REGEX
   try {
     const contentMatch = strItem.match(/"content"\s*:\s*"((?:[^"\\]|\\.)*)"/i);
     const roleMatch = strItem.match(/"role"\s*:\s*"(user|assistant)"/i);
@@ -53,8 +58,6 @@ function repairHistory(item) {
     }
   } catch (e) {}
 
-  // 5. FAILURE
-  console.error(`[PARSE FAIL] Unrecoverable data:`, strItem.substring(0, 200));
   return null;
 }
 
@@ -140,7 +143,7 @@ function sanitizeResponse(text) {
   return cleanText.trim();
 }
 
-/* ================= 3. DATABASE LAYER (BUFFER SAFE) ================= */
+/* ================= 3. DATABASE LAYER (DEBUG DUMP) ================= */
 const DB = {
   async getContext(id) {
     console.log(`[DEBUG 1] Entering getContext for ${id}`);
@@ -150,14 +153,12 @@ const DB = {
     ]);
     console.log(`[DEBUG 2] Redis returned. Raw Count: ${rawHistory.length}`);
     
-    // Attempt to repair history (Now handles Buffers)
     const parsedHistory = rawHistory.map((item, index) => {
       return repairHistory(item);
     }).filter(Boolean).slice(-CONSTANTS.MAX_HISTORY);
 
     console.log(`[DEBUG 3] Exiting getContext. Parsed Count: ${parsedHistory.length}`);
 
-    // Nuclear Wipe if we have data but recovered nothing
     if (rawHistory.length > 0 && parsedHistory.length === 0) {
       console.warn(`[NUCLEAR WIPE] Session ${id} contains ${rawHistory.length} items, but ALL are invalid. Wiping database.`);
       await redis.del(`chat:${id}`);
