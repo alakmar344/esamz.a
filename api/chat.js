@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
 /* ================= CONFIGURATION ================= */
-console.log("--> System: Initializing eSAMz Backend v6 (Logic-Core)...");
+console.log("--> System: Initializing eSAMz Backend v7 (Diagnostics)...");
 const redis = Redis.fromEnv();
 
 const CONSTANTS = {
@@ -27,7 +27,6 @@ function isVagueFollowUp(text) {
   const pronouns = ["he", "she", "it", "they", "his", "her", "their", "who", "what", "which"];
   const words = lower.split(" ");
   
-  // Prevent searching for ambiguous follow-up questions
   if (words.length < 10 && words.some(w => pronouns.includes(w))) {
     return true; 
   }
@@ -44,13 +43,10 @@ function shouldSearch(text) {
 const TOOLS = {
   async smartSearch(query) {
     let context = "";
-
-    // 1. Wikipedia
     try {
       const wikiUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=1&namespace=0&format=json`;
       const wikiRes = await fetch(wikiUrl);
       const [_, titles, descriptions, links] = await wikiRes.json();
-
       if (titles.length > 0 && descriptions[0]) {
         const desc = descriptions[0];
         if (desc.length > 30 && !desc.includes("may refer to")) {
@@ -61,15 +57,12 @@ const TOOLS = {
     } catch (e) {
       console.log(`Wiki fallback triggered: ${e.message}`);
     }
-
-    // 2. Serper
     try {
       const serperRes = await fetch("https://google.serper.dev/search", {
         method: "POST",
         headers: { "X-API-KEY": process.env.SERPER_API_KEY, "Content-Type": "application/json" },
         body: JSON.stringify({ q: query, num: 3 })
       });
-
       const data = await serperRes.json();
       if (data.organic && data.organic.length > 0) {
         context = data.organic.map((r, i) => `SOURCE (Google ${i+1}): ${r.title} - ${r.snippet}`).join("\n");
@@ -78,7 +71,6 @@ const TOOLS = {
     } catch (e) {
       console.error(`Search Engine Error: ${e.message}`);
     }
-
     return null;
   }
 };
@@ -93,33 +85,47 @@ function sanitizeResponse(text) {
     "Here is what I found",
     "[REAL-TIME SEARCH DATA]"
   ];
-
   let cleanText = text;
   fillerPhrases.forEach(phrase => {
     const regex = new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
     cleanText = cleanText.replace(regex, "");
   });
-
   return cleanText.trim();
 }
 
-/* ================= 3. DATABASE LAYER ================= */
+/* ================= 3. DATABASE LAYER (WITH LOGS) ================= */
 const DB = {
   async getContext(id) {
-    const [name, history] = await Promise.all([
+    const [name, rawHistory] = await Promise.all([
       redis.get(`identity:${id}`),
       redis.lrange(`chat:${id}`, 0, -1)
     ]);
     
-    const parsedHistory = history.map(item => {
-      try { return JSON.parse(item); } catch { return null; }
+    // DIAGNOSTIC LOG: Check raw data
+    console.log(`[REDIS DEBUG] SessionID: ${id}`);
+    console.log(`[REDIS DEBUG] Raw History Count: ${rawHistory.length}`);
+    
+    const parsedHistory = rawHistory.map(item => {
+      try { return JSON.parse(item); } catch (e) {
+        console.log(`[REDIS ERROR] Failed to parse history item: ${item}`);
+        return null; 
+      }
     }).filter(Boolean).slice(-CONSTANTS.MAX_HISTORY);
+
+    // DIAGNOSTIC LOG: Check parsed data
+    console.log(`[REDIS DEBUG] Parsed History Count: ${parsedHistory.length}`);
+    if(parsedHistory.length > 0) {
+        console.log(`[REDIS DEBUG] Last User Msg: ${parsedHistory[parsedHistory.length-1]?.content}`);
+    }
 
     return { name, history: parsedHistory };
   },
 
   async saveInteraction(id, userMsg, aiMsg, detectedName) {
     const cleanAiMsg = sanitizeResponse(aiMsg);
+    
+    // DIAGNOSTIC LOG: Verify save
+    console.log(`[REDIS SAVE] Saving to session ${id}. User: ${userMsg.substring(0, 20)}... AI: ${cleanAiMsg.substring(0, 20)}...`);
 
     const pipeline = redis.pipeline();
     if (detectedName) pipeline.set(`identity:${id}`, detectedName, { ex: CONSTANTS.SESSION_TTL });
@@ -127,7 +133,13 @@ const DB = {
     pipeline.rpush(`chat:${id}`, JSON.stringify({ role: "assistant", content: cleanAiMsg }));
     pipeline.ltrim(`chat:${id}`, -CONSTANTS.MAX_HISTORY, -1);
     pipeline.expire(`chat:${id}`, CONSTANTS.SESSION_TTL);
-    await pipeline.exec();
+    
+    try {
+        await pipeline.exec();
+        console.log(`[REDIS SAVE] Success.`);
+    } catch(e) {
+        console.error(`[REDIS SAVE] FAILED:`, e);
+    }
   }
 };
 
@@ -157,7 +169,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // 3. Construct System Prompt (Strict Logic Enforcement)
+    // 3. Construct System Prompt
     const systemPrompt = `
 You are eSAMz AI. Your top priority is logic and context continuity.
 
@@ -166,7 +178,6 @@ CRITICAL LOGIC RULES (Follow these before every answer):
 1. PRONOUN RESOLUTION:
    - If the user uses pronouns (he, she, it, his, her, they), you MUST look at the immediately preceding messages to identify the subject.
    - NEVER ask "Who are you referring to?" if the subject was mentioned in the last 3 messages.
-   - Example: If topic is "Tesla" and user asks "What is his age?", answer for Tesla.
 
 2. CLARIFICATION HANDLING:
    - If YOU asked "Who?" or "Which one?" and the user replies with a name (e.g., "Nikola Tesla"), you MUST answer the PREVIOUS question using that name.
@@ -175,15 +186,11 @@ CRITICAL LOGIC RULES (Follow these before every answer):
      User: "What is his nickname?"
      You: "Who?"
      User: "Tesla"
-     You: "Tesla's nickname is..." (Do NOT restart with "Tesla was an inventor...")
+     You: "Tesla's nickname is..."
 
 3. RESPONSE STYLE:
    - Be direct, natural, and human-like.
    - No robotic filler words ("As an AI", "I searched").
-   - If search data is provided, use it but describe it naturally.
-
-4. CONTEXT CONSISTENCY:
-   - If the current message contradicts the chat history, prioritize the CHAT HISTORY (the user's active topic) over new search results unless explicitly asked to verify.
 `;
 
     // Assemble messages
