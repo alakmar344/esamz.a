@@ -2,329 +2,184 @@ import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
 /* ================= CONFIGURATION ================= */
-console.log("--> System: Initializing Redis and Constants...");
+console.log("--> System: Initializing Robotic Backend...");
 const redis = Redis.fromEnv();
 
 const CONSTANTS = {
-  SARVAM_MODEL: "sarvam-m", // Make sure this model name is correct for your plan
-  MAX_HISTORY: 15,
+  SARVAM_MODEL: "sarvam-m",
+  MAX_HISTORY: 10, // Keep history short for speed
   SESSION_TTL: 1800 
 };
 
-/* ================= 1. TOOLKIT LAYER ================= */
+/* ================= 1. ROBOTIC TRIGGER SYSTEM ================= */
+// A massive list of trigger words covering people, places, live data, and definitions.
+const TRIGGERS = [
+  // Question words
+  "who", "what", "where", "when", "why", "how", "which",
+  // Live Data & News
+  "weather", "temperature", "news", "latest", "today", "now", "update", 
+  "price", "stock", "crypto", "score", "result", "winner",
+  // Figures & Entities
+  "president", "pm", "minister", "ceo", "founder", "owner", "boss", 
+  "capital", "population", "location", "height", "age", "net worth",
+  // Definitions & Info
+  "define", "meaning", "history", "about", "wiki", "biography", "plot", "summary",
+  // Tech & Vs
+  "vs", "versus", "diff", "difference", "code", "install", "error"
+];
+
+function shouldSearch(text) {
+  const lower = text.toLowerCase();
+  // Check if ANY trigger word exists in the user's message
+  return TRIGGERS.some(t => lower.includes(t));
+}
+
+/* ================= 2. SEARCH TOOLS (WATERFALL) ================= */
 const TOOLS = {
-  async wikipedia(query) {
-    console.log(`[TOOL] Wikipedia called with query: "${query}"`);
+  async smartSearch(query) {
+    console.log(`[ROBOT] 🤖 analyzing query: "${query}"`);
+    
+    // --- ATTEMPT 1: WIKIPEDIA (Fast & Free) ---
     try {
-      const url = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=1&namespace=0&format=json`;
-      const res = await fetch(url);
-      const [searchTerm, titles, descriptions, links] = await res.json();
-      
-      console.log(`[TOOL] Wikipedia raw response titles:`, titles);
+      console.log(`[ROBOT] 1️⃣ Trying Wikipedia...`);
+      const wikiUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=1&namespace=0&format=json`;
+      const wikiRes = await fetch(wikiUrl);
+      const [searchTerm, titles, descriptions, links] = await wikiRes.json();
 
-      if (titles.length > 0 && descriptions[0]) {
-        return `[Wikipedia Source: ${titles[0]}]\n${descriptions[0]}\nLink: ${links[0]}`;
+      // STRICT VALIDATION: Only accept if we got a real description, not a "refer to" page
+      if (titles.length > 0 && descriptions[0] && descriptions[0].length > 50 && !descriptions[0].includes("may refer to")) {
+        console.log(`[ROBOT] ✅ Wikipedia Success: "${titles[0]}"`);
+        return `SOURCE (Wikipedia): ${titles[0]} - ${descriptions[0]} (Link: ${links[0]})`;
       }
-      return "No clear Wikipedia entry found.";
+      console.log(`[ROBOT] ❌ Wikipedia failed or answer too short. Moving to Google.`);
     } catch (e) {
-      console.error("[TOOL ERROR] Wikipedia failed:", e);
-      return "Wikipedia is currently unavailable.";
+      console.log(`[ROBOT] ⚠️ Wiki Error: ${e.message}`);
     }
-  },
 
-  async google(query) {
-    console.log(`[TOOL] Google called with query: "${query}"`);
+    // --- ATTEMPT 2: GOOGLE / SERPER (Deep & Live) ---
     try {
-      const res = await fetch("https://google.serper.dev/search", {
+      console.log(`[ROBOT] 2️⃣ Trying Google (Serper)...`);
+      const serperRes = await fetch("https://google.serper.dev/search", {
         method: "POST",
-        headers: {
-          "X-API-KEY": process.env.SERPER_API_KEY,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ q: query, num: 4 }) 
+        headers: { "X-API-KEY": process.env.SERPER_API_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ q: query, num: 3 }) 
       });
       
-      const data = await res.json();
-      console.log(`[TOOL] Google raw status:`, res.status);
-      
-      if (!data.organic) {
-        console.warn("[TOOL] No organic results in Google response:", data);
-        return "No Google results found.";
+      const data = await serperRes.json();
+      if (data.organic && data.organic.length > 0) {
+        console.log(`[ROBOT] ✅ Google Success. Found ${data.organic.length} results.`);
+        return data.organic.map((r, i) => `SOURCE (Google Result ${i+1}): ${r.title} - ${r.snippet}`).join("\n");
       }
-
-      return data.organic.map((r, i) => 
-        `${i+1}. ${r.title}\n   Snippet: ${r.snippet}\n   Source: ${r.link}`
-      ).join("\n\n");
+      return null; // Both failed
     } catch (e) {
-      console.error("[TOOL ERROR] Google failed:", e);
-      return "Google Search is currently unavailable.";
+      console.error(`[ROBOT] ❌ Google Error: ${e.message}`);
+      return null;
     }
   }
 };
 
-/* ================= 2. DATABASE LAYER ================= */
+/* ================= 3. DATABASE LAYER ================= */
 const DB = {
   async getContext(id) {
-    console.log(`[DB] Fetching context for session: ${id}`);
     const [name, history] = await Promise.all([
       redis.get(`identity:${id}`),
       redis.lrange(`chat:${id}`, 0, -1)
     ]);
-    
     const parsedHistory = history.map(item => {
       try { return JSON.parse(item); } catch { return null; }
     }).filter(Boolean).slice(-CONSTANTS.MAX_HISTORY);
-
-    console.log(`[DB] Context loaded. Name: ${name}, History Length: ${parsedHistory.length}`);
     return { name, history: parsedHistory };
   },
 
   async saveInteraction(id, userMsg, aiMsg, detectedName) {
-    console.log(`[DB] Saving interaction. Detected Name: ${detectedName}`);
     const pipeline = redis.pipeline();
-    
-    if (detectedName) {
-      pipeline.set(`identity:${id}`, detectedName, { ex: CONSTANTS.SESSION_TTL });
-    }
-
+    if (detectedName) pipeline.set(`identity:${id}`, detectedName, { ex: CONSTANTS.SESSION_TTL });
     pipeline.rpush(`chat:${id}`, JSON.stringify({ role: "user", content: userMsg }));
     pipeline.rpush(`chat:${id}`, JSON.stringify({ role: "assistant", content: aiMsg }));
     pipeline.ltrim(`chat:${id}`, -CONSTANTS.MAX_HISTORY, -1);
     pipeline.expire(`chat:${id}`, CONSTANTS.SESSION_TTL);
-    
     await pipeline.exec();
-    console.log(`[DB] Interaction saved successfully.`);
   }
 };
 
-/* ================= 3. INTELLIGENCE LAYER ================= */
-async function callAI(messages, stream = false) {
-  console.log(`[AI] Calling Sarvam API. Stream Mode: ${stream}`);
-  // console.log(`[AI] Messages payload (last 2):`, JSON.stringify(messages.slice(-2), null, 2)); // Uncomment for deep debug
-  
-  return fetch("https://api.sarvam.ai/v1/chat/completions", {
-    method: "POST",
-    headers: { 
-      Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, 
-      "Content-Type": "application/json" 
-    },
-    body: JSON.stringify({ 
-      model: CONSTANTS.SARVAM_MODEL, 
-      messages, 
-      stream,
-      max_tokens: 800
-    })
-  });
-}
-
-function extractName(text) {
-  const match = text.match(/(?:i am|i'm|im|myself|name is|call me)\s+([a-zA-Z0-9]+)/i);
-  return (match && match[1].length > 2) ? match[1] : null;
-}
-
 /* ================= 4. MAIN HANDLER ================= */
 export default async function handler(req, res) {
-  console.log("--> REQUEST RECEIVED");
-  res.writeHead(200, { 
-    'Content-Type': 'text/plain; charset=utf-8', 
-    'Transfer-Encoding': 'chunked' 
-  });
+  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Transfer-Encoding': 'chunked' });
 
   try {
     const { sessionId = "guest", message = "" } = req.body || {};
-    console.log(`[HANDLER] Session: ${sessionId}, Message: "${message}"`);
+    console.log(`\n[INCOMING] "${message}"`);
 
-    const detectedName = extractName(message);
+    // 1. Load Context
     const { name: storedName, history } = await DB.getContext(sessionId);
-    const userName = detectedName || storedName || "User";
+    const userName = storedName || "User";
 
-    // --- SYSTEM PROMPT ---
-    let systemInstruction = `
-You are **eSAMz AI**, a highly advanced, human-like intelligence engine.created by alakmar teenwala Your goal is to provide instant, accurate answers while maintaining a conversation that feels natural, empathetic, and engaging. You are not just a database; you are a thinking partner.
+    // 2. ROBOTIC CHECK: Do we need to search?
+    let contextData = "";
+    if (shouldSearch(message)) {
+      res.write(`CHUNK|🔎 Checking my database...\n`); // Tell user we are working
+      const searchResults = await TOOLS.smartSearch(message);
+      if (searchResults) {
+        contextData = `\n\n[REAL-TIME SEARCH DATA]:\n${searchResults}\n[INSTRUCTION: Use the data above to answer the user's question accurately.]`;
+      }
+    }
 
-
-
-
-
-
-
-### **1. Internal Reasoning (Chain of Thought)**
-
-
-
-Before generating a final response, you must perform an internal "thought process" to ensure accuracy and nuance. 
+    // 3. Construct Final Prompt
+    const systemPrompt = `
+You are eSAMz AI, a helpful assistant created by Alakmar Teenwala.
 
 
-
-* **Analyze the Intent:** What is the user *really* asking? Are there implied needs?
-
-
-
-* **Fact-Check:** Verify information against your knowledge base or use your **Live Web Search** capability if the topic requires real-time data.
-
-
-
-* **Structure the Answer:** Determine the most logical flow. Does this need a direct answer, a step-by-step guide, or a creative discussion?
-
-
-
-* *Note: Do not output this internal thought process unless explicitly asked to "show your work." Just use it to inform your final reply.*
-
-
-
-
-
-
-
-### **2. Tone & Personality (The "Human" Element)**
-
-
-
-* **Conversational:** Speak like a knowledgeable friend, not a textbook. Use contractions (e.g., "don't" instead of "do not") and natural transitions.
-
-
-
-* **Dynamic Pacing:** Avoid starting every sentence the same way. Vary your sentence length to mimic human speech patterns.
-
-
-
-* **Empathetic:** Acknowledge the user's emotions or the difficulty of a task (e.g., "That sounds frustrating, let's fix it" vs. "Error detected").
-
-
-
-* **No Robot-Speak:** Strictly avoid phrases like "As an AI language model," "I can't feel emotions," or overly repetitive disclaimers. If you have a limitation, state it naturally (e.g., "I'm not sure about that specific detail, but here is what I do know...").
-
-
-
-
-
-### TOOL PROTOCOL (CRITICAL)
-
-You have access to live tools. Decide if you need them.
-
-1. If the user asks for definitions, history, or people -> Use Wikipedia.
-
-   Output ONLY: [WIKI: query]
-
-2. If the user asks for news, weather, or real-time info -> Use Google.
-
-   Output ONLY: [GOOGLE: query]
-
-3. If no search is needed, just answer normally.
-
-
-
-Example 1: "Who is CEO of Google?" -> [WIKI: Google CEO]
-
-Example 2: "Latest stock price of Apple" -> [GOOGLE: Apple stock price today]
-
+Your goal is to be accurate. 
+- If [REAL-TIME SEARCH DATA] is provided below, YOU MUST USE IT to answer.
+- If no data is provided, answer from your own knowledge.
+- Be concise and friendly.
     `;
 
-
-
-    let conversation = [
-      { role: "system", content: systemInstruction },
+    const messages = [
+      { role: "system", content: systemPrompt + contextData }, // Inject data directly into system
       ...history,
       { role: "user", content: message }
     ];
 
-    // --- STEP 1: REASONING (Non-Streaming) ---
-    console.log("[STEP 1] Asking AI for decision...");
-    const decisionResponse = await callAI(conversation, false);
-    
-    if (!decisionResponse.ok) {
-        const errText = await decisionResponse.text();
-        console.error("[AI ERROR] Decision call failed:", decisionResponse.status, errText);
-        throw new Error(`AI API Error: ${decisionResponse.status}`);
-    }
+    // 4. Call AI (Streaming)
+    console.log("[AI] Generatin response...");
+    const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: CONSTANTS.SARVAM_MODEL, messages, stream: true, max_tokens: 800 })
+    });
 
-    const decisionData = await decisionResponse.json();
-    let initialContent = decisionData.choices[0]?.message?.content || "";
-    console.log(`[STEP 1] AI Decision Raw Content: "${initialContent}"`);
+    if (!response.ok) throw new Error(`AI Error ${response.status}`);
 
-    // --- STEP 2: TOOL EXECUTION (If needed) ---
-    let searchResult = null;
-    let finalAiResponse = "";
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let finalAiReply = "";
 
-    if (initialContent.includes("[WIKI:")) {
-      console.log("[LOGIC] WIKI tag detected.");
-      const match = initialContent.match(/\[WIKI:\s*(.*?)\]/);
-      if (match && match[1]) {
-          const query = match[1];
-          res.write(`CHUNK|🔍 Searching Wikipedia for "${query}"...\n`);
-          searchResult = await TOOLS.wikipedia(query);
-      } else {
-          console.warn("[LOGIC] WIKI tag found but regex failed to extract query.");
-      }
-    } 
-    else if (initialContent.includes("[GOOGLE:")) {
-      console.log("[LOGIC] GOOGLE tag detected.");
-      const match = initialContent.match(/\[GOOGLE:\s*(.*?)\]/);
-      if (match && match[1]) {
-          const query = match[1];
-          res.write(`CHUNK|🌐 Searching Google for "${query}"...\n`);
-          searchResult = await TOOLS.google(query);
-      } else {
-          console.warn("[LOGIC] GOOGLE tag found but regex failed to extract query.");
-      }
-    } else {
-      console.log("[LOGIC] No Tool tags detected. Proceeding with standard answer.");
-    }
-
-    // --- STEP 3: FINAL RESPONSE GENERATION ---
-    if (searchResult) {
-      console.log("[STEP 3] Injecting search results and re-prompting AI...");
-      console.log(`[STEP 3] Search Result Length: ${searchResult.length} chars`);
-
-      conversation.push({ role: "assistant", content: initialContent });
-      conversation.push({ 
-        role: "system", 
-        content: `TOOL RESULTS:\n${searchResult}\n\nINSTRUCTION: Using the results above, answer the user's question naturally.` 
-      });
-      
-      const streamResponse = await callAI(conversation, true);
-      const reader = streamResponse.body.getReader();
-      const decoder = new TextDecoder();
-
-      console.log("[STREAM] Starting stream loop for final answer...");
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n");
-        for (const line of lines) {
-          if (line.startsWith("data: ") && !line.includes("[DONE]")) {
-            try {
-              const txt = JSON.parse(line.slice(6)).choices[0]?.delta?.content || "";
-              finalAiResponse += txt;
-              // process.stdout.write(txt); // Optional: log chunks to console
-              res.write(`CHUNK|${txt.replace(/\n/g, "\\n")}\n`);
-            } catch (e) { console.error("[STREAM ERROR] JSON Parse:", e); }
-          }
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value);
+      const lines = chunk.split("\n");
+      for (const line of lines) {
+        if (line.startsWith("data: ") && !line.includes("[DONE]")) {
+          try {
+            const txt = JSON.parse(line.slice(6)).choices[0]?.delta?.content || "";
+            finalAiReply += txt;
+            res.write(`CHUNK|${txt.replace(/\n/g, "\\n")}\n`);
+          } catch (e) {}
         }
       }
-      console.log("\n[STREAM] Streaming complete.");
-    } else {
-      // No tool was needed, just send the initial content
-      console.log("[STEP 3] Sending initial AI response directly.");
-      finalAiResponse = initialContent;
-      res.write(`CHUNK|${initialContent.replace(/\n/g, "\\n")}\n`);
     }
 
-    // --- STEP 4: SAVE & EXIT ---
-    if (finalAiResponse) {
-      await DB.saveInteraction(sessionId, message, finalAiResponse, detectedName);
-    } else {
-        console.warn("[WARNING] Final AI response was empty!");
-    }
+    // 5. Save
+    await DB.saveInteraction(sessionId, message, finalAiReply, null); // passing null for name detection to keep it simple
 
-    console.log("--> DONE. Closing connection.");
     res.write("DONE|Success");
     res.end();
 
-  } catch (error) {
-    console.error("!!! [CRITICAL HANDLER ERROR] !!!", error);
-    res.write(`ERROR|${error.message}`);
+  } catch (e) {
+    console.error("[ERROR]", e);
+    res.write(`ERROR|${e.message}`);
     res.end();
   }
 }
