@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
 /* ================= CONFIGURATION ================= */
-console.log("--> System: Initializing eSAMz Backend v14 (Nuclear Repair)...");
+console.log("--> System: Initializing eSAMz Backend v15 (Buffer Handling)...");
 const redis = Redis.fromEnv();
 
 const CONSTANTS = {
@@ -15,24 +15,34 @@ const CONSTANTS = {
 
 function sanitizeInput(str) {
   if (typeof str !== 'string') return "";
-  // Remove control chars that break JSON (except standard whitespace)
   return str.replace(/[\x00-\x09\x0b\x0c\x0e-\x1f\x7f]/g, "");
 }
 
 function repairHistory(item) {
-  // 1. Check for [object Object]
-  if (item === '[object Object]') return null;
+  // 1. HANDLE BUFFERS (The source of the crash)
+  let strItem = "";
+  if (typeof item === 'string') {
+    strItem = item;
+  } else if (Buffer.isBuffer(item)) {
+    // If Redis returns a Buffer, convert it to UTF-8 string
+    strItem = item.toString('utf-8');
+  } else {
+    // Fallback for any other weird types
+    strItem = String(item);
+  }
 
-  // 2. Try standard JSON parse
+  // 2. Check for [object Object] string
+  if (strItem === '[object Object]') return null;
+
+  // 3. Try standard JSON parse
   try { 
-    return JSON.parse(item); 
+    return JSON.parse(strItem); 
   } catch (e) {}
 
-  // 3. ROBUST REPAIR REGEX (Handles spaces/newlines)
+  // 4. ROBUST REPAIR REGEX
   try {
-    // Allows "content": "..." OR "content" : "..." OR "content"\n: "..."
-    const contentMatch = item.match(/"content"\s*:\s*"((?:[^"\\]|\\.)*)"/i);
-    const roleMatch = item.match(/"role"\s*:\s*"(user|assistant)"/i);
+    const contentMatch = strItem.match(/"content"\s*:\s*"((?:[^"\\]|\\.)*)"/i);
+    const roleMatch = strItem.match(/"role"\s*:\s*"(user|assistant)"/i);
     
     if (contentMatch && roleMatch) {
       console.warn(`[REPAIR] Manually repaired message.`);
@@ -43,8 +53,8 @@ function repairHistory(item) {
     }
   } catch (e) {}
 
-  // 4. TOTAL FAILURE
-  console.error(`[PARSE FAIL] Unrecoverable data:`, item.substring(0, 200));
+  // 5. FAILURE
+  console.error(`[PARSE FAIL] Unrecoverable data:`, strItem.substring(0, 200));
   return null;
 }
 
@@ -130,7 +140,7 @@ function sanitizeResponse(text) {
   return cleanText.trim();
 }
 
-/* ================= 3. DATABASE LAYER (NUKE + REPAIR) ================= */
+/* ================= 3. DATABASE LAYER (BUFFER SAFE) ================= */
 const DB = {
   async getContext(id) {
     console.log(`[DEBUG 1] Entering getContext for ${id}`);
@@ -140,16 +150,14 @@ const DB = {
     ]);
     console.log(`[DEBUG 2] Redis returned. Raw Count: ${rawHistory.length}`);
     
-    // Attempt to repair history
+    // Attempt to repair history (Now handles Buffers)
     const parsedHistory = rawHistory.map((item, index) => {
       return repairHistory(item);
     }).filter(Boolean).slice(-CONSTANTS.MAX_HISTORY);
 
     console.log(`[DEBUG 3] Exiting getContext. Parsed Count: ${parsedHistory.length}`);
 
-    // NUCLEAR WIPE LOGIC:
-    // If we have data in Redis, but NONE of it is valid (Count 0), the database is corrupted.
-    // We must wipe it to stop the loop.
+    // Nuclear Wipe if we have data but recovered nothing
     if (rawHistory.length > 0 && parsedHistory.length === 0) {
       console.warn(`[NUCLEAR WIPE] Session ${id} contains ${rawHistory.length} items, but ALL are invalid. Wiping database.`);
       await redis.del(`chat:${id}`);
