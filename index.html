@@ -162,7 +162,7 @@
             cursor: pointer; color: inherit; 
             display: inline-flex; align-items: center; justify-content: center;
         }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
 
         .btn-base {
             height: 36px;
@@ -489,11 +489,21 @@
             background: var(--accent-primary); color: var(--accent-primary-text);
             flex-shrink: 0; transition: all 0.2s;
         }
-        .action-btn:hover { transform: scale(1.05); }
-        .action-btn:active { transform: scale(0.95); }
+        
+        /* Empty state logic for button */
+        .action-btn.disabled-state {
+            opacity: 0.5;
+            pointer-events: none;
+            cursor: not-allowed;
+        }
+
+        .action-btn:hover:not(.disabled-state) { transform: scale(1.05); }
+        .action-btn:active:not(.disabled-state) { transform: scale(0.95); }
         
         .action-btn.stop-mode {
             background: #fee2e2; color: #ef4444;
+            opacity: 1 !important;
+            pointer-events: auto !important;
         }
 
         .input-footer {
@@ -607,7 +617,7 @@
 
         <div class="sidebar-footer">
             <div>eSAMz AI &copy; 2026</div>
-            <div style="margin-top:4px; opacity:0.6;">v2.5.0 Pro</div>
+            <div style="margin-top:4px; opacity:0.6;">v2.6.0 Pro</div>
         </div>
     </aside>
 
@@ -677,7 +687,7 @@
                     </button>
                     <textarea id="userInput" rows="1" placeholder="Message eSAMz..."></textarea>
                     
-                    <button class="action-btn" id="btnSend" title="Send Message">
+                    <button class="action-btn disabled-state" id="btnSend" title="Send Message">
                         <svg class="send-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                         <svg class="stop-icon" style="display:none;" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
                     </button>
@@ -756,8 +766,8 @@
                     reader: null
                 };
 
-                this.storageKey = 'esamz_conversations_v15';
-                this.LAST_CHAT_KEY = 'esamz_last_chat_id'; // Persistence Key
+                this.storageKey = 'esamz_conversations_v16';
+                this.LAST_CHAT_KEY = 'esamz_last_chat_id';
                 
                 this.recognition = null;
                 this.initSpeech();
@@ -802,13 +812,12 @@
             init() {
                 this.loadHistory();
                 this.setupListeners();
+                this.updateButtonState(); // Initialize button state
                 
-                // SESSION PERSISTENCE: Restore last active chat
                 const lastActiveId = localStorage.getItem(this.LAST_CHAT_KEY);
                 if (lastActiveId) {
                     const raw = localStorage.getItem(this.storageKey);
                     const history = raw ? JSON.parse(raw) : [];
-                    // Only load if it actually exists in history
                     if (history.find(c => c.id === lastActiveId)) {
                         this.loadChat(lastActiveId);
                     }
@@ -828,11 +837,28 @@
                 this.dom.overlay.onclick = closeSidebar;
             }
 
+            updateButtonState() {
+                // Check if we can send (has text or files) AND not processing
+                const text = this.dom.input.value.trim();
+                const hasFiles = this.state.files.length > 0;
+                const canSend = (text.length > 0 || hasFiles) && !this.state.isProcessing;
+
+                if (canSend) {
+                    this.dom.sendBtn.classList.remove('disabled-state');
+                } else {
+                    // Only add disabled-state if NOT in processing mode (stop button always clickable)
+                    if(!this.state.isProcessing) {
+                        this.dom.sendBtn.classList.add('disabled-state');
+                    }
+                }
+            }
+
             setupListeners() {
                 this.dom.input.addEventListener('input', () => {
                     this.dom.input.style.height = 'auto';
                     this.dom.input.style.height = Math.min(this.dom.input.scrollHeight, 240) + 'px';
                     this.dom.charCount.textContent = `${this.dom.input.value.length} / ${this.state.maxChars}`;
+                    this.updateButtonState(); // Check input validity
                 });
 
                 this.dom.input.addEventListener('keydown', (e) => {
@@ -938,6 +964,7 @@
                             type: imageExts.includes(ext) ? 'image' : 'text',
                             content: content
                         });
+                        this.updateButtonState(); // Enable button if files added
                     } catch (e) {
                         console.error(e);
                         this.showToast(`Failed to process ${file.name}`, 'error');
@@ -968,8 +995,6 @@
                     const title = text.slice(0, 30) || 'Untitled Chat';
                     this.saveToHistory({ id: this.state.chatId, title: title, messages: [] });
                     this.renderHistoryItem(this.state.chatId, title);
-                    
-                    // SESSION PERSISTENCE: Save this new active ID
                     localStorage.setItem(this.LAST_CHAT_KEY, this.state.chatId);
                 }
 
@@ -989,10 +1014,20 @@
                 this.dom.filePreview.innerHTML = '';
 
                 this.setProcessingState(true);
+                this.updateButtonState(); // Dim button
+
                 const aiMsgDiv = this.appendMessage('ai', '', true); 
                 const contentDiv = aiMsgDiv.querySelector('.bubble');
 
                 this.state.abortController = new AbortController();
+
+                // SAFETY: Add 60s timeout to prevent infinite hangs
+                const timeoutId = setTimeout(() => {
+                    if(this.state.isProcessing) {
+                        this.abortGeneration();
+                        this.showToast("Request timed out. Please try again.", "error");
+                    }
+                }, 60000);
 
                 try {
                     const response = await fetch("/api/chat", {
@@ -1062,35 +1097,44 @@
                         contentDiv.innerHTML = `<span style="color:#ef4444">Error: ${error.message}</span>`;
                     }
                 } finally {
+                    clearTimeout(timeoutId);
                     this.setProcessingState(false);
+                    this.updateButtonState(); // Re-enable button if needed
                     this.scrollToBottom();
                 }
             }
 
             setProcessingState(isProcessing) {
                 this.state.isProcessing = isProcessing;
-                document.getElementById('btnSend').disabled = !isProcessing;
                 
                 if (isProcessing) {
                     this.updateStatus("Thinking...");
                     this.dom.statusBadge.classList.add('processing');
+                    
                     this.dom.sendBtn.classList.add('stop-mode');
                     this.dom.sendIcon.style.display = 'none';
                     this.dom.stopIcon.style.display = 'block';
                     this.dom.sendBtn.title = "Stop Generation";
+                    
+                    // Ensure visible and clickable
+                    this.dom.sendBtn.classList.remove('disabled-state');
                 } else {
                     this.updateStatus("Ready");
                     this.dom.statusBadge.classList.remove('processing');
+                    
                     this.dom.sendBtn.classList.remove('stop-mode');
                     this.dom.sendIcon.style.display = 'block';
                     this.dom.stopIcon.style.display = 'none';
                     this.dom.sendBtn.title = "Send Message";
+                    
+                    this.state.abortController = null;
                 }
             }
             
             abortGeneration() {
                 if (this.state.abortController) {
                     this.state.abortController.abort();
+                    // State reset happens in finally block
                 }
             }
 
@@ -1193,7 +1237,6 @@
             }
 
             renderHistoryItem(id, title) {
-                // Avoid duplicates
                 if(document.querySelector(`button[data-id="${id}"]`)) return;
 
                 const btn = document.createElement('button');
@@ -1203,18 +1246,16 @@
                 btn.onclick = () => {
                     this.loadChat(id);
                 };
-                this.dom.historyList.prepend(btn); // Newest top
+                this.dom.historyList.prepend(btn); 
             }
 
             loadChat(id) {
-                // SESSION PERSISTENCE: Update the active ID key
                 localStorage.setItem(this.LAST_CHAT_KEY, id);
 
                 this.state.chatId = id;
                 this.dom.welcome.style.display = 'none';
                 this.dom.chatList.innerHTML = '';
                 
-                // Highlight active item in sidebar (optional visual enhancement)
                 document.querySelectorAll('.nav-item').forEach(btn => btn.style.background = 'transparent');
                 const activeBtn = document.querySelector(`button[data-id="${id}"]`);
                 if(activeBtn) activeBtn.style.background = 'var(--bg-surface)';
@@ -1227,22 +1268,19 @@
                     chat.messages.forEach(m => this.appendMessage(m.role, m.content));
                 }
 
-                // Mobile UX: Close sidebar on selection
                 if (window.innerWidth <= 768) {
                     this.dom.sidebar.classList.remove('active');
                     this.dom.overlay.classList.remove('active');
                 }
+                this.updateButtonState();
             }
 
             saveToHistory(chatObj) {
                 const raw = localStorage.getItem(this.storageKey);
                 let history = raw ? JSON.parse(raw) : [];
-                
-                // Remove existing if updating (rare case but good for integrity)
                 history = history.filter(h => h.id !== chatObj.id);
                 history.unshift(chatObj);
                 
-                // Limit history size (e.g., last 50 chats) to save space
                 if (history.length > 50) history = history.slice(0, 50);
                 
                 localStorage.setItem(this.storageKey, JSON.stringify(history));
@@ -1255,7 +1293,6 @@
                 
                 if (chatIndex !== -1) {
                     history[chatIndex].messages.push({ role, content, ts: Date.now() });
-                    // Update title if generic
                     if (role === 'user' && history[chatIndex].title === 'Untitled Chat') {
                         history[chatIndex].title = content.slice(0, 30) + '...';
                         this.renderHistoryItem(chatId, history[chatIndex].title);
@@ -1265,7 +1302,6 @@
             }
 
             newChat() {
-                // SESSION PERSISTENCE: Clear the active ID
                 localStorage.removeItem(this.LAST_CHAT_KEY);
                 
                 this.state.chatId = null;
@@ -1274,8 +1310,8 @@
                 this.dom.welcome.style.display = 'flex';
                 this.dom.input.focus();
                 
-                // Clear active state in sidebar
                 document.querySelectorAll('.nav-item').forEach(btn => btn.style.background = 'transparent');
+                this.updateButtonState();
             }
 
             exportChat(type) {
