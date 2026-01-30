@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
 /* ================= CONFIGURATION ================= */
-console.log("--> System: Initializing eSAMz Backend v11 (Deep Debug)...");
+console.log("--> System: Initializing eSAMz Backend v13 (Sanitizer + Repair)...");
 const redis = Redis.fromEnv();
 
 const CONSTANTS = {
@@ -10,6 +10,43 @@ const CONSTANTS = {
   MAX_HISTORY: 50,
   SESSION_TTL: 1800
 };
+
+/* ================= UTILITIES: SANITIZE & REPAIR ================= */
+
+// 1. Remove invisible characters that break JSON
+function sanitizeInput(str) {
+  if (typeof str !== 'string') return "";
+  // Remove control chars (0-31) except \t, \n, \r
+  return str.replace(/[\x00-\x09\x0b\x0c\x0e-\x1f\x7f]/g, "");
+}
+
+// 2. Attempt to repair a broken JSON string manually
+function repairHistory(item) {
+  // First, check if it's the known corruption
+  if (item === '[object Object]') return null;
+
+  // Try standard parse
+  try { 
+    return JSON.parse(item); 
+  } catch (e) {}
+
+  // If that failed, try to salvage the "content" using Regex
+  // This is a last resort to save the chat from bad data
+  try {
+    const contentMatch = item.match(/"content":"((?:[^"\\]|\\.)*)"/);
+    const roleMatch = item.match(/"role":"(user|assistant)"/);
+    
+    if (contentMatch && roleMatch) {
+      console.warn(`[REPAIR] Manually repaired a corrupted message.`);
+      return {
+        role: roleMatch[1],
+        content: sanitizeInput(contentMatch[1]) // Clean it too
+      };
+    }
+  } catch (e) {}
+
+  return null; // Totally unrecoverable
+}
 
 /* ================= 1. TRIGGER SYSTEM ================= */
 const TRIGGERS = [
@@ -93,7 +130,7 @@ function sanitizeResponse(text) {
   return cleanText.trim();
 }
 
-/* ================= 3. DATABASE LAYER (DEEP DEBUG) ================= */
+/* ================= 3. DATABASE LAYER (SANITIZED) ================= */
 const DB = {
   async getContext(id) {
     console.log(`[DEBUG 1] Entering getContext for ${id}`);
@@ -106,19 +143,20 @@ const DB = {
     const hasCorruption = rawHistory.includes('[object Object]');
 
     if (hasCorruption) {
-      console.warn(`[CLEANUP] Found corruption. Deleting.`);
+      console.warn(`[CLEANUP] Found '[object Object]'. Deleting.`);
       await redis.lrem(`chat:${id}`, 0, '[object Object]');
       const newRawHistory = await redis.lrange(`chat:${id}`, 0, -1);
       rawHistory.length = 0;
       rawHistory.push(...newRawHistory);
     }
 
-    const parsedHistory = rawHistory.map(item => {
-      try { 
-        return JSON.parse(item); 
-      } catch (e) {
-        return null; 
+    // Use the Repair Function here instead of simple JSON.parse
+    const parsedHistory = rawHistory.map((item, index) => {
+      const result = repairHistory(item);
+      if (!result) {
+          console.error(`[PARSE FAIL] Index ${index}. Could not repair.`);
       }
+      return result;
     }).filter(Boolean).slice(-CONSTANTS.MAX_HISTORY);
 
     console.log(`[DEBUG 3] Exiting getContext. Parsed Count: ${parsedHistory.length}`);
@@ -128,11 +166,19 @@ const DB = {
   async saveInteraction(id, userMsg, aiMsg, detectedName) {
     console.log(`[DEBUG 4] Entering saveInteraction. ID: ${id}`);
     
-    const safeUserMsg = (typeof userMsg === 'string') ? userMsg : JSON.stringify(userMsg);
-    const safeAiMsg = (typeof aiMsg === 'string') ? aiMsg : JSON.stringify(aiMsg);
+    // SANITIZE BEFORE SAVING
+    // 1. Ensure it's a string
+    let safeUserMsg = (typeof userMsg === 'string') ? userMsg : JSON.stringify(userMsg);
+    let safeAiMsg = (typeof aiMsg === 'string') ? aiMsg : JSON.stringify(aiMsg);
+    
+    // 2. Remove bad characters (OCR artifacts, null bytes, etc)
+    safeUserMsg = sanitizeInput(safeUserMsg);
+    safeAiMsg = sanitizeInput(safeAiMsg);
+    
+    // 3. Strip filler from AI response
     const cleanAiMsg = sanitizeResponse(safeAiMsg);
 
-    console.log(`[DEBUG 5] Preparing pipeline.`);
+    console.log(`[DEBUG 5] Preparing pipeline. Sanitized lengths: ${safeUserMsg.length}, ${cleanAiMsg.length}`);
     const pipeline = redis.pipeline();
     
     if (detectedName) {
@@ -140,6 +186,7 @@ const DB = {
         pipeline.set(`identity:${id}`, detectedName, { ex: CONSTANTS.SESSION_TTL });
     }
     
+    // Safe JSON Stringify
     pipeline.rpush(`chat:${id}`, JSON.stringify({ role: "user", content: safeUserMsg }));
     pipeline.rpush(`chat:${id}`, JSON.stringify({ role: "assistant", content: cleanAiMsg }));
     pipeline.ltrim(`chat:${id}`, -CONSTANTS.MAX_HISTORY, -1);
@@ -200,6 +247,7 @@ CRITICAL LOGIC RULES (Follow these before every answer):
 
 3. RESPONSE STYLE:
    - Be direct, natural, and human-like.
+   - No robotic filler words ("As an AI", "I searched").
 `;
 
     // Assemble messages
