@@ -2,15 +2,23 @@ import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
 /* ================= CONFIG ================= */
-console.log("--> System: Initializing eSAMz Backend v17 (Payload Fix)...");
+console.log("--> System: Initializing eSAMz Backend v19 (Strict Filter)...");
 const redis = Redis.fromEnv();
 
 const SARVAM_MODEL = "sarvam-m";
-const MAX_COMPLETION_TOKENS = 2048;
+const MAX_COMPLETION_TOKENS = 28048;
 const MAX_THREAD_LENGTH = 50;
 const COOKIE_NAME = "esamz_sid";
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
 const INACTIVITY_TIMEOUT_SEC = 30 * 60; 
+
+// List of allowed origins
+const ALLOWED_ORIGINS = [
+  "https://esamz.site",
+  "https://www.esamz.site"
+  // Add your local domain if testing locally
+  // "http://localhost:3000" 
+];
 
 /* ================= SYSTEM PROMPT ================= */
 const SYSTEM_PROMPT = `
@@ -30,12 +38,13 @@ STRICTLY FORBIDDEN PHRASES
 - "I don't know who you are"
 
 MEMORY RULES
+- ALWAYS check conversation history before answering.
 - If user says "My name is X", you MUST REMEMBER IT.
 - If user asks "What is my name?", CHECK HISTORY and answer.
 - Do NOT say "I don't have access".
 
 SEARCH RULES
-If search results are provided below, use them naturally to answer the user.
+If search results are provided below, use them naturally in your answer.
 Do not mention search engines or sources unless asked.
 
 STYLE
@@ -57,20 +66,16 @@ function sendEvent(res, type, data) {
   res.write(`${type}|${safeData}\n`);
 }
 
-// GUARD HELPER: Ensures we are always working with a string
 function safeStringify(item) {
   if (typeof item === 'string') {
     return item;
   }
-  // Handle Buffers safely
   if (Buffer.isBuffer(item)) {
     return item.toString('utf-8');
   }
-  // Handle null/undefined
   if (item === undefined || item === null) {
     return "";
   }
-  // Fallback for any other type (number, etc)
   return JSON.stringify(item);
 }
 
@@ -115,43 +120,58 @@ Rules:
   }
 }
 
-/* ================= DB (BULLETPROOF) ================= */
+/* ================= DB (STRICT FILTER) ================= */
 const DB = {
   async updateActivity(id) {
     await redis.set(`activity:${id}`, Date.now().toString(), { ex: INACTIVITY_TIMEOUT_SEC });
     await redis.expire(`chat:${id}`, INACTIVITY_TIMEOUT_SEC);
-    console.log(`[DB] Heartbeat for ${id}. Chat extended for 30m.`);
   },
 
   async getHistory(id) {
     console.log(`[DB] Loading history for ${id}`);
     const rawList = await redis.lrange(`chat:${id}`, -MAX_THREAD_LENGTH, -1);
     
+    // STRICT FILTER: Only parse and return valid JSON. Skip bad items silently.
     const history = [];
     for (const item of rawList) {
       try {
-        const msg = JSON.parse(item);
+        const strItem = (typeof item === 'string') ? item : item.toString('utf-8');
+        
+        // SKIP [object Object] corruption silently (don't log it)
+        if (strItem.trim() === '[object Object]') continue;
+
+        const msg = JSON.parse(strItem);
         history.push(msg);
       } catch (e) {
-        console.warn(`[DB] Skipping corrupted message.`);
+        // Skip any other parse errors silently
+        continue;
       }
     }
+
+    // If we have significantly fewer items than expected, it implies corruption.
+    // Trigger a one-time clean wipe
+    if (history.length < Math.max(0, rawList.length - 5)) {
+       console.warn(`[DB] Corruption detected in session ${id}. Auto-wiping history.`);
+       await redis.del(`chat:${id}`);
+       return [];
+    }
+
     return history.reverse();
   },
 
   async addMessage(id, role, content) {
+    // EXPLICITLY Stringify to prevent corruption
     const jsonStr = JSON.stringify({ role, content });
-    const pipeline = redis.pipeline();
     
+    // Save & Refresh TTL
+    const pipeline = redis.pipeline();
     pipeline.rpush(`chat:${id}`, jsonStr);
     pipeline.ltrim(`chat:${id}`, 0, MAX_THREAD_LENGTH);
-    
-    // Refresh Activity
     pipeline.set(`activity:${id}`, Date.now().toString(), { ex: INACTIVITY_TIMEOUT_SEC });
     pipeline.expire(`chat:${id}`, INACTIVITY_TIMEOUT_SEC);
     
     await pipeline.exec();
-    console.log(`[DB] Saved msg & Refreshed TTL for ${id}.`);
+    // No "Saved msg" log to reduce noise
   },
 
   async getName(id) {
@@ -241,13 +261,27 @@ async function streamSarvamChat({ messages, onChunk }) {
           fullContent += content;
           onChunk(content);
         }
-      } catch (e) {
-        // Ignore parse errors for partial chunks
-      }
+      } catch (e) {}
     }
   }
   
   return fullContent;
+}
+
+/* ================= ORIGIN CHECKER ================= */
+function checkOrigin(req) {
+  const referer = req.headers.referer || "";
+  const origin = req.headers.origin || "";
+  
+  const isAllowed = ALLOWED_ORIGINS.some(url => referer.includes(url) || origin.includes(url));
+  
+  if (!isAllowed) {
+    console.warn(`[SECURITY] Unauthorized request from: ${referer || origin}`);
+    return false; // BLOCK IT
+  }
+  
+  console.log(`[SECURITY] Authorized request from: ${referer || origin}`);
+  return true; // ALLOW IT
 }
 
 /* ================= MAIN HANDLER ================= */
@@ -262,7 +296,14 @@ export default async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const { message, sessionId, files } = body;
 
-    // 1. Session
+    // 1. ORIGIN LOCK (Check immediately)
+    if (!checkOrigin(req)) {
+      res.write(`ERROR|Unauthorized Request: AI usage is restricted to esamz.site interface only.\n`);
+      res.end();
+      return; // STOP PROCESSING
+    }
+
+    // 2. Session
     let id = sessionId || req.cookies?.[COOKIE_NAME] || crypto.randomBytes(16).toString("hex");
     const ip = getIP(req);
 
@@ -271,24 +312,11 @@ export default async function handler(req, res) {
       res.setHeader('Set-Cookie', `${COOKIE_NAME}=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${INACTIVITY_TIMEOUT_SEC}`);
     }
 
-    // 2. Name Detection
-    const namePattern = /(?:my name is|i am|i'm)\s+([a-zA-Z]+)/i;
-    const nameMatch = message.match(namePattern);
-    
-    if (nameMatch) {
-      const name = nameMatch[1].trim();
-      const currentName = await DB.getName(id);
-      if (currentName !== name) {
-        console.log(`[MEMORY] User identified as ${name}`);
-        await DB.setName(id, name);
-      }
-    }
-
-    // 3. Load History
+    // 3. Load History (Strict Filter)
     const history = await DB.getHistory(id);
     const currentName = await DB.getName(id) || "User";
 
-    // 4. Prepare Message (Files) - Keep it separate
+    // 4. Prepare Message (Files)
     let finalMessage = message;
     if (files && files.length > 0) {
       const fileContext = files.map(f => `\n--- [FILE: ${f.fileName} (${f.type})] ---\n${f.content}\n--- END FILE ---`).join('\n');
@@ -296,34 +324,36 @@ export default async function handler(req, res) {
     }
 
     // 5. Search (Get results separately to inject into System Prompt)
-    let searchResultsString = "";
     let searchContext = "";
     if (needsSearch(message) && SERPER_API_KEY) {
       sendEvent(res, "STATUS", "SEARCHING");
-      searchResultsString = await googleSearch(message);
-      if (searchResultsString) {
-        searchContext = `\n\nSEARCH RESULTS:\n${searchResultsString}\n\nUse these results to answer user.`;
+      searchContext = await googleSearch(message);
+      if (searchContext) {
+        // We inject search results into the System Prompt cleanly
+        searchContext = `\n\nSEARCH RESULTS:\n${searchContext}\n\nUse these results to answer user.`;
       }
     }
     sendEvent(res, "STATUS", "TYPING");
 
-    // 6. Build System Prompt (Inject Search Results HERE, not in User Message)
-    let fullSystemContent = SYSTEM_PROMPT;
+    // 6. Name Detection (Smart Memory)
+    const namePattern = /(?:my name is|i am|i'm)\s+([a-zA-Z]+)/i;
+    const nameMatch = message.match(namePattern);
     
-    if (currentName !== "User") {
-      fullSystemContent += `\n\nUSER CONTEXT:\nThe user's name is "${currentName}". Use it naturally.`;
+    if (nameMatch) {
+      const name = nameMatch[1].trim();
+      if (currentName !== name) {
+        console.log(`[MEMORY] User identified as ${name}`);
+        await DB.setName(id, name);
+      }
     }
 
-    if (searchResultsString) {
-      // Inject search results into System Prompt
-      fullSystemContent += `\n\nSEARCH RESULTS:\n${searchResultsString}\n\nUse these results to answer user.`;
-    }
-
-    const messagesPayload = [{ role: "system", content: fullSystemContent }];
+    // 7. Build Payload (Strict Order)
+    // System (with search context) -> History -> User Message
+    const messagesPayload = [{ role: "system", content: SYSTEM_PROMPT + searchContext }];
     messagesPayload.push(...history); // Inject History
-    messagesPayload.push({ role: "user", content: finalMessage }); // <--- FIX: CLEAN USER MESSAGE
+    messagesPayload.push({ role: "user", content: finalMessage }); // <--- CLEAN USER MESSAGE
 
-    // 7. Stream AI Response
+    // 8. Stream AI Response
     let accumulatedReply = "";
     
     await streamSarvamChat({
@@ -339,7 +369,7 @@ export default async function handler(req, res) {
       }
     });
 
-    // 8. Persona Enforce & Save
+    // 9. Persona Enforce & Save
     const polishedReply = await enforcePersona(message, accumulatedReply);
     
     await DB.addMessage(id, "user", message);
