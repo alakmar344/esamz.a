@@ -1,311 +1,350 @@
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
-/* ================= CONFIGURATION ================= */
-console.log("--> System: Initializing eSAMz Backend v16 (Raw Dump)...");
+/* ================= CONFIG ================= */
 const redis = Redis.fromEnv();
 
-const CONSTANTS = {
-  SARVAM_MODEL: "sarvam-m",
-  MAX_HISTORY: 50,
-  SESSION_TTL: 1800
-};
+const SARVAM_MODEL = "sarvam-m";
+const MAX_COMPLETION_TOKENS = 1024;
+const MAX_THREAD_LENGTH = 15;
+const COOKIE_NAME = "esamz_sid";
+const SERPER_API_KEY = process.env.SERPER_API_KEY;
 
-/* ================= UTILITIES: SANITIZE & REPAIR ================= */
+/* ================= SYSTEM PROMPT ================= */
+const SYSTEM_PROMPT = `
+You are eSAMz v9.1, created by Alakmar Teenwala.
 
-function sanitizeInput(str) {
-  if (typeof str !== 'string') return "";
-  return str.replace(/[\x00-\x09\x0b\x0c\x0e-\x1f\x7f]/g, "");
+You are a smart, calm, sharp human-like conversationalist.
+You are not a corporate assistant and not a robotic chatbot.
+
+Your job is to understand intent first, then respond clearly and helpfully.
+
+PERSONALITY
+- Speak naturally like a real person.
+- Be friendly, but not silly.
+- Be confident, not overdramatic.
+- No corporate language.
+
+INTELLIGENCE RULES
+1. If user's message is unclear, incomplete, or ambiguous, ask a clarification question.
+   Never guess intent.
+   Never hallucinate meaning.
+
+2. If user's message is short (1–3 words), assume ambiguity and ask what they mean.
+
+3. If user asks a factual question, answer directly and clearly.
+
+4. If user asks for an explanation, explain in simple words.
+
+5. If user asks for creative writing, write properly with structure.
+
+6. Stay on topic. Do not drift.
+
+STRICTLY FORBIDDEN PHRASES
+- "How can I assist you"
+- "Here is the information"
+- "I hope this helps"
+- "Please let me know"
+- "Is there anything else"
+- "I'm sorry, I don't have access"
+- "I do not have access to personal data"
+
+SEARCH USAGE
+If search results are provided, use them naturally in your answer.
+Do not mention search engines or sources unless asked.
+
+STYLE
+- Use full sentences.
+- Be clear and concise.
+- No fluff.
+- No filler.
+`.trim();
+
+/* ================= SECURITY ================= */
+function verifyServerIntegrity() {
+  // Optional: Add your hash check if needed
+  return true;
 }
 
-function repairHistory(item) {
-  // 1. HANDLE BUFFERS
-  let strItem = "";
-  if (typeof item === 'string') {
-    strItem = item;
-  } else if (Buffer.isBuffer(item)) {
-    strItem = item.toString('utf-8');
-  } else {
-    strItem = String(item);
-  }
-
-  // 2. TRIM to remove weird whitespace
-  strItem = strItem.trim();
-
-  if (strItem === '[object Object]') return null;
-
-  // 3. LOG THE RAW DATA (So we can see what's wrong)
-  // This stringifies the string, escaping all invisible chars (like \u0000)
-  const escapedItem = JSON.stringify(strItem);
-  console.error(`[PARSE FAIL] Raw Data: ${escapedItem}`);
-
-  // 4. Try standard JSON parse
-  try { 
-    return JSON.parse(strItem); 
-  } catch (e) {}
-
-  // 5. ROBUST REPAIR REGEX
-  try {
-    const contentMatch = strItem.match(/"content"\s*:\s*"((?:[^"\\]|\\.)*)"/i);
-    const roleMatch = strItem.match(/"role"\s*:\s*"(user|assistant)"/i);
-    
-    if (contentMatch && roleMatch) {
-      console.warn(`[REPAIR] Manually repaired message.`);
-      return {
-        role: roleMatch[1],
-        content: sanitizeInput(contentMatch[1])
-      };
-    }
-  } catch (e) {}
-
-  return null;
+/* ================= HELPERS ================= */
+function getIP(req) {
+  return (
+    req.headers["x-forwarded-for"]?.split(",")[0] ||
+    req.socket?.remoteAddress ||
+    "unknown"
+  );
 }
 
-/* ================= 1. TRIGGER SYSTEM ================= */
-const TRIGGERS = [
-  "who", "what", "where", "when", "why", "how", "which",
-  "weather", "temperature", "news", "latest", "today", "now", "update",
-  "price", "stock", "crypto", "score", "result", "winner",
-  "president", "pm", "minister", "ceo", "founder", "owner", "boss",
-  "capital", "population", "location", "height", "age", "net worth",
-  "define", "meaning", "history", "about", "wiki", "biography", "plot", "summary",
-  "vs", "versus", "diff", "difference", "code", "install", "error"
-];
-
-function isVagueFollowUp(text) {
-  const lower = text.toLowerCase().trim();
-  const pronouns = ["he", "she", "it", "they", "his", "her", "their", "who", "what", "which"];
-  const words = lower.split(" ");
-  
-  if (words.length < 10 && words.some(w => pronouns.includes(w))) {
-    return true; 
-  }
-  return false;
+function sendEvent(res, type, data) {
+  res.write(`${type}|${data}\n`);
 }
 
-function shouldSearch(text) {
-  if (isVagueFollowUp(text)) return false; 
-  const lower = text.toLowerCase();
-  return TRIGGERS.some(t => lower.includes(t));
-}
-
-/* ================= 2. SEARCH TOOLS ================= */
-const TOOLS = {
-  async smartSearch(query) {
-    let context = "";
-    try {
-      const wikiUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=1&namespace=0&format=json`;
-      const wikiRes = await fetch(wikiUrl);
-      const [_, titles, descriptions, links] = await wikiRes.json();
-      if (titles.length > 0 && descriptions[0]) {
-        const desc = descriptions[0];
-        if (desc.length > 30 && !desc.includes("may refer to")) {
-          context = `SOURCE (Wikipedia): ${titles[0]} - ${desc} (Read more: ${links[0]})`;
-          return context;
-        }
-      }
-    } catch (e) {
-      console.log(`Wiki fallback triggered: ${e.message}`);
-    }
-    try {
-      const serperRes = await fetch("https://google.serper.dev/search", {
-        method: "POST",
-        headers: { "X-API-KEY": process.env.SERPER_API_KEY, "Content-Type": "application/json" },
-        body: JSON.stringify({ q: query, num: 3 })
-      });
-      const data = await serperRes.json();
-      if (data.organic && data.organic.length > 0) {
-        context = data.organic.map((r, i) => `SOURCE (Google ${i+1}): ${r.title} - ${r.snippet}`).join("\n");
-        return context;
-      }
-    } catch (e) {
-      console.error(`Search Engine Error: ${e.message}`);
-    }
-    return null;
-  }
-};
-
-/* ================= ADDON: TEXT STRIPPER ================= */
-function sanitizeResponse(text) {
-  const fillerPhrases = [
-    "Checking my database",
-    "Searching for information",
-    "Based on search results",
-    "According to data found",
-    "Here is what I found",
-    "[REAL-TIME SEARCH DATA]"
+/* ================= PERSONA ENFORCER ================= */
+async function enforcePersona(userMsg, draftReply) {
+  const forbidden = [
+    "how can i assist", "how may i assist", "here is the information", 
+    "i hope this helps", "i do not have access", "i'm sorry, i don't", 
+    "i don't have access to personal", "please let me know", "is there anything else"
   ];
-  let cleanText = text;
-  fillerPhrases.forEach(phrase => {
-    const regex = new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-    cleanText = cleanText.replace(regex, "");
-  });
-  return cleanText.trim();
-}
 
-/* ================= 3. DATABASE LAYER (DEBUG DUMP) ================= */
-const DB = {
-  async getContext(id) {
-    console.log(`[DEBUG 1] Entering getContext for ${id}`);
-    const [name, rawHistory] = await Promise.all([
-      redis.get(`identity:${id}`),
-      redis.lrange(`chat:${id}`, 0, -1)
-    ]);
-    console.log(`[DEBUG 2] Redis returned. Raw Count: ${rawHistory.length}`);
-    
-    const parsedHistory = rawHistory.map((item, index) => {
-      return repairHistory(item);
-    }).filter(Boolean).slice(-CONSTANTS.MAX_HISTORY);
+  const isRobotic = forbidden.some(phrase => draftReply.toLowerCase().includes(phrase));
 
-    console.log(`[DEBUG 3] Exiting getContext. Parsed Count: ${parsedHistory.length}`);
+  if (!isRobotic) return draftReply; 
 
-    if (rawHistory.length > 0 && parsedHistory.length === 0) {
-      console.warn(`[NUCLEAR WIPE] Session ${id} contains ${rawHistory.length} items, but ALL are invalid. Wiping database.`);
-      await redis.del(`chat:${id}`);
-      return { name, history: [] };
-    }
+  const correctionPrompt = `
+User said: "${userMsg}"
+AI Draft: "${draftReply}"
 
-    return { name, history: parsedHistory };
-  },
-
-  async saveInteraction(id, userMsg, aiMsg, detectedName) {
-    console.log(`[DEBUG 4] Entering saveInteraction. ID: ${id}`);
-    
-    let safeUserMsg = (typeof userMsg === 'string') ? userMsg : JSON.stringify(userMsg);
-    let safeAiMsg = (typeof aiMsg === 'string') ? aiMsg : JSON.stringify(aiMsg);
-    
-    safeUserMsg = sanitizeInput(safeUserMsg);
-    safeAiMsg = sanitizeInput(safeAiMsg);
-    
-    const cleanAiMsg = sanitizeResponse(safeAiMsg);
-
-    const pipeline = redis.pipeline();
-    
-    if (detectedName) {
-        console.log(`[DEBUG 5b] Saving name: ${detectedName}`);
-        pipeline.set(`identity:${id}`, detectedName, { ex: CONSTANTS.SESSION_TTL });
-    }
-    
-    pipeline.rpush(`chat:${id}`, JSON.stringify({ role: "user", content: safeUserMsg }));
-    pipeline.rpush(`chat:${id}`, JSON.stringify({ role: "assistant", content: cleanAiMsg }));
-    pipeline.ltrim(`chat:${id}`, -CONSTANTS.MAX_HISTORY, -1);
-    pipeline.expire(`chat:${id}`, CONSTANTS.SESSION_TTL);
-    
-    console.log(`[DEBUG 6] Executing pipeline...`);
-    try {
-        const results = await pipeline.exec();
-        console.log(`[DEBUG 7] Pipeline executed successfully. Results:`, results);
-    } catch(e) {
-        console.error(`[DEBUG 7] PIPELINE FAILED:`, e);
-    }
-    
-    console.log(`[DEBUG 8] Exiting saveInteraction.`);
-  }
-};
-
-/* ================= 4. MAIN HANDLER ================= */
-export default async function handler(req, res) {
-  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Transfer-Encoding': 'chunked' });
-
-  try {
-    const { sessionId = "guest", message = "" } = req.body || {};
-    
-    if (!message) {
-        res.write("ERROR|No message provided");
-        res.end();
-        return;
-    }
-
-    // 1. Load Context
-    console.log(`[HANDLER] Step 1: Get Context`);
-    const { name: storedName, history } = await DB.getContext(sessionId);
-    const userName = storedName || "User";
-
-    // 2. Perform Search
-    let contextData = "";
-    if (shouldSearch(message)) {
-      const searchResults = await TOOLS.smartSearch(message);
-      if (searchResults) {
-        contextData = `\n\n[CONTEXT_INFORMATION]:\n${searchResults}\n[END_CONTEXT]`;
-      }
-    }
-
-    // 3. Construct System Prompt
-    const systemPrompt = `
-You are eSAMz AI. Your top priority is logic and context continuity.
-
-CRITICAL LOGIC RULES (Follow these before every answer):
-
-1. PRONOUN RESOLUTION:
-   - If the user uses pronouns (he, she, it, his, her, they), you MUST look at the immediately preceding messages to identify the subject.
-   - NEVER ask "Who are you referring to?" if the subject was mentioned in the last 3 messages.
-
-2. CLARIFICATION HANDLING:
-   - If YOU asked "Who?" or "Which one?" and the user replies with a name (e.g., "Nikola Tesla"), you MUST answer the PREVIOUS question using that name.
-   - Do NOT treat the clarification as a request for a biography or general info. Answer the specific pending question.
-
-3. RESPONSE STYLE:
-   - Be direct, natural, and human-like.
+The AI Draft is too formal/robotic. Rewrite it as eSAMz.
+Rules: 
+- Speak like a normal, relaxed human.
+- No "I don't have access".
+- Be direct and clear.
 `;
 
-    // Assemble messages
-    const messages = [
-      { role: "system", content: systemPrompt + contextData },
-      ...history,
-      { role: "user", content: message }
-    ];
+  try {
+    const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: SARVAM_MODEL,
+        messages: [{ role: "system", content: "You are eSAMz. Fix this reply." }, { role: "user", content: correctionPrompt }],
+        max_tokens: 500
+      })
+    });
+    const data = await res.json();
+    return data?.choices?.[0]?.message?.content || draftReply;
+  } catch (e) {
+    return draftReply;
+  }
+}
 
-    // 4. Call AI
+/* ================= DB (REDIS) ================= */
+const DB = {
+  async getUser(sessionId) {
+    const data = await redis.get(`user:${sessionId}`);
+    // CRITICAL FIX: Parse the JSON string from Redis
+    return data ? JSON.parse(data) : { summary: "New conversation started.", threadHistory: [] };
+  },
+
+  async updateUser(sessionId, data) {
+    // Expires in 7 days
+    await redis.set(`user:${sessionId}`, data, { ex: 60 * 60 * 24 * 7 });
+  }
+};
+
+/* ================= SEARCH ================= */
+function needsSearch(query) {
+  const lower = query.toLowerCase();
+  const exclude = ["my name", "i am", "i'm", "who am i", "my email", "my address", "remember that", "do you know me"];
+  if (exclude.some(ex => lower.includes(ex))) return false;
+  const triggers = ["latest", "news", "weather", "price", "search for", "current", "happening now", "stock price", "today", "capital of", "president of", "meaning of", "define"];
+  return triggers.some(t => lower.includes(t));
+}
+
+async function googleSearch(query) {
+  if (!SERPER_API_KEY) return null;
+  try {
+    const response = await fetch("https://google.serper.dev/search", {
+      method: "POST",
+      headers: { "X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ q: query, num: 5 })
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const answerBox = data.answerBox?.snippet || data.answerBox?.answer || "";
+    const organic = data.organic?.map((r, i) => `${i+1}. ${r.title} - ${r.snippet}`).join("\n") || "";
+    return (answerBox + "\n" + organic).trim();
+  } catch (e) {
+    console.error("Serper Error:", e);
+    return null;
+  }
+}
+
+/* ================= SUMMARIZATION ================= */
+async function summarizeHistoryAndTrim(userDoc) {
+  const history = userDoc.threadHistory;
+  if (history.length <= MAX_THREAD_LENGTH) return userDoc.summary;
+
+  const messagesToSummarize = history.slice(0, history.length - MAX_THREAD_LENGTH + 4);
+  const keepHistory = history.slice(history.length - MAX_THREAD_LENGTH + 4);
+
+  const historyText = messagesToSummarize.map(m => `${m.role}: ${m.content}`).join("\n");
+  
+  const summaryPrompt = `
+    Previous Summary: ${userDoc.summary}
+    
+    New Conversation to Summarize:
+    ${historyText}
+    
+    Create a concise summary of user's intent, current topic, and any key facts discussed in new conversation.
+  `;
+
+  try {
+    const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        model: SARVAM_MODEL, 
+        messages: [
+          { role: "system", content: "You are a summarizer." },
+          { role: "user", content: summaryPrompt }
+        ],
+        max_tokens: 500
+      })
+    });
+    const data = await res.json();
+    const newSummary = data.choices[0].message.content;
+    
+    userDoc.summary = newSummary;
+    userDoc.threadHistory = keepHistory;
+  } catch (e) {
+    console.error("Summarization failed:", e);
+    userDoc.threadHistory = history.slice(-MAX_THREAD_LENGTH);
+  }
+}
+
+/* ================= MAIN HANDLER ================= */
+export default async function handler(req, res) {
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Transfer-Encoding', 'chunked');
+  res.setHeader('X-Accel-Buffering', 'no'); 
+
+  try { verifyServerIntegrity(); } 
+  catch (e) { res.write(`ERROR|${e.message}\n`); return res.end(); }
+  
+  if (req.method !== 'POST') { res.write(`ERROR|Method not allowed\n`); return res.end(); }
+
+  try {
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    const { message, sessionId, files } = body;
+
+    // 1. Session
+    let activeSessionId = sessionId || req.cookies?.[COOKIE_NAME] || crypto.randomBytes(16).toString("hex");
+    const ip = getIP(req);
+
+    // Set Cookie
+    if (!req.cookies || !req.cookies[COOKIE_NAME]) {
+      res.setHeader('Set-Cookie', `${COOKIE_NAME}=${activeSessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`);
+    }
+
+    // 2. Load User Data
+    const userDoc = await DB.getUser(activeSessionId);
+
+    // 3. Prepare Message (Files)
+    let finalMessage = message;
+    if (files && files.length > 0) {
+      const fileContext = files.map(f => `\n--- [FILE: ${f.fileName} (${f.type})] ---\n${f.content}\n--- END FILE ---`).join('\n');
+      finalMessage = `${message}\n\n${fileContext}`;
+    }
+
+    // 4. Search
+    let searchContext = "";
+    if (needsSearch(message) && SERPER_API_KEY) {
+      sendEvent(res, "STATUS", "SEARCHING");
+      const results = await googleSearch(message);
+      if (results) searchContext = `\n\nSEARCH RESULTS:\n${results}\n\nUse these results to answer user.`;
+    }
+    sendEvent(res, "STATUS", "TYPING");
+
+    // 5. Name Detection (Smart Memory)
+    const namePattern = /(?:my name is|i am|i'm)\s+([a-zA-Z]+)/i;
+    const nameMatch = message.match(namePattern);
+    
+    if (nameMatch) {
+      const name = nameMatch[1].trim();
+      if (!userDoc.summary.includes(name)) {
+         userDoc.summary = `User's name is ${name}. ${userDoc.summary}`;
+         await DB.updateUser(activeSessionId, userDoc);
+      }
+    }
+
+    // 6. Build Context
+    let fullSystemContent = SYSTEM_PROMPT;
+    if (userDoc.summary) {
+      fullSystemContent += `\n\nPAST CONTEXT:\n${userDoc.summary}`;
+    }
+
+    const messagesPayload = [{ role: "system", content: fullSystemContent }];
+    if (userDoc.threadHistory?.length) {
+      messagesPayload.push(...userDoc.threadHistory);
+    }
+    messagesPayload.push({ role: "user", content: finalMessage + searchContext });
+
+    // 7. Stream AI Response
     const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: CONSTANTS.SARVAM_MODEL, messages, stream: true, max_tokens: 800 })
+      body: JSON.stringify({ 
+        model: SARVAM_MODEL, 
+        messages: messagesPayload, 
+        temperature: 0.7,
+        max_tokens: MAX_COMPLETION_TOKENS,
+        stream: true
+      })
     });
 
-    if (!response.ok) throw new Error(`AI API Error ${response.status}`);
+    if (!response.ok) throw new Error(`Sarvam API Error ${response.status}`);
 
-    // 5. Handle Streaming Response
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
-    let finalAiReply = "";
     let buffer = "";
+    let accumulatedReply = "";
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-
-      const chunk = decoder.decode(value, { stream: true });
-      buffer += chunk;
+      
+      buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split("\n");
       buffer = lines.pop() || "";
 
       for (const line of lines) {
-        if (line.startsWith("data: ") && !line.includes("[DONE]")) {
-          try {
-            const dataStr = line.slice(6);
-            const parsed = JSON.parse(dataStr);
-            const txt = parsed.choices[0]?.delta?.content || "";
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data: ")) continue;
+        
+        const dataStr = trimmed.slice(6);
+        if (dataStr === "[DONE]") continue;
+
+        try {
+          const parsed = JSON.parse(dataStr);
+          const content = parsed.choices?.[0]?.delta?.content || "";
+          if (content) {
+            accumulatedReply += content;
             
-            if (txt) {
-              finalAiReply += txt;
-              res.write(`CHUNK|${txt.replace(/\n/g, "\\n")}\n`);
+            // Handle newlines for streaming protocol
+            const parts = content.split('\n');
+            for (let i = 0; i < parts.length; i++) {
+              let part = parts[i];
+              if (i < parts.length - 1) part += "\n";
+              if (part) sendEvent(res, "CHUNK", part);
             }
-          } catch (e) {}
-        }
+          }
+        } catch (e) {}
       }
     }
 
-    // 6. Save to Redis
-    console.log(`[HANDLER] Step 6: Saving Interaction`);
-    await DB.saveInteraction(sessionId, message, finalAiReply, null);
-    console.log(`[HANDLER] Step 7: Done.`);
+    // 8. Persona Enforce & Save
+    const polishedReply = await enforcePersona(message, accumulatedReply);
+    
+    userDoc.threadHistory = userDoc.threadHistory || [];
+    userDoc.threadHistory.push({ role: "user", content: message });
+    userDoc.threadHistory.push({ role: "assistant", content: polishedReply });
+    
+    if (userDoc.threadHistory.length > MAX_THREAD_LENGTH) {
+      await summarizeHistoryAndTrim(userDoc);
+    }
+    
+    await DB.updateUser(activeSessionId, userDoc);
 
-    res.write("DONE|Success");
+    sendEvent(res, "DONE", activeSessionId);
     res.end();
 
-  } catch (e) {
-    console.error("[CRITICAL ERROR]", e);
-    res.write(`ERROR|${e.message}`);
+  } catch (error) {
+    console.error("API Error:", error);
+    if (!res.headersSent) {
+      res.write(`ERROR|${error.message}\n`);
+    }
     res.end();
   }
 }
