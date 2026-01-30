@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
 /* ================= CONFIG ================= */
-console.log("--> System: Initializing eSAMz Backend v15 (Ultra-Resilient)...");
+console.log("--> System: Initializing eSAMz Backend v16 (Bulletproof)...");
 const redis = Redis.fromEnv();
 
 const SARVAM_MODEL = "sarvam-m";
@@ -10,7 +10,7 @@ const MAX_COMPLETION_TOKENS = 28048;
 const MAX_THREAD_LENGTH = 50;
 const COOKIE_NAME = "esamz_sid";
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
-const INACTIVITY_TIMEOUT_SEC = 30 * 60; // 30 minutes
+const INACTIVITY_TIMEOUT_SEC = 30 * 60; 
 
 /* ================= SYSTEM PROMPT ================= */
 const SYSTEM_PROMPT = `
@@ -30,9 +30,9 @@ STRICTLY FORBIDDEN PHRASES
 - "I don't know who you are"
 
 CRITICAL CONTEXT RULES (FIXED)
-1. MEMORY PRIORITY: ALWAYS check the conversation history (User & Assistant messages) before answering.
+1. MEMORY PRIORITY: ALWAYS check the conversation history before answering.
 2. PRONOUN RESOLUTION: If user uses pronouns (he, she, it, his, her), look at the LAST assistant message to identify the subject.
-   - IF THE SUBJECT EXISTS IN HISTORY (e.g., Imran Khan), ANSWER THE QUESTION DIRECTLY.
+   - IF THE SUBJECT EXISTS IN HISTORY (e.g., "Imran Khan"), ANSWER THE QUESTION DIRECTLY.
    - ONLY ask "Who?" if the history is empty or the subject is completely unknown.
 3. NO FALSE AMBIGUITY: Do not assume ambiguity if the subject is clear from history.
 
@@ -59,13 +59,30 @@ function sendEvent(res, type, data) {
   res.write(`${type}|${safeData}\n`);
 }
 
+// GUARD HELPER: Ensures we are always working with a string
+function safeStringify(item) {
+  if (typeof item === 'string') {
+    return item;
+  }
+  // Handle Buffers safely
+  if (Buffer.isBuffer(item)) {
+    return item.toString('utf-8');
+  }
+  // Handle null/undefined
+  if (item === undefined || item === null) {
+    return "";
+  }
+  // Fallback for any other type (number, etc)
+  return JSON.stringify(item);
+}
+
 /* ================= PERSONA ENFORCER ================= */
 async function enforcePersona(userMsg, draftReply) {
   const forbidden = [
     "how can i assist", "how may i assist", "here is the information", 
     "i hope this helps", "i do not have access", "i'm sorry, i don't", 
     "i don't have access to personal", "please let me know", "is there anything else",
-    "i don't know who you are", "i don't know your name"
+    "i don't know who you are", "i do not know who you are"
   ];
 
   const isRobotic = forbidden.some(phrase => draftReply.toLowerCase().includes(phrase));
@@ -100,84 +117,68 @@ Rules:
   }
 }
 
-/* ================= DB (DEEP CLEAN & RESILIENT) ================= */
+/* ================= DB (BULLETPROOF) ================= */
 const DB = {
+  async updateActivity(id) {
+    await redis.set(`activity:${id}`, Date.now().toString(), { ex: INACTIVITY_TIMEOUT_SEC });
+    await redis.expire(`chat:${id}`, INACTIVITY_TIMEOUT_SEC);
+    console.log(`[DB] Heartbeat for ${id}.`);
+  },
+
   async getHistory(id) {
     console.log(`[DB] Loading history for ${id}`);
+    // Get last 50 messages
+    const rawList = await redis.lrange(`chat:${id}`, -MAX_THREAD_LENGTH, -1);
     
-    // 1. DEEP CLEAN: Get ALL items (limit 100) to scan for corruption
-    const rawList = await redis.lrange(`chat:${id}`, -100, -1);
-    
-    // 2. Find and Remove Bad Entries
-    const cleanList = [];
-    let corruptionFound = false;
-
+    const history = [];
     for (const item of rawList) {
-      let strItem = item;
-      if (Buffer.isBuffer(item)) strItem = item.toString('utf-8');
+      // Use safeStringify to GUARANTEE a string (Prevents "trim is not a function")
+      const strItem = safeStringify(item);
       
-      // Skip literal bad string
       if (strItem.trim() === '[object Object]') {
-        console.warn(`[DB CLEANUP] Deleting corrupt item.`);
-        corruptionFound = true;
-        continue; // Skip adding to cleanList
+        console.warn(`[DB CLEANUP] Deleting corrupt item: ${strItem.substring(0, 30)}`);
+        await redis.lrem(`chat:${id}`, 1, strItem);
+        continue; 
       }
 
-      // Try Parse
       try {
-        cleanList.push(JSON.parse(strItem));
+        const msg = JSON.parse(strItem);
+        history.push(msg);
       } catch (e) {
-        // If it's not the literal bad string, just a parse error, skip it?
-        // Let's skip to be safe.
-        console.warn(`[DB CLEANUP] Skipping unparsable item.`);
-        corruptionFound = true;
+        console.warn(`[DB] Skipping unparsable item.`);
       }
     }
-
-    // 3. SAVE BACK CLEANED LIST (If corruption was found)
-    if (corruptionFound) {
-      console.log(`[DB CLEANUP] Corruption found. Rebuilding clean list...`);
-      await redis.del(`chat:${id}`);
-      if (cleanList.length > 0) {
-        // Push back only the valid items
-        const pipeline = redis.pipeline();
-        cleanList.forEach(msg => {
-            pipeline.rpush(`chat:${id}`, JSON.stringify(msg));
-        });
-        await pipeline.exec();
-        await redis.expire(`chat:${id}`, INACTIVITY_TIMEOUT_SEC);
-      }
-      return cleanList.reverse();
-    }
-
-    // 4. RETURN
-    console.log(`[DB] Returning ${cleanList.length} clean messages.`);
-    return cleanList.reverse();
+    
+    console.log(`[DB] Loaded ${history.length} valid messages.`);
+    return history.reverse();
   },
 
   async addMessage(id, role, content) {
-    // Preventive Sanitization: Never save "[object Object]"
+    // 1. Reject invalid content
     if (!content || content.trim() === '[object Object]') {
       console.warn(`[DB SAVE] Rejecting invalid content.`);
       return;
     }
 
+    // 2. Stringify safely
     const jsonStr = JSON.stringify({ role, content });
     
-    // Save & Refresh TTL
+    // 3. Pipeline
     const pipeline = redis.pipeline();
     pipeline.rpush(`chat:${id}`, jsonStr);
     pipeline.ltrim(`chat:${id}`, 0, MAX_THREAD_LENGTH);
-    pipeline.set(`activity:${id}`, Date.now().toString(), { ex: INACTIVITY_TIMEOUT_SEC }); // Heartbeat
+    
+    // 4. Refresh Activity (Heartbeat)
+    pipeline.set(`activity:${id}`, Date.now().toString(), { ex: INACTIVITY_TIMEOUT_SEC });
     pipeline.expire(`chat:${id}`, INACTIVITY_TIMEOUT_SEC);
     
     await pipeline.exec();
-    console.log(`[DB SAVE] Success & TTL Refreshed.`);
+    console.log(`[DB] Saved & Refreshed TTL for ${id}.`);
   },
 
   async getName(id) {
     const name = await redis.get(`identity:${id}`);
-    return name ? (Buffer.isBuffer(name) ? name.toString('utf-8') : name) : null;
+    return name ? safeStringify(name) : null;
   },
 
   async setName(id, name) {
@@ -262,7 +263,9 @@ async function streamSarvamChat({ messages, onChunk }) {
           fullContent += content;
           onChunk(content);
         }
-      } catch (e) {}
+      } catch (e) {
+        // Ignore parse errors for partial chunks
+      }
     }
   }
   
@@ -290,11 +293,11 @@ export default async function handler(req, res) {
       res.setHeader('Set-Cookie', `${COOKIE_NAME}=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${INACTIVITY_TIMEOUT_SEC}`);
     }
 
-    // 2. Load History (Deep Clean)
+    // 2. Load History (Bulletproof)
     const history = await DB.getHistory(id);
     const currentName = await DB.getName(id) || "User";
 
-    // 3. Prepare Message (Files)
+    // 3. Prepare Message
     let finalMessage = message;
     if (files && files.length > 0) {
       const fileContext = files.map(f => `\n--- [FILE: ${f.fileName} (${f.type})] ---\n${f.content}\n--- END FILE ---`).join('\n');
