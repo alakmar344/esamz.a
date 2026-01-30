@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
 /* ================= CONFIG ================= */
-console.log("--> System: Initializing eSAMz Backend v14 (Session Expiry)...");
+console.log("--> System: Initializing eSAMz Backend v15 (Ultra-Resilient)...");
 const redis = Redis.fromEnv();
 
 const SARVAM_MODEL = "sarvam-m";
@@ -10,9 +10,7 @@ const MAX_COMPLETION_TOKENS = 28048;
 const MAX_THREAD_LENGTH = 50;
 const COOKIE_NAME = "esamz_sid";
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
-
-// 30 Minutes in Seconds
-const INACTIVITY_TIMEOUT_SEC = 30 * 60; 
+const INACTIVITY_TIMEOUT_SEC = 30 * 60; // 30 minutes
 
 /* ================= SYSTEM PROMPT ================= */
 const SYSTEM_PROMPT = `
@@ -20,29 +18,6 @@ You are eSAMz v9.1, created by Alakmar Teenwala.
 
 You are a smart, calm, sharp human-like conversationalist.
 You are not a corporate assistant and not a robotic chatbot.
-
-Your job is to understand intent first, then respond clearly and helpfully.
-
-PERSONALITY
-- Speak naturally like a real person.
-- Be friendly, but not silly.
-- Be confident, not overdramatic.
-- No corporate language.
-
-INTELLIGENCE RULES
-1. If user's message is unclear, incomplete, or ambiguous, ask a clarification question.
-   Never guess intent.
-   Never hallucinate meaning.
-
-2. If user's message is short (1–3 words), assume ambiguity and ask what they mean.
-
-3. If user asks a factual question, answer directly and clearly.
-
-4. If user asks for an explanation, explain in simple words.
-
-5. If user asks for creative writing, write properly with structure.
-
-6. Stay on topic. Do not drift.
 
 STRICTLY FORBIDDEN PHRASES
 - "How can I assist you"
@@ -54,20 +29,20 @@ STRICTLY FORBIDDEN PHRASES
 - "I do not have access to personal data"
 - "I don't know who you are"
 
-MEMORY RULES
-- If user says "My name is X", you MUST REMEMBER IT.
-- If user asks "What is my name?", CHECK HISTORY and answer.
-- Do NOT say "I don't have access".
+CRITICAL CONTEXT RULES (FIXED)
+1. MEMORY PRIORITY: ALWAYS check the conversation history (User & Assistant messages) before answering.
+2. PRONOUN RESOLUTION: If user uses pronouns (he, she, it, his, her), look at the LAST assistant message to identify the subject.
+   - IF THE SUBJECT EXISTS IN HISTORY (e.g., Imran Khan), ANSWER THE QUESTION DIRECTLY.
+   - ONLY ask "Who?" if the history is empty or the subject is completely unknown.
+3. NO FALSE AMBIGUITY: Do not assume ambiguity if the subject is clear from history.
 
 SEARCH RULES
-If search results are provided, use them naturally in your answer.
+If search results are provided, use them naturally.
 Do not mention search engines or sources unless asked.
 
 STYLE
-- Use full sentences.
-- Be clear and concise.
-- No fluff.
-- No filler.
+- Speak like a human.
+- Be direct.
 `.trim();
 
 /* ================= HELPERS ================= */
@@ -90,7 +65,7 @@ async function enforcePersona(userMsg, draftReply) {
     "how can i assist", "how may i assist", "here is the information", 
     "i hope this helps", "i do not have access", "i'm sorry, i don't", 
     "i don't have access to personal", "please let me know", "is there anything else",
-    "i don't know who you are", "i do not know who you are"
+    "i don't know who you are", "i don't know your name"
   ];
 
   const isRobotic = forbidden.some(phrase => draftReply.toLowerCase().includes(phrase));
@@ -125,56 +100,79 @@ Rules:
   }
 }
 
-/* ================= DB (REDIS + SESSION EXPIRY) ================= */
+/* ================= DB (DEEP CLEAN & RESILIENT) ================= */
 const DB = {
-  // 1. Activity Heartbeat (Resets 30m timer)
-  async updateActivity(id) {
-    // Refreshes the expiry on the chat key
-    await redis.set(`activity:${id}`, Date.now().toString(), { ex: INACTIVITY_TIMEOUT_SEC });
-    // Also ensures the chat key itself doesn't die unexpectedly if user is active
-    await redis.expire(`chat:${id}`, INACTIVITY_TIMEOUT_SEC);
-    console.log(`[MEMORY] Heartbeat for ${id}. Chat extended for 30m.`);
-  },
-
   async getHistory(id) {
-    // Get last 50 messages
-    const rawList = await redis.lrange(`chat:${id}`, -MAX_THREAD_LENGTH, -1);
+    console.log(`[DB] Loading history for ${id}`);
     
-    const history = [];
+    // 1. DEEP CLEAN: Get ALL items (limit 100) to scan for corruption
+    const rawList = await redis.lrange(`chat:${id}`, -100, -1);
+    
+    // 2. Find and Remove Bad Entries
+    const cleanList = [];
+    let corruptionFound = false;
+
     for (const item of rawList) {
+      let strItem = item;
+      if (Buffer.isBuffer(item)) strItem = item.toString('utf-8');
+      
+      // Skip literal bad string
+      if (strItem.trim() === '[object Object]') {
+        console.warn(`[DB CLEANUP] Deleting corrupt item.`);
+        corruptionFound = true;
+        continue; // Skip adding to cleanList
+      }
+
+      // Try Parse
       try {
-        let strItem = item;
-        if (Buffer.isBuffer(item)) strItem = item.toString('utf-8');
-        
-        if (strItem.trim() === '[object Object]') continue;
-        
-        const msg = JSON.parse(strItem);
-        history.push(msg);
+        cleanList.push(JSON.parse(strItem));
       } catch (e) {
-        console.warn(`[DB] Skipping corrupted message.`);
+        // If it's not the literal bad string, just a parse error, skip it?
+        // Let's skip to be safe.
+        console.warn(`[DB CLEANUP] Skipping unparsable item.`);
+        corruptionFound = true;
       }
     }
-    return history.reverse();
+
+    // 3. SAVE BACK CLEANED LIST (If corruption was found)
+    if (corruptionFound) {
+      console.log(`[DB CLEANUP] Corruption found. Rebuilding clean list...`);
+      await redis.del(`chat:${id}`);
+      if (cleanList.length > 0) {
+        // Push back only the valid items
+        const pipeline = redis.pipeline();
+        cleanList.forEach(msg => {
+            pipeline.rpush(`chat:${id}`, JSON.stringify(msg));
+        });
+        await pipeline.exec();
+        await redis.expire(`chat:${id}`, INACTIVITY_TIMEOUT_SEC);
+      }
+      return cleanList.reverse();
+    }
+
+    // 4. RETURN
+    console.log(`[DB] Returning ${cleanList.length} clean messages.`);
+    return cleanList.reverse();
   },
 
   async addMessage(id, role, content) {
-    // EXPLICITLY Stringify to prevent corruption
+    // Preventive Sanitization: Never save "[object Object]"
+    if (!content || content.trim() === '[object Object]') {
+      console.warn(`[DB SAVE] Rejecting invalid content.`);
+      return;
+    }
+
     const jsonStr = JSON.stringify({ role, content });
     
-    // 2. Save Message & Refresh TTL
+    // Save & Refresh TTL
     const pipeline = redis.pipeline();
-    
-    // Push to list
-    pipeline.lpush(`chat:${id}`, jsonStr);
+    pipeline.rpush(`chat:${id}`, jsonStr);
     pipeline.ltrim(`chat:${id}`, 0, MAX_THREAD_LENGTH);
-    
-    // REFRESH EXPIRY (The Heartbeat)
-    // If user sends a message, they are active. Reset the 30m timer.
-    await redis.set(`activity:${id}`, Date.now().toString(), { ex: INACTIVITY_TIMEOUT_SEC });
-    await redis.expire(`chat:${id}`, INACTIVITY_TIMEOUT_SEC);
+    pipeline.set(`activity:${id}`, Date.now().toString(), { ex: INACTIVITY_TIMEOUT_SEC }); // Heartbeat
+    pipeline.expire(`chat:${id}`, INACTIVITY_TIMEOUT_SEC);
     
     await pipeline.exec();
-    console.log(`[DB] Saved msg & Refreshed TTL for ${id}.`);
+    console.log(`[DB SAVE] Success & TTL Refreshed.`);
   },
 
   async getName(id) {
@@ -264,9 +262,7 @@ async function streamSarvamChat({ messages, onChunk }) {
           fullContent += content;
           onChunk(content);
         }
-      } catch (e) {
-        // Ignore parse errors for partial chunks
-      }
+      } catch (e) {}
     }
   }
   
@@ -285,7 +281,7 @@ export default async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const { message, sessionId, files } = body;
 
-    // 1. Session ID
+    // 1. Session
     let id = sessionId || req.cookies?.[COOKIE_NAME] || crypto.randomBytes(16).toString("hex");
     const ip = getIP(req);
 
@@ -294,7 +290,7 @@ export default async function handler(req, res) {
       res.setHeader('Set-Cookie', `${COOKIE_NAME}=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${INACTIVITY_TIMEOUT_SEC}`);
     }
 
-    // 2. Load History (Resilient)
+    // 2. Load History (Deep Clean)
     const history = await DB.getHistory(id);
     const currentName = await DB.getName(id) || "User";
 
@@ -333,7 +329,7 @@ export default async function handler(req, res) {
     }
 
     const messagesPayload = [{ role: "system", content: fullSystemContent }];
-    messagesPayload.push(...history);
+    messagesPayload.push(...history); 
     messagesPayload.push({ role: "user", content: finalMessage + searchContext });
 
     // 7. Stream AI Response
@@ -352,10 +348,9 @@ export default async function handler(req, res) {
       }
     });
 
-    // 8. Persona Enforce & Save (With Heartbeat)
+    // 8. Persona Enforce & Save
     const polishedReply = await enforcePersona(message, accumulatedReply);
     
-    // Save message and REFRESH ACTIVITY TIMER
     await DB.addMessage(id, "user", message);
     await DB.addMessage(id, "assistant", polishedReply);
 
