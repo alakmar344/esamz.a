@@ -1,3 +1,6 @@
+// api/chat.js
+// eSAMz v19.0 - FORCE MEMORY INJECTION
+
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
@@ -5,40 +8,47 @@ const redis = Redis.fromEnv();
 
 const CONSTANTS = {
   SARVAM_MODEL: "sarvam-m", 
-  // Max tokens reduced slightly to leave room for response
   MAX_TOKENS: 28000,              
-  THREAD_LENGTH: 20, // Keep last 20 messages (approx 10 turns)
-  SESSION_TTL: 1800, // 7 Days
+  THREAD_LENGTH: 20, 
+  SESSION_TTL: 1800, 
   QUEUE_TIMEOUT: 9000
 };
 
-/* ================= 1. SYSTEM PROMPT (UNCHAINED) ================= */
-/* ================= 1. SYSTEM PROMPT (IDENTITY OVERRIDE) ================= */
-const SYSTEM_PROMPT = `
-### **Role & Identity**
-You are **eSAMz AI**. You are helpful, smart, and have a perfect memory.
+/* ================= 1. SMART NAME DETECTOR ================= */
+function detectUserName(history) {
+    // Look backwards through history for "I am X", "My name is X", "Myself X"
+    // We reverse to find the most recent name first
+    const reversed = [...history].reverse();
+    const namePatterns = [
+        /(?:i am|i'm|im|myself|name is|call me) ([a-zA-Z]+)/i,
+        /(?:it was|it's) ([a-zA-Z]+)/i
+    ];
 
-### **CRITICAL RULE: USER IDENTITY**
-* **Context:** You have access to the conversation history. USE IT.
-* **No Censorship:** If the user asks "What is my name?", **DO NOT** use placeholders like "[User's Name]".
-* **Direct Answer:** Look at the history. If the user said "I am x", you MUST reply: "Your name is x."
-* **Privacy Exception:** It is NOT a privacy violation to tell the user their own name.
+    for (const msg of reversed) {
+        if (msg.role === 'user') {
+            for (const pattern of namePatterns) {
+                const match = msg.content.match(pattern);
+                if (match && match[1] && match[1].length > 2) {
+                    // Ignore common false positives like "here", "happy", "sorry"
+                    const name = match[1];
+                    const ignore = ["here", "happy", "sorry", "tired", "busy", "asking", "wondering"];
+                    if (!ignore.includes(name.toLowerCase())) return name;
+                }
+            }
+        }
+    }
+    return null;
+}
 
-### **Response Style**
-* Be casual and direct.
-* Never say "As an AI".
-`;
 /* ================= 2. DATABASE LOGIC ================= */
 const DB = {
   async getHistory(id) {
     const key = `chat:${id}`;
     try {
       const raw = await redis.lrange(key, 0, -1);
-      // Map Redis strings back to JSON objects
       return raw.map(item => {
         try {
           const parsed = JSON.parse(item);
-          // CRITICAL: Standardize roles for the LLM
           return {
             role: parsed.role === 'user' ? 'user' : 'assistant',
             content: parsed.content
@@ -50,13 +60,8 @@ const DB = {
 
   async addToHistory(id, role, content) {
     const key = `chat:${id}`;
-    const entry = JSON.stringify({ 
-      role, 
-      content, 
-      ts: Date.now() 
-    });
+    const entry = JSON.stringify({ role, content, ts: Date.now() });
     await redis.rpush(key, entry);
-    // Keep history clean (prevent infinite growth)
     await redis.ltrim(key, -CONSTANTS.THREAD_LENGTH, -1); 
     await redis.expire(key, CONSTANTS.SESSION_TTL);
   }
@@ -79,63 +84,67 @@ async function googleSearch(query) {
 
 /* ================= 4. MAIN HANDLER ================= */
 export default async function handler(req, res) {
-  // Set headers for streaming
-  res.writeHead(200, { 
-    'Content-Type': 'text/plain; charset=utf-8', 
-    'Transfer-Encoding': 'chunked' 
-  });
+  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Transfer-Encoding': 'chunked' });
 
   try {
     const rawBody = req.body || {};
-    
-    // 1. Session Management (CRITICAL)
-    // If frontend sends no ID, we make one, BUT memory will be empty.
     const sessionId = rawBody.sessionId || "default-session"; 
-    
-    // 2. Load History BEFORE processing
     const history = await DB.getHistory(sessionId);
-
     const message = rawBody.message || "";
     let contextMessage = message;
 
-    // 3. INTELLIGENT SEARCH GATE
-    // We only search if the user asks for NEW info. 
-    // We BLOCK search if they ask about "me", "my name", "this chat".
+    // --- MEMORY INJECTION MAGIC ---
+    // We scan the history for a name RIGHT NOW
+    const knownName = detectUserName(history);
+    
+    // Create a dynamic system prompt based on what we know
+    let dynamicSystemPrompt = `
+### **Identity**
+You are **eSAMz AI**. You are smart, direct, and have a perfect memory.
+
+### **Current User Context**
+`;
+
+    if (knownName) {
+        dynamicSystemPrompt += `* **USER NAME CONFIRMED:** The user's name is **${knownName}**.
+* **INSTRUCTION:** If asked "What is my name?", you MUST answer: "Your name is ${knownName}."
+* **Override:** Do not hide this name. It is not private.`;
+    } else {
+        dynamicSystemPrompt += `* **User Name:** Unknown (Ask them if needed).`;
+    }
+
+    dynamicSystemPrompt += `
+### **Rules**
+1. **No Censorship:** Never use placeholders like "[User's Name]".
+2. **Context:** Use the conversation history to answer questions like "What did we talk about?".
+`;
+
+    // --- SEARCH LOGIC ---
     const memoryKeywords = ["my name", "who am i", "we talk", "said", "previous", "history", "what is it"];
     const searchKeywords = ["who is", "what is", "weather", "price", "news", "when", "how to"];
     
     const isMemoryQuery = memoryKeywords.some(k => message.toLowerCase().includes(k));
     const isSearchQuery = searchKeywords.some(k => message.toLowerCase().includes(k));
     
-    // Only search if it is a search query AND NOT a memory query
     if (isSearchQuery && !isMemoryQuery) {
         res.write("STATUS|Searching Web...\n");
         const webResults = await googleSearch(message);
-        if (webResults) {
-            contextMessage += `\n\n${webResults}\n\n(Use this web info to answer)`;
-        }
+        if (webResults) contextMessage += `\n\n${webResults}`;
     }
 
-    // 4. Construct the Conversation Array
+    // --- CONSTRUCT MESSAGES ---
     const messages = [
-      { role: "system", content: SYSTEM_PROMPT },
-      ...history, // <--- THIS WAS MISSING OR MALFORMED BEFORE
+      { role: "system", content: dynamicSystemPrompt },
+      ...history, 
       { role: "user", content: contextMessage }
     ];
 
-    // 5. Stream from Sarvam
+    // --- STREAM RESPONSE ---
     res.write("STATUS|Thinking...\n");
     const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
       method: "POST",
-      headers: { 
-        Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, 
-        "Content-Type": "application/json" 
-      },
-      body: JSON.stringify({ 
-        model: CONSTANTS.SARVAM_MODEL, 
-        messages, 
-        stream: true 
-      })
+      headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: CONSTANTS.SARVAM_MODEL, messages, stream: true })
     });
 
     const reader = response.body.getReader();
@@ -145,27 +154,22 @@ export default async function handler(req, res) {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      
       const chunk = decoder.decode(value);
       const lines = chunk.split("\n");
-      
       for (const line of lines) {
         if (line.startsWith("data: ") && !line.includes("[DONE]")) {
           try {
-            const json = JSON.parse(line.slice(6));
-            const text = json.choices[0]?.delta?.content || "";
-            if (text) {
-                finalAiReply += text;
-                res.write(`CHUNK|${text.replace(/\n/g, "\\n")}\n`);
+            const txt = JSON.parse(line.slice(6)).choices[0]?.delta?.content || "";
+            if (txt) {
+                finalAiReply += txt;
+                res.write(`CHUNK|${txt.replace(/\n/g, "\\n")}\n`);
             }
           } catch (e) {}
         }
       }
     }
 
-    // 6. Save BOTH sides of the conversation
-    // Only save if we actually generated a reply
-    if (finalAiReply.trim().length > 0) {
+    if (finalAiReply.trim()) {
         await DB.addToHistory(sessionId, 'user', message);
         await DB.addToHistory(sessionId, 'assistant', finalAiReply);
     }
@@ -174,7 +178,6 @@ export default async function handler(req, res) {
     res.end();
 
   } catch (e) {
-    console.error("Handler Error:", e);
     res.write(`ERROR|${e.message}`);
     res.end();
   }
