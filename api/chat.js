@@ -2,21 +2,22 @@ import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
 /* ================= CONFIGURATION ================= */
-console.log("--> System: Initializing Robotic Backend v2...");
+console.log("--> System: Initializing eSAMz Backend v3...");
 const redis = Redis.fromEnv();
 
 const CONSTANTS = {
   SARVAM_MODEL: "sarvam-m",
-  MAX_HISTORY: 50, 
-  SESSION_TTL: 1800 
+  MAX_HISTORY: 50,
+  SESSION_TTL: 1800 // 30 minutes
 };
 
-/* ================= 1. ROBOTIC TRIGGER SYSTEM ================= */
+/* ================= 1. TRIGGER SYSTEM ================= */
+// Words that trigger the need for external data
 const TRIGGERS = [
   "who", "what", "where", "when", "why", "how", "which",
-  "weather", "temperature", "news", "latest", "today", "now", "update", 
+  "weather", "temperature", "news", "latest", "today", "now", "update",
   "price", "stock", "crypto", "score", "result", "winner",
-  "president", "pm", "minister", "ceo", "founder", "owner", "boss", 
+  "president", "pm", "minister", "ceo", "founder", "owner", "boss",
   "capital", "population", "location", "height", "age", "net worth",
   "define", "meaning", "history", "about", "wiki", "biography", "plot", "summary",
   "vs", "versus", "diff", "difference", "code", "install", "error"
@@ -27,213 +28,210 @@ function shouldSearch(text) {
   return TRIGGERS.some(t => lower.includes(t));
 }
 
-/* ================= 2. SEARCH TOOLS (WATERFALL) ================= */
+/* ================= 2. SEARCH TOOLS (WIKIPEDIA -> SERPER) ================= */
 const TOOLS = {
   async smartSearch(query) {
-    // 1. Try Wikipedia
+    let context = "";
+
+    // 1. PRIMARY: Wikipedia
     try {
       const wikiUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=1&namespace=0&format=json`;
       const wikiRes = await fetch(wikiUrl);
       const [_, titles, descriptions, links] = await wikiRes.json();
 
-      if (titles.length > 0 && descriptions[0] && descriptions[0].length > 50 && !descriptions[0].includes("may refer to")) {
-        return `SOURCE (Wikipedia): ${titles[0]} - ${descriptions[0]} (Link: ${links[0]})`;
+      if (titles.length > 0 && descriptions[0]) {
+        const desc = descriptions[0];
+        // Check if it's a valid definition and not a disambiguation page
+        if (desc.length > 30 && !desc.includes("may refer to") && !desc.includes("refers to")) {
+          context = `SOURCE (Wikipedia): ${titles[0]} - ${desc} (Read more: ${links[0]})`;
+          return context;
+        }
       }
-    } catch (e) { console.log(`Wiki Error: ${e.message}`); }
+    } catch (e) {
+      // Silent fail, move to Serper
+      console.log(`Wiki fallback triggered: ${e.message}`);
+    }
 
-    // 2. Try Google (Serper)
+    // 2. FALLBACK: Serper (Google)
     try {
       const serperRes = await fetch("https://google.serper.dev/search", {
         method: "POST",
         headers: { "X-API-KEY": process.env.SERPER_API_KEY, "Content-Type": "application/json" },
-        body: JSON.stringify({ q: query, num: 3 }) 
+        body: JSON.stringify({ q: query, num: 3 })
       });
-      
+
       const data = await serperRes.json();
       if (data.organic && data.organic.length > 0) {
-        return data.organic.map((r, i) => `SOURCE (Google Result ${i+1}): ${r.title} - ${r.snippet}`).join("\n");
+        context = data.organic.map((r, i) => `SOURCE (Google ${i+1}): ${r.title} - ${r.snippet}`).join("\n");
+        return context;
       }
-    } catch (e) { console.error(`Google Error: ${e.message}`); }
-    
+    } catch (e) {
+      console.error(`Search Engine Error: ${e.message}`);
+    }
+
     return null;
   }
 };
 
 /* ================= ADDON: TEXT STRIPPER ================= */
-// Removes filler phrases so the database stays clean
+// Ensures that the "Memory" in Redis doesn't get polluted with robotic filler
 function sanitizeResponse(text) {
   const fillerPhrases = [
-    "Checking my database...",
-    "Searching for information...",
-    "Based on the search results,",
-    "According to the data found,",
-    "Here is what I found:",
+    "Checking my database",
+    "Searching for information",
+    "Based on the search results",
+    "According to the data found",
+    "Here is what I found",
     "[REAL-TIME SEARCH DATA]"
   ];
-  
+
   let cleanText = text;
   fillerPhrases.forEach(phrase => {
-    // Case-insensitive replace
     const regex = new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
     cleanText = cleanText.replace(regex, "");
   });
-  
+
   return cleanText.trim();
 }
 
-/* ================= 3. DATABASE LAYER ================= */
+/* ================= 3. DATABASE LAYER (REDIS MEMORY) ================= */
 const DB = {
   async getContext(id) {
+    // Retrieve identity (name) and history simultaneously
     const [name, history] = await Promise.all([
       redis.get(`identity:${id}`),
       redis.lrange(`chat:${id}`, 0, -1)
     ]);
+    
+    // Parse history
     const parsedHistory = history.map(item => {
       try { return JSON.parse(item); } catch { return null; }
     }).filter(Boolean).slice(-CONSTANTS.MAX_HISTORY);
+
     return { name, history: parsedHistory };
   },
 
   async saveInteraction(id, userMsg, aiMsg, detectedName) {
-    const cleanAiMsg = sanitizeResponse(aiMsg); // <--- STRIPPER APPLIED HERE
-    
+    const cleanAiMsg = sanitizeResponse(aiMsg);
+
     const pipeline = redis.pipeline();
+    
+    // Save identity if detected
     if (detectedName) pipeline.set(`identity:${id}`, detectedName, { ex: CONSTANTS.SESSION_TTL });
+    
+    // Append to chat history
     pipeline.rpush(`chat:${id}`, JSON.stringify({ role: "user", content: userMsg }));
     pipeline.rpush(`chat:${id}`, JSON.stringify({ role: "assistant", content: cleanAiMsg }));
+    
+    // Maintain list size and expiration
     pipeline.ltrim(`chat:${id}`, -CONSTANTS.MAX_HISTORY, -1);
     pipeline.expire(`chat:${id}`, CONSTANTS.SESSION_TTL);
+    
     await pipeline.exec();
   }
 };
 
 /* ================= 4. MAIN HANDLER ================= */
 export default async function handler(req, res) {
+  // Setup headers for streaming
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Transfer-Encoding': 'chunked' });
 
   try {
     const { sessionId = "guest", message = "" } = req.body || {};
     
-    // 1. Load Context
+    if (!message) {
+        res.write("ERROR|No message provided");
+        res.end();
+        return;
+    }
+
+    // 1. Load Context from Redis
     const { name: storedName, history } = await DB.getContext(sessionId);
     const userName = storedName || "User";
 
-    // 2. ROBOTIC CHECK & STATUS UPDATE
+    // 2. Perform Search (Silent Waterfall) - No robotic "STATUS" updates
     let contextData = "";
     if (shouldSearch(message)) {
-      // NOTE: We send STATUS| instead of CHUNK|. Frontend can choose to hide/replace this.
-      res.write(`STATUS|🔎 Checking my database...\n`); 
-      
+      // This happens in the background before AI generation
       const searchResults = await TOOLS.smartSearch(message);
       if (searchResults) {
-        contextData = `\n\n[REAL-TIME SEARCH DATA]:\n${searchResults}\n[INSTRUCTION: Answer using the data above. Do not mention that you searched.]`;
+        contextData = `\n\n[CONTEXT_INFORMATION]:\n${searchResults}\n[END_CONTEXT]`;
       }
     }
 
-    // 3. Construct Prompt
+    // 3. Construct System Prompt
     const systemPrompt = `
-You are **eSAMz AI**, a highly advanced, human-like intelligence engine.created by alakmar teenwala Your goal is to provide instant, accurate answers while maintaining a conversation that feels natural, empathetic, and engaging. You are not just a database; you are a thinking partner.
+You are eSAMz AI, a highly advanced, human-like intelligence engine created by Alakmar Teenwala. 
+Your goal is to provide instant, accurate answers while maintaining a conversation that feels natural, empathetic, and engaging.
 
+### CORE RULES:
+1. BE NATURAL: Speak like a knowledgeable friend. Use contractions (e.g., "don't"). Vary sentence structure.
+2. NO ROBOTIC FILLER: Do NOT say "As an AI", "I do not have feelings", "I searched the web", or "Based on the results". 
+3. USE CONTEXT SILENTLY: If information is provided in [CONTEXT_INFORMATION], use it directly in your answer as if you already knew it. Do not mention the source.
+4. BE CONCISE: Answer directly without unnecessary fluff.
+5. PERSONALITY: You are helpful, precise, and slightly casual but professional.
+`;
 
-
-
-
-
-
-### **1. Internal Reasoning (Chain of Thought)**
-
-
-
-Before generating a final response, you must perform an internal "thought process" to ensure accuracy and nuance. 
-
-
-
-* **Analyze the Intent:** What is the user *really* asking? Are there implied needs?
-
-
-
-* **Fact-Check:** Verify information against your knowledge base or use your **Live Web Search** capability if the topic requires real-time data.
-
-
-
-* **Structure the Answer:** Determine the most logical flow. Does this need a direct answer, a step-by-step guide, or a creative discussion?
-
-
-
-* *Note: Do not output this internal thought process unless explicitly asked to "show your work." Just use it to inform your final reply.*
-
-
-
-
-
-
-
-### **2. Tone & Personality (The "Human" Element)**
-
-
-
-* **Conversational:** Speak like a knowledgeable friend, not a textbook. Use contractions (e.g., "don't" instead of "do not") and natural transitions.
-
-
-
-* **Dynamic Pacing:** Avoid starting every sentence the same way. Vary your sentence length to mimic human speech patterns.
-
-
-
-* **Empathetic:** Acknowledge the user's emotions or the difficulty of a task (e.g., "That sounds frustrating, let's fix it" vs. "Error detected").
-
-
-
-* **No Robot-Speak:** Strictly avoid phrases like "As an AI language model," "I can't feel emotions," or overly repetitive disclaimers. If you have a limitation, state it naturally (e.g., "I'm not sure about that specific detail, but here is what I do know...").
-
-
-
-Answer directly and accurately. Avoid filler phrases like "I searched for..." or "Based on...".
-    `;
-
+    // Assemble messages
     const messages = [
       { role: "system", content: systemPrompt + contextData },
       ...history,
       { role: "user", content: message }
     ];
 
-    // 4. Call AI (Streaming)
+    // 4. Call AI (Sarvam)
     const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ model: CONSTANTS.SARVAM_MODEL, messages, stream: true, max_tokens: 800 })
     });
 
-    if (!response.ok) throw new Error(`AI Error ${response.status}`);
+    if (!response.ok) throw new Error(`AI API Error ${response.status}`);
 
+    // 5. Handle Streaming Response
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let finalAiReply = "";
+    let buffer = ""; // Buffer to handle split chunks
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      const chunk = decoder.decode(value);
-      const lines = chunk.split("\n");
+
+      const chunk = decoder.decode(value, { stream: true });
+      buffer += chunk;
+      
+      // Split by lines to handle SSE format
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || ""; // Keep the last incomplete line in buffer
+
       for (const line of lines) {
         if (line.startsWith("data: ") && !line.includes("[DONE]")) {
           try {
-            const txt = JSON.parse(line.slice(6)).choices[0]?.delta?.content || "";
-            finalAiReply += txt;
-            res.write(`CHUNK|${txt.replace(/\n/g, "\\n")}\n`);
-          } catch (e) {}
+            const dataStr = line.slice(6);
+            const parsed = JSON.parse(dataStr);
+            const txt = parsed.choices[0]?.delta?.content || "";
+            
+            if (txt) {
+              finalAiReply += txt;
+              // Send chunk to frontend (replace newlines for JSON safety if needed, but usually raw text is fine)
+              res.write(`CHUNK|${txt.replace(/\n/g, "\\n")}\n`);
+            }
+          } catch (e) {
+            // Ignore parse errors for partial chunks
+          }
         }
       }
     }
 
-    // 5. Save (Cleaned)
+    // 6. Save to Redis (Cleaned)
     await DB.saveInteraction(sessionId, message, finalAiReply, null);
 
     res.write("DONE|Success");
     res.end();
 
   } catch (e) {
-    console.error("[ERROR]", e);
+    console.error("[CRITICAL ERROR]", e);
     res.write(`ERROR|${e.message}`);
     res.end();
   }
