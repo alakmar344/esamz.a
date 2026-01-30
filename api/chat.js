@@ -254,9 +254,17 @@ export default async function handler(req, res) {
         res.write(`STATUS|Analyzed ${files.length} file(s)...\n`);
     }
 
-    const triggers = ["who", "what", "news", "price", "weather", "search", "when", "latest"];
-    const needsSearch = triggers.some(t => message.toLowerCase().includes(t)) && !files.length;
-    
+    // 3. Attachments & Search Logic - FIXED
+const triggers = ["who", "what", "news", "price", "weather", "search", "when", "latest"];
+
+// ONLY search if history doesn't already have the answer
+let needsSearch = triggers.some(t => message.toLowerCase().includes(t)) && !files.length;
+
+// CRITICAL: If the user asks about the conversation itself or their name, SKIP search
+const historyTriggers = ["my name", "we talked", "who am i", "our conversation"];
+if (historyTriggers.some(ht => message.toLowerCase().includes(ht))) {
+    needsSearch = false; 
+}
     if (needsSearch) {
         res.write("STATUS|Searching Web...\n");
         const sRes = await googleSearch(message);
