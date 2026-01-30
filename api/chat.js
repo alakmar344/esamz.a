@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
 /* ================= CONFIGURATION ================= */
-console.log("--> System: Initializing eSAMz Backend v7 (Diagnostics)...");
+console.log("--> System: Initializing eSAMz Backend v8 (Self-Healing)...");
 const redis = Redis.fromEnv();
 
 const CONSTANTS = {
@@ -93,7 +93,7 @@ function sanitizeResponse(text) {
   return cleanText.trim();
 }
 
-/* ================= 3. DATABASE LAYER (WITH LOGS) ================= */
+/* ================= 3. DATABASE LAYER (CORRUPTION FIX) ================= */
 const DB = {
   async getContext(id) {
     const [name, rawHistory] = await Promise.all([
@@ -101,30 +101,46 @@ const DB = {
       redis.lrange(`chat:${id}`, 0, -1)
     ]);
     
-    // DIAGNOSTIC LOG: Check raw data
     console.log(`[REDIS DEBUG] SessionID: ${id}`);
     console.log(`[REDIS DEBUG] Raw History Count: ${rawHistory.length}`);
     
+    let corruptionDetected = false;
+
     const parsedHistory = rawHistory.map(item => {
-      try { return JSON.parse(item); } catch (e) {
-        console.log(`[REDIS ERROR] Failed to parse history item: ${item}`);
+      // Detect the specific corruption found in your logs
+      if (item === '[object Object]') {
+        console.warn(`[CRITICAL] Corruption detected in session ${id}. Found '[object Object]'.`);
+        corruptionDetected = true;
+        return null;
+      }
+
+      try { 
+        return JSON.parse(item); 
+      } catch (e) {
+        console.log(`[REDIS ERROR] Failed to parse: ${item}`);
         return null; 
       }
     }).filter(Boolean).slice(-CONSTANTS.MAX_HISTORY);
 
-    // DIAGNOSTIC LOG: Check parsed data
     console.log(`[REDIS DEBUG] Parsed History Count: ${parsedHistory.length}`);
-    if(parsedHistory.length > 0) {
-        console.log(`[REDIS DEBUG] Last User Msg: ${parsedHistory[parsedHistory.length-1]?.content}`);
+
+    // Self-Healing Logic: If we found corruption, wipe the history so the user can start fresh
+    if (corruptionDetected) {
+      console.log(`[HEALING] Wiping corrupted history for session ${id}...`);
+      await redis.del(`chat:${id}`);
+      return { name, history: [] };
     }
 
     return { name, history: parsedHistory };
   },
 
   async saveInteraction(id, userMsg, aiMsg, detectedName) {
+    // Ensure we are saving STRINGS, not objects
+    if (typeof userMsg !== 'string') userMsg = String(userMsg);
+    if (typeof aiMsg !== 'string') aiMsg = String(aiMsg);
+
     const cleanAiMsg = sanitizeResponse(aiMsg);
     
-    // DIAGNOSTIC LOG: Verify save
     console.log(`[REDIS SAVE] Saving to session ${id}. User: ${userMsg.substring(0, 20)}... AI: ${cleanAiMsg.substring(0, 20)}...`);
 
     const pipeline = redis.pipeline();
