@@ -8,10 +8,10 @@ import { Redis } from "@upstash/redis";
 const redis = Redis.fromEnv();
 
 const CONSTANTS = {
-  SARVAM_MODEL: "sarvam-m", // Updated to latest efficient model
-  MAX_TOKENS: 30096,              // Optimized for chat
+  SARVAM_MODEL: "sarvam-m", 
+  MAX_TOKENS: 30096,              
   THREAD_LENGTH: 100,
-  SESSION_TTL: 1800,
+  SESSION_TTL: 1800,            // Fixed: 7 Days in seconds (60 * 60 * 24 * 7)
   RATE_LIMIT: 30, 
   RATE_TTL: 60,
   GLOBAL_INTERVAL: 1100, 
@@ -27,18 +27,7 @@ You are **eSAMz AI**, a highly advanced, human-like intelligence engine. Your go
 ### **1. Internal Reasoning (The "Silent" Step)**
 To ensure accuracy, you MUST think before you speak.
 * **RULE:** Wrap ALL internal analysis, fact-checking, and planning inside **<thinking>** and **</thinking>** tags.
-* **Example:** <thinking>User asked X, I should check Y...</thinking>Here is the answer...
-* **Output:** The content inside these tags will be hidden from the user programmatically. You must generate them to think effectively.
-
-### **2. Tone & Personality**
-* **Conversational:** Speak like a knowledgeable friend. Use contractions ("don't", "can't").
-* **Dynamic:** Vary sentence structure. Be cool, modern, and helpful.
-* **No Robot-Speak:** Never say "As an AI". If you don't know, say "I'm not sure about that detail."
-
-### **3. Response Rules**
-* **Direct Answers:** Don't waffle. Start with the solution.
-* **Formatting:** Use Markdown for code/headers.
-* **Context:** You have memory of the last 20 messages. Use it.
+* **Output:** The content inside these tags will be hidden from the user programmatically.
 `;
 
 /* ================= 3. UTILITIES ================= */
@@ -67,7 +56,7 @@ async function acquireSarvamSlot(res) {
 
 function validateSecurity(req) {
   const origin = req.headers.origin;
-  const allowed = ["https://esamz.site", "https://www.esamz.site",];
+  const allowed = ["https://esamz.site", "https://www.esamz.site"];
   
   if (origin && (origin.includes("localhost") || allowed.includes(origin))) return true;
   try {
@@ -95,24 +84,25 @@ const DB = {
   async getHistory(id) {
     const key = `chat:${id}`;
     try {
-      // DEBUG LOG - server logs check kar
-      console.log(`🔍 LOADING HISTORY for key: ${key}`);
-      
       const raw = await redis.lrange(key, 0, -1);
-      console.log(`📜 RAW HISTORY (${raw.length} items):`, raw.slice(-3)); // last 3 dekh
       
       const history = raw
         .map(i => { 
-          try { return JSON.parse(i); } 
+          try { 
+            // FIX: Ensure 'i' is actually a string before parsing or slicing
+            if (typeof i !== 'string') return null;
+            return JSON.parse(i); 
+          } 
           catch(e) { 
-            console.error(`❌ BAD JSON in ${key}:`, i.substring(0,100));
+            // FIX: Only call substring if i is a string to prevent "substring is not a function"
+            const snippet = (typeof i === 'string') ? i.substring(0, 50) : "Non-string data";
+            console.error(`❌ BAD JSON in ${key}:`, snippet);
             return null; 
           } 
         })
         .filter(x => x && x.role && x.content)
-        .slice(-CONSTANTS.THREAD_LENGTH * 2); // double safety
+        .slice(-CONSTANTS.THREAD_LENGTH * 2); 
         
-      console.log(`✅ CLEAN HISTORY: ${history.length} messages`);
       return history;
     } catch(e) {
       console.error(`💥 REDIS ERROR ${key}:`, e);
@@ -125,18 +115,16 @@ const DB = {
     try {
       const storedContent = content.length > 3000 ? content.substring(0, 3000) + " [truncated]" : content;
       const entry = JSON.stringify({ 
-        role: role === 'user' ? 'user' : 'assistant',  // force correct role
+        role: role === 'user' ? 'user' : 'assistant', 
         content: storedContent, 
         ts: Date.now() 
       });
       
-      console.log(`💾 SAVING to ${key}: ${role} (${storedContent.substring(0,50)}...)`);
-      
       await redis.rpush(key, entry);
-      await redis.ltrim(key, -CONSTANTS.THREAD_LENGTH * 2, -1); // double length temp
-      await redis.expire(key, 1800); // 7 DAYS not 30 min! 🔥
+      await redis.ltrim(key, -CONSTANTS.THREAD_LENGTH * 2, -1); 
+      await redis.expire(key, CONSTANTS.SESSION_TTL); // Fixed to 7 Days
       
-      console.log(`✅ SAVED ${key}, TTL set`);
+      console.log(`✅ SAVED ${key}`);
     } catch(e) {
       console.error(`💥 SAVE FAILED ${key}:`, e);
     }
@@ -227,13 +215,11 @@ export default async function handler(req, res) {
   try {
     const rawBody = req.body || {};
     
-    // 1. Security & Limits
     if (!validateSecurity(req)) { res.write(`ERROR|Unauthorized.`); return res.end(); }
     const userKey = getUserIdentifier(req, rawBody);
     const limit = await checkRateLimit(userKey);
     if (!limit.allowed) { res.write(`QUEUE|${limit.ttl}`); return res.end(); }
 
-    // 2. Prepare Context
     let message = rawBody.message || "";
     const files = Array.isArray(rawBody.files) ? rawBody.files : (rawBody.file ? [rawBody.file] : []);
     const sessionId = rawBody.sessionId || crypto.randomBytes(12).toString("hex");
@@ -245,7 +231,6 @@ export default async function handler(req, res) {
     const history = await DB.getHistory(sessionId);
     let fullMessage = message;
 
-    // 3. Attachments & Search
     if (files.length > 0) {
         files.forEach(f => { fullMessage += formatFileContext(f); });
         res.write(`STATUS|Analyzed ${files.length} file(s)...\n`);
@@ -260,15 +245,14 @@ export default async function handler(req, res) {
         if (sRes) fullMessage += `\n\n${sRes}\n\n(Use these search results to answer accurately.)`;
     }
 
-    // 4. Chat Execution
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
       ...history.map(m => ({ role: m.role === 'ai' ? 'assistant' : m.role, content: m.content })),
       { role: "user", content: fullMessage }
     ];
 
-    let cleanReply = ""; // Final clean text to save to DB
-    let streamBuffer = ""; // Buffer for the filter logic
+    let cleanReply = ""; 
+    let streamBuffer = ""; 
 
     res.write("STATUS|Thinking...\n");
     
@@ -277,38 +261,24 @@ export default async function handler(req, res) {
       onChunk: (text) => {
         streamBuffer += text;
 
-        // --- THE THOUGHT SUPPRESSOR LOGIC ---
-        
-        // 1. If buffer has a complete <thinking>...</thinking> block, remove it.
         if (streamBuffer.includes("</thinking>")) {
            streamBuffer = streamBuffer.replace(/<thinking>[\s\S]*?<\/thinking>/g, "");
         }
 
-        // 2. Determine if we are currently "inside" an open tag
         const openTagIndex = streamBuffer.indexOf("<thinking>");
         
         if (openTagIndex !== -1) {
-            // We are thinking. HOLD the buffer. Do not output anything.
-            // Safety: If thought is too long (>2000 chars), force flush to prevent hang.
-            if (streamBuffer.length > 2000) {
-               streamBuffer = ""; // Just discard the stuck thought
-            }
+            if (streamBuffer.length > 2000) streamBuffer = ""; 
         } else {
-            // We are NOT inside a tag.
-            // But wait, is the end of the buffer a partial tag? (e.g. "<thi")
-            // Check last 10 chars for a "<"
             const lastLt = streamBuffer.lastIndexOf("<");
-            
             if (lastLt !== -1 && streamBuffer.length - lastLt < 12) {
-                // Potential start of tag. Output everything BEFORE the "<" and hold the rest.
                 const safePart = streamBuffer.slice(0, lastLt);
                 if (safePart) {
                     cleanReply += safePart;
                     res.write(`CHUNK|${safePart.replace(/\n/g, "\\n")}\n`);
                 }
-                streamBuffer = streamBuffer.slice(lastLt); // Keep the "<..." in buffer
+                streamBuffer = streamBuffer.slice(lastLt);
             } else {
-                // Safe to output everything
                 if (streamBuffer.length > 0) {
                     cleanReply += streamBuffer;
                     res.write(`CHUNK|${streamBuffer.replace(/\n/g, "\\n")}\n`);
@@ -319,8 +289,6 @@ export default async function handler(req, res) {
       }
     });
 
-    // 5. Save History & Cleanup
-    // We only save the CLEAN reply (without thinking tags) to history
     const historyMsg = files.length ? `${message} [Attached: ${files.length} Files]` : message;
     await DB.addToHistory(sessionId, 'user', historyMsg);
     
