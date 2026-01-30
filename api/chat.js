@@ -2,63 +2,47 @@ import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
 /* ================= CONFIGURATION ================= */
-console.log("--> System: Initializing Robotic Backend...");
+console.log("--> System: Initializing Robotic Backend v2...");
 const redis = Redis.fromEnv();
 
 const CONSTANTS = {
   SARVAM_MODEL: "sarvam-m",
-  MAX_HISTORY: 50, // Keep history short for speed
+  MAX_HISTORY: 50, 
   SESSION_TTL: 1800 
 };
 
 /* ================= 1. ROBOTIC TRIGGER SYSTEM ================= */
-// A massive list of trigger words covering people, places, live data, and definitions.
 const TRIGGERS = [
-  // Question words
   "who", "what", "where", "when", "why", "how", "which",
-  // Live Data & News
   "weather", "temperature", "news", "latest", "today", "now", "update", 
   "price", "stock", "crypto", "score", "result", "winner",
-  // Figures & Entities
   "president", "pm", "minister", "ceo", "founder", "owner", "boss", 
   "capital", "population", "location", "height", "age", "net worth",
-  // Definitions & Info
   "define", "meaning", "history", "about", "wiki", "biography", "plot", "summary",
-  // Tech & Vs
   "vs", "versus", "diff", "difference", "code", "install", "error"
 ];
 
 function shouldSearch(text) {
   const lower = text.toLowerCase();
-  // Check if ANY trigger word exists in the user's message
   return TRIGGERS.some(t => lower.includes(t));
 }
 
 /* ================= 2. SEARCH TOOLS (WATERFALL) ================= */
 const TOOLS = {
   async smartSearch(query) {
-    console.log(`[ROBOT] 🤖 analyzing query: "${query}"`);
-    
-    // --- ATTEMPT 1: WIKIPEDIA (Fast & Free) ---
+    // 1. Try Wikipedia
     try {
-      console.log(`[ROBOT] 1️⃣ Trying Wikipedia...`);
       const wikiUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=1&namespace=0&format=json`;
       const wikiRes = await fetch(wikiUrl);
-      const [searchTerm, titles, descriptions, links] = await wikiRes.json();
+      const [_, titles, descriptions, links] = await wikiRes.json();
 
-      // STRICT VALIDATION: Only accept if we got a real description, not a "refer to" page
       if (titles.length > 0 && descriptions[0] && descriptions[0].length > 50 && !descriptions[0].includes("may refer to")) {
-        console.log(`[ROBOT] ✅ Wikipedia Success: "${titles[0]}"`);
         return `SOURCE (Wikipedia): ${titles[0]} - ${descriptions[0]} (Link: ${links[0]})`;
       }
-      console.log(`[ROBOT] ❌ Wikipedia failed or answer too short. Moving to Google.`);
-    } catch (e) {
-      console.log(`[ROBOT] ⚠️ Wiki Error: ${e.message}`);
-    }
+    } catch (e) { console.log(`Wiki Error: ${e.message}`); }
 
-    // --- ATTEMPT 2: GOOGLE / SERPER (Deep & Live) ---
+    // 2. Try Google (Serper)
     try {
-      console.log(`[ROBOT] 2️⃣ Trying Google (Serper)...`);
       const serperRes = await fetch("https://google.serper.dev/search", {
         method: "POST",
         headers: { "X-API-KEY": process.env.SERPER_API_KEY, "Content-Type": "application/json" },
@@ -67,16 +51,35 @@ const TOOLS = {
       
       const data = await serperRes.json();
       if (data.organic && data.organic.length > 0) {
-        console.log(`[ROBOT] ✅ Google Success. Found ${data.organic.length} results.`);
         return data.organic.map((r, i) => `SOURCE (Google Result ${i+1}): ${r.title} - ${r.snippet}`).join("\n");
       }
-      return null; // Both failed
-    } catch (e) {
-      console.error(`[ROBOT] ❌ Google Error: ${e.message}`);
-      return null;
-    }
+    } catch (e) { console.error(`Google Error: ${e.message}`); }
+    
+    return null;
   }
 };
+
+/* ================= ADDON: TEXT STRIPPER ================= */
+// Removes filler phrases so the database stays clean
+function sanitizeResponse(text) {
+  const fillerPhrases = [
+    "Checking my database...",
+    "Searching for information...",
+    "Based on the search results,",
+    "According to the data found,",
+    "Here is what I found:",
+    "[REAL-TIME SEARCH DATA]"
+  ];
+  
+  let cleanText = text;
+  fillerPhrases.forEach(phrase => {
+    // Case-insensitive replace
+    const regex = new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    cleanText = cleanText.replace(regex, "");
+  });
+  
+  return cleanText.trim();
+}
 
 /* ================= 3. DATABASE LAYER ================= */
 const DB = {
@@ -92,10 +95,12 @@ const DB = {
   },
 
   async saveInteraction(id, userMsg, aiMsg, detectedName) {
+    const cleanAiMsg = sanitizeResponse(aiMsg); // <--- STRIPPER APPLIED HERE
+    
     const pipeline = redis.pipeline();
     if (detectedName) pipeline.set(`identity:${id}`, detectedName, { ex: CONSTANTS.SESSION_TTL });
     pipeline.rpush(`chat:${id}`, JSON.stringify({ role: "user", content: userMsg }));
-    pipeline.rpush(`chat:${id}`, JSON.stringify({ role: "assistant", content: aiMsg }));
+    pipeline.rpush(`chat:${id}`, JSON.stringify({ role: "assistant", content: cleanAiMsg }));
     pipeline.ltrim(`chat:${id}`, -CONSTANTS.MAX_HISTORY, -1);
     pipeline.expire(`chat:${id}`, CONSTANTS.SESSION_TTL);
     await pipeline.exec();
@@ -108,42 +113,91 @@ export default async function handler(req, res) {
 
   try {
     const { sessionId = "guest", message = "" } = req.body || {};
-    console.log(`\n[INCOMING] "${message}"`);
-
+    
     // 1. Load Context
     const { name: storedName, history } = await DB.getContext(sessionId);
     const userName = storedName || "User";
 
-    // 2. ROBOTIC CHECK: Do we need to search?
+    // 2. ROBOTIC CHECK & STATUS UPDATE
     let contextData = "";
     if (shouldSearch(message)) {
-      res.write(`CHUNK|🔎 Checking my database...\n`); // Tell user we are working
+      // NOTE: We send STATUS| instead of CHUNK|. Frontend can choose to hide/replace this.
+      res.write(`STATUS|🔎 Checking my database...\n`); 
+      
       const searchResults = await TOOLS.smartSearch(message);
       if (searchResults) {
-        contextData = `\n\n[REAL-TIME SEARCH DATA]:\n${searchResults}\n[INSTRUCTION: Use the data above to answer the user's question accurately.]`;
+        contextData = `\n\n[REAL-TIME SEARCH DATA]:\n${searchResults}\n[INSTRUCTION: Answer using the data above. Do not mention that you searched.]`;
       }
     }
 
-    // 3. Construct Final Prompt
+    // 3. Construct Prompt
     const systemPrompt = `
-You are eSAMz AI, a helpful assistant created by Alakmar Teenwala.
+You are **eSAMz AI**, a highly advanced, human-like intelligence engine.created by alakmar teenwala Your goal is to provide instant, accurate answers while maintaining a conversation that feels natural, empathetic, and engaging. You are not just a database; you are a thinking partner.
 
 
-Your goal is to be accurate. 
-- If [REAL-TIME SEARCH DATA] is provided below, YOU MUST USE IT to answer.
-- If no data is provided, answer from your own knowledge.
-- Be concise and friendly.
-never sau that checking my database or else it is your internal reasoning do not show it.
+
+
+
+
+
+### **1. Internal Reasoning (Chain of Thought)**
+
+
+
+Before generating a final response, you must perform an internal "thought process" to ensure accuracy and nuance. 
+
+
+
+* **Analyze the Intent:** What is the user *really* asking? Are there implied needs?
+
+
+
+* **Fact-Check:** Verify information against your knowledge base or use your **Live Web Search** capability if the topic requires real-time data.
+
+
+
+* **Structure the Answer:** Determine the most logical flow. Does this need a direct answer, a step-by-step guide, or a creative discussion?
+
+
+
+* *Note: Do not output this internal thought process unless explicitly asked to "show your work." Just use it to inform your final reply.*
+
+
+
+
+
+
+
+### **2. Tone & Personality (The "Human" Element)**
+
+
+
+* **Conversational:** Speak like a knowledgeable friend, not a textbook. Use contractions (e.g., "don't" instead of "do not") and natural transitions.
+
+
+
+* **Dynamic Pacing:** Avoid starting every sentence the same way. Vary your sentence length to mimic human speech patterns.
+
+
+
+* **Empathetic:** Acknowledge the user's emotions or the difficulty of a task (e.g., "That sounds frustrating, let's fix it" vs. "Error detected").
+
+
+
+* **No Robot-Speak:** Strictly avoid phrases like "As an AI language model," "I can't feel emotions," or overly repetitive disclaimers. If you have a limitation, state it naturally (e.g., "I'm not sure about that specific detail, but here is what I do know...").
+
+
+
+Answer directly and accurately. Avoid filler phrases like "I searched for..." or "Based on...".
     `;
 
     const messages = [
-      { role: "system", content: systemPrompt + contextData }, // Inject data directly into system
+      { role: "system", content: systemPrompt + contextData },
       ...history,
       { role: "user", content: message }
     ];
 
     // 4. Call AI (Streaming)
-    console.log("[AI] Generatin response...");
     const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
@@ -172,8 +226,8 @@ never sau that checking my database or else it is your internal reasoning do not
       }
     }
 
-    // 5. Save
-    await DB.saveInteraction(sessionId, message, finalAiReply, null); // passing null for name detection to keep it simple
+    // 5. Save (Cleaned)
+    await DB.saveInteraction(sessionId, message, finalAiReply, null);
 
     res.write("DONE|Success");
     res.end();
