@@ -10,7 +10,7 @@ const redis = Redis.fromEnv();
 const CONSTANTS = {
   SARVAM_MODEL: "sarvam-m", // Updated to latest efficient model
   MAX_TOKENS: 30096,              // Optimized for chat
-  THREAD_LENGTH: 40,
+  THREAD_LENGTH: 100,
   SESSION_TTL: 1800,
   RATE_LIMIT: 30, 
   RATE_TTL: 60,
@@ -67,7 +67,7 @@ async function acquireSarvamSlot(res) {
 
 function validateSecurity(req) {
   const origin = req.headers.origin;
-  const allowed = ["https://esamz.site", "https://www.esamz.site", "https://esamz-ai.vercel.app"];
+  const allowed = ["https://esamz.site", "https://www.esamz.site",];
   
   if (origin && (origin.includes("localhost") || allowed.includes(origin))) return true;
   try {
@@ -95,19 +95,51 @@ const DB = {
   async getHistory(id) {
     const key = `chat:${id}`;
     try {
+      // DEBUG LOG - server logs check kar
+      console.log(`🔍 LOADING HISTORY for key: ${key}`);
+      
       const raw = await redis.lrange(key, 0, -1);
-      return raw.map(i => { try { return JSON.parse(i); } catch(e){ return null; } }).filter(x=>x);
-    } catch(e) { return []; }
+      console.log(`📜 RAW HISTORY (${raw.length} items):`, raw.slice(-3)); // last 3 dekh
+      
+      const history = raw
+        .map(i => { 
+          try { return JSON.parse(i); } 
+          catch(e) { 
+            console.error(`❌ BAD JSON in ${key}:`, i.substring(0,100));
+            return null; 
+          } 
+        })
+        .filter(x => x && x.role && x.content)
+        .slice(-CONSTANTS.THREAD_LENGTH * 2); // double safety
+        
+      console.log(`✅ CLEAN HISTORY: ${history.length} messages`);
+      return history;
+    } catch(e) {
+      console.error(`💥 REDIS ERROR ${key}:`, e);
+      return [];
+    }
   },
+
   async addToHistory(id, role, content) {
     const key = `chat:${id}`;
-    // Store truncated history
-    const storedContent = content.length > 3000 ? content.substring(0, 3000) + "..." : content;
-    const entry = JSON.stringify({ role, content: storedContent, ts: Date.now() });
-    
-    await redis.rpush(key, entry);
-    await redis.ltrim(key, -CONSTANTS.THREAD_LENGTH, -1);
-    await redis.expire(key, CONSTANTS.SESSION_TTL);
+    try {
+      const storedContent = content.length > 3000 ? content.substring(0, 3000) + " [truncated]" : content;
+      const entry = JSON.stringify({ 
+        role: role === 'user' ? 'user' : 'assistant',  // force correct role
+        content: storedContent, 
+        ts: Date.now() 
+      });
+      
+      console.log(`💾 SAVING to ${key}: ${role} (${storedContent.substring(0,50)}...)`);
+      
+      await redis.rpush(key, entry);
+      await redis.ltrim(key, -CONSTANTS.THREAD_LENGTH * 2, -1); // double length temp
+      await redis.expire(key, 7 * 24 * 60 * 60); // 7 DAYS not 30 min! 🔥
+      
+      console.log(`✅ SAVED ${key}, TTL set`);
+    } catch(e) {
+      console.error(`💥 SAVE FAILED ${key}:`, e);
+    }
   }
 };
 
