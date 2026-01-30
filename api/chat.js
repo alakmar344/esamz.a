@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
 /* ================= CONFIGURATION ================= */
-console.log("--> System: Initializing eSAMz Backend v10 (Auto-Cleaner)...");
+console.log("--> System: Initializing eSAMz Backend v11 (Deep Debug)...");
 const redis = Redis.fromEnv();
 
 const CONSTANTS = {
@@ -93,25 +93,22 @@ function sanitizeResponse(text) {
   return cleanText.trim();
 }
 
-/* ================= 3. DATABASE LAYER (AUTO-DELETE CORRUPTION) ================= */
+/* ================= 3. DATABASE LAYER (DEEP DEBUG) ================= */
 const DB = {
   async getContext(id) {
+    console.log(`[DEBUG 1] Entering getContext for ${id}`);
     const [name, rawHistory] = await Promise.all([
       redis.get(`identity:${id}`),
       redis.lrange(`chat:${id}`, 0, -1)
     ]);
+    console.log(`[DEBUG 2] Redis returned. Raw Count: ${rawHistory.length}`);
     
-    // Check for the specific bad string
     const hasCorruption = rawHistory.includes('[object Object]');
 
     if (hasCorruption) {
-      console.warn(`[CLEANUP] Found corruption in session ${id}. Deleting '[object Object]' entries...`);
-      // Delete ALL instances of '[object Object]' from this list
+      console.warn(`[CLEANUP] Found corruption. Deleting.`);
       await redis.lrem(`chat:${id}`, 0, '[object Object]');
-      
-      // Re-fetch the history now that it's clean
       const newRawHistory = await redis.lrange(`chat:${id}`, 0, -1);
-      console.log(`[CLEANUP] Cleaned ${rawHistory.length - newRawHistory.length} bad entries.`);
       rawHistory.length = 0;
       rawHistory.push(...newRawHistory);
     }
@@ -124,29 +121,39 @@ const DB = {
       }
     }).filter(Boolean).slice(-CONSTANTS.MAX_HISTORY);
 
-    console.log(`[MEMORY] Loaded ${parsedHistory.length} valid messages for session ${id}`);
+    console.log(`[DEBUG 3] Exiting getContext. Parsed Count: ${parsedHistory.length}`);
     return { name, history: parsedHistory };
   },
 
   async saveInteraction(id, userMsg, aiMsg, detectedName) {
-    // Force convert to Strings
+    console.log(`[DEBUG 4] Entering saveInteraction. ID: ${id}`);
+    
     const safeUserMsg = (typeof userMsg === 'string') ? userMsg : JSON.stringify(userMsg);
     const safeAiMsg = (typeof aiMsg === 'string') ? aiMsg : JSON.stringify(aiMsg);
     const cleanAiMsg = sanitizeResponse(safeAiMsg);
 
+    console.log(`[DEBUG 5] Preparing pipeline.`);
     const pipeline = redis.pipeline();
-    if (detectedName) pipeline.set(`identity:${id}`, detectedName, { ex: CONSTANTS.SESSION_TTL });
+    
+    if (detectedName) {
+        console.log(`[DEBUG 5b] Saving name: ${detectedName}`);
+        pipeline.set(`identity:${id}`, detectedName, { ex: CONSTANTS.SESSION_TTL });
+    }
     
     pipeline.rpush(`chat:${id}`, JSON.stringify({ role: "user", content: safeUserMsg }));
     pipeline.rpush(`chat:${id}`, JSON.stringify({ role: "assistant", content: cleanAiMsg }));
     pipeline.ltrim(`chat:${id}`, -CONSTANTS.MAX_HISTORY, -1);
     pipeline.expire(`chat:${id}`, CONSTANTS.SESSION_TTL);
     
+    console.log(`[DEBUG 6] Executing pipeline...`);
     try {
-        await pipeline.exec();
+        const results = await pipeline.exec();
+        console.log(`[DEBUG 7] Pipeline executed successfully. Results:`, results);
     } catch(e) {
-        console.error(`[REDIS SAVE] FAILED:`, e);
+        console.error(`[DEBUG 7] PIPELINE FAILED:`, e);
     }
+    
+    console.log(`[DEBUG 8] Exiting saveInteraction.`);
   }
 };
 
@@ -164,6 +171,7 @@ export default async function handler(req, res) {
     }
 
     // 1. Load Context
+    console.log(`[HANDLER] Step 1: Get Context`);
     const { name: storedName, history } = await DB.getContext(sessionId);
     const userName = storedName || "User";
 
@@ -189,15 +197,9 @@ CRITICAL LOGIC RULES (Follow these before every answer):
 2. CLARIFICATION HANDLING:
    - If YOU asked "Who?" or "Which one?" and the user replies with a name (e.g., "Nikola Tesla"), you MUST answer the PREVIOUS question using that name.
    - Do NOT treat the clarification as a request for a biography or general info. Answer the specific pending question.
-   - Example: 
-     User: "What is his nickname?"
-     You: "Who?"
-     User: "Tesla"
-     You: "Tesla's nickname is..."
 
 3. RESPONSE STYLE:
    - Be direct, natural, and human-like.
-   - No robotic filler words ("As an AI", "I searched").
 `;
 
     // Assemble messages
@@ -248,7 +250,9 @@ CRITICAL LOGIC RULES (Follow these before every answer):
     }
 
     // 6. Save to Redis
+    console.log(`[HANDLER] Step 6: Saving Interaction`);
     await DB.saveInteraction(sessionId, message, finalAiReply, null);
+    console.log(`[HANDLER] Step 7: Done.`);
 
     res.write("DONE|Success");
     res.end();
