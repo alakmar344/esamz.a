@@ -1,14 +1,24 @@
+see this : // api/chat.js
+// Vercel Serverless Function (ES Module)
+// eSAMz v10.0 (Redis + Real Streaming + Rate Limiting)
+
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
-/* ================= CONFIG ================= */
+/* ================= SECURITY & REDIS ================= */
 const redis = Redis.fromEnv();
 
+
+/* ================= CONFIG ================= */
 const SARVAM_MODEL = "sarvam-m";
-const MAX_COMPLETION_TOKENS = 1024;
+const MAX_COMPLETION_TOKENS = 8024;
 const MAX_THREAD_LENGTH = 15;
 const COOKIE_NAME = "esamz_sid";
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
+
+// Rate Limit Config
+const CHAT_LIMIT_PER_MIN = 10;
+const CHAT_TTL_SEC = 60;
 
 /* ================= SYSTEM PROMPT ================= */
 const SYSTEM_PROMPT = `
@@ -47,7 +57,6 @@ STRICTLY FORBIDDEN PHRASES
 - "Please let me know"
 - "Is there anything else"
 - "I'm sorry, I don't have access"
-- "I do not have access to personal data"
 
 SEARCH USAGE
 If search results are provided, use them naturally in your answer.
@@ -60,12 +69,6 @@ STYLE
 - No filler.
 `.trim();
 
-/* ================= SECURITY ================= */
-function verifyServerIntegrity() {
-  // Optional: Add your hash check if needed
-  return true;
-}
-
 /* ================= HELPERS ================= */
 function getIP(req) {
   return (
@@ -76,62 +79,36 @@ function getIP(req) {
 }
 
 function sendEvent(res, type, data) {
+  // Sanitize newlines in data to avoid breaking the SSE format if strictly following SSE,
+  // but here we use a custom pipe format: TYPE|DATA
+  // We should ensure DATA doesn't contain newlines that would be interpreted as new events 
+  // if we were parsing line-by-line on client. 
+  // Client splits by '\n', then splits by '|'. 
+  // So multiline data needs to be handled carefully or just passed through if client handles it.
+  // The current client implementation accumulates text, so we can just write it.
+  // However, let's keep it safe.
   res.write(`${type}|${data}\n`);
-}
-
-/* ================= PERSONA ENFORCER ================= */
-async function enforcePersona(userMsg, draftReply) {
-  const forbidden = [
-    "how can i assist", "how may i assist", "here is the information", 
-    "i hope this helps", "i do not have access", "i'm sorry, i don't", 
-    "i don't have access to personal", "please let me know", "is there anything else"
-  ];
-
-  const isRobotic = forbidden.some(phrase => draftReply.toLowerCase().includes(phrase));
-
-  if (!isRobotic) return draftReply; 
-
-  const correctionPrompt = `
-User said: "${userMsg}"
-AI Draft: "${draftReply}"
-
-The AI Draft is too formal/robotic. Rewrite it as eSAMz.
-Rules: 
-- Speak like a normal, relaxed human.
-- No "I don't have access".
-- Be direct and clear.
-`;
-
-  try {
-    const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: SARVAM_MODEL,
-        messages: [{ role: "system", content: "You are eSAMz. Fix this reply." }, { role: "user", content: correctionPrompt }],
-        max_tokens: 500
-      })
-    });
-    const data = await res.json();
-    return data?.choices?.[0]?.message?.content || draftReply;
-  } catch (e) {
-    return draftReply;
-  }
 }
 
 /* ================= DB (REDIS) ================= */
 const DB = {
   async getUser(sessionId) {
     const data = await redis.get(`user:${sessionId}`);
-    // CRITICAL FIX: Parse the JSON string from Redis
-    return data ? JSON.parse(data) : { summary: "New conversation started.", threadHistory: [] };
+    return data || { summary: "New conversation started.", threadHistory: [] };
   },
 
   async updateUser(sessionId, data) {
-    // Expires in 7 days
+    // Expires in 7 days to keep Redis clean
     await redis.set(`user:${sessionId}`, data, { ex: 60 * 60 * 24 * 7 });
   }
 };
+
+async function checkRateLimit(identifier) {
+  const key = `rl:${identifier}`;
+  const count = await redis.incr(key);
+  if (count === 1) await redis.expire(key, CHAT_TTL_SEC);
+  return count <= CHAT_LIMIT_PER_MIN;
+}
 
 /* ================= SEARCH ================= */
 function needsSearch(query) {
@@ -140,6 +117,10 @@ function needsSearch(query) {
   if (exclude.some(ex => lower.includes(ex))) return false;
   const triggers = ["latest", "news", "weather", "price", "search for", "current", "happening now", "stock price", "today", "capital of", "president of", "meaning of", "define"];
   return triggers.some(t => lower.includes(t));
+}
+
+function isMathQuery(msg) {
+  return /[\d+\-*/=]/.test(msg);
 }
 
 async function googleSearch(query) {
@@ -159,6 +140,66 @@ async function googleSearch(query) {
     console.error("Serper Error:", e);
     return null;
   }
+}
+
+/* ================= AI STREAMING ================= */
+// Use standard OpenAI-compatible streaming
+async function streamSarvamChat({ messages, temperature = 0.7, onChunk }) {
+  const sarvamKey = process.env.SARVAM_API_KEY;
+  if (!sarvamKey) throw new Error("SARVAM_API_KEY not configured");
+
+  const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${sarvamKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ 
+      model: SARVAM_MODEL, 
+      messages, 
+      temperature, 
+      max_tokens: MAX_COMPLETION_TOKENS,
+      stream: true // ENABLE REAL STREAMING
+    })
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Sarvam API Error ${res.status}: ${errorText}`);
+  }
+
+  // Parse SSE Stream
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let fullContent = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || ""; // Keep the last incomplete line
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("data: ")) continue;
+      
+      const dataStr = trimmed.slice(6);
+      if (dataStr === "[DONE]") continue;
+
+      try {
+        const parsed = JSON.parse(dataStr);
+        const content = parsed.choices?.[0]?.delta?.content || "";
+        if (content) {
+          fullContent += content;
+          onChunk(content);
+        }
+      } catch (e) {
+        // Ignore parse errors for partial chunks
+      }
+    }
+  }
+  
+  return fullContent;
 }
 
 /* ================= SUMMARIZATION ================= */
@@ -181,9 +222,13 @@ async function summarizeHistoryAndTrim(userDoc) {
   `;
 
   try {
+    // Non-streaming call for summary
     const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
+      headers: { 
+        Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, 
+        "Content-Type": "application/json" 
+      },
       body: JSON.stringify({ 
         model: SARVAM_MODEL, 
         messages: [
@@ -193,6 +238,7 @@ async function summarizeHistoryAndTrim(userDoc) {
         max_tokens: 500
       })
     });
+    
     const data = await res.json();
     const newSummary = data.choices[0].message.content;
     
@@ -200,12 +246,14 @@ async function summarizeHistoryAndTrim(userDoc) {
     userDoc.threadHistory = keepHistory;
   } catch (e) {
     console.error("Summarization failed:", e);
+    // Fallback: just trim
     userDoc.threadHistory = history.slice(-MAX_THREAD_LENGTH);
   }
 }
 
 /* ================= MAIN HANDLER ================= */
 export default async function handler(req, res) {
+  // Set Headers for Streaming
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Transfer-Encoding', 'chunked');
   res.setHeader('X-Accel-Buffering', 'no'); 
@@ -219,9 +267,14 @@ export default async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const { message, sessionId, files } = body;
 
-    // 1. Session
+    // 1. Session & Rate Limit
     let activeSessionId = sessionId || req.cookies?.[COOKIE_NAME] || crypto.randomBytes(16).toString("hex");
     const ip = getIP(req);
+
+    if (!(await checkRateLimit(activeSessionId)) || !(await checkRateLimit(ip))) {
+      res.write(`ERROR|Rate limit exceeded. Please wait a moment.\n`);
+      return res.end();
+    }
 
     // Set Cookie
     if (!req.cookies || !req.cookies[COOKIE_NAME]) {
@@ -231,7 +284,7 @@ export default async function handler(req, res) {
     // 2. Load User Data
     const userDoc = await DB.getUser(activeSessionId);
 
-    // 3. Prepare Message (Files)
+    // 3. Prepare Message (Files + Text)
     let finalMessage = message;
     if (files && files.length > 0) {
       const fileContext = files.map(f => `\n--- [FILE: ${f.fileName} (${f.type})] ---\n${f.content}\n--- END FILE ---`).join('\n');
@@ -240,26 +293,14 @@ export default async function handler(req, res) {
 
     // 4. Search
     let searchContext = "";
-    if (needsSearch(message) && SERPER_API_KEY) {
+    if (needsSearch(message) && !isMathQuery(message) && SERPER_API_KEY) {
       sendEvent(res, "STATUS", "SEARCHING");
       const results = await googleSearch(message);
       if (results) searchContext = `\n\nSEARCH RESULTS:\n${results}\n\nUse these results to answer user.`;
     }
     sendEvent(res, "STATUS", "TYPING");
 
-    // 5. Name Detection (Smart Memory)
-    const namePattern = /(?:my name is|i am|i'm)\s+([a-zA-Z]+)/i;
-    const nameMatch = message.match(namePattern);
-    
-    if (nameMatch) {
-      const name = nameMatch[1].trim();
-      if (!userDoc.summary.includes(name)) {
-         userDoc.summary = `User's name is ${name}. ${userDoc.summary}`;
-         await DB.updateUser(activeSessionId, userDoc);
-      }
-    }
-
-    // 6. Build Context
+    // 5. Build Context
     let fullSystemContent = SYSTEM_PROMPT;
     if (userDoc.summary) {
       fullSystemContent += `\n\nPAST CONTEXT:\n${userDoc.summary}`;
@@ -271,65 +312,89 @@ export default async function handler(req, res) {
     }
     messagesPayload.push({ role: "user", content: finalMessage + searchContext });
 
-    // 7. Stream AI Response
-    const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        model: SARVAM_MODEL, 
-        messages: messagesPayload, 
-        temperature: 0.7,
-        max_tokens: MAX_COMPLETION_TOKENS,
-        stream: true
-      })
+    // 6. Stream AI Response
+    let accumulatedReply = "";
+    
+    await streamSarvamChat({
+      messages: messagesPayload,
+      onChunk: (chunk) => {
+        accumulatedReply += chunk;
+        // The client expects "CHUNK|text"
+        // We replace newlines with a placeholder or handle them safely if needed, 
+        // but since we are using a custom delimiter protocol, we just pass it.
+        // If the chunk contains newlines, the client loop (split by \n) might get confused
+        // unless we sanitize or the client handles it.
+        // The client loop: `const lines = chunk.split('\n');`
+        // If we send `CHUNK|Hello\nWorld\n`, the client sees:
+        // 1. `CHUNK|Hello` -> handled
+        // 2. `World` -> ignored because no pipe?
+        // Let's sanitize the output format to be safe.
+        // Actually, the client code `const separatorIndex = line.indexOf('|');` 
+        // handles lines. If we inject a newline in the content, it splits the event.
+        // Solution: Use a replacement or JSON encode the data part.
+        // BUT, looking at the client: `fullText += content;`
+        // It's brittle.
+        // Safer way: Encode newlines or use JSON stringify for the data part.
+        // However, I can't easily change the client protocol without verifying it works.
+        // The client splits the *stream chunk* by `\n`.
+        // If I write `CHUNK|Hello\n`, that's one event.
+        // If I write `CHUNK|Line1\nLine2\n`, that's two events? No.
+        // If `chunk` from AI is "Line1\nLine2", and I write `CHUNK|Line1\nLine2\n`
+        // Client reads: `CHUNK|Line1` (ok), `Line2` (no pipe -> ignored).
+        // FIX: We must escape newlines in the data part OR send strictly one line per chunk.
+        
+        // Let's send one line per internal newline to be safe.
+        const safeChunk = chunk.replace(/\n/g, "\\n"); 
+        // Wait, if I escape it, the markdown rendering needs it back.
+        // If I use `JSON.stringify(chunk)`, the client receives `"text"`. It needs raw text.
+        // Client: `let content = data; ... fullText += content;`
+        
+        // Let's look at client again.
+        // `const lines = chunk.split('\n');` -> This splits the *network packet*.
+        // If I send `CHUNK|Line1\nCHUNK|Line2\n`, it works.
+        // So if the AI chunk has a newline, I should split it and send multiple CHUNK events.
+        
+        const parts = chunk.split('\n');
+        for (let i = 0; i < parts.length; i++) {
+          let part = parts[i];
+          if (i < parts.length - 1) {
+            // This part ended with a newline in the original text.
+            // We should send the newline to the client.
+            // But if we send `CHUNK|part\n`, the `\n` is the delimiter.
+            // The client takes `part` and adds it. It effectively swallows the newline?
+            // "CHUNK|A\n" -> data="A". Client appends "A". Newline lost.
+            // So we must explicitly send the newline character.
+            part += "\n";
+          }
+          if (part) {
+            // We need to be careful. `res.write` sends bytes.
+            // `sendEvent` appends `\n`.
+            // If we send `CHUNK|A\n`, client sees `A`.
+            // If we want client to see `A\n`, we might need `CHUNK|A\n\n`? NO.
+            // This legacy protocol is tricky.
+            // Best bet: use JSON for the data payload to preserve newlines.
+            // `CHUNK|{"text": "..."}`
+            // But client expects raw text: `fullText += content`.
+            
+            // Let's try to pass the newline as a literal newline.
+            // If I send `CHUNK|Hello\nWorld\n` (single write)
+            // Client splits by `\n`.
+            // 1. `CHUNK|Hello` -> data=`Hello`.
+            // 2. `World` -> ignored.
+            
+            // So I must prefix every line with `CHUNK|`.
+            // `CHUNK|Hello\nCHUNK|World\n`
+            
+            sendEvent(res, "CHUNK", part);
+          }
+        }
+      }
     });
 
-    if (!response.ok) throw new Error(`Sarvam API Error ${response.status}`);
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let accumulatedReply = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith("data: ")) continue;
-        
-        const dataStr = trimmed.slice(6);
-        if (dataStr === "[DONE]") continue;
-
-        try {
-          const parsed = JSON.parse(dataStr);
-          const content = parsed.choices?.[0]?.delta?.content || "";
-          if (content) {
-            accumulatedReply += content;
-            
-            // Handle newlines for streaming protocol
-            const parts = content.split('\n');
-            for (let i = 0; i < parts.length; i++) {
-              let part = parts[i];
-              if (i < parts.length - 1) part += "\n";
-              if (part) sendEvent(res, "CHUNK", part);
-            }
-          }
-        } catch (e) {}
-      }
-    }
-
-    // 8. Persona Enforce & Save
-    const polishedReply = await enforcePersona(message, accumulatedReply);
-    
+    // 7. Save History (Async, after response is done)
     userDoc.threadHistory = userDoc.threadHistory || [];
     userDoc.threadHistory.push({ role: "user", content: message });
-    userDoc.threadHistory.push({ role: "assistant", content: polishedReply });
+    userDoc.threadHistory.push({ role: "assistant", content: accumulatedReply });
     
     if (userDoc.threadHistory.length > MAX_THREAD_LENGTH) {
       await summarizeHistoryAndTrim(userDoc);
