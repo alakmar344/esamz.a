@@ -1,5 +1,5 @@
 // api/chat.js
-// eSAMz v18.0 - SEARCH + FILES + INVISIBLE THINKING MODE + SAFETY RAILS
+// eSAMz v18.1 - STABLE + SMART CONTEXT + NO HALLUCINATIONS
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -11,7 +11,7 @@ const CONSTANTS = {
   SARVAM_MODEL: "sarvam-m", 
   MAX_TOKENS: 30096,              
   THREAD_LENGTH: 100,
-  SESSION_TTL: 1800,            // 30 min
+  SESSION_TTL: 1800,
   RATE_LIMIT: 30, 
   RATE_TTL: 60,
   GLOBAL_INTERVAL: 1100, 
@@ -19,22 +19,21 @@ const CONSTANTS = {
   MAX_FILE_CHARS: 25000  
 };
 
-/* ================= 2. THE SYSTEM PROMPT ================= */
+/* ================= 2. THE SYSTEM PROMPT (Fixed) ================= */
+// We removed the <thinking> tags because the model was over-analyzing simple names.
 const SYSTEM_PROMPT = `
 ### **Identity & Core Objective**
-You are **eSAMz AI**, a highly advanced, human-like intelligence engine.
-
-### **1. Internal Reasoning (The "Silent" Step)**
-* **RULE:** Wrap ALL internal analysis, fact-checking, and planning inside **<thinking>** and **</thinking>** tags.
-* **Human-like approach:** Analyze user intent and plan your tone before speaking.
+You are **eSAMz AI**, a smart, friendly, and highly capable intelligence engine.
+* **Your Goal:** Answer the user's request directly. Do not over-analyze simple statements.
+* **Names:** If a user states their name (e.g., "I am Esmail"), BELIEVE THEM. Do not correct them or assume it is a typo. 
 
 ### **2. Safety & Privacy Rails**
 * **PII Protection:** If a web search reveals an **Email, Phone Number, or Address**, you MUST NOT repeat it.
-* **Illegal Requests:** Politely but firmly decline requests for illegal activities or malware.
+* **Illegal Requests:** Politely decline requests for illegal activities.
 
 ### **3. Tone & Personality**
-* **Ultra-Human:** Use natural transitions and contractions. Never say "As an AI".
-* **Memory:** You have access to the last 100 messages. Use them for context.
+* **Conversational:** Speak naturally. Use "I understand" or "Got it".
+* **Context:** You have memory of the last 20 messages. Use it!
 `;
 
 /* ================= 3. UTILITIES ================= */
@@ -73,9 +72,7 @@ const DB = {
           try {
             if (typeof i !== 'string') return null;
             return JSON.parse(i);
-          } catch(e) {
-            return null;
-          }
+          } catch(e) { return null; }
         })
         .filter(x => x && x.role && x.content)
         .slice(-CONSTANTS.THREAD_LENGTH * 2);
@@ -85,8 +82,10 @@ const DB = {
   async addToHistory(id, role, content) {
     const key = `chat:${id}`;
     try {
+      // Fix: Normalize role to 'assistant' or 'user' only
+      const safeRole = role === 'user' ? 'user' : 'assistant';
       const entry = JSON.stringify({ 
-        role: role === 'user' ? 'user' : 'assistant', 
+        role: safeRole, 
         content: content.substring(0, 3000), 
         ts: Date.now() 
       });
@@ -121,9 +120,7 @@ export default async function handler(req, res) {
     const rawBody = req.body || {};
     if (!validateSecurity(req)) return res.end("ERROR|Unauthorized");
 
-    const userKey = getUserIdentifier(req, rawBody);
     const sessionId = rawBody.sessionId || crypto.randomBytes(12).toString("hex");
-    
     const gotSlot = await acquireSarvamSlot(res);
     if (!gotSlot) return res.end("QUEUE|5");
 
@@ -131,9 +128,11 @@ export default async function handler(req, res) {
     const message = rawBody.message || "";
     let fullMessage = message;
 
-    // --- SMART SEARCH FILTER ---
+    // --- 1. SMART SEARCH FILTER (Prevents searching for your name) ---
     const memoryTriggers = ["my name", "who am i", "we talk", "previous", "was my"];
     const isPersonal = memoryTriggers.some(ht => message.toLowerCase().includes(ht));
+    
+    // Only search if it's a "Look up" question AND NOT a "Remember me" question
     const triggers = ["who", "what", "news", "price", "weather", "search", "latest"];
     const needsSearch = triggers.some(t => message.toLowerCase().includes(t)) && !isPersonal;
 
@@ -143,9 +142,10 @@ export default async function handler(req, res) {
       if (sRes) fullMessage += `\n\n${sRes}`;
     }
 
-    // --- FIXED ROLE MAPPING ---
+    // --- 2. PREPARE MESSAGES (With Role Fix) ---
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
+      // Map history correctly so AI knows what it said previously
       ...history.map(m => ({ 
         role: (m.role === 'ai' || m.role === 'assistant') ? 'assistant' : 'user', 
         content: m.content 
@@ -153,11 +153,9 @@ export default async function handler(req, res) {
       { role: "user", content: fullMessage }
     ];
 
-    let cleanReply = "";
-    let streamBuffer = "";
-
     res.write("STATUS|Thinking...\n");
     
+    // --- 3. STREAMING (Simplified - No more filtering bugs) ---
     const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
@@ -166,27 +164,34 @@ export default async function handler(req, res) {
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
+    let finalReply = "";
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      streamBuffer += decoder.decode(value, { stream: true });
       
-      // Invisible Thinking Logic
-      if (streamBuffer.includes("</thinking>")) {
-        streamBuffer = streamBuffer.replace(/<thinking>[\s\S]*?<\/thinking>/g, "");
-      }
-
-      if (!streamBuffer.includes("<thinking>")) {
-        const chunk = streamBuffer;
-        cleanReply += chunk;
-        res.write(`CHUNK|${chunk.replace(/\n/g, "\\n")}\n`);
-        streamBuffer = "";
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split("\n");
+      
+      for (const line of lines) {
+        if (line.startsWith("data: ") && !line.includes("[DONE]")) {
+          try {
+            const json = JSON.parse(line.slice(6));
+            const text = json.choices[0]?.delta?.content || "";
+            if (text) {
+                finalReply += text;
+                res.write(`CHUNK|${text.replace(/\n/g, "\\n")}\n`);
+            }
+          } catch (e) {}
+        }
       }
     }
 
-    await DB.addToHistory(sessionId, 'user', message);
-    if (cleanReply.trim()) await DB.addToHistory(sessionId, 'assistant', cleanReply);
+    // --- 4. SAVE HISTORY (Atomic) ---
+    if (finalReply.trim()) {
+        await DB.addToHistory(sessionId, 'user', message);
+        await DB.addToHistory(sessionId, 'assistant', finalReply);
+    }
 
     res.write("DONE|Success");
     res.end();
