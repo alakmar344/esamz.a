@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
 /* ================= CONFIGURATION ================= */
-console.log("--> System: Initializing eSAMz Backend v8 (Self-Healing)...");
+console.log("--> System: Initializing eSAMz Backend v10 (Auto-Cleaner)...");
 const redis = Redis.fromEnv();
 
 const CONSTANTS = {
@@ -93,7 +93,7 @@ function sanitizeResponse(text) {
   return cleanText.trim();
 }
 
-/* ================= 3. DATABASE LAYER (CORRUPTION FIX) ================= */
+/* ================= 3. DATABASE LAYER (AUTO-DELETE CORRUPTION) ================= */
 const DB = {
   async getContext(id) {
     const [name, rawHistory] = await Promise.all([
@@ -101,58 +101,49 @@ const DB = {
       redis.lrange(`chat:${id}`, 0, -1)
     ]);
     
-    console.log(`[REDIS DEBUG] SessionID: ${id}`);
-    console.log(`[REDIS DEBUG] Raw History Count: ${rawHistory.length}`);
-    
-    let corruptionDetected = false;
+    // Check for the specific bad string
+    const hasCorruption = rawHistory.includes('[object Object]');
+
+    if (hasCorruption) {
+      console.warn(`[CLEANUP] Found corruption in session ${id}. Deleting '[object Object]' entries...`);
+      // Delete ALL instances of '[object Object]' from this list
+      await redis.lrem(`chat:${id}`, 0, '[object Object]');
+      
+      // Re-fetch the history now that it's clean
+      const newRawHistory = await redis.lrange(`chat:${id}`, 0, -1);
+      console.log(`[CLEANUP] Cleaned ${rawHistory.length - newRawHistory.length} bad entries.`);
+      rawHistory.length = 0;
+      rawHistory.push(...newRawHistory);
+    }
 
     const parsedHistory = rawHistory.map(item => {
-      // Detect the specific corruption found in your logs
-      if (item === '[object Object]') {
-        console.warn(`[CRITICAL] Corruption detected in session ${id}. Found '[object Object]'.`);
-        corruptionDetected = true;
-        return null;
-      }
-
       try { 
         return JSON.parse(item); 
       } catch (e) {
-        console.log(`[REDIS ERROR] Failed to parse: ${item}`);
         return null; 
       }
     }).filter(Boolean).slice(-CONSTANTS.MAX_HISTORY);
 
-    console.log(`[REDIS DEBUG] Parsed History Count: ${parsedHistory.length}`);
-
-    // Self-Healing Logic: If we found corruption, wipe the history so the user can start fresh
-    if (corruptionDetected) {
-      console.log(`[HEALING] Wiping corrupted history for session ${id}...`);
-      await redis.del(`chat:${id}`);
-      return { name, history: [] };
-    }
-
+    console.log(`[MEMORY] Loaded ${parsedHistory.length} valid messages for session ${id}`);
     return { name, history: parsedHistory };
   },
 
   async saveInteraction(id, userMsg, aiMsg, detectedName) {
-    // Ensure we are saving STRINGS, not objects
-    if (typeof userMsg !== 'string') userMsg = String(userMsg);
-    if (typeof aiMsg !== 'string') aiMsg = String(aiMsg);
-
-    const cleanAiMsg = sanitizeResponse(aiMsg);
-    
-    console.log(`[REDIS SAVE] Saving to session ${id}. User: ${userMsg.substring(0, 20)}... AI: ${cleanAiMsg.substring(0, 20)}...`);
+    // Force convert to Strings
+    const safeUserMsg = (typeof userMsg === 'string') ? userMsg : JSON.stringify(userMsg);
+    const safeAiMsg = (typeof aiMsg === 'string') ? aiMsg : JSON.stringify(aiMsg);
+    const cleanAiMsg = sanitizeResponse(safeAiMsg);
 
     const pipeline = redis.pipeline();
     if (detectedName) pipeline.set(`identity:${id}`, detectedName, { ex: CONSTANTS.SESSION_TTL });
-    pipeline.rpush(`chat:${id}`, JSON.stringify({ role: "user", content: userMsg }));
+    
+    pipeline.rpush(`chat:${id}`, JSON.stringify({ role: "user", content: safeUserMsg }));
     pipeline.rpush(`chat:${id}`, JSON.stringify({ role: "assistant", content: cleanAiMsg }));
     pipeline.ltrim(`chat:${id}`, -CONSTANTS.MAX_HISTORY, -1);
     pipeline.expire(`chat:${id}`, CONSTANTS.SESSION_TTL);
     
     try {
         await pipeline.exec();
-        console.log(`[REDIS SAVE] Success.`);
     } catch(e) {
         console.error(`[REDIS SAVE] FAILED:`, e);
     }
