@@ -1,21 +1,15 @@
 import crypto from "crypto";
+import { Redis } from "@upstash/redis";
 
 /* ================= CONFIG ================= */
+console.log("--> System: Initializing eSAMz Backend v12 (Persistent DB)...");
+const redis = Redis.fromEnv();
+
 const SARVAM_MODEL = "sarvam-m";
-const MAX_COMPLETION_TOKENS = 28048; // Give AI max context
-const MAX_THREAD_LENGTH = 25; // Keep more messages locally
+const MAX_COMPLETION_TOKENS = 28048;
+const MAX_THREAD_LENGTH = 50; // Keep last 50 messages
+const COOKIE_NAME = "esamz_sid";
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
-
-/* ================= IN-MEMORY DB ================= */
-// Simple local storage. Data lost on server restart (Vercel/Node).
-const MEMORY_STORE = {};
-
-function getMemory(sessionId) {
-  if (!MEMORY_STORE[sessionId]) {
-    MEMORY_STORE[sessionId] = { threadHistory: [] };
-  }
-  return MEMORY_STORE[sessionId];
-}
 
 /* ================= SYSTEM PROMPT ================= */
 const SYSTEM_PROMPT = `
@@ -24,6 +18,20 @@ You are eSAMz v9.1, created by Alakmar Teenwala.
 You are a smart, calm, sharp human-like conversationalist.
 You are not a corporate assistant and not a robotic chatbot.
 
+Your job is to understand intent first, then respond clearly and helpfully.
+
+PERSONALITY
+- Speak naturally like a real person.
+- Be friendly, but not silly.
+- Be confident, not overdramatic.
+- No corporate language.
+
+MEMORY RULES
+- ALWAYS check the conversation history before answering.
+- If the user said "My name is X", you MUST remember it.
+- If the user asks "What is my name?", look at the history and answer.
+- Do NOT say "I don't have access to personal data". That is forbidden.
+
 STRICTLY FORBIDDEN PHRASES
 - "How can I assist you"
 - "Here is the information"
@@ -31,25 +39,19 @@ STRICTLY FORBIDDEN PHRASES
 - "Please let me know"
 - "Is there anything else"
 - "I'm sorry, I don't have access"
-- "I don't have access to personal data"
-- "I do not know who you are"
-
-MEMORY RULES
-- If the user says "My name is X", YOU MUST REMEMBER IT. Address them as X.
-- If the user asks "What is my name?", CHECK PREVIOUS MESSAGES and answer with their name.
-- Do NOT say "I don't have access" if the name was mentioned in the chat history.
+- "I do not have access to personal data"
 
 SEARCH RULES
 If search results are provided, use them naturally. Do not mention "search".
-
-STYLE
-- Speak like a human.
-- Be direct.
 `.trim();
 
 /* ================= HELPERS ================= */
 function getIP(req) {
-  return req.headers["x-forwarded-for"]?.split(",")[0] || req.socket?.remoteAddress || "unknown";
+  return (
+    req.headers["x-forwarded-for"]?.split(",")[0] ||
+    req.socket?.remoteAddress ||
+    "unknown"
+  );
 }
 
 function sendEvent(res, type, data) {
@@ -62,8 +64,8 @@ async function enforcePersona(userMsg, draftReply) {
   const forbidden = [
     "how can i assist", "how may i assist", "here is the information", 
     "i hope this helps", "i do not have access", "i'm sorry, i don't", 
-    "i don't have access to personal", "please let me know", "is there anything else", 
-    "i do not know who you are", "i don't know who you are"
+    "i don't have access to personal", "please let me know", "is there anything else",
+    "i don't know who you are", "i don't know your name"
   ];
 
   const isRobotic = forbidden.some(phrase => draftReply.toLowerCase().includes(phrase));
@@ -98,10 +100,55 @@ Rules:
   }
 }
 
+/* ================= DB (REDIS LIST - PERSISTENT) ================= */
+const DB = {
+  async getHistory(id) {
+    // Get the last 50 messages
+    const rawList = await redis.lrange(`chat:${id}`, -MAX_THREAD_LENGTH, -1);
+    
+    // Parse and filter out bad data (Resilience)
+    const history = [];
+    for (const item of rawList) {
+      try {
+        // Ensure item is string
+        const str = Buffer.isBuffer(item) ? item.toString('utf-8') : item;
+        const msg = JSON.parse(str);
+        history.push(msg);
+      } catch (e) {
+        // If one message is corrupted, we SKIP it, not crash
+        console.warn(`[DB] Skipping corrupted message.`);
+      }
+    }
+    return history.reverse(); // Lrange returns oldest first, we want newest first
+  },
+
+  async addMessage(id, role, content) {
+    // Enforce string type to save to list
+    const safeContent = (typeof content === 'string') ? content : JSON.stringify(content);
+    const jsonStr = JSON.stringify({ role, content: safeContent });
+    
+    await redis.lpush(`chat:${id}`, jsonStr);
+    // Keep list clean by trimming to 50
+    await redis.ltrim(`chat:${id}`, 0, MAX_THREAD_LENGTH);
+    // Set expiry for the whole list (1 week)
+    await redis.expire(`chat:${id}`, 60 * 60 * 24 * 7);
+  },
+
+  async getName(id) {
+    const name = await redis.get(`identity:${id}`);
+    // Handle buffer/string
+    return name ? (Buffer.isBuffer(name) ? name.toString('utf-8') : name) : null;
+  },
+
+  async setName(id, name) {
+    await redis.set(`identity:${id}`, name, { ex: 60 * 60 * 24 * 7 });
+  }
+};
+
 /* ================= SEARCH ================= */
 function needsSearch(query) {
   const lower = query.toLowerCase();
-  const exclude = ["my name", "i am", "i'm", "who am i", "my email", "my address", "remember that"];
+  const exclude = ["my name", "i am", "i'm", "who am i", "my email", "my address", "remember that", "do you know me"];
   if (exclude.some(ex => lower.includes(ex))) return false;
   const triggers = ["latest", "news", "weather", "price", "search for", "current", "happening now", "stock price", "today", "capital of", "president of", "meaning of", "define"];
   return triggers.some(t => lower.includes(t));
@@ -175,9 +222,7 @@ async function streamSarvamChat({ messages, onChunk }) {
           fullContent += content;
           onChunk(content);
         }
-      } catch (e) {
-        // Ignore parse errors for partial chunks
-      }
+      } catch (e) {}
     }
   }
   
@@ -196,20 +241,40 @@ export default async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const { message, sessionId, files } = body;
 
-    // 1. Session ID (Keep it simple)
-    const id = sessionId || crypto.randomBytes(16).toString("hex");
+    // 1. Session
+    let id = sessionId || req.cookies?.[COOKIE_NAME] || crypto.randomBytes(16).toString("hex");
+    const ip = getIP(req);
+
+    // Set Cookie if new
+    if (!req.cookies || !req.cookies[COOKIE_NAME]) {
+      res.setHeader('Set-Cookie', `${COOKIE_NAME}=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`);
+    }
+
+    // 2. Name Detection (Update Memory)
+    const namePattern = /(?:my name is|i am|i'm)\s+([a-zA-Z]+)/i;
+    const nameMatch = message.match(namePattern);
     
-    // 2. Load Memory (Local Only)
-    const mem = getMemory(id);
-    
-    // 3. Prepare Message (Files)
+    if (nameMatch) {
+      const name = nameMatch[1].trim();
+      const currentName = await DB.getName(id);
+      if (currentName !== name) {
+        console.log(`[MEMORY] User identified as ${name}`);
+        await DB.setName(id, name);
+      }
+    }
+
+    // 3. Load History (Persistent DB)
+    const history = await DB.getHistory(id);
+    const currentName = await DB.getName(id) || "User";
+
+    // 4. Prepare Message (Files)
     let finalMessage = message;
     if (files && files.length > 0) {
       const fileContext = files.map(f => `\n--- [FILE: ${f.fileName} (${f.type})] ---\n${f.content}\n--- END FILE ---`).join('\n');
       finalMessage = `${message}\n\n${fileContext}`;
     }
 
-    // 4. Search
+    // 5. Search
     let searchContext = "";
     if (needsSearch(message) && SERPER_API_KEY) {
       sendEvent(res, "STATUS", "SEARCHING");
@@ -218,15 +283,18 @@ export default async function handler(req, res) {
     }
     sendEvent(res, "STATUS", "TYPING");
 
-    // 5. Build Messages
-    // We pass the FULL history to the AI. AI Context Window = Memory.
-    const messagesPayload = [{ role: "system", content: SYSTEM_PROMPT }];
-    if (mem.threadHistory?.length) {
-      messagesPayload.push(...mem.threadHistory);
+    // 6. Build Context
+    // Add Name to System Prompt explicitly to fix "Who am I" loop
+    let fullSystemContent = SYSTEM_PROMPT;
+    if (currentName !== "User") {
+      fullSystemContent += `\n\nCRITICAL: The user's name is "${currentName}". Use it naturally. Do not ask "Who are you?"`;
     }
+
+    const messagesPayload = [{ role: "system", content: fullSystemContent }];
+    messagesPayload.push(...history); // Inject History
     messagesPayload.push({ role: "user", content: finalMessage + searchContext });
 
-    // 6. Stream AI Response
+    // 7. Stream AI Response
     let accumulatedReply = "";
     
     await streamSarvamChat({
@@ -242,17 +310,12 @@ export default async function handler(req, res) {
       }
     });
 
-    // 7. Persona Enforce
+    // 8. Persona Enforce & Save
     const polishedReply = await enforcePersona(message, accumulatedReply);
-
-    // 8. Update Local Memory
-    mem.threadHistory.push({ role: "user", content: message });
-    mem.threadHistory.push({ role: "assistant", content: polishedReply });
     
-    // Trim local memory to prevent token overflow
-    if (mem.threadHistory.length > MAX_THREAD_LENGTH) {
-      mem.threadHistory = mem.threadHistory.slice(-MAX_THREAD_LENGTH);
-    }
+    // Save to Redis (Persistent List)
+    await DB.addMessage(id, "user", message);
+    await DB.addMessage(id, "assistant", polishedReply);
 
     sendEvent(res, "DONE", id);
     res.end();
