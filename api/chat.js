@@ -245,11 +245,19 @@ export default async function handler(req, res) {
         if (sRes) fullMessage += `\n\n${sRes}\n\n(Use these search results to answer accurately.)`;
     }
 
-    const messages = [
-      { role: "system", content: SYSTEM_PROMPT },
-      ...history.map(m => ({ role: m.role === 'ai' ? 'assistant' : m.role, content: m.content })),
-      { role: "user", content: fullMessage }
-    ];
+    // 4. Chat Execution
+const messages = [
+  { role: "system", content: SYSTEM_PROMPT },
+  ...history.map(m => {
+    // Standardize roles: 'assistant', 'ai', and 'bot' all become 'assistant'
+    let role = m.role;
+    if (role === 'ai' || role === 'bot' || role === 'assistant') {
+      role = 'assistant';
+    }
+    return { role, content: m.content };
+  }),
+  { role: "user", content: fullMessage }
+];
 
     let cleanReply = ""; 
     let streamBuffer = ""; 
