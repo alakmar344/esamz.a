@@ -134,7 +134,7 @@ const DB = {
       
       await redis.rpush(key, entry);
       await redis.ltrim(key, -CONSTANTS.THREAD_LENGTH * 2, -1); // double length temp
-      await redis.expire(key, 7 * 24 * 60 * 60); // 7 DAYS not 30 min! 🔥
+      await redis.expire(key, 1800); // 7 DAYS not 30 min! 🔥
       
       console.log(`✅ SAVED ${key}, TTL set`);
     } catch(e) {
