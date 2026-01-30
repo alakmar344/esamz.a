@@ -59,20 +59,20 @@
            1. DESIGN TOKENS & RESET
            ========================================= */
         :root {
-            /* Dark Mode (Default) - Premium Zinc/Black */
-            --bg-root: #09090b;       /* Zinc 950 */
-            --bg-surface: #18181b;    /* Zinc 900 */
+            /* Dark Mode (Default) */
+            --bg-root: #09090b;
+            --bg-surface: #18181b;
             --bg-surface-hover: #27272a;
             --bg-glass: rgba(9, 9, 11, 0.8);
             
-            --border-subtle: #27272a; /* Zinc 800 */
-            --border-focus: #52525b;  /* Zinc 600 */
+            --border-subtle: #27272a;
+            --border-focus: #52525b;
             --border-highlight: rgba(255,255,255,0.1);
             
-            --text-primary: #fafafa;  /* Zinc 50 */
-            --text-secondary: #a1a1aa;/* Zinc 400 */
-            --text-muted: #52525b;    /* Zinc 600 */
-            --text-code: #e4e4e7;     /* Zinc 200 */
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #52525b;
+            --text-code: #e4e4e7;
 
             --accent-primary: #ffffff;
             --accent-primary-text: #000000;
@@ -94,19 +94,19 @@
 
         /* Light Mode Theme */
         [data-theme="light"] {
-            --bg-root: #ffffff;       /* White */
-            --bg-surface: #f4f4f5;    /* Zinc 100 */
+            --bg-root: #ffffff;
+            --bg-surface: #f4f4f5;
             --bg-surface-hover: #e4e4e7;
             --bg-glass: rgba(255, 255, 255, 0.8);
 
-            --border-subtle: #e4e4e7; /* Zinc 200 */
-            --border-focus: #a1a1aa;  /* Zinc 400 */
+            --border-subtle: #e4e4e7;
+            --border-focus: #a1a1aa;
             --border-highlight: rgba(0,0,0,0.05);
             
-            --text-primary: #09090b;  /* Zinc 950 */
-            --text-secondary: #52525b;/* Zinc 600 */
-            --text-muted: #a1a1aa;    /* Zinc 400 */
-            --text-code: #27272a;     /* Zinc 800 */
+            --text-primary: #09090b;
+            --text-secondary: #52525b;
+            --text-muted: #a1a1aa;
+            --text-code: #27272a;
 
             --accent-primary: #18181b;
             --accent-primary-text: #ffffff;
@@ -127,7 +127,7 @@
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             font-size: 14px;
             line-height: 1.6;
-            overflow: hidden; /* App-like feel */
+            overflow: hidden;
             display: flex;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
@@ -138,7 +138,6 @@
             transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease, transform 0.2s var(--ease-out);
         }
 
-        /* Prevent flash of transitions on load */
         .preload * { transition: none !important; }
 
         /* Typography */
@@ -347,7 +346,7 @@
             box-shadow: var(--shadow-sm);
         }
         .ai .avatar { background: var(--text-primary); color: var(--bg-root); }
-        .user .avatar { background: var(--bg-surface); color: var(--text-secondary); border: 1px solid var(--border-subtle); }
+        .user .avatar { background: var(--bg-surface); color: var(--text-muted); border: 1px solid var(--border-subtle); }
 
         .msg-content { flex: 1; min-width: 0; padding-top: 2px; }
         
@@ -361,7 +360,7 @@
             padding: 12px 18px;
             border-radius: 18px;
             display: inline-block;
-            float: right; /* Keeps it right aligned */
+            float: right;
             max-width: 100%;
             font-size: 14px;
             line-height: 1.5;
@@ -474,7 +473,6 @@
         }
         .tool-btn:hover { background: var(--bg-surface); color: var(--text-primary); transform: scale(1.05); }
         
-        /* Recording State */
         .tool-btn.recording { 
             color: #ef4444; background: rgba(239, 68, 68, 0.1); 
             animation: ripple-red 1.5s infinite;
@@ -486,7 +484,6 @@
             100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } 
         }
 
-        /* Send/Stop Button */
         .action-btn {
             width: 36px; height: 36px; border-radius: var(--radius-sm);
             background: var(--accent-primary); color: var(--accent-primary-text);
@@ -495,7 +492,6 @@
         .action-btn:hover { transform: scale(1.05); }
         .action-btn:active { transform: scale(0.95); }
         
-        /* Stop Button Variant */
         .action-btn.stop-mode {
             background: #fee2e2; color: #ef4444;
         }
@@ -505,7 +501,6 @@
             font-size: 11px; color: var(--text-muted); padding: 0 4px; width: 100%;
         }
 
-        /* Disclaimer */
         .disclaimer {
             font-size: 11px;
             color: var(--text-muted);
@@ -516,7 +511,6 @@
         .disclaimer a { color: var(--text-muted); text-decoration: underline; transition: color 0.2s; }
         .disclaimer a:hover { color: var(--text-primary); }
 
-        /* Toast */
         #toast-container {
             position: fixed; top: 24px; right: 24px; z-index: 1000;
             display: flex; flex-direction: column; gap: 10px; pointer-events: none;
@@ -531,14 +525,12 @@
         }
         @keyframes toastIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
 
-        /* Loading Animation */
         .typing-indicator { display: inline-flex; gap: 4px; align-items: center; height: 20px; margin-top: 8px;}
         .typing-dot { width: 4px; height: 4px; background: var(--text-muted); border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
         .typing-dot:nth-child(1) { animation-delay: -0.32s; }
         .typing-dot:nth-child(2) { animation-delay: -0.16s; }
         @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
 
-        /* Modal */
         dialog {
             background: var(--bg-surface); border: 1px solid var(--border-subtle);
             color: var(--text-primary); border-radius: var(--radius-lg);
@@ -573,7 +565,6 @@
             .mobile-toggle { display: flex; }
             .chat-wrapper, .input-wrapper { padding: 0 16px; }
             .input-wrapper { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
-            
             .suggestions { grid-template-columns: 1fr; }
         }
     </style>
@@ -616,7 +607,7 @@
 
         <div class="sidebar-footer">
             <div>eSAMz AI &copy; 2026</div>
-            <div style="margin-top:4px; opacity:0.6;">v9.1</div>
+            <div style="margin-top:4px; opacity:0.6;">v2.5.0 Pro</div>
         </div>
     </aside>
 
@@ -686,7 +677,6 @@
                     </button>
                     <textarea id="userInput" rows="1" placeholder="Message eSAMz..."></textarea>
                     
-                    <!-- Action Button: Toggles between Send and Stop -->
                     <button class="action-btn" id="btnSend" title="Send Message">
                         <svg class="send-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                         <svg class="stop-icon" style="display:none;" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
@@ -698,7 +688,6 @@
                 </div>
             </div>
             
-            <!-- Disclaimer -->
             <div class="disclaimer">
                 AI can make mistakes. Please check important information. By using eSAMz, you agree to the <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener">Privacy Policy</a>.
             </div>
@@ -730,7 +719,6 @@
            LOGIC & APPLICATION STATE
            ========================================= */
 
-        // Simple Intent Detector
         function detectIntent(text, files) {
             if (files && files.length > 0) return "file";
             const codeTriggers = ["code", "function", "class", "import", "script", "debug", "refactor", "api", "endpoint", "json", "sql", "python", "javascript"];
@@ -768,7 +756,8 @@
                     reader: null
                 };
 
-                this.storageKey = 'esamz_conversations_v14';
+                this.storageKey = 'esamz_conversations_v15';
+                this.LAST_CHAT_KEY = 'esamz_last_chat_id'; // Persistence Key
                 
                 this.recognition = null;
                 this.initSpeech();
@@ -813,9 +802,21 @@
             init() {
                 this.loadHistory();
                 this.setupListeners();
+                
+                // SESSION PERSISTENCE: Restore last active chat
+                const lastActiveId = localStorage.getItem(this.LAST_CHAT_KEY);
+                if (lastActiveId) {
+                    const raw = localStorage.getItem(this.storageKey);
+                    const history = raw ? JSON.parse(raw) : [];
+                    // Only load if it actually exists in history
+                    if (history.find(c => c.id === lastActiveId)) {
+                        this.loadChat(lastActiveId);
+                    }
+                }
+                
                 this.dom.input.focus();
                 
-                // Sidebar handling
+                // Mobile Sidebar handling
                 document.getElementById('openSidebar').onclick = () => {
                     this.dom.sidebar.classList.add('active');
                     this.dom.overlay.classList.add('active');
@@ -828,7 +829,6 @@
             }
 
             setupListeners() {
-                // Input Auto-resize
                 this.dom.input.addEventListener('input', () => {
                     this.dom.input.style.height = 'auto';
                     this.dom.input.style.height = Math.min(this.dom.input.scrollHeight, 240) + 'px';
@@ -861,34 +861,29 @@
                 document.getElementById('btnClearCache').onclick = () => {
                     if(confirm("Are you sure? This will delete ALL chat history permanently.")) {
                         localStorage.removeItem(this.storageKey);
+                        localStorage.removeItem(this.LAST_CHAT_KEY);
                         location.reload();
                     }
                 };
 
-                // Files
                 document.getElementById('btnUpload').onclick = () => document.getElementById('fileInput').click();
                 document.getElementById('fileInput').onchange = (e) => this.handleFiles(e.target.files);
 
-                // Voice
                 document.getElementById('btnVoice').onclick = () => {
                     if (this.state.isRecording) this.recognition.stop();
                     else this.recognition.start();
                 };
 
-                // Export
                 const dialog = document.getElementById('exportDialog');
                 document.getElementById('btnExport').onclick = () => dialog.showModal();
                 document.getElementById('closeDialog').onclick = () => dialog.close();
             }
             
-            // Quick prompt helper
             fillInput(text) {
                 this.dom.input.value = text;
                 this.dom.input.dispatchEvent(new Event('input'));
                 this.dom.input.focus();
             }
-
-            /* --- UI HELPERS --- */
 
             showToast(message, type = 'info') {
                 const toast = document.createElement('div');
@@ -896,8 +891,6 @@
                 let icon = type === 'error' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️';
                 toast.innerHTML = `<span>${icon}</span><span>${message}</span>`;
                 this.dom.toastContainer.appendChild(toast);
-                
-                // Sound effect for toast (optional, kept silent for now)
                 
                 setTimeout(() => {
                     toast.style.opacity = '0';
@@ -908,13 +901,12 @@
 
             scrollToBottom() {
                 const container = document.querySelector('.chat-container');
-                // Use requestAnimationFrame to ensure DOM updated
                 requestAnimationFrame(() => {
                     container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
                 });
             }
 
-            /* --- FILE HANDLING & OCR --- */
+            /* --- FILE HANDLING --- */
 
             async handleFiles(fileList) {
                 if (!fileList.length) return;
@@ -955,13 +947,7 @@
             }
 
             async runOCR(file) {
-                const worker = await Tesseract.createWorker('eng', 1, {
-                    logger: m => {
-                        if(m.status === 'recognizing text') {
-                            // Optional: Update chip status with progress
-                        }
-                    }
-                });
+                const worker = await Tesseract.createWorker('eng', 1);
                 const { data: { text } } = await worker.recognize(file);
                 await worker.terminate();
                 return text;
@@ -973,20 +959,20 @@
                 const text = this.dom.input.value.trim();
                 if ((!text && this.state.files.length === 0) || this.state.isProcessing) return;
 
-                // Reset Input UI
                 this.dom.input.value = '';
                 this.dom.input.style.height = 'auto';
                 this.dom.welcome.style.display = 'none';
                 
-                // Session Management
                 if (!this.state.chatId) {
                     this.state.chatId = Date.now().toString();
                     const title = text.slice(0, 30) || 'Untitled Chat';
                     this.saveToHistory({ id: this.state.chatId, title: title, messages: [] });
                     this.renderHistoryItem(this.state.chatId, title);
+                    
+                    // SESSION PERSISTENCE: Save this new active ID
+                    localStorage.setItem(this.LAST_CHAT_KEY, this.state.chatId);
                 }
 
-                // Construct User Message Content
                 let userMsgText = text;
                 if (this.state.files.length > 0) {
                     userMsgText += '\n\n' + this.state.files.map(f => {
@@ -1002,14 +988,10 @@
                 this.state.files = [];
                 this.dom.filePreview.innerHTML = '';
 
-                // Start AI Processing UI
                 this.setProcessingState(true);
-
-                // Render AI Placeholder
                 const aiMsgDiv = this.appendMessage('ai', '', true); 
                 const contentDiv = aiMsgDiv.querySelector('.bubble');
 
-                // API Call
                 this.state.abortController = new AbortController();
 
                 try {
@@ -1027,13 +1009,11 @@
 
                     if (!response.ok) throw new Error(`API Error: ${response.status}`);
 
-                    // Handle Stream
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder("utf-8");
                     let fullText = "";
                     let buffer = "";
 
-                    // Clear "Thinking" indicator
                     contentDiv.innerHTML = ''; 
 
                     while (true) {
@@ -1059,7 +1039,6 @@
                                 const cleanData = data.replace(/\\n/g, '\n');
                                 fullText += cleanData;
                                 
-                                // Live Markdown Render
                                 try {
                                     contentDiv.innerHTML = marked.parse(fullText);
                                     if (window.Prism) Prism.highlightAllUnder(contentDiv);
@@ -1095,8 +1074,6 @@
                 if (isProcessing) {
                     this.updateStatus("Thinking...");
                     this.dom.statusBadge.classList.add('processing');
-                    
-                    // Change button to Stop
                     this.dom.sendBtn.classList.add('stop-mode');
                     this.dom.sendIcon.style.display = 'none';
                     this.dom.stopIcon.style.display = 'block';
@@ -1104,8 +1081,6 @@
                 } else {
                     this.updateStatus("Ready");
                     this.dom.statusBadge.classList.remove('processing');
-                    
-                    // Change button back to Send
                     this.dom.sendBtn.classList.remove('stop-mode');
                     this.dom.sendIcon.style.display = 'block';
                     this.dom.stopIcon.style.display = 'none';
@@ -1154,9 +1129,8 @@
 
                 content.appendChild(bubble);
                 
-                // Actions (Copy)
                 const actions = document.createElement('div');
-                actions.className = 'msg-actions'; // Add class for styling
+                actions.className = 'msg-actions';
                 actions.style.cssText = `margin-top: 6px; opacity: 0; transition: opacity 0.2s; height: 20px; display: flex; align-items: center; gap: 8px;`;
                 
                 const copyBtn = document.createElement('button');
@@ -1219,21 +1193,31 @@
             }
 
             renderHistoryItem(id, title) {
+                // Avoid duplicates
+                if(document.querySelector(`button[data-id="${id}"]`)) return;
+
                 const btn = document.createElement('button');
                 btn.className = 'nav-item';
+                btn.setAttribute('data-id', id);
                 btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> ${title}`;
                 btn.onclick = () => {
-                    this.dom.sidebar.classList.remove('active');
-                    this.dom.overlay.classList.remove('active');
                     this.loadChat(id);
                 };
-                this.dom.historyList.appendChild(btn);
+                this.dom.historyList.prepend(btn); // Newest top
             }
 
             loadChat(id) {
+                // SESSION PERSISTENCE: Update the active ID key
+                localStorage.setItem(this.LAST_CHAT_KEY, id);
+
                 this.state.chatId = id;
                 this.dom.welcome.style.display = 'none';
                 this.dom.chatList.innerHTML = '';
+                
+                // Highlight active item in sidebar (optional visual enhancement)
+                document.querySelectorAll('.nav-item').forEach(btn => btn.style.background = 'transparent');
+                const activeBtn = document.querySelector(`button[data-id="${id}"]`);
+                if(activeBtn) activeBtn.style.background = 'var(--bg-surface)';
                 
                 const raw = localStorage.getItem(this.storageKey);
                 const history = raw ? JSON.parse(raw) : [];
@@ -1242,43 +1226,58 @@
                 if (chat && chat.messages) {
                     chat.messages.forEach(m => this.appendMessage(m.role, m.content));
                 }
+
+                // Mobile UX: Close sidebar on selection
+                if (window.innerWidth <= 768) {
+                    this.dom.sidebar.classList.remove('active');
+                    this.dom.overlay.classList.remove('active');
+                }
             }
 
             saveToHistory(chatObj) {
                 const raw = localStorage.getItem(this.storageKey);
-                const history = raw ? JSON.parse(raw) : [];
-                // Avoid duplicates
-                if(!history.find(h => h.id === chatObj.id)) {
-                    history.unshift(chatObj);
-                    localStorage.setItem(this.storageKey, JSON.stringify(history));
-                }
+                let history = raw ? JSON.parse(raw) : [];
+                
+                // Remove existing if updating (rare case but good for integrity)
+                history = history.filter(h => h.id !== chatObj.id);
+                history.unshift(chatObj);
+                
+                // Limit history size (e.g., last 50 chats) to save space
+                if (history.length > 50) history = history.slice(0, 50);
+                
+                localStorage.setItem(this.storageKey, JSON.stringify(history));
             }
 
             saveMessage(chatId, role, content) {
                 const raw = localStorage.getItem(this.storageKey);
-                const history = raw ? JSON.parse(raw) : [];
+                let history = raw ? JSON.parse(raw) : [];
                 const chatIndex = history.findIndex(c => c.id === chatId);
                 
                 if (chatIndex !== -1) {
                     history[chatIndex].messages.push({ role, content, ts: Date.now() });
-                    // Update title if it's the first user message and title is generic
+                    // Update title if generic
                     if (role === 'user' && history[chatIndex].title === 'Untitled Chat') {
-                         history[chatIndex].title = content.slice(0, 30) + '...';
-                         // Re-render sidebar title would be ideal, but keeping it simple
+                        history[chatIndex].title = content.slice(0, 30) + '...';
+                        this.renderHistoryItem(chatId, history[chatIndex].title);
                     }
                     localStorage.setItem(this.storageKey, JSON.stringify(history));
                 }
             }
 
             newChat() {
+                // SESSION PERSISTENCE: Clear the active ID
+                localStorage.removeItem(this.LAST_CHAT_KEY);
+                
                 this.state.chatId = null;
                 this.state.files = [];
                 this.dom.chatList.innerHTML = '';
                 this.dom.welcome.style.display = 'flex';
                 this.dom.input.focus();
+                
+                // Clear active state in sidebar
+                document.querySelectorAll('.nav-item').forEach(btn => btn.style.background = 'transparent');
             }
 
-            /* --- EXPORT --- */
             exportChat(type) {
                 const messages = Array.from(document.querySelectorAll('.message'));
                 if (!messages.length) return this.showToast("Nothing to export", 'error');
@@ -1300,9 +1299,9 @@
             }
         }
 
-        // ===================================
-        // THEME TOGGLE FUNCTIONALITY
-        // ===================================
+        /* ===================================
+        THEME LOGIC
+        =================================== */
         
         window.addEventListener('load', () => {
             document.body.classList.remove('preload');
@@ -1314,10 +1313,8 @@
         function updateThemeIcon(theme) {
             const icon = document.getElementById('themeIcon');
             if (theme === 'light') {
-                // Sun
                 icon.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
             } else {
-                // Moon
                 icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
             }
         }
@@ -1332,10 +1329,6 @@
             localStorage.setItem('theme', newTheme);
             updateThemeIcon(newTheme);
         });
-
-        // ===================================
-        // APP INITIALIZATION
-        // ===================================
 
         const app = new App();
     </script>
