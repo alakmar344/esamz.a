@@ -2,11 +2,11 @@ import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
 /* ================= CONFIG ================= */
-console.log("--> System: Initializing eSAMz Backend v16 (Bulletproof)...");
+console.log("--> System: Initializing eSAMz Backend v17 (Payload Fix)...");
 const redis = Redis.fromEnv();
 
 const SARVAM_MODEL = "sarvam-m";
-const MAX_COMPLETION_TOKENS = 28048;
+const MAX_COMPLETION_TOKENS = 2048;
 const MAX_THREAD_LENGTH = 50;
 const COOKIE_NAME = "esamz_sid";
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
@@ -29,15 +29,13 @@ STRICTLY FORBIDDEN PHRASES
 - "I do not have access to personal data"
 - "I don't know who you are"
 
-CRITICAL CONTEXT RULES (FIXED)
-1. MEMORY PRIORITY: ALWAYS check the conversation history before answering.
-2. PRONOUN RESOLUTION: If user uses pronouns (he, she, it, his, her), look at the LAST assistant message to identify the subject.
-   - IF THE SUBJECT EXISTS IN HISTORY (e.g., "Imran Khan"), ANSWER THE QUESTION DIRECTLY.
-   - ONLY ask "Who?" if the history is empty or the subject is completely unknown.
-3. NO FALSE AMBIGUITY: Do not assume ambiguity if the subject is clear from history.
+MEMORY RULES
+- If user says "My name is X", you MUST REMEMBER IT.
+- If user asks "What is my name?", CHECK HISTORY and answer.
+- Do NOT say "I don't have access".
 
 SEARCH RULES
-If search results are provided, use them naturally.
+If search results are provided below, use them naturally to answer the user.
 Do not mention search engines or sources unless asked.
 
 STYLE
@@ -122,58 +120,38 @@ const DB = {
   async updateActivity(id) {
     await redis.set(`activity:${id}`, Date.now().toString(), { ex: INACTIVITY_TIMEOUT_SEC });
     await redis.expire(`chat:${id}`, INACTIVITY_TIMEOUT_SEC);
-    console.log(`[DB] Heartbeat for ${id}.`);
+    console.log(`[DB] Heartbeat for ${id}. Chat extended for 30m.`);
   },
 
   async getHistory(id) {
     console.log(`[DB] Loading history for ${id}`);
-    // Get last 50 messages
     const rawList = await redis.lrange(`chat:${id}`, -MAX_THREAD_LENGTH, -1);
     
     const history = [];
     for (const item of rawList) {
-      // Use safeStringify to GUARANTEE a string (Prevents "trim is not a function")
-      const strItem = safeStringify(item);
-      
-      if (strItem.trim() === '[object Object]') {
-        console.warn(`[DB CLEANUP] Deleting corrupt item: ${strItem.substring(0, 30)}`);
-        await redis.lrem(`chat:${id}`, 1, strItem);
-        continue; 
-      }
-
       try {
-        const msg = JSON.parse(strItem);
+        const msg = JSON.parse(item);
         history.push(msg);
       } catch (e) {
-        console.warn(`[DB] Skipping unparsable item.`);
+        console.warn(`[DB] Skipping corrupted message.`);
       }
     }
-    
-    console.log(`[DB] Loaded ${history.length} valid messages.`);
     return history.reverse();
   },
 
   async addMessage(id, role, content) {
-    // 1. Reject invalid content
-    if (!content || content.trim() === '[object Object]') {
-      console.warn(`[DB SAVE] Rejecting invalid content.`);
-      return;
-    }
-
-    // 2. Stringify safely
     const jsonStr = JSON.stringify({ role, content });
-    
-    // 3. Pipeline
     const pipeline = redis.pipeline();
+    
     pipeline.rpush(`chat:${id}`, jsonStr);
     pipeline.ltrim(`chat:${id}`, 0, MAX_THREAD_LENGTH);
     
-    // 4. Refresh Activity (Heartbeat)
+    // Refresh Activity
     pipeline.set(`activity:${id}`, Date.now().toString(), { ex: INACTIVITY_TIMEOUT_SEC });
     pipeline.expire(`chat:${id}`, INACTIVITY_TIMEOUT_SEC);
     
     await pipeline.exec();
-    console.log(`[DB] Saved & Refreshed TTL for ${id}.`);
+    console.log(`[DB] Saved msg & Refreshed TTL for ${id}.`);
   },
 
   async getName(id) {
@@ -293,47 +271,57 @@ export default async function handler(req, res) {
       res.setHeader('Set-Cookie', `${COOKIE_NAME}=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${INACTIVITY_TIMEOUT_SEC}`);
     }
 
-    // 2. Load History (Bulletproof)
-    const history = await DB.getHistory(id);
-    const currentName = await DB.getName(id) || "User";
-
-    // 3. Prepare Message
-    let finalMessage = message;
-    if (files && files.length > 0) {
-      const fileContext = files.map(f => `\n--- [FILE: ${f.fileName} (${f.type})] ---\n${f.content}\n--- END FILE ---`).join('\n');
-      finalMessage = `${message}\n\n${fileContext}`;
-    }
-
-    // 4. Search
-    let searchContext = "";
-    if (needsSearch(message) && SERPER_API_KEY) {
-      sendEvent(res, "STATUS", "SEARCHING");
-      const results = await googleSearch(message);
-      if (results) searchContext = `\n\nSEARCH RESULTS:\n${results}\n\nUse these results to answer user.`;
-    }
-    sendEvent(res, "STATUS", "TYPING");
-
-    // 5. Name Detection
+    // 2. Name Detection
     const namePattern = /(?:my name is|i am|i'm)\s+([a-zA-Z]+)/i;
     const nameMatch = message.match(namePattern);
     
     if (nameMatch) {
       const name = nameMatch[1].trim();
+      const currentName = await DB.getName(id);
       if (currentName !== name) {
         console.log(`[MEMORY] User identified as ${name}`);
         await DB.setName(id, name);
       }
     }
 
-    // 6. Build Context
+    // 3. Load History
+    const history = await DB.getHistory(id);
+    const currentName = await DB.getName(id) || "User";
+
+    // 4. Prepare Message (Files) - Keep it separate
+    let finalMessage = message;
+    if (files && files.length > 0) {
+      const fileContext = files.map(f => `\n--- [FILE: ${f.fileName} (${f.type})] ---\n${f.content}\n--- END FILE ---`).join('\n');
+      finalMessage = `${message}\n\n${fileContext}`;
+    }
+
+    // 5. Search (Get results separately to inject into System Prompt)
+    let searchResultsString = "";
+    let searchContext = "";
+    if (needsSearch(message) && SERPER_API_KEY) {
+      sendEvent(res, "STATUS", "SEARCHING");
+      searchResultsString = await googleSearch(message);
+      if (searchResultsString) {
+        searchContext = `\n\nSEARCH RESULTS:\n${searchResultsString}\n\nUse these results to answer user.`;
+      }
+    }
+    sendEvent(res, "STATUS", "TYPING");
+
+    // 6. Build System Prompt (Inject Search Results HERE, not in User Message)
     let fullSystemContent = SYSTEM_PROMPT;
+    
     if (currentName !== "User") {
       fullSystemContent += `\n\nUSER CONTEXT:\nThe user's name is "${currentName}". Use it naturally.`;
     }
 
+    if (searchResultsString) {
+      // Inject search results into System Prompt
+      fullSystemContent += `\n\nSEARCH RESULTS:\n${searchResultsString}\n\nUse these results to answer user.`;
+    }
+
     const messagesPayload = [{ role: "system", content: fullSystemContent }];
-    messagesPayload.push(...history); 
-    messagesPayload.push({ role: "user", content: finalMessage + searchContext });
+    messagesPayload.push(...history); // Inject History
+    messagesPayload.push({ role: "user", content: finalMessage }); // <--- FIX: CLEAN USER MESSAGE
 
     // 7. Stream AI Response
     let accumulatedReply = "";
