@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
 /* ================= CONFIG ================= */
-console.log("--> System: Initializing eSAMz Backend v19 (Strict Filter)...");
+console.log("--> System: Initializing eSAMz Backend v20 (Context Debug)...");
 const redis = Redis.fromEnv();
 
 const SARVAM_MODEL = "sarvam-m";
@@ -37,11 +37,12 @@ STRICTLY FORBIDDEN PHRASES
 - "I do not have access to personal data"
 - "I don't know who you are"
 
-MEMORY RULES
+MEMORY RULES (CRITICAL)
 - ALWAYS check conversation history before answering.
-- If user says "My name is X", you MUST REMEMBER IT.
 - If user asks "What is my name?", CHECK HISTORY and answer.
 - Do NOT say "I don't have access".
+- If the user asks about pronouns (he, she, his), look at the IMMEDIATELY PRECEDING assistant message to identify the subject.
+- If you know the subject from history, USE IT. Do not ask for clarification.
 
 SEARCH RULES
 If search results are provided below, use them naturally in your answer.
@@ -85,7 +86,7 @@ async function enforcePersona(userMsg, draftReply) {
     "how can i assist", "how may i assist", "here is the information", 
     "i hope this helps", "i do not have access", "i'm sorry, i don't", 
     "i don't have access to personal", "please let me know", "is there anything else",
-    "i don't know who you are", "i do not know who you are"
+    "i don't know who you are", "i do not know who you are", "i do not know your name"
   ];
 
   const isRobotic = forbidden.some(phrase => draftReply.toLowerCase().includes(phrase));
@@ -120,50 +121,34 @@ Rules:
   }
 }
 
-/* ================= DB (STRICT FILTER) ================= */
+/* ================= DB (CONTEXT DEBUG) ================= */
 const DB = {
   async updateActivity(id) {
     await redis.set(`activity:${id}`, Date.now().toString(), { ex: INACTIVITY_TIMEOUT_SEC });
     await redis.expire(`chat:${id}`, INACTIVITY_TIMEOUT_SEC);
+    console.log(`[DB] Heartbeat for ${id}. Chat extended for 30m.`);
   },
 
   async getHistory(id) {
     console.log(`[DB] Loading history for ${id}`);
     const rawList = await redis.lrange(`chat:${id}`, -MAX_THREAD_LENGTH, -1);
     
-    // STRICT FILTER: Only parse and return valid JSON. Skip bad items silently.
     const history = [];
     for (const item of rawList) {
       try {
         const strItem = (typeof item === 'string') ? item : item.toString('utf-8');
-        
-        // SKIP [object Object] corruption silently (don't log it)
         if (strItem.trim() === '[object Object]') continue;
-
         const msg = JSON.parse(strItem);
         history.push(msg);
       } catch (e) {
-        // Skip any other parse errors silently
-        continue;
+        continue; // Silent skip
       }
     }
-
-    // If we have significantly fewer items than expected, it implies corruption.
-    // Trigger a one-time clean wipe
-    if (history.length < Math.max(0, rawList.length - 5)) {
-       console.warn(`[DB] Corruption detected in session ${id}. Auto-wiping history.`);
-       await redis.del(`chat:${id}`);
-       return [];
-    }
-
     return history.reverse();
   },
 
   async addMessage(id, role, content) {
-    // EXPLICITLY Stringify to prevent corruption
     const jsonStr = JSON.stringify({ role, content });
-    
-    // Save & Refresh TTL
     const pipeline = redis.pipeline();
     pipeline.rpush(`chat:${id}`, jsonStr);
     pipeline.ltrim(`chat:${id}`, 0, MAX_THREAD_LENGTH);
@@ -171,7 +156,6 @@ const DB = {
     pipeline.expire(`chat:${id}`, INACTIVITY_TIMEOUT_SEC);
     
     await pipeline.exec();
-    // No "Saved msg" log to reduce noise
   },
 
   async getName(id) {
@@ -268,22 +252,6 @@ async function streamSarvamChat({ messages, onChunk }) {
   return fullContent;
 }
 
-/* ================= ORIGIN CHECKER ================= */
-function checkOrigin(req) {
-  const referer = req.headers.referer || "";
-  const origin = req.headers.origin || "";
-  
-  const isAllowed = ALLOWED_ORIGINS.some(url => referer.includes(url) || origin.includes(url));
-  
-  if (!isAllowed) {
-    console.warn(`[SECURITY] Unauthorized request from: ${referer || origin}`);
-    return false; // BLOCK IT
-  }
-  
-  console.log(`[SECURITY] Authorized request from: ${referer || origin}`);
-  return true; // ALLOW IT
-}
-
 /* ================= MAIN HANDLER ================= */
 export default async function handler(req, res) {
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -296,23 +264,28 @@ export default async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const { message, sessionId, files } = body;
 
-    // 1. ORIGIN LOCK (Check immediately)
-    if (!checkOrigin(req)) {
+    // 1. ORIGIN LOCK
+    const referer = req.headers.referer || "";
+    const origin = req.headers.origin || "";
+    const isAllowed = ALLOWED_ORIGINS.some(url => referer.includes(url) || origin.includes(url));
+    
+    if (!isAllowed) {
+      console.warn(`[SECURITY] Unauthorized request from: ${referer || origin}`);
+      console.log(`[RECOMMENDATION] Current model Sarvam-m has context issues. Consider switching to Groq (Llama 3) via API_URL="https://api.groq.com/openai/v1/chat/completions".`);
       res.write(`ERROR|Unauthorized Request: AI usage is restricted to esamz.site interface only.\n`);
       res.end();
-      return; // STOP PROCESSING
+      return;
     }
 
     // 2. Session
     let id = sessionId || req.cookies?.[COOKIE_NAME] || crypto.randomBytes(16).toString("hex");
     const ip = getIP(req);
 
-    // Set Cookie
     if (!req.cookies || !req.cookies[COOKIE_NAME]) {
       res.setHeader('Set-Cookie', `${COOKIE_NAME}=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${INACTIVITY_TIMEOUT_SEC}`);
     }
 
-    // 3. Load History (Strict Filter)
+    // 3. Load History
     const history = await DB.getHistory(id);
     const currentName = await DB.getName(id) || "User";
 
@@ -324,13 +297,14 @@ export default async function handler(req, res) {
     }
 
     // 5. Search (Get results separately to inject into System Prompt)
+    let searchResultsString = "";
     let searchContext = "";
     if (needsSearch(message) && SERPER_API_KEY) {
       sendEvent(res, "STATUS", "SEARCHING");
-      searchContext = await googleSearch(message);
-      if (searchContext) {
-        // We inject search results into the System Prompt cleanly
-        searchContext = `\n\nSEARCH RESULTS:\n${searchContext}\n\nUse these results to answer user.`;
+      searchResultsString = await googleSearch(message);
+      if (searchResultsString) {
+        // We will inject search results string into the system prompt manually to ensure AI sees them
+        // searchContext = `\n\nSEARCH RESULTS:\n${searchResultsString}\n\nUse these results to answer user.`;
       }
     }
     sendEvent(res, "STATUS", "TYPING");
@@ -347,11 +321,30 @@ export default async function handler(req, res) {
       }
     }
 
-    // 7. Build Payload (Strict Order)
-    // System (with search context) -> History -> User Message
-    const messagesPayload = [{ role: "system", content: SYSTEM_PROMPT + searchContext }];
-    messagesPayload.push(...history); // Inject History
-    messagesPayload.push({ role: "user", content: finalMessage }); // <--- CLEAN USER MESSAGE
+    // 7. Build Payload
+    let fullSystemContent = SYSTEM_PROMPT;
+    
+    // Context Injection: Add Search Results to System Prompt
+    if (searchResultsString) {
+        fullSystemContent += `\n\nSEARCH RESULTS:\n${searchResultsString}\n\nUse these results to answer user.`;
+    }
+
+    // Name Injection: Add Current Subject to System Prompt (Helps with "What fans call him")
+    if (currentName !== "User") {
+         // Extract subject from search results if available, otherwise from history
+         const lastAssistantMsg = history.findLast(m => m.role === 'assistant')?.content || "";
+         const subject = currentName; // Default to stored name
+         
+         fullSystemContent += `\n\nCURRENT TOPIC: We are discussing "${subject}". Use this context to answer pronouns (he/him).`;
+    }
+
+    const messagesPayload = [{ role: "system", content: fullSystemContent }];
+    messagesPayload.push(...history);
+    
+    // Debug: Log payload size
+    console.log(`[PAYLOAD] Sending ${messagesPayload.length} messages to AI.`);
+
+    messagesPayload.push({ role: "user", content: finalMessage }); 
 
     // 8. Stream AI Response
     let accumulatedReply = "";
