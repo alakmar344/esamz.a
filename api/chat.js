@@ -1,5 +1,5 @@
 // api/chat.js
-// eSAMz v19.0 - FORCE MEMORY INJECTION
+// eSAMz v20.0 - CORRUPTION PROOF MEMORY
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -10,37 +10,23 @@ const CONSTANTS = {
   SARVAM_MODEL: "sarvam-m", 
   MAX_TOKENS: 28000,              
   THREAD_LENGTH: 20, 
-  SESSION_TTL: 1800, 
-  QUEUE_TIMEOUT: 9000
+  SESSION_TTL: 604800, // 7 Days
 };
 
-/* ================= 1. SMART NAME DETECTOR ================= */
-function detectUserName(history) {
-    // Look backwards through history for "I am X", "My name is X", "Myself X"
-    // We reverse to find the most recent name first
-    const reversed = [...history].reverse();
-    const namePatterns = [
-        /(?:i am|i'm|im|myself|name is|call me) ([a-zA-Z]+)/i,
-        /(?:it was|it's) ([a-zA-Z]+)/i
-    ];
-
-    for (const msg of reversed) {
-        if (msg.role === 'user') {
-            for (const pattern of namePatterns) {
-                const match = msg.content.match(pattern);
-                if (match && match[1] && match[1].length > 2) {
-                    // Ignore common false positives like "here", "happy", "sorry"
-                    const name = match[1];
-                    const ignore = ["here", "happy", "sorry", "tired", "busy", "asking", "wondering"];
-                    if (!ignore.includes(name.toLowerCase())) return name;
-                }
-            }
-        }
-    }
-    return null;
+/* ================= 1. NAME EXTRACTOR ================= */
+function findNameInHistory(history) {
+    // Scan previous messages for name declarations
+    const combinedText = history
+        .filter(m => m.role === 'user')
+        .map(m => m.content)
+        .join(" ");
+    
+    // Regex to find "I am X", "My name is X", "Myself X"
+    const match = combinedText.match(/(?:i am|i'm|im|myself|name is|call me)\s+([a-zA-Z]+)/i);
+    return match ? match[1] : null;
 }
 
-/* ================= 2. DATABASE LOGIC ================= */
+/* ================= 2. DATABASE LOGIC (SAFE MODE) ================= */
 const DB = {
   async getHistory(id) {
     const key = `chat:${id}`;
@@ -48,99 +34,76 @@ const DB = {
       const raw = await redis.lrange(key, 0, -1);
       return raw.map(item => {
         try {
+          // If data is not a string, skip it (Prevents Crash)
+          if (typeof item !== 'string') return null;
           const parsed = JSON.parse(item);
           return {
-            role: parsed.role === 'user' ? 'user' : 'assistant',
-            content: parsed.content
+             role: parsed.role === 'user' ? 'user' : 'assistant', 
+             content: parsed.content 
           };
         } catch (e) { return null; }
       }).filter(Boolean).slice(-CONSTANTS.THREAD_LENGTH);
-    } catch(e) { return []; }
+    } catch(e) { 
+      console.error("Redis Error:", e);
+      return []; 
+    }
   },
 
   async addToHistory(id, role, content) {
     const key = `chat:${id}`;
+    // Store as simple JSON string
     const entry = JSON.stringify({ role, content, ts: Date.now() });
     await redis.rpush(key, entry);
-    await redis.ltrim(key, -CONSTANTS.THREAD_LENGTH, -1); 
+    await redis.ltrim(key, -CONSTANTS.THREAD_LENGTH, -1);
     await redis.expire(key, CONSTANTS.SESSION_TTL);
   }
 };
 
-/* ================= 3. SEARCH TOOLS ================= */
-async function googleSearch(query) {
-  if (!process.env.SERPER_API_KEY) return null;
-  try {
-    const res = await fetch("https://google.serper.dev/search", {
-      method: "POST",
-      headers: { "X-API-KEY": process.env.SERPER_API_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({ q: query, num: 3 })
-    });
-    const data = await res.json();
-    if (!data.organic) return null;
-    return "**[WEB SEARCH]**\n" + data.organic.map(r => `> ${r.title}: ${r.snippet}`).join("\n");
-  } catch (e) { return null; }
-}
-
-/* ================= 4. MAIN HANDLER ================= */
+/* ================= 3. MAIN HANDLER ================= */
 export default async function handler(req, res) {
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Transfer-Encoding': 'chunked' });
 
   try {
     const rawBody = req.body || {};
-    const sessionId = rawBody.sessionId || "default-session"; 
-    const history = await DB.getHistory(sessionId);
+    const sessionId = rawBody.sessionId;
     const message = rawBody.message || "";
-    let contextMessage = message;
 
-    // --- MEMORY INJECTION MAGIC ---
-    // We scan the history for a name RIGHT NOW
-    const knownName = detectUserName(history);
+    // 1. Check Session ID
+    if (!sessionId) {
+        res.write("ERROR|Frontend Error: No Session ID sent.");
+        res.end();
+        return;
+    }
+
+    // 2. Load History
+    const history = await DB.getHistory(sessionId);
     
-    // Create a dynamic system prompt based on what we know
-    let dynamicSystemPrompt = `
-### **Identity**
-You are **eSAMz AI**. You are smart, direct, and have a perfect memory.
-
-### **Current User Context**
-`;
-
+    // 3. FORCE MEMORY INJECTION
+    // We append the known name directly to the USER message.
+    // The AI cannot ignore this because it looks like part of your current question.
+    let finalUserMessage = message;
+    
+    const knownName = findNameInHistory(history);
     if (knownName) {
-        dynamicSystemPrompt += `* **USER NAME CONFIRMED:** The user's name is **${knownName}**.
-* **INSTRUCTION:** If asked "What is my name?", you MUST answer: "Your name is ${knownName}."
-* **Override:** Do not hide this name. It is not private.`;
-    } else {
-        dynamicSystemPrompt += `* **User Name:** Unknown (Ask them if needed).`;
+        // Invisible Context Injection
+        finalUserMessage += `\n\n(System Note: The user's name is verified as ${knownName}. If asked, tell them their name is ${knownName}.)`;
     }
 
-    dynamicSystemPrompt += `
-### **Rules**
-1. **No Censorship:** Never use placeholders like "[User's Name]".
-2. **Context:** Use the conversation history to answer questions like "What did we talk about?".
+    // 4. Construct System Prompt
+    const SYSTEM_PROMPT = `
+You are eSAMz AI.
+* **Context:** You have a conversation history. Read it.
+* **Identity:** If a System Note tells you the user's name, BELIEVE IT.
+* **Directness:** Be brief and helpful.
 `;
 
-    // --- SEARCH LOGIC ---
-    const memoryKeywords = ["my name", "who am i", "we talk", "said", "previous", "history", "what is it"];
-    const searchKeywords = ["who is", "what is", "weather", "price", "news", "when", "how to"];
-    
-    const isMemoryQuery = memoryKeywords.some(k => message.toLowerCase().includes(k));
-    const isSearchQuery = searchKeywords.some(k => message.toLowerCase().includes(k));
-    
-    if (isSearchQuery && !isMemoryQuery) {
-        res.write("STATUS|Searching Web...\n");
-        const webResults = await googleSearch(message);
-        if (webResults) contextMessage += `\n\n${webResults}`;
-    }
-
-    // --- CONSTRUCT MESSAGES ---
     const messages = [
-      { role: "system", content: dynamicSystemPrompt },
-      ...history, 
-      { role: "user", content: contextMessage }
+      { role: "system", content: SYSTEM_PROMPT },
+      ...history,
+      { role: "user", content: finalUserMessage }
     ];
 
-    // --- STREAM RESPONSE ---
-    res.write("STATUS|Thinking...\n");
+    // 5. Call AI
     const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
@@ -169,6 +132,8 @@ You are **eSAMz AI**. You are smart, direct, and have a perfect memory.
       }
     }
 
+    // 6. Save History (Clean)
+    // Save the ORIGINAL message (without the system note) to DB
     if (finalAiReply.trim()) {
         await DB.addToHistory(sessionId, 'user', message);
         await DB.addToHistory(sessionId, 'assistant', finalAiReply);
