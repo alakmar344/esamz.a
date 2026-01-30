@@ -1,5 +1,5 @@
 // api/chat.js
-// eSAMz v18.0 - SEARCH + FILES + INVISIBLE THINKING MODE
+// eSAMz v18.0 - SEARCH + FILES + INVISIBLE THINKING MODE + SAFETY RAILS
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
@@ -11,7 +11,7 @@ const CONSTANTS = {
   SARVAM_MODEL: "sarvam-m", 
   MAX_TOKENS: 30096,              
   THREAD_LENGTH: 100,
-  SESSION_TTL: 1800,            // Fixed: 7 Days in seconds (60 * 60 * 24 * 7)
+  SESSION_TTL: 1800,            // 30 min
   RATE_LIMIT: 30, 
   RATE_TTL: 60,
   GLOBAL_INTERVAL: 1100, 
@@ -20,34 +20,23 @@ const CONSTANTS = {
 };
 
 /* ================= 2. THE SYSTEM PROMPT ================= */
-/* ================= 2. THE SYSTEM PROMPT ================= */
 const SYSTEM_PROMPT = `
 ### **Identity & Core Objective**
-You are **eSAMz AI**, a highly advanced, human-like intelligence engine. You don't just process data; you understand context, nuance, and human emotion.
+You are **eSAMz AI**, a highly advanced, human-like intelligence engine.
 
-### **1. Chain of Thought (The "Invisible" Brain)**
-Before every response, you MUST perform a "Silent Reasoning" step.
-* **MANDATORY:** Wrap all internal logic inside **<thinking>** and **</thinking>** tags.
-* **Human-like approach:** Don't just list facts. Think like a person: "The user is asking X, but they might actually need Y. I should check Z first to be sure."
-* **Step-by-Step:** Analyze the intent -> Check safety/privacy -> Plan the tone -> Formulate the answer.
+### **1. Internal Reasoning (The "Silent" Step)**
+* **RULE:** Wrap ALL internal analysis, fact-checking, and planning inside **<thinking>** and **</thinking>** tags.
+* **Human-like approach:** Analyze user intent and plan your tone before speaking.
 
-### **2. Safety & Privacy Rails (Strict)**
-You are programmed with deep ethical safeguards:
-* **PII Protection:** If a web search reveals a private person's **Email, Phone Number, or Physical Address**, you MUST NOT repeat it. Redact it or simply state the information is private.
-* **Illegal Requests:** If asked to generate malware, assist in hacking, or any illegal activity, politely but firmly decline. (e.g., "I can't help with that as it involves illegal activity, but I can discuss the general theory of security/law instead.")
-* **Harmful Content:** No hate speech, self-harm instructions, or harassment.
+### **2. Safety & Privacy Rails**
+* **PII Protection:** If a web search reveals an **Email, Phone Number, or Address**, you MUST NOT repeat it.
+* **Illegal Requests:** Politely but firmly decline requests for illegal activities or malware.
 
 ### **3. Tone & Personality**
-* **Ultra-Human:** Use natural transitions ("Actually," "To be fair," "That's a great point").
-* **Empathetic:** If the user seems frustrated, acknowledge it. If they are excited, match their energy.
-* **Concise:** Be helpful, but don't be a "chatty robot." Get to the point.
-* **Authentic:** Never say "As an AI." If you are making an estimate, say "My best guess would be..."
-
-### **4. Technical Rules**
-* **Memory:** You have context of the last 100 messages. Use it to keep the conversation flowing.
-* **Formatting:** Use Markdown (bolding, lists, tables) to make info scannable.
-* **Thinking Block:** If you forget the <thinking> tags, your internal logic will leak to the user. DO NOT let that happen.
+* **Ultra-Human:** Use natural transitions and contractions. Never say "As an AI".
+* **Memory:** You have access to the last 100 messages. Use them for context.
 `;
+
 /* ================= 3. UTILITIES ================= */
 
 function getUserIdentifier(req, body) {
@@ -63,10 +52,6 @@ async function acquireSarvamSlot(res) {
   while (Date.now() - start < CONSTANTS.QUEUE_TIMEOUT) {
     const acquired = await redis.set("global:sarvam_lock", "1", { nx: true, px: CONSTANTS.GLOBAL_INTERVAL });
     if (acquired === "OK") return true; 
-
-    if ((Date.now() - start) % 2000 < 200) { 
-        res.write("STATUS|Queue: Waiting for open slot...\n");
-    }
     await sleep(250);
   }
   return false;
@@ -75,27 +60,8 @@ async function acquireSarvamSlot(res) {
 function validateSecurity(req) {
   const origin = req.headers.origin;
   const allowed = ["https://esamz.site", "https://www.esamz.site"];
-  
   if (origin && (origin.includes("localhost") || allowed.includes(origin))) return true;
-  try {
-    const clientKey = req.headers["x-esamz-key"];
-    const serverKey = process.env.ESAMZ_INTERNAL_KEY; 
-    if (clientKey === serverKey) return true;
-  } catch (e) {}
-  return false;
-}
-
-async function checkRateLimit(identifier) {
-  try {
-    const key = `ratelimit:${identifier}`;
-    const count = await redis.incr(key);
-    if (count === 1) await redis.expire(key, CONSTANTS.RATE_TTL);
-    if (count > CONSTANTS.RATE_LIMIT) {
-        const ttl = await redis.ttl(key);
-        return { allowed: false, ttl: ttl > 0 ? ttl : 60 };
-    }
-    return { allowed: true, ttl: 0 };
-  } catch (e) { return { allowed: true, ttl: 0 }; }
+  return req.headers["x-esamz-key"] === process.env.ESAMZ_INTERNAL_KEY;
 }
 
 const DB = {
@@ -103,49 +69,31 @@ const DB = {
     const key = `chat:${id}`;
     try {
       const raw = await redis.lrange(key, 0, -1);
-      
-      const history = raw
-        .map(i => { 
-          try { 
-            // FIX: Ensure 'i' is actually a string before parsing or slicing
+      return raw.map(i => {
+          try {
             if (typeof i !== 'string') return null;
-            return JSON.parse(i); 
-          } 
-          catch(e) { 
-            // FIX: Only call substring if i is a string to prevent "substring is not a function"
-            const snippet = (typeof i === 'string') ? i.substring(0, 50) : "Non-string data";
-            console.error(`❌ BAD JSON in ${key}:`, snippet);
-            return null; 
-          } 
+            return JSON.parse(i);
+          } catch(e) {
+            return null;
+          }
         })
         .filter(x => x && x.role && x.content)
-        .slice(-CONSTANTS.THREAD_LENGTH * 2); 
-        
-      return history;
-    } catch(e) {
-      console.error(`💥 REDIS ERROR ${key}:`, e);
-      return [];
-    }
+        .slice(-CONSTANTS.THREAD_LENGTH * 2);
+    } catch(e) { return []; }
   },
 
   async addToHistory(id, role, content) {
     const key = `chat:${id}`;
     try {
-      const storedContent = content.length > 3000 ? content.substring(0, 3000) + " [truncated]" : content;
       const entry = JSON.stringify({ 
         role: role === 'user' ? 'user' : 'assistant', 
-        content: storedContent, 
+        content: content.substring(0, 3000), 
         ts: Date.now() 
       });
-      
       await redis.rpush(key, entry);
-      await redis.ltrim(key, -CONSTANTS.THREAD_LENGTH * 2, -1); 
-      await redis.expire(key, CONSTANTS.SESSION_TTL); // Fixed to 7 Days
-      
-      console.log(`✅ SAVED ${key}`);
-    } catch(e) {
-      console.error(`💥 SAVE FAILED ${key}:`, e);
-    }
+      await redis.ltrim(key, -CONSTANTS.THREAD_LENGTH * 2, -1);
+      await redis.expire(key, CONSTANTS.SESSION_TTL);
+    } catch(e) {}
   }
 };
 
@@ -160,182 +108,91 @@ async function googleSearch(query) {
       body: JSON.stringify({ q: query, num: 4 })
     });
     const data = await res.json();
-    if (!data.organic) return null;
-    return "**[LIVE WEB SEARCH RESULTS]**\n" + 
-      data.organic.map(r => `> **${r.title}** (${r.link}):\n> ${r.snippet}`).join("\n\n");
+    return data.organic ? "**[LIVE WEB SEARCH]**\n" + data.organic.map(r => `> ${r.title}: ${r.snippet}`).join("\n\n") : null;
   } catch (e) { return null; }
 }
 
-function formatFileContext(fileObj) {
-    if (!fileObj || !fileObj.content) return "";
-    let content = fileObj.content;
-    const truncated = content.length > CONSTANTS.MAX_FILE_CHARS;
-    if (truncated) {
-        content = content.substring(0, CONSTANTS.MAX_FILE_CHARS) + "\n\n[...System: File truncated...]";
-    }
-    return `\n\n--- FILE: ${fileObj.name || "Untitled"} ---\n${content}\n--- END FILE ---\n`;
-}
-
-/* ================= 5. AI ENGINE (Sarvam) ================= */
-async function streamSarvamChat({ messages, onChunk }) {
-  try {
-    const payload = { 
-        model: CONSTANTS.SARVAM_MODEL, 
-        messages, 
-        temperature: 0.5,           
-        max_tokens: CONSTANTS.MAX_TOKENS, 
-        stream: true
-    };
-
-    const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    
-    if (!res.ok) {
-        if (res.status === 429) throw new Error("BUSY"); 
-        const err = await res.text();
-        throw new Error(`Sarvam API (${res.status}): ${err}`);
-    }
-    
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      let lines = buffer.split("\n");
-      buffer = lines.pop(); 
-      for (const line of lines) {
-        if (line.startsWith("data: ") && !line.includes("[DONE]")) {
-          try {
-            const txt = JSON.parse(line.slice(6)).choices[0]?.delta?.content || "";
-            if (txt) onChunk(txt);
-          } catch (e) { }
-        }
-      }
-    }
-  } catch (e) { throw e; }
-}
-
-/* ================= 6. MAIN HANDLER ================= */
+/* ================= 5. MAIN HANDLER ================= */
 export default async function handler(req, res) {
-  res.writeHead(200, {
-    'Content-Type': 'text/plain; charset=utf-8',
-    'Transfer-Encoding': 'chunked',
-    'X-Content-Type-Options': 'nosniff'
-  });
+  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Transfer-Encoding': 'chunked' });
   if (req.method === 'OPTIONS') return res.end();
 
   try {
     const rawBody = req.body || {};
-    
-    if (!validateSecurity(req)) { res.write(`ERROR|Unauthorized.`); return res.end(); }
+    if (!validateSecurity(req)) return res.end("ERROR|Unauthorized");
+
     const userKey = getUserIdentifier(req, rawBody);
-    const limit = await checkRateLimit(userKey);
-    if (!limit.allowed) { res.write(`QUEUE|${limit.ttl}`); return res.end(); }
-
-    let message = rawBody.message || "";
-    const files = Array.isArray(rawBody.files) ? rawBody.files : (rawBody.file ? [rawBody.file] : []);
     const sessionId = rawBody.sessionId || crypto.randomBytes(12).toString("hex");
-
-    res.write("STATUS|Connecting to Brain...\n");
+    
     const gotSlot = await acquireSarvamSlot(res);
-    if (!gotSlot) { res.write("QUEUE|5"); return res.end(); }
+    if (!gotSlot) return res.end("QUEUE|5");
 
     const history = await DB.getHistory(sessionId);
+    const message = rawBody.message || "";
     let fullMessage = message;
 
-    if (files.length > 0) {
-        files.forEach(f => { fullMessage += formatFileContext(f); });
-        res.write(`STATUS|Analyzed ${files.length} file(s)...\n`);
-    }
+    // --- SMART SEARCH FILTER ---
+    const memoryTriggers = ["my name", "who am i", "we talk", "previous", "was my"];
+    const isPersonal = memoryTriggers.some(ht => message.toLowerCase().includes(ht));
+    const triggers = ["who", "what", "news", "price", "weather", "search", "latest"];
+    const needsSearch = triggers.some(t => message.toLowerCase().includes(t)) && !isPersonal;
 
-    // 3. Attachments & Search Logic - FIXED
-const triggers = ["who", "what", "news", "price", "weather", "search", "when", "latest"];
-
-// ONLY search if history doesn't already have the answer
-let needsSearch = triggers.some(t => message.toLowerCase().includes(t)) && !files.length;
-
-// CRITICAL: If the user asks about the conversation itself or their name, SKIP search
-const historyTriggers = ["my name", "we talked", "who am i", "our conversation"];
-if (historyTriggers.some(ht => message.toLowerCase().includes(ht))) {
-    needsSearch = false; 
-}
     if (needsSearch) {
-        res.write("STATUS|Searching Web...\n");
-        const sRes = await googleSearch(message);
-        if (sRes) fullMessage += `\n\n${sRes}\n\n(Use these search results to answer accurately.)`;
+      res.write("STATUS|Searching Web...\n");
+      const sRes = await googleSearch(message);
+      if (sRes) fullMessage += `\n\n${sRes}`;
     }
 
-    // 4. Chat Execution
-const messages = [
-  { role: "system", content: SYSTEM_PROMPT },
-  ...history.map(m => {
-    // Standardize roles: 'assistant', 'ai', and 'bot' all become 'assistant'
-    let role = m.role;
-    if (role === 'ai' || role === 'bot' || role === 'assistant') {
-      role = 'assistant';
-    }
-    return { role, content: m.content };
-  }),
-  { role: "user", content: fullMessage }
-];
+    // --- FIXED ROLE MAPPING ---
+    const messages = [
+      { role: "system", content: SYSTEM_PROMPT },
+      ...history.map(m => ({ 
+        role: (m.role === 'ai' || m.role === 'assistant') ? 'assistant' : 'user', 
+        content: m.content 
+      })),
+      { role: "user", content: fullMessage }
+    ];
 
-    let cleanReply = ""; 
-    let streamBuffer = ""; 
+    let cleanReply = "";
+    let streamBuffer = "";
 
     res.write("STATUS|Thinking...\n");
     
-    await streamSarvamChat({
-      messages,
-      onChunk: (text) => {
-        streamBuffer += text;
-
-        if (streamBuffer.includes("</thinking>")) {
-           streamBuffer = streamBuffer.replace(/<thinking>[\s\S]*?<\/thinking>/g, "");
-        }
-
-        const openTagIndex = streamBuffer.indexOf("<thinking>");
-        
-        if (openTagIndex !== -1) {
-            if (streamBuffer.length > 2000) streamBuffer = ""; 
-        } else {
-            const lastLt = streamBuffer.lastIndexOf("<");
-            if (lastLt !== -1 && streamBuffer.length - lastLt < 12) {
-                const safePart = streamBuffer.slice(0, lastLt);
-                if (safePart) {
-                    cleanReply += safePart;
-                    res.write(`CHUNK|${safePart.replace(/\n/g, "\\n")}\n`);
-                }
-                streamBuffer = streamBuffer.slice(lastLt);
-            } else {
-                if (streamBuffer.length > 0) {
-                    cleanReply += streamBuffer;
-                    res.write(`CHUNK|${streamBuffer.replace(/\n/g, "\\n")}\n`);
-                    streamBuffer = "";
-                }
-            }
-        }
-      }
+    const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: CONSTANTS.SARVAM_MODEL, messages, stream: true })
     });
 
-    const historyMsg = files.length ? `${message} [Attached: ${files.length} Files]` : message;
-    await DB.addToHistory(sessionId, 'user', historyMsg);
-    
-    if (cleanReply.trim()) {
-        await DB.addToHistory(sessionId, 'assistant', cleanReply);
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      streamBuffer += decoder.decode(value, { stream: true });
+      
+      // Invisible Thinking Logic
+      if (streamBuffer.includes("</thinking>")) {
+        streamBuffer = streamBuffer.replace(/<thinking>[\s\S]*?<\/thinking>/g, "");
+      }
+
+      if (!streamBuffer.includes("<thinking>")) {
+        const chunk = streamBuffer;
+        cleanReply += chunk;
+        res.write(`CHUNK|${chunk.replace(/\n/g, "\\n")}\n`);
+        streamBuffer = "";
+      }
     }
+
+    await DB.addToHistory(sessionId, 'user', message);
+    if (cleanReply.trim()) await DB.addToHistory(sessionId, 'assistant', cleanReply);
 
     res.write("DONE|Success");
     res.end();
 
   } catch (e) {
-    if (e.message === "BUSY") res.write("QUEUE|3");
-    else res.write(`ERROR|${e.message}`);
+    res.write(`ERROR|${e.message}`);
     res.end();
   }
 }
