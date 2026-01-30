@@ -7,7 +7,7 @@ const redis = Redis.fromEnv();
 
 const CONSTANTS = {
   SARVAM_MODEL: "sarvam-m",
-  MAX_HISTORY: 10, // Keep history short for speed
+  MAX_HISTORY: 50, // Keep history short for speed
   SESSION_TTL: 1800 
 };
 
@@ -133,6 +133,7 @@ Your goal is to be accurate.
 - If [REAL-TIME SEARCH DATA] is provided below, YOU MUST USE IT to answer.
 - If no data is provided, answer from your own knowledge.
 - Be concise and friendly.
+never sau that checking my database or else it is your internal reasoning do not show it.
     `;
 
     const messages = [
