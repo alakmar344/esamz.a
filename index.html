@@ -723,7 +723,6 @@
             </button>
         </div>
     </dialog>
-
     <script>
         /* =========================================
            LOGIC & APPLICATION STATE
@@ -766,7 +765,7 @@
                     reader: null
                 };
 
-                this.storageKey = 'esamz_conversations_v16';
+                this.storageKey = 'esamz_conversations_v17'; // Updated version to force clear old formats
                 this.LAST_CHAT_KEY = 'esamz_last_chat_id';
                 
                 this.recognition = null;
@@ -982,6 +981,39 @@
 
             /* --- CHAT LOGIC --- */
 
+            // Helper: Get raw history array for a specific chat ID
+            getRawHistory(chatId) {
+                const raw = localStorage.getItem(this.storageKey);
+                if (!raw) return [];
+                const history = JSON.parse(raw);
+                const chat = history.find(c => c.id === chatId);
+                return chat ? chat.messages : [];
+            }
+
+            // Helper: Overwrite chat history from server
+            overwriteHistory(chatId, newMessages) {
+                const raw = localStorage.getItem(this.storageKey);
+                let allChats = raw ? JSON.parse(raw) : [];
+                const chatIndex = allChats.findIndex(c => c.id === chatId);
+                
+                if (chatIndex !== -1) {
+                    // Update messages
+                    allChats[chatIndex].messages = newMessages;
+                    
+                    // Ensure title is preserved (server sends raw messages)
+                    // If title is 'Untitled Chat' and we have a user message, update it
+                    if (allChats[chatIndex].title === 'Untitled Chat' && newMessages.length > 0) {
+                        const firstUserMsg = newMessages.find(m => m.role === 'user');
+                        if (firstUserMsg) {
+                            allChats[chatIndex].title = firstUserMsg.content.slice(0, 30) + '...';
+                            this.renderHistoryItem(chatId, allChats[chatIndex].title);
+                        }
+                    }
+
+                    localStorage.setItem(this.storageKey, JSON.stringify(allChats));
+                }
+            }
+
             async handleSend() {
                 const text = this.dom.input.value.trim();
                 if ((!text && this.state.files.length === 0) || this.state.isProcessing) return;
@@ -998,6 +1030,7 @@
                     localStorage.setItem(this.LAST_CHAT_KEY, this.state.chatId);
                 }
 
+                // 1. Prepare User Message for Display
                 let userMsgText = text;
                 if (this.state.files.length > 0) {
                     userMsgText += '\n\n' + this.state.files.map(f => {
@@ -1007,7 +1040,11 @@
                 }
                 
                 this.appendMessage('user', userMsgText);
-                this.saveMessage(this.state.chatId, 'user', userMsgText);
+                // Note: We do NOT save to LocalStorage yet. We wait for the server to confirm/save.
+                // This ensures the server is the source of truth for the 30-min rule.
+                
+                // But to display the user message immediately (optimistic UI), we append to DOM.
+                // If the server rejects/wipes, the HISTORY_UPDATE will trigger a reload/wipe.
 
                 const filesToSend = [...this.state.files];
                 this.state.files = [];
@@ -1021,87 +1058,110 @@
 
                 this.state.abortController = new AbortController();
 
-                // SAFETY: Add 60s timeout to prevent infinite hangs
-                const timeoutId = setTimeout(() => {
-                    if(this.state.isProcessing) {
-                        this.abortGeneration();
-                        this.showToast("Request timed out. Please try again.", "error");
-                    }
-                }, 60000);
+                // 2. Get Data for Backend Sync
+                const clientHistory = this.getRawHistory(this.state.chatId);
+                const clientLastActive = Date.now(); // "I am active NOW"
 
-                try {
-                    const response = await fetch("/api/chat", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            message: text,
-                            intent: detectIntent(text, filesToSend),
-                            files: filesToSend,
-                            sessionId: this.state.chatId
-                        }),
-                        signal: this.state.abortController.signal
-                    });
+                // 3. Send Request
+                const response = await fetch("/api/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        message: text,
+                        intent: detectIntent(text, filesToSend),
+                        files: filesToSend,
+                        sessionId: this.state.chatId,
+                        clientHistory: clientHistory,
+                        clientLastActive: clientLastActive
+                    }),
+                    signal: this.state.abortController.signal
+                });
 
-                    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status}`);
+                }
 
-                    const reader = response.body.getReader();
-                    const decoder = new TextDecoder("utf-8");
-                    let fullText = "";
-                    let buffer = "";
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                let fullText = "";
+                let buffer = "";
+                let incomingHistory = null;
 
-                    contentDiv.innerHTML = ''; 
+                contentDiv.innerHTML = ''; 
 
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
 
-                        buffer += decoder.decode(value, { stream: true });
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop() || "";
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || "";
 
-                        for (const line of lines) {
-                            if (!line.trim()) continue;
-                            const sepIdx = line.indexOf('|');
-                            if (sepIdx === -1) continue;
+                    for (const line of lines) {
+                        if (!line.trim()) continue;
+                        const sepIdx = line.indexOf('|');
+                        if (sepIdx === -1) continue;
+                        
+                        const type = line.substring(0, sepIdx);
+                        const data = line.substring(sepIdx + 1);
+
+                        if (type === 'STATUS') {
+                            if (data === 'SEARCHING') this.updateStatus("Searching Knowledge Base...");
+                            if (data === 'TYPING') this.updateStatus("Generating Response...");
+                        } else if (type === 'CHUNK') {
+                            const cleanData = data.replace(/\\n/g, '\n');
+                            fullText += cleanData;
                             
-                            const type = line.substring(0, sepIdx);
-                            const data = line.substring(sepIdx + 1);
-
-                            if (type === 'STATUS') {
-                                if (data === 'SEARCHING') this.updateStatus("Searching Knowledge Base...");
-                                if (data === 'TYPING') this.updateStatus("Generating Response...");
-                            } else if (type === 'CHUNK') {
-                                const cleanData = data.replace(/\\n/g, '\n');
-                                fullText += cleanData;
-                                
-                                try {
-                                    contentDiv.innerHTML = marked.parse(fullText);
-                                    if (window.Prism) Prism.highlightAllUnder(contentDiv);
-                                    this.injectCodeButtons(contentDiv);
-                                } catch (e) { contentDiv.textContent = fullText; }
-                                
-                                this.scrollToBottom();
-                            } else if (type === 'ERROR') {
-                                throw new Error(data);
-                            }
+                            try {
+                                contentDiv.innerHTML = marked.parse(fullText);
+                                if (window.Prism) Prism.highlightAllUnder(contentDiv);
+                                this.injectCodeButtons(contentDiv);
+                            } catch (e) { contentDiv.textContent = fullText; }
+                            
+                            this.scrollToBottom();
+                        } else if (type === 'HISTORY_UPDATE') {
+                            // Server sends the definitive history state
+                            incomingHistory = JSON.parse(data);
+                        } else if (type === 'TIMESTAMP') {
+                            // Server confirms activity time
+                            // We could store this, but usually 'now' is sufficient for next request
+                        } else if (type === 'ERROR') {
+                            throw new Error(data);
                         }
                     }
-
-                    this.saveMessage(this.state.chatId, 'ai', fullText);
-                    
-                } catch (error) {
-                    if (error.name === 'AbortError') {
-                        contentDiv.innerHTML += '<p style="font-style:italic; color:var(--text-muted); margin-top:10px;">[Generation stopped by user]</p>';
-                    } else {
-                        this.showToast(error.message, 'error');
-                        contentDiv.innerHTML = `<span style="color:#ef4444">Error: ${error.message}</span>`;
-                    }
-                } finally {
-                    clearTimeout(timeoutId);
-                    this.setProcessingState(false);
-                    this.updateButtonState(); // Re-enable button if needed
-                    this.scrollToBottom();
                 }
+
+                // 4. Final Sync
+                if (incomingHistory) {
+                    const currentDomCount = this.dom.chatList.children.length;
+                    
+                    // Update Storage
+                    this.overwriteHistory(this.state.chatId, incomingHistory);
+
+                    // VISUAL SYNC:
+                    // If the server history is smaller than what's on screen, it means the server
+                    // wiped the old messages (30 min rule). We must reload the UI.
+                    // Note: We currently have 1 user msg + 1 AI msg in DOM (2 items).
+                    // If incomingHistory has only 2 items (or less), reload to ensure clean state.
+                    // Actually, just check if counts mismatch significantly to catch the wipe.
+                    
+                    if (incomingHistory.length < currentDomCount) {
+                        // A wipe happened! Reload the chat view to hide old messages.
+                        this.loadChat(this.state.chatId);
+                    }
+                }
+
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    contentDiv.innerHTML += '<p style="font-style:italic; color:var(--text-muted); margin-top:10px;">[Generation stopped by user]</p>';
+                } else {
+                    this.showToast(error.message, 'error');
+                    contentDiv.innerHTML = `<span style="color:#ef4444">Error: ${error.message}</span>`;
+                }
+            } finally {
+                this.setProcessingState(false);
+                this.updateButtonState(); // Re-enable button if needed
+                this.scrollToBottom();
             }
 
             setProcessingState(isProcessing) {
@@ -1286,7 +1346,10 @@
                 localStorage.setItem(this.storageKey, JSON.stringify(history));
             }
 
+            // Kept for compatibility if used elsewhere, but handleSend now handles saving
             saveMessage(chatId, role, content) {
+                // Note: In the new flow, we prefer overwriteHistory, but this is kept 
+                // for potential other uses in the app.
                 const raw = localStorage.getItem(this.storageKey);
                 let history = raw ? JSON.parse(raw) : [];
                 const chatIndex = history.findIndex(c => c.id === chatId);
