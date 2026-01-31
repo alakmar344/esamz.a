@@ -6,7 +6,7 @@ console.log("--> System: Initializing eSAMz Backend v22 (Clean Architecture)..."
 const redis = Redis.fromEnv();
 
 const SARVAM_MODEL = "sarvam-m";
-const MAX_COMPLETION_TOKENS = 2048;
+const MAX_COMPLETION_TOKENS = 30048;
 const MAX_THREAD_LENGTH = 25; // Server keeps last 25 messages. 
 const COOKIE_NAME = "esamz_sid";
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
