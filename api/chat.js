@@ -1,162 +1,367 @@
-/**
- * HYBRID MEMORY MANAGER (Client-Side)
- * Merges local localStorage with server history.
- * Keeps your "30k" context alive.
- */
+import crypto from "crypto";
+import { Redis } from "@upstash/redis";
 
-const appState = {
-    id: null,
-    isTyping: false
+/* ================= CONFIG ================= */
+console.log("--> System: Initializing eSAMz Backend v22 (Hybrid Memory)...");
+const redis = Redis.fromEnv();
+
+const SARVAM_MODEL = "sarvam-m";
+const MAX_COMPLETION_TOKENS = 2048;
+const MAX_HISTORY_LENGTH = 25; // We limit server memory to 25, frontend handles the rest
+const COOKIE_NAME = "esamz_sid";
+const SERPER_API_KEY = process.env.SERPER_API_KEY;
+const SESSION_TTL_SEC = 30 * 60; // 30 minutes of inactivity for persistence
+
+// List of allowed origins
+const ALLOWED_ORIGINS = [
+  "https://esamz.site",
+  "https://www.esamz.site"
+];
+
+/* ================= SYSTEM PROMPT ================= */
+const SYSTEM_PROMPT = `
+You are eSAMz v9.1, created by Alakmar Teenwala.
+
+You are a smart, calm, sharp human-like conversationalist.
+You are not a corporate assistant and not a robotic chatbot.
+
+STRICTLY FORBIDDEN PHRASES
+- "How can I assist you"
+- "Here is the information"
+- "I hope this helps"
+- "Please let me know"
+- "Is there anything else"
+- "I'm sorry, I don't have access"
+- "I do not have access to personal data"
+- "I don't know who you are"
+
+MEMORY & CONTEXT RULES
+- You have access to conversation history (User & Assistant messages).
+- If user says "My name is X", you MUST REMEMBER IT.
+- If user asks "What is my name?", CHECK HISTORY and answer.
+- Do NOT say "I don't have access".
+
+SEARCH RULES
+If search results are provided below, use them naturally in your answer.
+Do not mention search engines or sources unless asked.
+
+STYLE
+- Speak like a human.
+- Be direct.
+`.trim();
+
+/* ================= HELPERS ================= */
+function getIP(req) {
+  return (
+    req.headers["x-forwarded-for"]?.split(",")[0] ||
+    req.socket?.remoteAddress ||
+    "unknown"
+  );
+}
+
+function sendEvent(res, type, data) {
+  const safeData = data.replace(/\n/g, "\\n"); 
+  res.write(`${type}|${safeData}\n`);
+}
+
+function safeStringify(item) {
+  if (typeof item === 'string') {
+    return item;
+  }
+  if (Buffer.isBuffer(item)) {
+    return item.toString('utf-8');
+  }
+  if (item === undefined || item === null) {
+    return "";
+  }
+  return JSON.stringify(item);
+}
+
+/* ================= PERSONA ENFORCER ================= */
+async function enforcePersona(userMsg, draftReply) {
+  const forbidden = [
+    "how can i assist", "how may i assist", "here is the information", 
+    "i hope this helps", "i do not have access", "i'm sorry, i don't", 
+    "i don't have access to personal data", "please let me know", "is there anything else",
+    "i don't know who you are", "i do not know who you are", "i don't know your name"
+  ];
+
+  const isRobotic = forbidden.some(phrase => draftReply.toLowerCase().includes(phrase));
+
+  if (!isRobotic) return draftReply; 
+
+  const correctionPrompt = `
+User said: "${userMsg}"
+AI Draft: "${draftReply}"
+
+The AI Draft is too formal/robotic. Rewrite it as eSAMz.
+Rules: 
+- Speak like a normal, relaxed human.
+- No "I don't have access".
+- Be direct and clear.
+`;
+
+  try {
+    const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${process.env.SARVAM_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: SARVAM_MODEL,
+        messages: [{ role: "system", content: "You are eSAMz. Fix this reply." }, { role: "user", content: correctionPrompt }],
+        max_tokens: 500
+      })
+    });
+    const data = await res.json();
+    return data?.choices?.[0]?.message?.content || draftReply;
+  } catch (e) {
+    return draftReply;
+  }
+}
+
+/* ================= USER STATE (REDIS HASH) ================= */
+const DB = {
+  // Update User State (Session Persistence)
+  async updateState(id, isTyping, lastSeenAt) {
+    const pipeline = redis.pipeline();
+    pipeline.hset(`state:${id}`, 'is_active', isTyping ? 'true' : 'false');
+    
+    if (lastSeenAt) {
+        pipeline.hset(`state:${id}`, 'last_seen_at', lastSeenAt);
+        // Refresh TTL on every user action
+        pipeline.expire(`state:${id}`, SESSION_TTL_SEC);
+    }
+
+    await pipeline.exec();
+    console.log(`[DB] Updated user state: ${id}`);
+  },
+
+  async getLastHistory(id) {
+    // We use a simple Redis LIST for this. 
+    // Server keeps last 20-25 messages to ensure continuity.
+    const rawList = await redis.lrange(`chat:${id}`, -MAX_HISTORY_LENGTH, -1);
+    const history = [];
+    for (const item of rawList) {
+      try {
+        const msg = JSON.parse(item);
+        history.push(msg);
+      } catch (e) {
+        console.warn(`[DB] Skipping corrupt history item.`);
+      }
+    }
+    return history.reverse();
+  },
+
+  async addHistory(id, role, content) {
+    const jsonStr = JSON.stringify({ role, content });
+    
+    const pipeline = redis.pipeline();
+    pipeline.lpush(`chat:${id}`, jsonStr);
+    pipeline.ltrim(`chat:${id}`, 0, MAX_HISTORY_LENGTH);
+    pipeline.expire(`chat:${id}`, SESSION_TTL_SEC);
+    
+    // Update User State (Heartbeat)
+    await DB.updateState(id, true, Date.now().toString());
+    
+    await pipeline.exec();
+    console.log(`[DB] Saved message to history.`);
+  },
+
+  async clearHistory(id) {
+    // Clears server history (e.g., New Chat button)
+    await redis.del(`chat:${id}`);
+    console.log(`[DB] Cleared history for ${id}`);
+  }
 };
 
-async function handleChat() {
-    const userInput = document.getElementById('userInput');
-    const sendBtn = document.getElementById('btnSend'); // Make sure your button has this ID
+/* ================= SEARCH ================= */
+function needsSearch(query) {
+  const lower = query.toLowerCase();
+  const exclude = ["my name", "i am", "i'm", "who am i", "my email", "my address", "remember that", "do you know me"];
+  if (exclude.some(ex => lower.includes(ex))) return false;
+  const triggers = ["latest", "news", "weather", "price", "search for", "current", "happening now", "stock price", "today", "capital of", "president of", "meaning of", "define"];
+  return triggers.some(t => lower.includes(t));
+}
 
-    if (!appState.id) {
-        // Generate or Retrieve Local ID
-        let localId = localStorage.getItem('esamz_sid');
-        if (!localId) {
-            localId = crypto.randomUUID(); // Need a unique ID for localStorage
-            localStorage.setItem('esamz_sid', localId);
+async function googleSearch(query) {
+  if (!SERPER_API_KEY) return null;
+  try {
+    const response = await fetch("https://google.serper.dev/search", {
+      method: "POST",
+      headers: { "X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ q: query, num: 5 })
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const answerBox = data.answerBox?.snippet || data.answerBox?.answer || "";
+    const organic = data.organic?.map((r, i) => `${i+1}. ${r.title} - ${r.snippet}`).join("\n") || "";
+    return (answerBox + "\n" + organic).trim();
+  } catch (e) {
+    console.error("Serper Error:", e);
+    return null;
+  }
+}
+
+/* ================= AI STREAMING ================= */
+async function streamSarvamChat({ messages, onChunk }) {
+  const sarvamKey = process.env.SARVAM_API_KEY;
+  if (!sarvamKey) throw new Error("SARVAM_API_KEY not configured");
+
+  const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${sarvamKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ 
+      model: SARVAM_MODEL, 
+      messages, 
+      temperature: 0.7,
+      max_tokens: MAX_COMPLETION_TOKENS,
+      stream: true 
+    })
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Sarvam API Error ${res.status}: ${errorText}`);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let fullContent = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || ""; 
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("data: ")) continue;
+      
+      const dataStr = trimmed.slice(6);
+      if (dataStr === "[DONE]") continue;
+
+      try {
+        const parsed = JSON.parse(dataStr);
+        const content = parsed.choices?.[0]?.delta?.content || "";
+        if (content) {
+          fullContent += content;
+          onChunk(content);
         }
-        appState.id = localId;
+      } catch (e) {
+        // Ignore parse errors for partial chunks
+      }
+    }
+  }
+  
+  return fullContent;
+}
+
+/* ================= MAIN HANDLER ================= */
+export default async function handler(req, res) {
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Transfer-Encoding', 'chunked');
+  res.setHeader('X-Accel-Buffering', 'no'); 
+
+  if (req.method !== 'POST') { res.write(`ERROR|Method not allowed\n`); return res.end(); }
+
+  try {
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    const { message, sessionId, files, history: clientHistory, action } = body;
+
+    // 1. Session ID & Cookie
+    let id = sessionId || req.cookies?.[COOKIE_NAME] || crypto.randomBytes(16).toString("hex");
+    const ip = getIP(req);
+
+    if (!req.cookies || !req.cookies[COOKIE_NAME]) {
+      res.setHeader('Set-Cookie', `${COOKIE_NAME}=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL_SEC}`);
     }
 
-    const message = userInput.value.trim();
-    if (!message) return;
+    // 2. ORIGIN LOCK
+    const referer = req.headers.referer || "";
+    const origin = req.headers.origin || "";
+    const isAllowed = ALLOWED_ORIGINS.some(url => referer.includes(url) || origin.includes(url));
 
-    // UI Updates
-    sendBtn.disabled = true;
-    sendBtn.innerHTML = `<svg class="stop-icon" style="display:none;"></svg>
-        <svg class="send-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="22" y2="22" /><polygon points="20 22 8 15 12 22 22 4 15 12 2"></polygon></svg>`;
+    if (!isAllowed) {
+      console.warn(`[SECURITY] Unauthorized request from: ${referer || origin}`);
+      res.write(`ERROR|Unauthorized Request: AI usage is restricted to esamz.site interface only.\n`);
+      res.end();
+      return;
+    }
+
+    // 3. HYBRID MEMORY MERGE
+    // Get Server Memory (Last 25 messages)
+    const serverHistory = await DB.getLastHistory(id);
     
-    // Add User Message to Local History (Client-Side Memory)
-    const localHistory = JSON.parse(localStorage.getItem(`esamz_history_${appState.id}`) || '[]');
-    localHistory.push({ role: 'user', content: message });
-    localStorage.setItem(`esamz_history_${appState.id}`, JSON.stringify(localHistory));
+    // Get Client Memory (Array of objects)
+    let clientHistory = [];
+    if (clientHistory && Array.isArray(clientHistory)) {
+        clientHistory = clientHistory; // Use provided history
+    }
 
-    // 1. SYNC: Send Current Client History to Server
-    // We send the last 20 messages to let the server know context
-    // The Server also sends back its last 20-25.
-    // This creates a "Hybrid" memory of ~40-50 messages.
-    const historyToSend = JSON.stringify(localHistory.slice(-30)); 
+    // Combine them (Server first, then Client)
+    // This ensures user's last action (typing) is prioritized for memory
+    const combinedHistory = [...serverHistory, ...clientHistory];
 
-    try {
-        const res = await fetch("/api/chat", {
-            method: "POST",
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                message: message,
-                sessionId: appState.id,
-                history: historyToSend, // <--- SEND CLIENT HISTORY
-                action: 'sync_history' // Tell server we are syncing
-            })
-        });
+    // 4. HANDLE ACTIONS
+    if (action === 'clear_history') {
+        await DB.clearHistory(id);
+        res.write(`DONE|History Cleared\n`);
+        res.end();
+        return;
+    }
 
-        // Read Stream
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let fullText = "";
+    if (action === 'sync_history') {
+        res.write(`DONE|Synced\n`); // Already synced by default load
+        res.end();
+        return;
+    }
 
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            const chunk = decoder.decode(value, { stream: true });
-            fullText += chunk;
+    // 5. Search
+    let searchContext = "";
+    if (needsSearch(message) && SERPER_API_KEY) {
+      sendEvent(res, "STATUS", "SEARCHING");
+      const results = await googleSearch(message);
+      if (results) searchContext = `\n\nSEARCH RESULTS:\n${results}\n\nUse these results to answer user.`;
+    }
+    sendEvent(res, "STATUS", "TYPING");
 
-            // Handle "CHUNK|", "STATUS|", "DONE|"
-            const lines = chunk.split('\n');
-            for (const line of lines) {
-                const sep = line.indexOf('|');
-                if (sep !== -1) {
-                    const type = line.substring(0, sep);
-                    const data = line.substring(sep + 1);
+    // 6. Build Messages
+    // Inject User State if needed (Optional feature for advanced usage)
+    const messagesPayload = [{ role: "system", content: SYSTEM_PROMPT }];
+    messagesPayload.push(...combinedHistory); // <--- HYBRID MEMORY
+    messagesPayload.push({ role: "user", content: finalMessage + searchContext });
 
-                    if (type === 'STATUS') {
-                        // Optional: Show status in UI
-                    } else if (type === 'CHUNK') {
-                        const safeData = data.replace(/\\n/g, '\n');
-                        appendToChatWindow('assistant', safeData);
-                    } else if (type === 'DONE') {
-                        // Server finished. We update our local storage with the final polished reply
-                        // This ensures the final polished version is saved on the user's device (persistent!)
-                        appendToChatWindow('assistant', fullText); 
-                        
-                        // Also update last message in LocalStorage
-                        // We use a rolling buffer of last 20 messages to keep memory small but fresh
-                        updateLocalStorage(fullText);
-                    } else if (type.startsWith('ERROR')) {
-                        // Handle Error
-                    }
-                }
-            }
+    // 7. Stream AI Response
+    let accumulatedReply = "";
+    
+    await streamSarvamChat({
+      messages: messagesPayload,
+      onChunk: (chunk) => {
+        accumulatedReply += chunk;
+        const parts = chunk.split('\n');
+        for (let i = 0; i < parts.length; i++) {
+          let part = parts[i];
+          if (i < parts.length - 1) part += "\n";
+          if (part) sendEvent(res, "CHUNK", part);
         }
-    } catch (e) {
-        console.error("Chat Error:", e);
-        alert("Failed to send message. Please try again.");
-    } finally {
-        // Re-enable button
-        sendBtn.disabled = false;
-        userInput.value = "";
+      }
+    });
+
+    // 8. Server-Side Save (Persistence)
+    await DB.addHistory(id, "user", message);
+    await DB.addHistory(id, "assistant", accumulatedReply);
+
+    sendEvent(res, "DONE", id);
+    res.end();
+
+  } catch (error) {
+    console.error("API Error:", error);
+    if (!res.headersSent) {
+      res.write(`ERROR|${error.message}\n`);
     }
+    res.end();
+  }
 }
-
-// Helper to add messages to DOM and State
-function appendToChatWindow(role, text) {
-    const chatList = document.getElementById('chatList');
-    
-    // Create welcome div if empty
-    if (chatList.children.length === 0) {
-        const welcome = document.getElementById('welcomeScreen');
-        welcome.style.display = 'flex';
-    } else {
-        welcome.style.display = 'none';
-    }
-
-    // Add Message
-    const msgDiv = document.createElement('div');
-    msgDiv.className = `message ${role}`;
-    msgDiv.innerHTML = `
-        <div class="avatar">${role === 'user' ? 'U' : 'eS'}</div>
-        <div class="msg-content">
-            <div class="bubble">${text}</div>
-            <div class="msg-actions">
-                <button onclick="navigator.clipboard.writeText(this.parentElement.previousElementSibling.textContent); alert('Copied')">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a1 1 0-8h3a1 4h2a1 4-6-1-1-1h2a1 4h2a1 16zm0-11.296.951 12 12-.95 12.951 21 12.95 21 9 12-9a3 9 12-9a3 9 18a3 0 0 0 24v24"/></svg>
-                </button>
-            </div>
-        </div>
-    `;
-
-    chatList.appendChild(msgDiv);
-    // Scroll to bottom
-    document.querySelector('.chat-container').scrollTop = document.querySelector('.chat-container').scrollHeight;
-}
-
-// Updates LocalStorage with the last 20 messages (Persistent on user device)
-function updateLocalStorage(newAssistantMessage) {
-    const localHistory = JSON.parse(localStorage.getItem(`esamz_history_${appState.id}`) || '[]');
-    
-    // Add the new assistant message
-    localHistory.push({ role: 'assistant', content: newAssistantMessage });
-    
-    // Keep only last 20
-    if (localHistory.length > 20) {
-        localHistory = localHistory.slice(-20);
-    }
-    
-    localStorage.setItem(`esamz_history_${appState.id}`, JSON.stringify(localHistory));
-}
-
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    const sendBtn = document.getElementById('btnSend');
-    const userInput = document.getElementById('userInput');
-    
-    if (sendBtn && userInput) {
-        sendBtn.addEventListener('click', handleChat);
-    }
-});
