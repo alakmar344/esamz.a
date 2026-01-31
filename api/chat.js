@@ -201,7 +201,25 @@ async function streamSarvamChat({ messages, onChunk }) {
 
   while (true) {
     const { done, value } = await reader.read();
-    if (done) break;
+    if (done) {
+        // [FIX] Process remaining buffer when stream ends
+        if (buffer.trim()) {
+            const lines = [buffer];
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed.startsWith("data: ")) continue;
+                const dataStr = trimmed.slice(6);
+                if (dataStr === "[DONE]") continue;
+                try {
+                    const parsed = JSON.parse(dataStr);
+                    const content = parsed.choices?.[0]?.delta?.content || "";
+                    if (content) { fullContent += content; onChunk(content); }
+                } catch (e) { /* Ignore */ }
+            }
+        }
+        break;
+    }
+
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split("\n");
     buffer = lines.pop() || ""; 
