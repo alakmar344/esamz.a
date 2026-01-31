@@ -2,20 +2,22 @@ import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
 /* ================= CONFIG ================= */
-console.log("--> System: Initializing eSAMz Backend v22 (Hybrid Memory)...");
+console.log("--> System: Initializing eSAMz Backend v22 (Clean Architecture)...");
 const redis = Redis.fromEnv();
 
 const SARVAM_MODEL = "sarvam-m";
-const MAX_COMPLETION_TOKENS = 30048;
-const MAX_HISTORY_LENGTH = 25; // We limit server memory to 25, frontend handles the rest
+const MAX_COMPLETION_TOKENS = 2048;
+const MAX_THREAD_LENGTH = 25; // Server keeps last 25 messages. 
 const COOKIE_NAME = "esamz_sid";
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
-const SESSION_TTL_SEC = 30 * 60; // 30 minutes of inactivity for persistence
+const SESSION_TTL_SEC = 30 * 60; // 30 Minutes of persistence
 
 // List of allowed origins
 const ALLOWED_ORIGINS = [
   "https://esamz.site",
   "https://www.esamz.site"
+  // Add your local domain if testing locally
+  // "http://localhost:3000" 
 ];
 
 /* ================= SYSTEM PROMPT ================= */
@@ -35,8 +37,8 @@ STRICTLY FORBIDDEN PHRASES
 - "I do not have access to personal data"
 - "I don't know who you are"
 
-MEMORY & CONTEXT RULES
-- You have access to conversation history (User & Assistant messages).
+MEMORY RULES (CRITICAL)
+- ALWAYS check conversation history before answering.
 - If user says "My name is X", you MUST REMEMBER IT.
 - If user asks "What is my name?", CHECK HISTORY and answer.
 - Do NOT say "I don't have access".
@@ -68,12 +70,14 @@ function safeStringify(item) {
   if (typeof item === 'string') {
     return item;
   }
+  // Handle Buffers safely
   if (Buffer.isBuffer(item)) {
     return item.toString('utf-8');
   }
   if (item === undefined || item === null) {
     return "";
   }
+  // Fallback for any other type (number, etc)
   return JSON.stringify(item);
 }
 
@@ -82,7 +86,7 @@ async function enforcePersona(userMsg, draftReply) {
   const forbidden = [
     "how can i assist", "how may i assist", "here is the information", 
     "i hope this helps", "i do not have access", "i'm sorry, i don't", 
-    "i don't have access to personal data", "please let me know", "is there anything else",
+    "i don't have access to personal", "please let me know", "is there anything else",
     "i don't know who you are", "i do not know who you are", "i don't know your name"
   ];
 
@@ -118,58 +122,58 @@ Rules:
   }
 }
 
-/* ================= USER STATE (REDIS HASH) ================= */
+/* ================= DB (REDIS LIST - BULLETPROOF) ================= */
 const DB = {
-  // Update User State (Session Persistence)
-  async updateState(id, isTyping, lastSeenAt) {
-    const pipeline = redis.pipeline();
-    pipeline.hset(`state:${id}`, 'is_active', isTyping ? 'true' : 'false');
-    
-    if (lastSeenAt) {
-        pipeline.hset(`state:${id}`, 'last_seen_at', lastSeenAt);
-        // Refresh TTL on every user action
-        pipeline.expire(`state:${id}`, SESSION_TTL_SEC);
-    }
-
-    await pipeline.exec();
-    console.log(`[DB] Updated user state: ${id}`);
+  async updateActivity(id) {
+    await redis.set(`activity:${id}`, Date.now().toString(), { ex: SESSION_TTL_SEC });
+    await redis.expire(`chat:${id}`, SESSION_TTL_SEC);
+    console.log(`[DB] Heartbeat for ${id}. Chat extended for 30m.`);
   },
 
-  async getLastHistory(id) {
-    // We use a simple Redis LIST for this. 
-    // Server keeps last 20-25 messages to ensure continuity.
-    const rawList = await redis.lrange(`chat:${id}`, -MAX_HISTORY_LENGTH, -1);
+  async getHistory(id) {
+    console.log(`[DB] Loading history for ${id}`);
+    const rawList = await redis.lrange(`chat:${id}`, -MAX_THREAD_LENGTH, -1);
+    
+    // STRICT FILTER: Only parse and return valid JSON. Skip bad items silently.
     const history = [];
     for (const item of rawList) {
       try {
-        const msg = JSON.parse(item);
+        const strItem = (typeof item === 'string') ? item : item.toString('utf-8');
+        
+        if (strItem.trim() === '[object Object]') continue;
+        
+        const msg = JSON.parse(strItem);
         history.push(msg);
       } catch (e) {
-        console.warn(`[DB] Skipping corrupt history item.`);
+        // Silently skip unparsable/corrupt items to prevent crashes
       }
     }
     return history.reverse();
   },
 
-  async addHistory(id, role, content) {
+  async addMessage(id, role, content) {
+    // EXPLICITLY Stringify to prevent corruption
     const jsonStr = JSON.stringify({ role, content });
     
     const pipeline = redis.pipeline();
-    pipeline.lpush(`chat:${id}`, jsonStr);
-    pipeline.ltrim(`chat:${id}`, 0, MAX_HISTORY_LENGTH);
+    pipeline.rpush(`chat:${id}`, jsonStr);
+    pipeline.ltrim(`chat:${id}`, 0, MAX_THREAD_LENGTH);
+    
+    // REFRESH ACTIVITY (Heartbeat)
+    pipeline.set(`activity:${id}`, Date.now().toString(), { ex: SESSION_TTL_SEC });
     pipeline.expire(`chat:${id}`, SESSION_TTL_SEC);
     
-    // Update User State (Heartbeat)
-    await DB.updateState(id, true, Date.now().toString());
-    
     await pipeline.exec();
-    console.log(`[DB] Saved message to history.`);
+    console.log(`[DB] Saved msg & Refreshed TTL for ${id}.`);
   },
 
-  async clearHistory(id) {
-    // Clears server history (e.g., New Chat button)
-    await redis.del(`chat:${id}`);
-    console.log(`[DB] Cleared history for ${id}`);
+  async getName(id) {
+    const name = await redis.get(`identity:${id}`);
+    return name ? safeStringify(name) : null;
+  },
+
+  async setName(id, name) {
+    await redis.set(`identity:${id}`, name, { ex: SESSION_TTL_SEC });
   }
 };
 
@@ -250,9 +254,7 @@ async function streamSarvamChat({ messages, onChunk }) {
           fullContent += content;
           onChunk(content);
         }
-      } catch (e) {
-        // Ignore parse errors for partial chunks
-      }
+      } catch (e) {}
     }
   }
   
@@ -269,57 +271,25 @@ export default async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const { message, sessionId, files, history: clientHistory, action } = body;
+    const { message, sessionId } = body;
 
-    // 1. Session ID & Cookie
+    // 1. Session
     let id = sessionId || req.cookies?.[COOKIE_NAME] || crypto.randomBytes(16).toString("hex");
     const ip = getIP(req);
 
+    // Set Cookie
     if (!req.cookies || !req.cookies[COOKIE_NAME]) {
       res.setHeader('Set-Cookie', `${COOKIE_NAME}=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL_SEC}`);
     }
 
-    // 2. ORIGIN LOCK
-    const referer = req.headers.referer || "";
-    const origin = req.headers.origin || "";
-    const isAllowed = ALLOWED_ORIGINS.some(url => referer.includes(url) || origin.includes(url));
+    // 2. Load History
+    const history = await DB.getHistory(id);
+    const currentName = await DB.getName(id) || "User";
 
-    if (!isAllowed) {
-      console.warn(`[SECURITY] Unauthorized request from: ${referer || origin}`);
-      res.write(`ERROR|Unauthorized Request: AI usage is restricted to esamz.site interface only.\n`);
-      res.end();
-      return;
-    }
+    // 3. Prepare Message
+    let finalMessage = message;
 
-    // 3. HYBRID MEMORY MERGE
-    // Get Server Memory (Last 25 messages)
-    const serverHistory = await DB.getLastHistory(id);
-    
-    // Get Client Memory (Array of objects)
-    let clientHistory = [];
-    if (clientHistory && Array.isArray(clientHistory)) {
-        clientHistory = clientHistory; // Use provided history
-    }
-
-    // Combine them (Server first, then Client)
-    // This ensures user's last action (typing) is prioritized for memory
-    const combinedHistory = [...serverHistory, ...clientHistory];
-
-    // 4. HANDLE ACTIONS
-    if (action === 'clear_history') {
-        await DB.clearHistory(id);
-        res.write(`DONE|History Cleared\n`);
-        res.end();
-        return;
-    }
-
-    if (action === 'sync_history') {
-        res.write(`DONE|Synced\n`); // Already synced by default load
-        res.end();
-        return;
-    }
-
-    // 5. Search
+    // 4. Search
     let searchContext = "";
     if (needsSearch(message) && SERPER_API_KEY) {
       sendEvent(res, "STATUS", "SEARCHING");
@@ -328,10 +298,26 @@ export default async function handler(req, res) {
     }
     sendEvent(res, "STATUS", "TYPING");
 
-    // 6. Build Messages
-    // Inject User State if needed (Optional feature for advanced usage)
-    const messagesPayload = [{ role: "system", content: SYSTEM_PROMPT }];
-    messagesPayload.push(...combinedHistory); // <--- HYBRID MEMORY
+    // 5. Name Detection
+    const namePattern = /(?:my name is|i am|i'm)\s+([a-zA-Z]+)/i;
+    const nameMatch = message.match(namePattern);
+    
+    if (nameMatch) {
+      const name = nameMatch[1].trim();
+      if (currentName !== name) {
+        console.log(`[MEMORY] User identified as ${name}`);
+        await DB.setName(id, name);
+      }
+    }
+
+    // 6. Build Context
+    let fullSystemContent = SYSTEM_PROMPT;
+    if (currentName !== "User") {
+      fullSystemContent += `\n\nUSER CONTEXT:\nThe user's name is "${currentName}". Use it naturally.`;
+    }
+
+    const messagesPayload = [{ role: "system", content: fullSystemContent }];
+    messagesPayload.push(...history); 
     messagesPayload.push({ role: "user", content: finalMessage + searchContext });
 
     // 7. Stream AI Response
@@ -350,9 +336,11 @@ export default async function handler(req, res) {
       }
     });
 
-    // 8. Server-Side Save (Persistence)
-    await DB.addHistory(id, "user", message);
-    await DB.addHistory(id, "assistant", accumulatedReply);
+    // 8. Persona Enforce & Save
+    const polishedReply = await enforcePersona(message, accumulatedReply);
+    
+    await DB.addMessage(id, "user", message);
+    await DB.addMessage(id, "assistant", polishedReply);
 
     sendEvent(res, "DONE", id);
     res.end();
