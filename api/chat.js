@@ -6,7 +6,7 @@ console.log("--> System: Initializing eSAMz Backend v22 (Hybrid Memory)...");
 const redis = Redis.fromEnv();
 
 const SARVAM_MODEL = "sarvam-m";
-const MAX_COMPLETION_TOKENS = 2048;
+const MAX_COMPLETION_TOKENS = 30048;
 const MAX_HISTORY_LENGTH = 25; // We limit server memory to 25, frontend handles the rest
 const COOKIE_NAME = "esamz_sid";
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
