@@ -6,10 +6,12 @@ const MAX_COMPLETION_TOKENS = 30048;
 const COOKIE_NAME = "esamz_sid";
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
 
-// CONTEXT LIMIT: 30,000 Characters
+// CONTEXT LIMIT: 120,000 Characters (32K tokens)
 const MAX_CONTEXT_CHARS = 120000; 
 // INACTIVITY TIMEOUT: 30 Minutes (in seconds)
 const INACTIVITY_TIMEOUT_SEC = 30 * 60; 
+// USER QUEUE: 1 second per user
+const USER_QUEUE_TIME_MS = 1000; // 1 second
 
 const ALLOWED_ORIGINS = [
   "https://esamz.site",
@@ -26,6 +28,93 @@ SEARCH RULES: If search results are provided below, use them naturally in your a
 STYLE: Speak like a human. Be direct.
 `.trim();
 
+/* ================= USER QUEUE SYSTEM ================= */
+class UserQueue {
+  constructor() {
+    this.queue = [];
+    this.processing = false;
+    this.userSlots = new Map(); // Track user slot times
+  }
+
+  // Add user to queue
+  async add(userId, processFn) {
+    return new Promise((resolve, reject) => {
+      const queueItem = {
+        userId,
+        processFn,
+        resolve,
+        reject,
+        addedAt: Date.now()
+      };
+      
+      this.queue.push(queueItem);
+      console.log(`[Queue] User ${userId} added. Queue length: ${this.queue.length}`);
+      
+      // Start processing if not already running
+      if (!this.processing) {
+        this.process();
+      }
+    });
+  }
+
+  // Process queue sequentially with 1 sec per user
+  async process() {
+    if (this.processing || this.queue.length === 0) return;
+    
+    this.processing = true;
+    
+    while (this.queue.length > 0) {
+      const item = this.queue.shift();
+      const waitTime = Date.now() - item.addedAt;
+      
+      console.log(`[Queue] Processing user ${item.userId} (waited ${waitTime}ms)`);
+      
+      // Allot 1 second slot to this user
+      const slotStart = Date.now();
+      this.userSlots.set(item.userId, slotStart);
+      
+      try {
+        // Process the user's request
+        const result = await item.processFn();
+        item.resolve(result);
+      } catch (error) {
+        item.reject(error);
+      }
+      
+      // Ensure 1 second minimum per user
+      const processingTime = Date.now() - slotStart;
+      const remainingTime = USER_QUEUE_TIME_MS - processingTime;
+      
+      if (remainingTime > 0) {
+        console.log(`[Queue] User ${item.userId} slot complete. Waiting ${remainingTime}ms for next...`);
+        await this.sleep(remainingTime);
+      }
+      
+      this.userSlots.delete(item.userId);
+    }
+    
+    this.processing = false;
+  }
+
+  sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  // Get current queue position for a user
+  getPosition(userId) {
+    const index = this.queue.findIndex(item => item.userId === userId);
+    return index === -1 ? 0 : index + 1;
+  }
+
+  // Get estimated wait time
+  getEstimatedWait(userId) {
+    const position = this.getPosition(userId);
+    return position * USER_QUEUE_TIME_MS;
+  }
+}
+
+const userQueue = new UserQueue();
+
 /* ================= HELPERS ================= */
 function getIP(req) {
   return req.headers["x-forwarded-for"]?.split(",")[0] || req.socket?.remoteAddress || "unknown";
@@ -36,7 +125,7 @@ function sendEvent(res, type, data) {
   res.write(`${type}|${safeData}\n`);
 }
 
-/* ================= CONTEXT MANAGER (30k Limit) ================= */
+/* ================= CONTEXT MANAGER (120k Limit) ================= */
 class ContextManager {
   constructor(maxChars) { this.maxChars = maxChars; }
 
@@ -86,7 +175,6 @@ async function enforcePersona(userMsg, draftReply) {
 }
 
 /* ================= STATELESS SESSION STORE ================= */
-// Manages the 30-minute rule and memory fallback
 class ComplexSessionStore {
   constructor() { this.memoryStore = new Map(); }
 
@@ -94,10 +182,8 @@ class ComplexSessionStore {
     const now = Date.now();
     const limitMs = INACTIVITY_TIMEOUT_SEC * 1000;
 
-    // CASE 1: Client Sync (Stateless)
     if (clientHistory && Array.isArray(clientHistory)) {
       const timeDiff = clientLastActive ? (now - clientLastActive) : 0;
-      // 30 MINUTE RULE
       if (timeDiff > limitMs) {
         console.log(`[Store] Session ${id} expired (${Math.round(timeDiff/1000)}s). Wiping.`);
         return { history: [], userName: null };
@@ -106,11 +192,9 @@ class ComplexSessionStore {
       return { history: clientHistory, userName: name };
     }
 
-    // CASE 2: Server Memory (Fallback)
     if (this.memoryStore.has(id)) {
       const session = this.memoryStore.get(id);
       const timeDiff = now - session.lastActive;
-      // 30 MINUTE RULE
       if (timeDiff > limitMs) {
         console.log(`[Store] Memory session expired. Deleting.`);
         this.memoryStore.delete(id);
@@ -134,7 +218,6 @@ class ComplexSessionStore {
       if (match) userName = match[1].trim();
     }
 
-    // Persist to Memory
     this.memoryStore.set(id, {
       history: newHistory,
       userName: userName,
@@ -202,7 +285,6 @@ async function streamSarvamChat({ messages, onChunk }) {
   while (true) {
     const { done, value } = await reader.read();
     if (done) {
-        // [FIX] Process remaining buffer when stream ends
         if (buffer.trim()) {
             const lines = [buffer];
             for (const line of lines) {
@@ -239,33 +321,40 @@ async function streamSarvamChat({ messages, onChunk }) {
   return fullContent;
 }
 
-/* ================= MAIN HANDLER ================= */
+/* ================= MAIN HANDLER WITH QUEUE ================= */
 export default async function handler(req, res) {
-  // 1. STRICT SECURITY HEADERS
+  // Set headers immediately
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Transfer-Encoding', 'chunked');
-  res.setHeader('X-Accel-Buffering', 'no'); // Nginx streaming fix
-  
+  res.setHeader('X-Accel-Buffering', 'no');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com;");
 
-  // CORS
   const origin = req.headers.origin;
   if (ALLOWED_ORIGINS.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
 
-  if (req.method !== 'POST') { res.write(`ERROR|Method not allowed\n`); return res.end(); }
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    return res.end();
+  }
+
+  if (req.method !== 'POST') { 
+    res.write(`ERROR|Method not allowed\n`); 
+    return res.end(); 
+  }
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const { message, sessionId, clientHistory, clientLastActive } = body;
 
-    // 2. Session Management
+    // Generate unique user ID for queue
     let id = sessionId || req.cookies?.[COOKIE_NAME] || crypto.randomBytes(16).toString("hex");
     
     // Set Secure Cookie
@@ -273,14 +362,31 @@ export default async function handler(req, res) {
       res.setHeader('Set-Cookie', `${COOKIE_NAME}=${id}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${INACTIVITY_TIMEOUT_SEC}`);
     }
 
-    // 3. Load Session (With 30-min enforcement)
+    // Add to queue and process
+    await userQueue.add(id, async () => {
+      return await processUserRequest(req, res, id, message, clientHistory, clientLastActive);
+    });
+
+  } catch (error) {
+    console.error("API System Error:", error.message);
+    if (!res.headersSent) { 
+      res.write(`ERROR|${error.message}\n`); 
+      res.end();
+    }
+  }
+}
+
+/* ================= PROCESS USER REQUEST ================= */
+async function processUserRequest(req, res, id, message, clientHistory, clientLastActive) {
+  try {
+    // 1. Load Session (With 30-min enforcement)
     const sessionData = await DB.getSession(id, clientHistory, clientLastActive);
     let { history, userName } = sessionData;
     const currentName = userName || "User";
 
     let finalMessage = message;
 
-    // 4. Search
+    // 2. Search
     let searchContext = "";
     if (needsSearch(message) && SERPER_API_KEY) {
       sendEvent(res, "STATUS", "SEARCHING");
@@ -289,7 +395,7 @@ export default async function handler(req, res) {
     }
     sendEvent(res, "STATUS", "TYPING");
 
-    // 5. Build Context
+    // 3. Build Context
     let fullSystemContent = SYSTEM_PROMPT;
     if (currentName !== "User") {
       fullSystemContent += `\n\nUSER CONTEXT:\nThe user's name is "${currentName}". Use it naturally.`;
@@ -299,10 +405,10 @@ export default async function handler(req, res) {
     rawMessagesPayload.push(...history);
     rawMessagesPayload.push({ role: "user", content: finalMessage + searchContext });
 
-    // 6. Apply 30k Character Limit
+    // 4. Apply 120k Character Limit (32K tokens)
     const messagesPayload = contextManager.limit(rawMessagesPayload);
 
-    // 7. Stream AI Response
+    // 5. Stream AI Response
     let accumulatedReply = "";
     await streamSarvamChat({
       messages: messagesPayload,
@@ -317,12 +423,12 @@ export default async function handler(req, res) {
       }
     });
 
-    // 8. Persona Enforce & Save
+    // 6. Persona Enforce & Save
     const polishedReply = await enforcePersona(message, accumulatedReply);
     const updatedSession = await DB.saveMessage(id, "user", message, history, currentName);
     const finalSession = await DB.saveMessage(id, "assistant", polishedReply, updatedSession.history, updatedSession.userName);
 
-    // 9. Send Final Sync (Privacy: This is the only place history leaves server)
+    // 7. Send Final Sync
     const now = Date.now();
     sendEvent(res, "HISTORY_UPDATE", JSON.stringify(finalSession.history));
     sendEvent(res, "TIMESTAMP", now.toString());
@@ -330,8 +436,9 @@ export default async function handler(req, res) {
     res.end();
 
   } catch (error) {
-    console.error("API System Error:", error.message); // Safe logging (no content)
-    if (!res.headersSent) { res.write(`ERROR|${error.message}\n`); }
+    console.error("Process Error:", error.message);
+    sendEvent(res, "ERROR", error.message);
     res.end();
+    throw error;
   }
 }
