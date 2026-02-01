@@ -1,9 +1,4 @@
 {
-  "functions": {
-    "api/chat.js": {
-      "maxDuration": 60
-    }
-  },
   "rewrites": [
     {
       "source": "/cookit/:path*",
