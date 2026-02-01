@@ -6,7 +6,7 @@
   },
   "rewrites": [
     {
-      "source": "/youcook/:path*",
+      "source": "/cookit/:path*",
       "destination": "https://youcook-delta.vercel.app/:path*"
     }
   ]
