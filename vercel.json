@@ -2,15 +2,12 @@
   "functions": {
     "api/chat.js": {
       "maxDuration": 60
-      {
+    }
+  },
   "rewrites": [
-  
     {
       "source": "/youcook/:path*",
-      "destination": "https://youcook-delta.vercel.app//:path*"
+      "destination": "https://youcook-delta.vercel.app/:path*"
     }
   ]
-    }
-    }
-  }
 }
