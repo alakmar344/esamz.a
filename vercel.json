@@ -1,8 +1,7 @@
 {
-  "rewrites": [
-    {
-      "source": "/cookit/:path*",
-      "destination": "https://youcook-delta.vercel.app/:path*"
+  "functions": {
+    "api/chat.js": {
+      "maxDuration": 60
     }
-  ]
+  }
 }
