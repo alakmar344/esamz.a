@@ -1,1214 +1,1427 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Meta & SEO -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+
+    <!-- Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-WRJ3NWVP5B"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-WRJ3NWVP5B');
+    </script> 
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cookit Voice | Hands-Free Cooking</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>eSAMz AI - Intelligent Assistant</title>
+    <meta name="description" content="Advanced AI assistant with multi-modal capabilities">
+
+    <!-- Typography: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://esamz.site/#organization",
+          "name": "esamz AI",
+          "url": "https://esamz.site",
+          "logo": { "@type": "ImageObject", "url": "https://esamz.site/logo.png" }
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://esamz.site/#software",
+          "name": "esamz AI",
+          "operatingSystem": "Web",
+          "applicationCategory": "AIApplication",
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+        }
+      ]
+    }
+    </script>
+
     <style>
+        /* =========================================
+           1. DESIGN TOKENS & RESET
+           ========================================= */
         :root {
-            --primary: #f97316;
-            --bg-dark: #0f172a;
+            /* Dark Mode (Default) */
+            --bg-root: #09090b;
+            --bg-surface: #18181b;
+            --bg-surface-hover: #27272a;
+            --bg-glass: rgba(9, 9, 11, 0.8);
+            
+            --border-subtle: #27272a;
+            --border-focus: #52525b;
+            --border-highlight: rgba(255,255,255,0.1);
+            
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #52525b;
+            --text-code: #e4e4e7;
+
+            --accent-primary: #ffffff;
+            --accent-primary-text: #000000;
+            
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+            --glow: 0 0 20px rgba(255,255,255,0.05);
+
+            /* Dimensions */
+            --sidebar-width: 280px;
+            --header-height: 60px;
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+
+            /* Animation */
+            --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* Light Mode Theme */
+        [data-theme="light"] {
+            --bg-root: #ffffff;
+            --bg-surface: #f4f4f5;
+            --bg-surface-hover: #e4e4e7;
+            --bg-glass: rgba(255, 255, 255, 0.8);
 
+            --border-subtle: #e4e4e7;
+            --border-focus: #a1a1aa;
+            --border-highlight: rgba(0,0,0,0.05);
+            
+            --text-primary: #09090b;
+            --text-secondary: #52525b;
+            --text-muted: #a1a1aa;
+            --text-code: #27272a;
+
+            --accent-primary: #18181b;
+            --accent-primary-text: #ffffff;
+            
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            --glow: 0 0 20px rgba(0,0,0,0.05);
+        }
+
+        /* Reset & Base */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
+        
+        html, body { height: 100%; width: 100%; }
+        
         body { 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            background-color: var(--bg-dark);
-            color: #e2e8f0;
+            background-color: var(--bg-root);
+            color: var(--text-primary);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
             overflow: hidden;
-            height: 100vh;
-        }
-
-        .bg-mesh {
-            position: fixed;
-            inset: 0;
-            z-index: -1;
-            background: 
-                radial-gradient(at 0% 0%, rgba(249, 115, 22, 0.15) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(249, 115, 22, 0.08) 0px, transparent 50%);
-            filter: blur(60px);
-        }
-
-        /* Voice Overlay */
-        .voice-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(15, 23, 42, 0.98);
-            backdrop-filter: blur(20px);
-            z-index: 1000;
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s ease;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
-        .voice-overlay.active { opacity: 1; visibility: visible; }
-
-        .orb-container {
-            position: relative;
-            width: 140px;
-            height: 140px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        /* Transitions */
+        body, .sidebar, .message, button, input, textarea, .bubble, .input-box {
+            transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease, transform 0.2s var(--ease-out);
         }
 
-        .voice-orb {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            cursor: pointer;
-            transition: transform 0.2s ease;
-            box-shadow: 0 0 40px rgba(249, 115, 22, 0.4);
+        .preload * { transition: none !important; }
+
+        /* Typography */
+        h1, h2, h3 { font-weight: 600; letter-spacing: -0.025em; color: var(--text-primary); }
+        h1 { font-size: 26px; }
+        h2 { font-size: 18px; margin-top: 1.2em; margin-bottom: 0.5em; }
+        h3 { font-size: 16px; margin-top: 1em; margin-bottom: 0.4em; }
+        p { margin-bottom: 0.8em; color: var(--text-secondary); }
+        p:last-child { margin-bottom: 0; }
+        
+        strong { font-weight: 600; color: var(--text-primary); }
+
+        /* Scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* Buttons */
+        button { 
+            font-family: inherit; background: none; border: none; 
+            cursor: pointer; color: inherit; 
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        button:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+
+        .btn-base {
+            height: 36px;
+            padding: 0 14px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 500;
+            border: 1px solid transparent;
+            gap: 8px;
         }
 
-        .voice-orb:active { transform: scale(0.95); }
-        .voice-orb.listening {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            box-shadow: 0 0 40px rgba(16, 185, 129, 0.4);
-            animation: pulse-green 1.5s ease-out infinite;
-        }
-        .voice-orb.speaking {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            box-shadow: 0 0 40px rgba(59, 130, 246, 0.4);
-            animation: pulse-blue 1s ease-out infinite;
-        }
-        .voice-orb.processing {
-            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes pulse-green {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7), 0 0 40px rgba(16, 185, 129, 0.4); }
-            50% { box-shadow: 0 0 0 20px rgba(16, 185, 129, 0), 0 0 60px rgba(16, 185, 129, 0.6); }
-        }
-        @keyframes pulse-blue {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7), 0 0 40px rgba(59, 130, 246, 0.4); }
-            50% { box-shadow: 0 0 0 15px rgba(59, 130, 246, 0), 0 0 60px rgba(59, 130, 246, 0.6); }
-        }
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        .orb-icon {
-            font-size: 48px;
-            line-height: 1;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-            pointer-events: none;
-        }
-
-        .voice-status {
-            margin-top: 2rem;
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: white;
-            text-align: center;
-        }
-
-        .voice-command {
-            margin-top: 0.5rem;
-            font-size: 0.875rem;
-            color: #64748b;
-            text-align: center;
-            min-height: 1.5em;
-            font-style: italic;
-            padding: 0 2rem;
-        }
-
-        .phase-indicator {
-            margin-top: 1.5rem;
-            padding: 0.5rem 1rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            background: rgba(255,255,255,0.1);
-            color: #94a3b8;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .phase-indicator.ingredients { background: rgba(16, 185, 129, 0.2); color: #10b981; border-color: rgba(16, 185, 129, 0.3); }
-        .phase-indicator.cooking { background: rgba(249, 115, 22, 0.2); color: #f97316; border-color: rgba(249, 115, 22, 0.3); }
-
-        .hint-pills {
-            position: absolute;
-            bottom: 3rem;
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            justify-content: center;
-            padding: 0 1rem;
-        }
-        .hint-pill {
-            padding: 0.375rem 0.875rem;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            color: #64748b;
-        }
-        .hint-pill.active {
-            background: rgba(249, 115, 22, 0.2);
-            border-color: rgba(249, 115, 22, 0.5);
-            color: #f97316;
-        }
-
-        .close-btn {
-            position: absolute;
-            top: 1.5rem;
-            right: 1.5rem;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            color: #94a3b8;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-        .close-btn:hover { background: rgba(255,255,255,0.1); color: white; }
-
-        /* Layout */
-        .sidebar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 100vh;
-            width: 300px;
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(20px);
-            border-right: 1px solid rgba(255,255,255,0.1);
-            z-index: 100;
-            transform: translateX(-100%);
-            transition: transform 0.3s ease;
-            overflow-y: auto;
-            padding: 1.5rem;
-        }
-        .sidebar.open { transform: translateX(0); }
-
-        .main-content {
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            transition: margin-left 0.3s ease;
-            position: relative;
-        }
-        .main-content.sidebar-open { margin-left: 300px; }
-
-        .top-bar {
-            height: 64px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 1.5rem;
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            flex-shrink: 0;
-        }
-
-        .content-area {
-            flex: 1;
-            overflow-y: auto;
-            padding: 2rem;
-            padding-bottom: 120px;
-        }
-
-        /* FIXED: Input Area */
-        .input-area {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 1rem 1.5rem 1.5rem;
-            background: linear-gradient(to top, #0f172a 0%, #0f172a 70%, transparent 100%);
-            z-index: 50;
-            pointer-events: none;
-        }
-
-        .input-box {
-            max-width: 700px;
-            margin: 0 auto;
-            display: flex;
-            gap: 0.75rem;
-            background: rgba(30, 41, 59, 0.9);
-            backdrop-filter: blur(20px);
-            padding: 0.5rem;
-            border-radius: 1rem;
-            border: 1px solid rgba(255,255,255,0.1);
-            pointer-events: auto;
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.3);
-        }
-
-        .input-box input {
-            flex: 1;
+        .btn-secondary {
             background: transparent;
-            border: none;
-            outline: none;
-            color: white;
-            padding: 0.75rem 1rem;
-            font-size: 1rem;
+            border-color: var(--border-subtle);
+            color: var(--text-secondary);
         }
-        .input-box input::placeholder { color: #64748b; }
+        .btn-secondary:hover:not(:disabled) {
+            border-color: var(--text-muted);
+            color: var(--text-primary);
+            background: var(--bg-surface);
+        }
 
-        .icon-btn {
-            width: 44px;
-            height: 44px;
-            border-radius: 0.75rem;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            color: #94a3b8;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
+        .btn-primary {
+            background: var(--accent-primary);
+            color: var(--accent-primary-text);
+            font-weight: 600;
+        }
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: var(--glow);
+        }
+
+        /* =========================================
+           2. LAYOUT STRUCTURE
+           ========================================= */
+        
+        /* Sidebar */
+        .sidebar { 
+            width: var(--sidebar-width);
+            background: var(--bg-root);
+            border-right: 1px solid var(--border-subtle);
+            display: flex; flex-direction: column;
+            height: 100%;
+            z-index: 100;
             flex-shrink: 0;
         }
-        .icon-btn:hover { background: rgba(255,255,255,0.1); color: white; }
-        .icon-btn.primary { background: #f97316; color: white; border-color: #f97316; }
-        .icon-btn.primary:hover { background: #ea580c; }
 
-        .menu-btn {
-            position: fixed;
-            top: 1rem;
-            left: 1rem;
-            z-index: 200;
-            width: 44px;
-            height: 44px;
-            background: #f97316;
-            border: none;
-            border-radius: 0.75rem;
-            color: white;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 20px rgba(249, 115, 22, 0.4);
+        .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border-subtle); }
+        
+        .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+        .logo-box { 
+            width: 32px; height: 32px; 
+            background: var(--text-primary); 
+            color: var(--bg-root);
+            border-radius: var(--radius-sm);
+            display: grid; place-items: center;
+            font-weight: 700; font-size: 14px;
+            box-shadow: 0 0 10px rgba(255,255,255,0.2);
+        }
+        .brand-name { font-weight: 600; font-size: 16px; letter-spacing: -0.01em; }
+        
+        .nav-section { flex: 1; overflow-y: auto; padding: 12px 16px; }
+        .nav-label { 
+            font-size: 11px; font-weight: 600; 
+            color: var(--text-muted); text-transform: uppercase; 
+            letter-spacing: 0.05em; margin: 20px 0 10px 4px; 
+        }
+        
+        .nav-item { 
+            width: 100%; height: 36px; 
+            padding: 0 10px; margin-bottom: 4px;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            text-align: left; font-size: 13px;
+            gap: 10px; transition: all 0.15s;
+        }
+        .nav-item:hover { background: var(--bg-surface); color: var(--text-primary); }
+        .nav-item svg { width: 16px; height: 16px; opacity: 0.7; }
+        
+        .sidebar-footer { 
+            padding: 20px; border-top: 1px solid var(--border-subtle); 
+            font-size: 11px; color: var(--text-muted); 
         }
 
-        /* Recipe Styling with DYNAMIC highlighting */
-        .recipe-step {
-            background: rgba(30, 41, 59, 0.4);
-            border: 2px solid transparent;
-            border-radius: 1rem;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
+        /* Main Content */
+        .main-content { 
+            flex: 1; display: flex; flex-direction: column; 
+            position: relative; background: var(--bg-root); min-width: 0;
+        }
+
+        header { 
+            height: var(--header-height); padding: 0 24px;
+            display: flex; align-items: center; justify-content: space-between;
+            background: var(--bg-glass);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-subtle);
+            z-index: 50;
+        }
+
+        .status-badge {
+            font-size: 12px; font-weight: 500; color: var(--text-secondary);
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 12px; background: var(--bg-surface);
+            border: 1px solid var(--border-subtle); border-radius: 99px;
             transition: all 0.3s ease;
         }
-
-        .recipe-step.current {
-            border-color: #f97316;
-            background: rgba(249, 115, 22, 0.15);
-            box-shadow: 0 0 30px rgba(249, 115, 22, 0.2);
-            transform: scale(1.02);
+        
+        .status-dot { width: 8px; height: 8px; background: #10b981; border-radius: 50%; transition: background 0.3s; }
+        
+        .status-badge.processing .status-dot {
+            background: #f59e0b;
+            animation: pulse 1.5s infinite;
         }
+        
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 
-        .recipe-step.completed {
-            opacity: 0.5;
-            border-color: rgba(34, 197, 94, 0.3);
-            background: rgba(34, 197, 94, 0.05);
+        /* Chat Area */
+        .chat-container { 
+            flex: 1; overflow-y: auto; 
+            padding: 20px 0; 
+            display: flex; flex-direction: column; 
+            width: 100%; 
+            scroll-behavior: smooth;
         }
+        
+        .chat-wrapper { max-width: 800px; margin: 0 auto; width: 100%; padding: 0 24px; }
 
-        /* DYNAMIC WORD HIGHLIGHTING */
-        .word {
-            display: inline;
-            transition: all 0.15s ease;
-            border-radius: 0.25rem;
-            padding: 0.1rem 0.2rem;
-            margin: -0.1rem -0.2rem;
+        /* Welcome Screen */
+        .welcome {
+            display: flex; flex-direction: column; justify-content: center;
+            align-items: center; height: 100%; text-align: center;
+            padding-top: 5vh;
+            animation: fadeUp 0.6s var(--ease-out);
         }
+        
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        .word.active {
-            background: rgba(249, 115, 22, 0.4);
-            color: #fff;
-            font-weight: 600;
-            box-shadow: 0 0 10px rgba(249, 115, 22, 0.3);
+        .welcome h1 { font-size: 32px; margin-bottom: 12px; background: linear-gradient(to right, var(--text-primary), var(--text-secondary)); -webkit-background-clip: text; color: transparent; }
+        .welcome p { font-size: 16px; margin-bottom: 40px; }
+
+        .suggestions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            width: 100%;
+            max-width: 600px;
         }
-
-        .word.spoken {
-            color: rgba(255, 255, 255, 0.6);
-        }
-
-        .ingredient-tag {
-            background: rgba(249, 115, 22, 0.1);
-            border: 1px solid rgba(249, 115, 22, 0.2);
-            border-radius: 0.75rem;
-            padding: 0.75rem 1rem;
-            transition: all 0.2s;
+        
+        .suggestion-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            padding: 16px;
+            border-radius: var(--radius-md);
+            text-align: left;
             cursor: pointer;
+            transition: all 0.2s;
         }
-        .ingredient-tag:hover { background: rgba(249, 115, 22, 0.2); }
         
-        .ingredient-tag.active {
-            background: rgba(16, 185, 129, 0.2);
-            border-color: rgba(16, 185, 129, 0.5);
-            transform: scale(1.02);
-            box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+        .suggestion-card:hover {
+            border-color: var(--text-muted);
+            transform: translateY(-2px);
+            background: var(--bg-surface-hover);
+        }
+        
+        .suggestion-title { font-weight: 600; font-size: 13px; color: var(--text-primary); margin-bottom: 4px; }
+        .suggestion-desc { font-size: 12px; color: var(--text-muted); }
+
+        /* Messages */
+        .message { 
+            display: flex; gap: 16px; margin-bottom: 32px; width: 100%;
+            animation: slideIn 0.3s var(--ease-out);
+        }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .message.user { flex-direction: row-reverse; }
+        
+        .avatar { 
+            width: 28px; height: 28px; border-radius: 6px; 
+            flex-shrink: 0; display: grid; place-items: center; 
+            font-size: 12px; font-weight: 700;
+            box-shadow: var(--shadow-sm);
+        }
+        .ai .avatar { background: var(--text-primary); color: var(--bg-root); }
+        .user .avatar { background: var(--bg-surface); color: var(--text-muted); border: 1px solid var(--border-subtle); }
+
+        .msg-content { flex: 1; min-width: 0; padding-top: 2px; }
+        
+        /* BUBBLES & CONTENT */
+        
+        /* User: Minimalist Pill */
+        .user .bubble {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-primary);
+            padding: 12px 18px;
+            border-radius: 18px;
+            display: inline-block;
+            float: right;
+            max-width: 100%;
+            font-size: 14px;
+            line-height: 1.5;
+            box-shadow: var(--shadow-sm);
+        }
+        .user .bubble::after { content: ""; display: block; clear: both; }
+
+        /* AI: Transparent, Document Style */
+        .ai .bubble {
+            background: transparent;
+            padding: 0;
+            color: var(--text-primary);
+            font-size: 15px;
+            line-height: 1.7;
         }
 
-        .ingredient-tag .word.active {
-            background: rgba(16, 185, 129, 0.4);
-            box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+        /* AI Markdown Specifics */
+        .ai .bubble a { color: var(--text-primary); text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--border-subtle); }
+        .ai .bubble a:hover { text-decoration-color: var(--text-primary); }
+        .ai .bubble ul, .ai .bubble ol { margin: 1em 0; padding-left: 1.5em; color: var(--text-secondary); }
+        .ai .bubble li { margin-bottom: 0.5em; }
+        .ai .bubble p { margin-bottom: 1em; }
+        .ai .bubble p:last-child { margin-bottom: 0; }
+
+        /* Code Blocks */
+        .code-block-wrapper {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            margin: 1.2em 0;
+            overflow: hidden;
+        }
+        .code-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 16px; border-bottom: 1px solid var(--border-subtle);
+            background: var(--bg-root);
+            font-size: 12px; color: var(--text-muted);
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+        }
+        .code-header button {
+            font-size: 11px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+        }
+        .code-header button:hover { background: var(--bg-surface); color: var(--text-primary); border-color: var(--text-muted); }
+        
+        .ai .bubble pre {
+            margin: 0 !important; padding: 16px !important;
+            background: transparent !important; border: none !important;
+            overflow-x: auto;
+        }
+        .ai .bubble code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            background: transparent;
+        }
+        .ai .bubble :not(pre) > code {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            padding: 2px 6px; border-radius: 4px; color: var(--text-code);
+            font-size: 0.9em;
         }
 
-        /* Last Step Visibility */
-        .recipe-step:last-child {
-            margin-bottom: 3rem;
+        /* Input Area */
+        .input-wrapper {
+            width: 100%; max-width: 800px; margin: 0 auto;
+            padding: 0 24px 32px;
+            display: flex; flex-direction: column;
+            align-items: center;
         }
-        .recipe-step:last-child.current {
-            border-color: #22c55e;
-            background: rgba(34, 197, 94, 0.15);
-            box-shadow: 0 0 30px rgba(34, 197, 94, 0.2);
+        
+        .input-box {
+            width: 100%;
+            background: var(--bg-root);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: 14px;
+            display: flex; flex-direction: column; gap: 10px;
+            box-shadow: var(--shadow-lg);
+            transition: border-color 0.2s, box-shadow 0.2s;
+            position: relative;
         }
-
-        /* Print Styles */
-        @media print {
-            body { overflow: visible; background: white; color: black; }
-            .voice-overlay, .sidebar, .menu-btn, .input-area, .top-bar { display: none !important; }
-            .main-content { margin: 0 !important; height: auto; }
-            .content-area { padding: 0; overflow: visible; }
-            .recipe-step { 
-                break-inside: avoid; 
-                background: white !important; 
-                border: 1px solid #ddd !important;
-                color: black !important;
-            }
-            .ingredient-tag { 
-                background: white !important; 
-                border: 1px solid #ddd !important;
-                color: black !important;
-            }
-            .word { background: transparent !important; color: black !important; }
+        .input-box:focus-within { 
+            border-color: var(--text-muted); 
+            box-shadow: 0 0 0 2px var(--bg-surface), var(--shadow-lg); 
         }
 
-        /* Responsive */
+        .file-row { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+        .file-chip {
+            background: var(--bg-surface); border: 1px solid var(--border-subtle);
+            font-size: 11px; padding: 6px 10px; border-radius: 6px;
+            display: flex; align-items: center; gap: 8px; color: var(--text-secondary);
+            animation: fadeIn 0.2s;
+        }
+        .file-chip button { padding: 0; margin-left: 4px; }
+        .file-chip button:hover { color: #ef4444; }
+
+        .type-row { display: flex; align-items: flex-end; gap: 10px; width: 100%; }
+        
+        textarea {
+            width: 100%; background: transparent; border: none; color: var(--text-primary);
+            font-family: inherit; font-size: 15px; resize: none; max-height: 240px;
+            padding: 4px 0; outline: none; line-height: 1.5;
+        }
+        textarea::placeholder { color: var(--text-muted); opacity: 0.7; }
+
+        .tool-btn {
+            width: 36px; height: 36px; border-radius: var(--radius-sm);
+            color: var(--text-muted); flex-shrink: 0; transition: all 0.2s;
+        }
+        .tool-btn:hover { background: var(--bg-surface); color: var(--text-primary); transform: scale(1.05); }
+        
+        .tool-btn.recording { 
+            color: #ef4444; background: rgba(239, 68, 68, 0.1); 
+            animation: ripple-red 1.5s infinite;
+        }
+        
+        @keyframes ripple-red { 
+            0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); } 
+            70% { box-shadow: 0 0 0 10px rgba(239,68,68,0); } 
+            100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } 
+        }
+
+        .action-btn {
+            width: 36px; height: 36px; border-radius: var(--radius-sm);
+            background: var(--accent-primary); color: var(--accent-primary-text);
+            flex-shrink: 0; transition: all 0.2s;
+        }
+        
+        .action-btn.disabled-state {
+            opacity: 0.5;
+            pointer-events: none;
+            cursor: not-allowed;
+        }
+
+        .action-btn:hover:not(.disabled-state) { transform: scale(1.05); }
+        .action-btn:active:not(.disabled-state) { transform: scale(0.95); }
+        
+        .action-btn.stop-mode {
+            background: #fee2e2; color: #ef4444;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+        }
+
+        .input-footer {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 11px; color: var(--text-muted); padding: 0 4px; width: 100%;
+        }
+
+        .disclaimer {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 12px;
+            line-height: 1.5;
+        }
+        .disclaimer a { color: var(--text-muted); text-decoration: underline; transition: color 0.2s; }
+        .disclaimer a:hover { color: var(--text-primary); }
+
+        #toast-container {
+            position: fixed; top: 24px; right: 24px; z-index: 1000;
+            display: flex; flex-direction: column; gap: 10px; pointer-events: none;
+        }
+        .toast {
+            background: var(--bg-surface); border: 1px solid var(--border-subtle);
+            color: var(--text-primary); padding: 12px 16px; border-radius: var(--radius-sm);
+            font-size: 13px; box-shadow: var(--shadow-lg);
+            display: flex; align-items: center; gap: 10px;
+            pointer-events: auto; animation: toastIn 0.3s var(--ease-out);
+            min-width: 280px;
+        }
+        @keyframes toastIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+        .typing-indicator { display: inline-flex; gap: 4px; align-items: center; height: 20px; margin-top: 8px;}
+        .typing-dot { width: 4px; height: 4px; background: var(--text-muted); border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+        dialog {
+            background: var(--bg-surface); border: 1px solid var(--border-subtle);
+            color: var(--text-primary); border-radius: var(--radius-lg);
+            padding: 0; width: 90%; max-width: 400px;
+            box-shadow: var(--shadow-lg);
+        }
+        dialog::backdrop { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+        .dialog-header { padding: 20px; border-bottom: 1px solid var(--border-subtle); font-weight: 600; display: flex; justify-content: space-between; font-size: 15px;}
+        .dialog-body { padding: 8px; }
+        .dialog-btn {
+            width: 100%; text-align: left; padding: 12px 16px; border-radius: var(--radius-sm);
+            color: var(--text-secondary); display: flex; align-items: center; gap: 10px;
+            font-size: 14px;
+        }
+        .dialog-btn:hover { background: var(--bg-root); color: var(--text-primary); }
+
+        /* Mobile */
+        .mobile-toggle, .overlay { display: none; }
         @media (max-width: 768px) {
-            .sidebar { width: 100%; }
-            .main-content.sidebar-open { margin-left: 0; }
-            .content-area { padding: 1rem; padding-bottom: 100px; }
+            .sidebar { 
+                position: fixed; top: 0; left: 0; bottom: 0; 
+                transform: translateX(-100%); width: 85%; max-width: 320px;
+                box-shadow: 20px 0 50px rgba(0,0,0,0.5);
+            }
+            .sidebar.active { transform: translateX(0); }
+            .overlay {
+                display: block; position: fixed; inset: 0;
+                background: rgba(0,0,0,0.6); backdrop-filter: blur(2px);
+                z-index: 90; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+            }
+            .overlay.active { opacity: 1; pointer-events: auto; }
+            .mobile-toggle { display: flex; }
+            .chat-wrapper, .input-wrapper { padding: 0 16px; }
+            .input-wrapper { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+            .suggestions { grid-template-columns: 1fr; }
         }
-
-        /* Toast */
-        @keyframes fade-in {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in { animation: fade-in 0.3s ease; }
     </style>
+<base target="_blank">
 </head>
-<body>
-    <div class="bg-mesh"></div>
+<body class="preload">
 
-    <!-- Voice Overlay -->
-    <div class="voice-overlay" id="voiceOverlay">
-        <button class="close-btn" onclick="toggleVoiceMode()">
-            <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
 
-        <div class="orb-container">
-            <div class="voice-orb" id="voiceOrb" onclick="handleOrbClick()">
-                <span class="orb-icon" id="orbIcon">🎙️</span>
-            </div>
-        </div>
+    <!-- Overlay for Mobile Sidebar -->
+    <div class="overlay" id="overlay"></div>
 
-        <div class="voice-status" id="voiceStatus">Tap orb to start</div>
-        <div class="voice-command" id="voiceCommand">Waiting for command...</div>
-        
-        <div class="phase-indicator" id="phaseIndicator">Ready</div>
-
-        <div class="hint-pills" id="hintPills">
-            <span class="hint-pill">"Make pasta"</span>
-            <span class="hint-pill">"Start cooking"</span>
-            <span class="hint-pill">"Next"</span>
-        </div>
-    </div>
-
-    <!-- Menu Button -->
-    <button class="menu-btn" onclick="toggleSidebar()">
-        <i data-lucide="menu" class="w-5 h-5"></i>
-    </button>
-
-    <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
-        <div class="flex items-center gap-3 mb-6">
-            <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center text-xl">🍳</div>
-            <div>
-                <h1 class="text-xl font-bold text-white">Cookit</h1>
-                <p class="text-xs text-orange-400 font-semibold uppercase tracking-wider">Voice First</p>
+        <div class="sidebar-header">
+            <div class="brand">
+                <div class="logo-box">eS</div>
+                <div class="brand-name">eSAMz AI</div>
             </div>
+            <button class="btn-base btn-primary" id="btnNewChat" style="width: 100%;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                New Chat
+            </button>
         </div>
 
-        <button onclick="newRecipe()" class="w-full py-3 mb-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2">
-            <i data-lucide="plus" class="w-4 h-4"></i>
-            New Recipe
-        </button>
+        <div class="nav-section">
+            <div class="nav-label">Recent Chats</div>
+            <div id="historyList"></div>
+            
+            <div class="nav-label">System</div>
+            <button class="nav-item" id="btnExport">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export Chat
+            </button>
+            <button class="nav-item" id="btnClearCache">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                Clear History
+            </button>
+        </div>
 
-        <button onclick="toggleVoiceMode()" class="w-full py-3 mb-6 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2">
-            <i data-lucide="mic" class="w-4 h-4"></i>
-            Voice Mode
-        </button>
-
-        <p class="text-xs text-slate-500 uppercase tracking-wider mb-3 font-semibold">Saved Recipes</p>
-        <div class="space-y-2" id="cookbookList"></div>
+        <div class="sidebar-footer">
+            <div>eSAMz AI &copy; 2026</div>
+            <div style="margin-top:4px; opacity:0.6;">9.1</div>
+        </div>
     </aside>
 
-    <!-- Main Content -->
-    <main class="main-content" id="mainContent">
-        <div class="top-bar">
-            <div class="flex items-center gap-3">
-                <button onclick="toggleVoiceMode()" class="flex items-center gap-2 px-4 py-2 bg-blue-600/20 text-blue-400 rounded-lg text-sm font-medium hover:bg-blue-600/30 transition-colors">
-                    <i data-lucide="mic" class="w-4 h-4"></i>
-                    Voice Cook
+    <main class="main-content">
+        <header>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <button class="mobile-toggle tool-btn" id="openSidebar">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                 </button>
+                <div class="status-badge" id="statusBadge">
+                    <div class="status-dot"></div>
+                    <span id="statusText">Ready</span>
+                </div>
             </div>
-            <div class="flex items-center gap-2" id="recipeActions" style="display: none;">
-                <button onclick="printRecipe()" class="flex items-center gap-2 px-4 py-2 bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 rounded-lg text-sm font-medium transition-colors">
-                    <i data-lucide="printer" class="w-4 h-4"></i>
-                    <span class="hidden sm:inline">Print</span>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <button class="tool-btn" id="themeToggle" title="Toggle theme">
+                    <svg id="themeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
                 </button>
-                <button onclick="saveRecipe()" class="flex items-center gap-2 px-4 py-2 bg-orange-600/20 text-orange-400 hover:bg-orange-600/30 rounded-lg text-sm font-medium transition-colors">
-                    <i data-lucide="bookmark" class="w-4 h-4"></i>
-                    Save
-                </button>
+                <button class="btn-base btn-secondary" id="btnClearChat">Clear Chat</button>
+            </div>
+        </header>
+
+        <div class="chat-container">
+            <div class="chat-wrapper">
+                <!-- Welcome Screen -->
+                <div class="welcome" id="welcomeScreen">
+                    <div class="logo-box" style="width: 48px; height: 48px; font-size: 18px; margin-bottom: 16px; box-shadow: 0 0 30px rgba(255,255,255,0.15);">eS</div>
+                    <h1>How can I help you today?</h1>
+                    
+                    <div class="suggestions">
+                        <div class="suggestion-card" onclick="app.fillInput('Write a Python script to scrape a website')">
+                            <div class="suggestion-title">💻 Write Code</div>
+                            <div class="suggestion-desc">Generate a Python web scraper</div>
+                        </div>
+                        <div class="suggestion-card" onclick="app.fillInput('Explain quantum computing in simple terms')">
+                            <div class="suggestion-title">🧠 Explain Concept</div>
+                            <div class="suggestion-desc">Quantum computing for beginners</div>
+                        </div>
+                        <div class="suggestion-card" onclick="app.fillInput('Draft a professional email for a sick day')">
+                            <div class="suggestion-title">✍️ Draft Content</div>
+                            <div class="suggestion-desc">Professional sick day email</div>
+                        </div>
+                        <div class="suggestion-card" onclick="app.fillInput('What are the latest AI trends?')">
+                            <div class="suggestion-title">📊 Research</div>
+                            <div class="suggestion-desc">Search the web for news</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Chat Messages Area -->
+                <div id="chatList"></div>
             </div>
         </div>
 
-        <div class="content-area" id="contentArea">
-            <div id="welcomeScreen" class="h-full flex flex-col items-center justify-center text-center">
-                <div class="w-24 h-24 mb-6 bg-gradient-to-br from-slate-800 to-slate-900 rounded-full flex items-center justify-center text-4xl border border-white/10 shadow-2xl cursor-pointer hover:scale-105 transition-transform" onclick="toggleVoiceMode()">
-                    🎙️
+        <!-- Input Area -->
+        <div class="input-wrapper">
+            <div class="input-box" id="inputBox">
+                <div class="file-row" id="filePreview"></div>
+                <div class="type-row">
+                    <button class="tool-btn" id="btnUpload" title="Attach file (Image OCR)">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                    </button>
+                    <button class="tool-btn" id="btnVoice" title="Voice input">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                    </button>
+                    <textarea id="userInput" rows="1" placeholder="Message eSAMz..."></textarea>
+                    
+                    <button class="action-btn disabled-state" id="btnSend" title="Send Message">
+                        <svg class="send-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        <svg class="stop-icon" style="display:none;" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+                    </button>
                 </div>
-                <h2 class="text-4xl font-serif font-bold text-white mb-3">Cook Hands-Free</h2>
-                <p class="text-slate-400 mb-8 max-w-md">Just say what you want to cook. No typing needed.</p>
-                <button onclick="toggleVoiceMode()" class="px-8 py-4 bg-orange-600 hover:bg-orange-500 text-white rounded-2xl font-bold text-lg transition-all flex items-center gap-3 shadow-lg shadow-orange-600/25">
-                    <i data-lucide="mic" class="w-6 h-6"></i>
-                    Start Voice Mode
-                </button>
-            </div>
-
-            <div id="recipeDisplay" style="display: none; max-width: 800px; margin: 0 auto;">
-                <div class="mb-8">
-                    <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-orange-500/10 text-orange-400 text-xs font-semibold uppercase tracking-wider mb-4">
-                        <i data-lucide="sparkles" class="w-3 h-3"></i>
-                        AI Generated
-                    </span>
-                    <h1 id="recipeTitle" class="text-3xl md:text-4xl font-serif font-bold text-white mb-3"></h1>
-                    <div class="flex gap-4 text-sm text-slate-400">
-                        <span class="flex items-center gap-1"><i data-lucide="clock" class="w-4 h-4"></i><span id="recipeTime"></span></span>
-                        <span class="flex items-center gap-1"><i data-lucide="flame" class="w-4 h-4"></i><span id="recipeDifficulty"></span></span>
-                        <span class="flex items-center gap-1"><i data-lucide="users" class="w-4 h-4"></i><span id="recipeServings"></span></span>
-                    </div>
-                </div>
-
-                <div class="bg-slate-800/50 rounded-2xl p-6 mb-6 border border-white/5">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-orange-400 font-bold uppercase text-xs tracking-wider flex items-center gap-2">
-                            <i data-lucide="shopping-basket" class="w-4 h-4"></i>
-                            Ingredients
-                        </h3>
-                        <span class="text-xs text-slate-500" id="ingredientCount"></span>
-                    </div>
-                    <div id="ingredientsList" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
-                </div>
-
-                <div>
-                    <h3 class="text-orange-400 font-bold uppercase text-xs tracking-wider mb-4 flex items-center gap-2">
-                        <i data-lucide="list-ordered" class="w-4 h-4"></i>
-                        Instructions
-                    </h3>
-                    <div id="stepsList"></div>
-                </div>
-
-                <div id="completionMessage" class="hidden mt-8 p-6 bg-green-500/10 border border-green-500/20 rounded-2xl text-center">
-                    <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-green-500/20 flex items-center justify-center text-3xl">🎉</div>
-                    <h3 class="text-xl font-bold text-white mb-2">All Done!</h3>
-                    <p class="text-slate-400">Your dish is ready to enjoy. Great cooking!</p>
+                <div class="input-footer">
+                    
+                    <span>Press Enter to send</span>
                 </div>
             </div>
-        </div>
-
-        <div class="input-area">
-            <div class="input-box">
-                <button class="icon-btn" onclick="toggleVoiceMode()" title="Voice Input">
-                    <i data-lucide="mic" class="w-5 h-5"></i>
-                </button>
-                <input type="text" id="textInput" placeholder="What do you want to cook? (or click mic to speak)" onkeypress="handleKeyPress(event)">
-                <button class="icon-btn primary" onclick="processTextInput()" id="sendBtn">
-                    <i data-lucide="arrow-right" class="w-5 h-5"></i>
-                </button>
+            
+            <div class="disclaimer">
+                AI can make mistakes. Please check important information. By using eSAMz, you agree to the <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener">Privacy Policy</a>.
             </div>
+
+            <!-- File Input: Local OCR only, backend expects text in message -->
+            <input type="file" id="fileInput" hidden multiple 
+                   accept=".txt,.md,.js,.py,.html,.css,.json,.java,.cpp,.c,.ts,.jsx,.tsx,.php,.rb,.go,.rs,.swift,.kt,.xml,.yaml,.yml,.sh,.sql,.csv,.log,.ini,.conf,.png,.jpg,.jpeg,.gif,.bmp,.webp">
         </div>
     </main>
 
+    <dialog id="exportDialog">
+        <div class="dialog-header">
+            <span>Export Conversation</span>
+            <button class="tool-btn" id="closeDialog">✕</button>
+        </div>
+        <div class="dialog-body">
+            <button class="dialog-btn" onclick="app.exportChat('txt')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                Plain Text (.txt)
+            </button>
+            <button class="dialog-btn" onclick="app.exportChat('md')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                Markdown (.md)
+            </button>
+        </div>
+    </dialog>
+
     <script>
-        // State
-        let currentRecipe = null;
-        let sidebarOpen = false;
-        let voiceActive = false;
-        let cookbook = [];
-        
-        // Voice State
-        const PHASES = { IDLE: 'idle', SEARCH: 'search', INGREDIENTS: 'ingredients', STEPS: 'steps', DONE: 'done' };
-        let currentPhase = PHASES.IDLE;
-        let currentIndex = 0;
-        let isSpeaking = false;
-        let recognition = null;
-        let synth = window.speechSynthesis;
-        
-        // Word highlighting state
-        let currentWordInterval = null;
-        let wordsArray = [];
-        let currentWordIndex = 0;
+        /* =========================================
+           APP LOGIC & BACKEND INTEGRATION
+           ========================================= */
 
-        // Load cookbook
-        function loadCookbook() {
-            const saved = localStorage.getItem('cookit_cookbook');
-            if (saved) {
-                cookbook = JSON.parse(saved);
-                renderCookbook();
+        class App {
+            constructor() {
+                this.dom = {
+                    chatList: document.getElementById('chatList'),
+                    input: document.getElementById('userInput'),
+                    welcome: document.getElementById('welcomeScreen'),
+                    historyList: document.getElementById('historyList'),
+                    filePreview: document.getElementById('filePreview'),
+                    sidebar: document.getElementById('sidebar'),
+                    overlay: document.getElementById('overlay'),
+                    statusText: document.getElementById('statusText'),
+                    statusBadge: document.getElementById('statusBadge'),
+                    charCount: document.getElementById('charCount'),
+                    toastContainer: document.getElementById('toast-container'),
+                    inputBox: document.getElementById('inputBox'),
+                    sendBtn: document.getElementById('btnSend'),
+                    sendIcon: document.querySelector('.send-icon'),
+                    stopIcon: document.querySelector('.stop-icon')
+                };
+
+                this.state = {
+                    chatId: null,           // Corresponds to backend 'sessionId'
+                    files: [],              // Local OCR processing
+                    isProcessing: false,
+                    isRecording: false,
+                    maxChars: 4000,
+                    abortController: null
+                };
+
+                // Storage Keys
+                this.storageKey = 'esamz_conversations_v18'; 
+                this.LAST_CHAT_KEY = 'esamz_last_chat_id';
+                
+                this.initSpeech();
+                this.init();
             }
-        }
 
-        window.onload = () => {
-            lucide.createIcons();
-            loadCookbook();
-            initSpeech();
-        };
+            /* --- INITIALIZATION --- */
 
-        function initSpeech() {
-            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                recognition = new SpeechRecognition();
-                recognition.continuous = false;
-                recognition.interimResults = true;
-                recognition.lang = 'en-US';
-                recognition.maxAlternatives = 1;
-                
-                recognition.onstart = () => {
-                    updateOrbState('listening');
-                    updateStatus('Listening...', 'Speak now');
-                };
-                
-                recognition.onresult = (e) => {
-                    const results = e.results;
-                    if (!results.length) return;
-                    const transcript = results[results.length - 1][0].transcript;
-                    updateCommand(transcript);
-                    if (results[results.length - 1].isFinal) {
-                        processVoiceCommand(transcript.toLowerCase().trim());
-                    }
-                };
-                
-                recognition.onerror = (e) => {
-                    if (e.error !== 'aborted' && voiceActive) {
-                        setTimeout(() => startListening(), 200);
-                    }
-                };
-                
-                recognition.onend = () => {
-                    if (voiceActive && !isSpeaking) startListening();
-                };
-            }
-        }
-
-        function toggleVoiceMode() {
-            voiceActive = !voiceActive;
-            const overlay = document.getElementById('voiceOverlay');
-            
-            if (voiceActive) {
-                overlay.classList.add('active');
-                resetVoiceState();
-                if (currentRecipe) {
-                    speak(`Voice mode on. Say "start cooking" for ${currentRecipe.title}, or tell me what else to cook.`);
+            initSpeech() {
+                if ('webkitSpeechRecognition' in window) {
+                    const SpeechRecognition = window.webkitSpeechRecognition;
+                    this.recognition = new SpeechRecognition();
+                    this.recognition.continuous = false;
+                    this.recognition.lang = 'en-US';
+                    this.recognition.interimResults = false;
+                    
+                    this.recognition.onstart = () => {
+                        this.state.isRecording = true;
+                        document.getElementById('btnVoice').classList.add('recording');
+                        this.dom.statusText.textContent = "Listening...";
+                        this.dom.statusBadge.classList.add('processing');
+                    };
+                    
+                    this.recognition.onend = () => {
+                        this.state.isRecording = false;
+                        document.getElementById('btnVoice').classList.remove('recording');
+                        if(!this.state.isProcessing) {
+                            this.dom.statusText.textContent = "Ready";
+                            this.dom.statusBadge.classList.remove('processing');
+                        }
+                    };
+                    
+                    this.recognition.onresult = (e) => {
+                        const transcript = e.results[0][0].transcript;
+                        this.dom.input.value += (this.dom.input.value ? ' ' : '') + transcript;
+                        this.dom.input.dispatchEvent(new Event('input'));
+                        this.dom.input.focus();
+                    };
                 } else {
-                    speak("Voice mode on. What would you like to cook?");
-                    updatePhase(PHASES.SEARCH);
+                    document.getElementById('btnVoice').style.display = 'none';
                 }
-                setTimeout(() => startListening(), 1500);
-            } else {
-                overlay.classList.remove('active');
-                stopListening();
-                stopSpeaking();
-                clearWordHighlight();
             }
-        }
 
-        function resetVoiceState() {
-            currentPhase = PHASES.IDLE;
-            currentIndex = 0;
-            isSpeaking = false;
-            updatePhase(PHASES.IDLE);
-            updateHints(['"Make pasta"', '"Start cooking"', '"Next"']);
-            clearWordHighlight();
-            document.querySelectorAll('.recipe-step').forEach(el => el.classList.remove('current', 'completed'));
-            document.querySelectorAll('.ingredient-tag').forEach(el => el.classList.remove('active'));
-        }
-
-        function clearWordHighlight() {
-            if (currentWordInterval) {
-                clearInterval(currentWordInterval);
-                currentWordInterval = null;
-            }
-            document.querySelectorAll('.word.active').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.word.spoken').forEach(el => el.classList.remove('spoken'));
-            wordsArray = [];
-            currentWordIndex = 0;
-        }
-
-        function startListening() {
-            if (!recognition || isSpeaking) return;
-            try { recognition.start(); } catch (e) {}
-        }
-
-        function stopListening() {
-            if (!recognition) return;
-            try { recognition.abort(); } catch (e) {}
-        }
-
-        function updateOrbState(state) {
-            const orb = document.getElementById('voiceOrb');
-            const icon = document.getElementById('orbIcon');
-            orb.className = 'voice-orb ' + state;
-            switch(state) {
-                case 'listening': icon.textContent = '👂'; break;
-                case 'speaking': icon.textContent = '🔊'; break;
-                case 'processing': icon.textContent = '⚡'; break;
-                default: icon.textContent = '🎙️';
-            }
-        }
-
-        function updateStatus(main, sub) {
-            document.getElementById('voiceStatus').textContent = main;
-            document.getElementById('voiceCommand').textContent = sub;
-        }
-
-        function updateCommand(text) {
-            document.getElementById('voiceCommand').textContent = `"${text}"`;
-        }
-
-        function updatePhase(phase) {
-            currentPhase = phase;
-            const indicator = document.getElementById('phaseIndicator');
-            switch(phase) {
-                case PHASES.IDLE: indicator.textContent = 'Ready'; indicator.className = 'phase-indicator'; break;
-                case PHASES.SEARCH: indicator.textContent = 'Recipe Search'; indicator.className = 'phase-indicator'; break;
-                case PHASES.INGREDIENTS: 
-                    indicator.textContent = `Ingredients (${currentIndex + 1}/${currentRecipe?.ingredients?.length || 0})`; 
-                    indicator.className = 'phase-indicator ingredients'; 
-                    break;
-                case PHASES.STEPS: 
-                    indicator.textContent = `Cooking (${currentIndex + 1}/${currentRecipe?.steps?.length || 0})`; 
-                    indicator.className = 'phase-indicator cooking'; 
-                    break;
-                case PHASES.DONE: indicator.textContent = 'Completed!'; indicator.className = 'phase-indicator ingredients'; break;
-            }
-        }
-
-        function updateHints(hints) {
-            document.getElementById('hintPills').innerHTML = hints.map(h => `<span class="hint-pill">${h}</span>`).join('');
-        }
-
-        function handleOrbClick() {
-            if (isSpeaking) {
-                stopSpeaking();
-                setTimeout(() => startListening(), 300);
-            } else {
-                startListening();
-            }
-        }
-
-        // Command Processing
-        function processVoiceCommand(cmd) {
-            if (cmd.includes('stop') || cmd.includes('exit')) {
-                speak('Closing voice mode');
-                setTimeout(() => toggleVoiceMode(), 800);
-                return;
-            }
-            if (cmd.includes('help')) {
-                speak('Say: make, start, next, previous, repeat, or stop');
-                return;
-            }
-            
-            switch(currentPhase) {
-                case PHASES.IDLE:
-                case PHASES.SEARCH:
-                    if (cmd.includes('start') && currentRecipe) {
-                        startCooking();
-                    } else {
-                        const searchTerm = cmd.replace(/make|cook|prepare|recipe|how do i|can i|i want|a|an|some/g, '').trim();
-                        if (searchTerm && searchTerm.length > 2) {
-                            searchRecipe(searchTerm);
-                        } else if (!currentRecipe) {
-                            speak('What would you like to cook?');
-                        }
+            init() {
+                this.loadHistory();
+                this.setupListeners();
+                this.updateButtonState();
+                
+                const lastActiveId = localStorage.getItem(this.LAST_CHAT_KEY);
+                if (lastActiveId) {
+                    const raw = localStorage.getItem(this.storageKey);
+                    const history = raw ? JSON.parse(raw) : [];
+                    if (history.find(c => c.id === lastActiveId)) {
+                        this.loadChat(lastActiveId);
                     }
-                    break;
-                case PHASES.INGREDIENTS:
-                    if (cmd.match(/next|ok|done|got it/)) nextIngredient();
-                    else if (cmd.match(/skip|start cooking|step/)) finishIngredients();
-                    else if (cmd.match(/previous|back/)) prevIngredient();
-                    else if (cmd.match(/repeat|again/)) readCurrentIngredient();
-                    break;
-                case PHASES.STEPS:
-                    if (cmd.match(/next|ok|done|finished/)) nextStep();
-                    else if (cmd.match(/previous|back/)) prevStep();
-                    else if (cmd.match(/repeat|again/)) readCurrentStep();
-                    break;
-                case PHASES.DONE:
-                    if (cmd.match(/again|restart/)) startCooking();
-                    break;
+                }
+                
+                this.dom.input.focus();
+                
+                // Mobile Sidebar handling
+                document.getElementById('openSidebar').onclick = () => {
+                    this.dom.sidebar.classList.add('active');
+                    this.dom.overlay.classList.add('active');
+                };
+                const closeSidebar = () => {
+                    this.dom.sidebar.classList.remove('active');
+                    this.dom.overlay.classList.remove('active');
+                };
+                this.dom.overlay.onclick = closeSidebar;
             }
-        }
 
-        // Cooking Flow with Word Highlighting
-        function startCooking() {
-            if (!currentRecipe) return;
-            updateHints(['"Next"', '"Repeat"', '"Skip"']);
-            currentIndex = 0;
-            updatePhase(PHASES.INGREDIENTS);
-            speak(`Let's make ${currentRecipe.title}. ${currentRecipe.ingredients.length} ingredients. Say "next" for each one.`);
-            setTimeout(() => {
-                highlightIngredient(0);
-                readCurrentIngredient();
-            }, 3500);
-        }
+            /* --- UI HELPERS --- */
 
-        function readCurrentIngredient() {
-            if (!currentRecipe?.ingredients) return;
-            if (currentIndex >= currentRecipe.ingredients.length) {
-                finishIngredients();
-                return;
-            }
-            const ingText = currentRecipe.ingredients[currentIndex];
-            const isLast = currentIndex === currentRecipe.ingredients.length - 1;
-            highlightIngredient(currentIndex);
-            updatePhase(PHASES.INGREDIENTS);
-            
-            if (isLast) {
-                speakWithHighlight(`ing-${currentIndex}`, `${ingText}. Last ingredient! Say "start cooking" to begin.`);
-            } else {
-                speakWithHighlight(`ing-${currentIndex}`, `${ingText}.`);
-            }
-        }
+            updateButtonState() {
+                const text = this.dom.input.value.trim();
+                const hasFiles = this.state.files.length > 0;
+                const canSend = (text.length > 0 || hasFiles) && !this.state.isProcessing;
 
-        function nextIngredient() {
-            currentIndex++;
-            readCurrentIngredient();
-        }
-
-        function prevIngredient() {
-            if (currentIndex > 0) {
-                currentIndex--;
-                readCurrentIngredient();
-            }
-        }
-
-        function finishIngredients() {
-            currentIndex = 0;
-            updatePhase(PHASES.STEPS);
-            updateHints(['"Next"', '"Repeat"', '"Back"']);
-            document.querySelectorAll('.ingredient-tag').forEach(el => el.classList.remove('active'));
-            clearWordHighlight();
-            speak('All ingredients ready! Let us start cooking. Say "next" for the first step.');
-            setTimeout(() => {
-                highlightStep(0);
-                readCurrentStep();
-            }, 2500);
-        }
-
-        function readCurrentStep() {
-            if (!currentRecipe?.steps) return;
-            if (currentIndex >= currentRecipe.steps.length) {
-                finishCooking();
-                return;
-            }
-            const stepText = currentRecipe.steps[currentIndex];
-            highlightStep(currentIndex);
-            updatePhase(PHASES.STEPS);
-            const isLast = currentIndex === currentRecipe.steps.length - 1;
-            if (isLast) {
-                speakWithHighlight(`step-${currentIndex}`, `Final step ${currentIndex + 1}. ${stepText}. Say "next" when complete!`);
-            } else {
-                speakWithHighlight(`step-${currentIndex}`, `Step ${currentIndex + 1}. ${stepText}.`);
-            }
-        }
-
-        function nextStep() {
-            clearWordHighlight();
-            const stepEl = document.getElementById(`step-${currentIndex}`);
-            if (stepEl) stepEl.classList.add('completed');
-            currentIndex++;
-            readCurrentStep();
-        }
-
-        function prevStep() {
-            if (currentIndex > 0) {
-                clearWordHighlight();
-                const prevEl = document.getElementById(`step-${currentIndex - 1}`);
-                if (prevEl) prevEl.classList.remove('completed');
-                currentIndex--;
-                readCurrentStep();
-            }
-        }
-
-        function finishCooking() {
-            updatePhase(PHASES.DONE);
-            updateHints(['"Again"', '"Exit"']);
-            updateStatus('Completed!', 'Enjoy your meal');
-            document.getElementById('completionMessage').classList.remove('hidden');
-            document.getElementById('completionMessage').scrollIntoView({ behavior: 'smooth', block: 'center' });
-            speak('Congratulations! Your dish is ready. Enjoy!');
-        }
-
-        // ENHANCED: TTS with Word-by-Word Highlighting
-        function speakWithHighlight(elementId, text) {
-            if (!synth) return;
-            stopListening();
-            clearWordHighlight();
-            
-            // Prepare words in the element
-            const element = document.getElementById(elementId);
-            if (!element) {
-                // Fallback to regular speak if element not found
-                speak(text);
-                return;
-            }
-            
-            // Split text into words and wrap in spans
-            const words = text.split(/(\s+|[,.!?;])/g).filter(w => w.length > 0);
-            let htmlContent = '';
-            words.forEach((word, idx) => {
-                if (word.match(/^\s+$/)) {
-                    htmlContent += word;
+                if (canSend) {
+                    this.dom.sendBtn.classList.remove('disabled-state');
                 } else {
-                    htmlContent += `<span class="word" data-index="${idx}">${word}</span>`;
-                }
-            });
-            
-            // Update element with word spans
-            const textContainer = element.querySelector('p') || element;
-            const originalText = textContainer.innerHTML;
-            textContainer.innerHTML = htmlContent;
-            
-            // Get all word spans
-            wordsArray = Array.from(textContainer.querySelectorAll('.word'));
-            currentWordIndex = 0;
-            
-            // Create utterance
-            const utter = new SpeechSynthesisUtterance(text);
-            utter.rate = 0.9;
-            utter.pitch = 1;
-            utter.volume = 1;
-            
-            const voices = synth.getVoices();
-            const voice = voices.find(v => v.name.includes('Google US English')) || 
-                        voices.find(v => v.name.includes('Samantha')) ||
-                        voices.find(v => v.lang === 'en-US');
-            if (voice) utter.voice = voice;
-            
-            // Calculate word timing based on text length and speech rate
-            const baseDelay = 250; // ms per word approximation
-            
-            utter.onstart = () => {
-                isSpeaking = true;
-                updateOrbState('speaking');
-                updateStatus('Speaking...', '');
-                
-                // Start word highlighting interval
-                let wordIdx = 0;
-                currentWordInterval = setInterval(() => {
-                    if (wordIdx < wordsArray.length) {
-                        // Remove previous active
-                        if (wordIdx > 0 && wordsArray[wordIdx - 1]) {
-                            wordsArray[wordIdx - 1].classList.remove('active');
-                            wordsArray[wordIdx - 1].classList.add('spoken');
-                        }
-                        // Add active to current
-                        if (wordsArray[wordIdx]) {
-                            wordsArray[wordIdx].classList.add('active');
-                            wordsArray[wordIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                        }
-                        wordIdx++;
+                    if(!this.state.isProcessing) {
+                        this.dom.sendBtn.classList.add('disabled-state');
                     }
-                }, baseDelay);
-            };
-            
-            utter.onend = () => {
-                isSpeaking = false;
-                updateOrbState('idle');
-                clearInterval(currentWordInterval);
+                }
+            }
+
+            fillInput(text) {
+                this.dom.input.value = text;
+                this.dom.input.dispatchEvent(new Event('input'));
+                this.dom.input.focus();
+            }
+
+            showToast(message, type = 'info') {
+                const toast = document.createElement('div');
+                toast.className = 'toast';
+                let icon = type === 'error' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️';
+                toast.innerHTML = `<span>${icon}</span><span>${message}</span>`;
+                this.dom.toastContainer.appendChild(toast);
                 
-                // Mark all as spoken
-                wordsArray.forEach(w => {
-                    w.classList.remove('active');
-                    w.classList.add('spoken');
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'translateY(-10px)';
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            }
+
+            scrollToBottom() {
+                const container = document.querySelector('.chat-container');
+                requestAnimationFrame(() => {
+                    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
                 });
+            }
+
+            setupListeners() {
+                this.dom.input.addEventListener('input', () => {
+                    this.dom.input.style.height = 'auto';
+                    this.dom.input.style.height = Math.min(this.dom.input.scrollHeight, 240) + 'px';
+                    this.dom.charCount.textContent = `${this.dom.input.value.length} / ${this.state.maxChars}`;
+                    this.updateButtonState();
+                });
+
+                this.dom.input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        if (this.state.isProcessing) {
+                            this.abortGeneration();
+                        } else {
+                            this.handleSend();
+                        }
+                    }
+                });
+
+                this.dom.sendBtn.onclick = () => {
+                    if (this.state.isProcessing) {
+                        this.abortGeneration();
+                    } else {
+                        this.handleSend();
+                    }
+                };
+
+                document.getElementById('btnNewChat').onclick = () => this.newChat();
+                document.getElementById('btnClearChat').onclick = () => {
+                    if(confirm("Clear current chat session?")) this.newChat();
+                };
+                document.getElementById('btnClearCache').onclick = () => {
+                    if(confirm("Are you sure? This will delete ALL chat history permanently.")) {
+                        localStorage.removeItem(this.storageKey);
+                        localStorage.removeItem(this.LAST_CHAT_KEY);
+                        location.reload();
+                    }
+                };
+
+                document.getElementById('btnUpload').onclick = () => document.getElementById('fileInput').click();
+                document.getElementById('fileInput').onchange = (e) => this.handleFiles(e.target.files);
+
+                document.getElementById('btnVoice').onclick = () => {
+                    if (this.state.isRecording) this.recognition.stop();
+                    else this.recognition.start();
+                };
+
+                const dialog = document.getElementById('exportDialog');
+                document.getElementById('btnExport').onclick = () => dialog.showModal();
+                document.getElementById('closeDialog').onclick = () => dialog.close();
+            }
+
+            /* --- FILE HANDLING (OCR) --- */
+            /* Note: Backend doesn't accept files directly in the snippet provided. 
+               We process files locally to text and append to the message. */
+
+            async handleFiles(fileList) {
+                if (!fileList.length) return;
                 
-                if (voiceActive) startListening();
-            };
-            
-            utter.onerror = () => {
-                isSpeaking = false;
-                clearInterval(currentWordInterval);
-                if (voiceActive) startListening();
-            };
-            
-            synth.speak(utter);
-        }
+                for (const file of fileList) {
+                    const chipId = 'chip-' + Date.now() + Math.random().toString(36).substr(2, 9);
+                    const chip = document.createElement('div');
+                    chip.className = 'file-chip';
+                    chip.id = chipId;
+                    chip.innerHTML = `<span>📄 ${file.name}</span>`;
+                    this.dom.filePreview.appendChild(chip);
 
-        function speak(text) {
-            if (!synth) return;
-            stopListening();
-            
-            const utter = new SpeechSynthesisUtterance(text);
-            utter.rate = 0.95;
-            utter.pitch = 1;
-            utter.volume = 1;
-            
-            const voices = synth.getVoices();
-            const voice = voices.find(v => v.name.includes('Google US English')) || 
-                        voices.find(v => v.name.includes('Samantha')) ||
-                        voices.find(v => v.lang === 'en-US');
-            if (voice) utter.voice = voice;
-            
-            utter.onstart = () => {
-                isSpeaking = true;
-                updateOrbState('speaking');
-                updateStatus('Speaking...', '');
-            };
-            
-            utter.onend = () => {
-                isSpeaking = false;
-                updateOrbState('idle');
-                if (voiceActive) startListening();
-            };
-            
-            synth.speak(utter);
-        }
-
-        function stopSpeaking() {
-            synth.cancel();
-            isSpeaking = false;
-            clearInterval(currentWordInterval);
-        }
-
-        // Recipe Management
-        async function searchRecipe(query) {
-            updateOrbState('processing');
-            updateStatus('Finding recipe...', query);
-            stopListening();
-            await new Promise(r => setTimeout(r, 1000));
-            
-            const recipe = {
-                id: Date.now(),
-                title: query.charAt(0).toUpperCase() + query.slice(1) + " Delight",
-                time: "25 mins",
-                difficulty: "Easy",
-                servings: "2 servings",
-                ingredients: [
-                    "2 tablespoons olive oil",
-                    "1 large onion, diced finely",
-                    "3 cloves garlic, minced",
-                    "400g fresh " + query + ", chopped into pieces",
-                    "1 teaspoon sea salt",
-                    "1/2 teaspoon black pepper",
-                    "Fresh herbs for garnish"
-                ],
-                steps: [
-                    "Heat the olive oil in a large pan over medium heat until shimmering hot.",
-                    "Add the diced onion and cook for 3 minutes until soft and translucent.",
-                    "Add the minced garlic and cook for 1 minute until fragrant and golden.",
-                    "Add the main ingredient and cook for 10 minutes, stirring occasionally.",
-                    "Season with sea salt and black pepper to your taste preference.",
-                    "Serve hot immediately, garnished with fresh herbs."
-                ],
-                savedAt: new Date().toISOString()
-            };
-            
-            loadRecipe(recipe);
-            updateOrbState('idle');
-            speak(`Found ${recipe.title}. Say "start cooking" when ready.`);
-        }
-
-        function loadRecipe(recipe) {
-            currentRecipe = recipe;
-            document.getElementById('welcomeScreen').style.display = 'none';
-            document.getElementById('recipeDisplay').style.display = 'block';
-            document.getElementById('recipeActions').style.display = 'flex';
-            document.getElementById('completionMessage').classList.add('hidden');
-            
-            document.getElementById('recipeTitle').textContent = recipe.title;
-            document.getElementById('recipeTime').textContent = recipe.time;
-            document.getElementById('recipeDifficulty').textContent = recipe.difficulty;
-            document.getElementById('recipeServings').textContent = recipe.servings;
-            document.getElementById('ingredientCount').textContent = `${recipe.ingredients.length} items`;
-            
-            // Render with word spans ready for highlighting
-            document.getElementById('ingredientsList').innerHTML = recipe.ingredients.map((ing, i) => `
-                <div class="ingredient-tag" id="ing-${i}" onclick="toggleIngredient(${i})">
-                    <p class="text-slate-300 text-sm">${ing}</p>
-                </div>
-            `).join('');
-            
-            document.getElementById('stepsList').innerHTML = recipe.steps.map((step, i) => `
-                <div class="recipe-step" id="step-${i}" onclick="selectStep(${i})">
-                    <div class="flex gap-4">
-                        <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-sm font-bold text-slate-400 flex-shrink-0">${i + 1}</div>
-                        <p class="text-slate-200 leading-relaxed text-lg">${step}</p>
-                    </div>
-                </div>
-            `).join('');
-            
-            lucide.createIcons();
-            document.getElementById('contentArea').scrollTop = 0;
-        }
-
-        function toggleIngredient(idx) {
-            const el = document.getElementById(`ing-${idx}`);
-            el.classList.toggle('active');
-        }
-
-        function selectStep(idx) {
-            document.querySelectorAll('.recipe-step').forEach((el, i) => {
-                el.classList.toggle('current', i === idx);
-            });
-            const el = document.getElementById(`step-${idx}`);
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-
-        function highlightIngredient(idx) {
-            document.querySelectorAll('.ingredient-tag').forEach((el, i) => {
-                el.classList.toggle('active', i === idx);
-            });
-            const el = document.getElementById(`ing-${idx}`);
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-
-        function highlightStep(idx) {
-            document.querySelectorAll('.recipe-step').forEach((el, i) => {
-                el.classList.remove('current');
-                if (i === idx) {
-                    el.classList.add('current');
-                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    const imageExts = ['png','jpg','jpeg','gif','webp','bmp'];
+                    
+                    try {
+                        let content = '';
+                        if (imageExts.includes(ext)) {
+                            chip.querySelector('span').textContent = `👁️ Scanning ${file.name}...`;
+                            content = await this.runOCR(file);
+                            chip.querySelector('span').textContent = `🖼️ ${file.name}`;
+                        } else {
+                            content = await file.text();
+                            chip.querySelector('span').textContent = `📄 ${file.name}`;
+                        }
+                        
+                        // Store text to be prepended to message
+                        this.state.files.push({
+                            name: file.name,
+                            type: imageExts.includes(ext) ? 'image' : 'text',
+                            content: content
+                        });
+                        this.updateButtonState();
+                    } catch (e) {
+                        console.error(e);
+                        this.showToast(`Failed to process ${file.name}`, 'error');
+                        chip.remove();
+                    }
                 }
-            });
+            }
+
+            async runOCR(file) {
+                const worker = await Tesseract.createWorker('eng', 1);
+                const { data: { text } } = await worker.recognize(file);
+                await worker.terminate();
+                return text;
+            }
+
+            /* --- CORE CHAT LOGIC --- */
+
+            // Helper: Get raw history array for a specific chat ID
+            getRawHistory(chatId) {
+                const raw = localStorage.getItem(this.storageKey);
+                if (!raw) return [];
+                const history = JSON.parse(raw);
+                const chat = history.find(c => c.id === chatId);
+                // Ensure we return an array of {role, content} as expected by backend
+                return chat && chat.messages ? chat.messages : [];
+            }
+
+            // Helper: Overwrite chat history from server
+            overwriteHistory(chatId, newMessages) {
+                const raw = localStorage.getItem(this.storageKey);
+                let allChats = raw ? JSON.parse(raw) : [];
+                const chatIndex = allChats.findIndex(c => c.id === chatId);
+                
+                if (chatIndex !== -1) {
+                    allChats[chatIndex].messages = newMessages;
+                    
+                    // Update title if it was default and we now have messages
+                    if (allChats[chatIndex].title === 'Untitled Chat' && newMessages.length > 0) {
+                        const firstUserMsg = newMessages.find(m => m.role === 'user');
+                        if (firstUserMsg) {
+                            allChats[chatIndex].title = firstUserMsg.content.slice(0, 30) + '...';
+                            this.renderHistoryItem(chatId, allChats[chatIndex].title);
+                        }
+                    }
+
+                    localStorage.setItem(this.storageKey, JSON.stringify(allChats));
+                }
+            }
+
+            async handleSend() {
+                const text = this.dom.input.value.trim();
+                if ((!text && this.state.files.length === 0) || this.state.isProcessing) return;
+
+                this.dom.input.value = '';
+                this.dom.input.style.height = 'auto';
+                this.dom.welcome.style.display = 'none';
+                
+                // Generate Session ID if new chat
+                if (!this.state.chatId) {
+                    this.state.chatId = Date.now().toString();
+                    const title = text.slice(0, 30) || 'Untitled Chat';
+                    this.saveToHistory({ id: this.state.chatId, title: title, messages: [] });
+                    this.renderHistoryItem(this.state.chatId, title);
+                    localStorage.setItem(this.LAST_CHAT_KEY, this.state.chatId);
+                }
+
+                // Prepare User Message Content for Display
+                let userMsgText = text;
+                if (this.state.files.length > 0) {
+                    // Format file content into the message bubble visually
+                    const fileContent = this.state.files.map(f => {
+                        const icon = f.type === 'image' ? '🖼️' : '📄';
+                        return `${icon} **${f.name}**\n\`\`\`\n${f.content}\n\`\`\``;
+                    }).join('\n');
+                    userMsgText += '\n\n' + fileContent;
+                }
+                
+                this.appendMessage('user', userMsgText);
+
+                // Backend only accepts text. We construct the final message string.
+                let finalMessagePayload = text;
+                if (this.state.files.length > 0) {
+                    const extractedText = this.state.files.map(f => f.content).join('\n\n');
+                    finalMessagePayload = text + '\n\n[Attached Content]:\n' + extractedText;
+                }
+
+                const filesToClear = [...this.state.files];
+                this.state.files = [];
+                this.dom.filePreview.innerHTML = '';
+
+                this.setProcessingState(true);
+                this.updateButtonState();
+
+                const aiMsgDiv = this.appendMessage('ai', '', true); 
+                const contentDiv = aiMsgDiv.querySelector('.bubble');
+
+                this.state.abortController = new AbortController();
+
+                // Prepare Data for Backend
+                const clientHistory = this.getRawHistory(this.state.chatId);
+                const clientLastActive = Date.now();
+
+                try {
+                    // FETCH REQUEST
+                    const response = await fetch("/api/chat", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            message: finalMessagePayload,
+                            sessionId: this.state.chatId,
+                            clientHistory: clientHistory,
+                            clientLastActive: clientLastActive
+                        }),
+                        signal: this.state.abortController.signal
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`API Error: ${response.status} - ${errorText}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder("utf-8");
+                    let buffer = "";
+                    let fullText = "";
+                    let incomingHistory = null;
+
+                    contentDiv.innerHTML = ''; // Clear typing indicator
+
+                    // STREAM PARSING LOOP
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || ""; // Keep incomplete line in buffer
+
+                        for (const line of lines) {
+                            if (!line.trim()) continue;
+                            
+                            // Backend Protocol: TYPE|DATA
+                            const sepIdx = line.indexOf('|');
+                            if (sepIdx === -1) continue;
+                            
+                            const type = line.substring(0, sepIdx);
+                            const data = line.substring(sepIdx + 1);
+
+                            if (type === 'STATUS') {
+                                // Handle Status: SEARCHING, TYPING
+                                if (data === 'SEARCHING') this.updateStatus("Searching Knowledge Base...");
+                                if (data === 'TYPING') this.updateStatus("Generating Response...");
+                            } else if (type === 'CHUNK') {
+                                // Handle Text Chunk
+                                const cleanData = data.replace(/\\n/g, '\n'); // Handle escaped newlines
+                                fullText += cleanData;
+                                
+                                try {
+                                    contentDiv.innerHTML = marked.parse(fullText);
+                                    if (window.Prism) Prism.highlightAllUnder(contentDiv);
+                                    this.injectCodeButtons(contentDiv);
+                                } catch (e) { 
+                                    contentDiv.textContent = fullText; 
+                                }
+                                this.scrollToBottom();
+                            } else if (type === 'HISTORY_UPDATE') {
+                                // Handle Full History Sync
+                                try {
+                                    incomingHistory = JSON.parse(data);
+                                } catch(e) {
+                                    console.error("Failed to parse history update", e);
+                                }
+                            } else if (type === 'DONE') {
+                                // Stream finished
+                            } else if (type === 'ERROR') {
+                                throw new Error(data);
+                            }
+                        }
+                    }
+
+                    // FINAL SYNC
+                    if (incomingHistory) {
+                        // Update LocalStorage with server state
+                        this.overwriteHistory(this.state.chatId, incomingHistory);
+
+                        // Visual Sync check:
+                        // If server returned fewer messages than currently in DOM, it likely
+                        // applied the 30-minute wipe rule. Reload UI to match.
+                        const currentDomCount = this.dom.chatList.children.length;
+                        if (incomingHistory.length < currentDomCount) {
+                            this.loadChat(this.state.chatId);
+                        }
+                    }
+
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        contentDiv.innerHTML += '<p style="font-style:italic; color:var(--text-muted); margin-top:10px;">[Generation stopped by user]</p>';
+                    } else {
+                        this.showToast(error.message, 'error');
+                        contentDiv.innerHTML = `<span style="color:#ef4444">Error: ${error.message}</span>`;
+                    }
+                } finally {
+                    this.setProcessingState(false);
+                    this.updateButtonState();
+                    this.scrollToBottom();
+                }
+            }
+
+            setProcessingState(isProcessing) {
+                this.state.isProcessing = isProcessing;
+                
+                if (isProcessing) {
+                    this.updateStatus("Thinking...");
+                    this.dom.statusBadge.classList.add('processing');
+                    
+                    this.dom.sendBtn.classList.add('stop-mode');
+                    this.dom.sendIcon.style.display = 'none';
+                    this.dom.stopIcon.style.display = 'block';
+                    this.dom.sendBtn.title = "Stop Generation";
+                    
+                    this.dom.sendBtn.classList.remove('disabled-state');
+                } else {
+                    this.updateStatus("Ready");
+                    this.dom.statusBadge.classList.remove('processing');
+                    
+                    this.dom.sendBtn.classList.remove('stop-mode');
+                    this.dom.sendIcon.style.display = 'block';
+                    this.dom.stopIcon.style.display = 'none';
+                    this.dom.sendBtn.title = "Send Message";
+                    
+                    this.state.abortController = null;
+                }
+            }
+            
+            abortGeneration() {
+                if (this.state.abortController) {
+                    this.state.abortController.abort();
+                }
+            }
+
+            updateStatus(text) {
+                this.dom.statusText.textContent = text;
+            }
+
+            /* --- RENDERING --- */
+
+            appendMessage(role, text, isLoading = false) {
+                const div = document.createElement('div');
+                div.className = `message ${role}`;
+                
+                const avatar = document.createElement('div');
+                avatar.className = 'avatar';
+                avatar.textContent = role === 'user' ? 'U' : 'eS';
+
+                const content = document.createElement('div');
+                content.className = 'msg-content';
+
+                const bubble = document.createElement('div');
+                bubble.className = 'bubble';
+                
+                if (isLoading) {
+                    bubble.innerHTML = `
+                        <div class="typing-indicator">
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                        </div>`;
+                } else {
+                    try {
+                        bubble.innerHTML = marked.parse(text);
+                        if (window.Prism) Prism.highlightAllUnder(bubble);
+                        this.injectCodeButtons(bubble);
+                    } catch (e) { bubble.textContent = text; }
+                }
+
+                content.appendChild(bubble);
+                
+                // Action Buttons (Copy)
+                const actions = document.createElement('div');
+                actions.className = 'msg-actions';
+                actions.style.cssText = `margin-top: 6px; opacity: 0; transition: opacity 0.2s; height: 20px; display: flex; align-items: center; gap: 8px;`;
+                
+                const copyBtn = document.createElement('button');
+                copyBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+                copyBtn.style.cssText = "padding: 4px; color: var(--text-muted); background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 4px;";
+                copyBtn.onmouseenter = () => copyBtn.style.color = 'var(--text-primary)';
+                copyBtn.onmouseleave = () => copyBtn.style.color = 'var(--text-muted)';
+                copyBtn.onclick = () => {
+                    navigator.clipboard.writeText(text);
+                    this.showToast("Copied to clipboard", 'success');
+                };
+                actions.appendChild(copyBtn);
+                content.appendChild(actions);
+
+                div.onmouseenter = () => actions.style.opacity = '1';
+                div.onmouseleave = () => actions.style.opacity = '0';
+
+                div.appendChild(avatar);
+                div.appendChild(content);
+                this.dom.chatList.appendChild(div);
+                return div;
+            }
+
+            injectCodeButtons(container) {
+                const pres = container.querySelectorAll('pre');
+                pres.forEach(pre => {
+                    if (pre.parentElement.classList.contains('code-block-wrapper')) return;
+
+                    const code = pre.querySelector('code');
+                    const lang = code ? code.className.replace('language-', '') : 'Code';
+                    
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'code-block-wrapper';
+                    
+                    const header = document.createElement('div');
+                    header.className = 'code-header';
+                    header.innerHTML = `<span>${lang}</span><button>Copy</button>`;
+                    
+                    const btn = header.querySelector('button');
+                    btn.onclick = () => {
+                        navigator.clipboard.writeText(pre.textContent);
+                        btn.textContent = 'Copied!';
+                        setTimeout(() => btn.textContent = 'Copy', 2000);
+                    };
+
+                    pre.parentNode.insertBefore(wrapper, pre);
+                    wrapper.appendChild(header);
+                    wrapper.appendChild(pre);
+                });
+            }
+
+            /* --- STORAGE & HISTORY --- */
+
+            loadHistory() {
+                const raw = localStorage.getItem(this.storageKey);
+                const history = raw ? JSON.parse(raw) : [];
+                history.forEach(chat => {
+                    if(chat.id) this.renderHistoryItem(chat.id, chat.title);
+                });
+            }
+
+            renderHistoryItem(id, title) {
+                if(document.querySelector(`button[data-id="${id}"]`)) return;
+
+                const btn = document.createElement('button');
+                btn.className = 'nav-item';
+                btn.setAttribute('data-id', id);
+                btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> ${title}`;
+                btn.onclick = () => {
+                    this.loadChat(id);
+                };
+                this.dom.historyList.prepend(btn); 
+            }
+
+            loadChat(id) {
+                localStorage.setItem(this.LAST_CHAT_KEY, id);
+
+                this.state.chatId = id;
+                this.dom.welcome.style.display = 'none';
+                this.dom.chatList.innerHTML = '';
+                
+                document.querySelectorAll('.nav-item').forEach(btn => btn.style.background = 'transparent');
+                const activeBtn = document.querySelector(`button[data-id="${id}"]`);
+                if(activeBtn) activeBtn.style.background = 'var(--bg-surface)';
+                
+                const raw = localStorage.getItem(this.storageKey);
+                const history = raw ? JSON.parse(raw) : [];
+                const chat = history.find(c => c.id === id);
+                
+                if (chat && chat.messages) {
+                    chat.messages.forEach(m => this.appendMessage(m.role, m.content));
+                }
+
+                if (window.innerWidth <= 768) {
+                    this.dom.sidebar.classList.remove('active');
+                    this.dom.overlay.classList.remove('active');
+                }
+                this.updateButtonState();
+            }
+
+            saveToHistory(chatObj) {
+                const raw = localStorage.getItem(this.storageKey);
+                let history = raw ? JSON.parse(raw) : [];
+                history = history.filter(h => h.id !== chatObj.id);
+                history.unshift(chatObj);
+                
+                if (history.length > 50) history = history.slice(0, 50);
+                
+                localStorage.setItem(this.storageKey, JSON.stringify(history));
+            }
+
+            newChat() {
+                localStorage.removeItem(this.LAST_CHAT_KEY);
+                
+                this.state.chatId = null;
+                this.state.files = [];
+                this.dom.chatList.innerHTML = '';
+                this.dom.welcome.style.display = 'flex';
+                this.dom.input.focus();
+                
+                document.querySelectorAll('.nav-item').forEach(btn => btn.style.background = 'transparent');
+                this.updateButtonState();
+            }
+
+            exportChat(type) {
+                const messages = Array.from(document.querySelectorAll('.message'));
+                if (!messages.length) return this.showToast("Nothing to export", 'error');
+
+                const content = messages.map(m => {
+                    const role = m.classList.contains('user') ? 'User' : 'eSAMz AI';
+                    const txt = m.querySelector('.bubble').innerText;
+                    return `### ${role}\n${txt}`;
+                }).join('\n\n---\n\n');
+
+                const blob = new Blob([content], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `esamz-chat-${Date.now()}.${type}`;
+                a.click();
+                URL.revokeObjectURL(url);
+                document.getElementById('exportDialog').close();
+            }
         }
 
-        // Save functionality
-        function saveRecipe() {
-            if (!currentRecipe) return;
-            const existingIndex = cookbook.findIndex(r => r.id === currentRecipe.id || r.title === currentRecipe.title);
-            
-            if (existingIndex !== -1) {
-                cookbook[existingIndex] = { ...currentRecipe, savedAt: new Date().toISOString() };
-                speak('Recipe updated');
-                showToast('Recipe updated in cookbook');
+        /* ===================================
+        THEME LOGIC
+        =================================== */
+        
+        window.addEventListener('load', () => {
+            document.body.classList.remove('preload');
+        });
+        
+        const currentTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', currentTheme);
+
+        function updateThemeIcon(theme) {
+            const icon = document.getElementById('themeIcon');
+            if (theme === 'light') {
+                icon.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
             } else {
-                cookbook.unshift({ ...currentRecipe, id: Date.now(), savedAt: new Date().toISOString() });
-                speak('Recipe saved');
-                showToast('Recipe saved to cookbook');
+                icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
             }
+        }
+
+        updateThemeIcon(currentTheme);
+
+        document.getElementById('themeToggle').addEventListener('click', function() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
             
-            localStorage.setItem('cookit_cookbook', JSON.stringify(cookbook));
-            renderCookbook();
-        }
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon(newTheme);
+        });
 
-        function renderCookbook() {
-            const container = document.getElementById('cookbookList');
-            if (cookbook.length === 0) {
-                container.innerHTML = '<p class="text-slate-600 text-sm text-center py-4">No saved recipes yet</p>';
-                return;
-            }
-            
-            container.innerHTML = cookbook.map((r, i) => `
-                <div class="p-3 bg-slate-800/50 rounded-lg cursor-pointer hover:bg-slate-700/50 transition-colors group" onclick="loadSavedRecipe(${i})">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-white font-medium text-sm">${r.title}</p>
-                            <p class="text-slate-500 text-xs">${r.time} • ${r.difficulty}</p>
-                        </div>
-                        <button onclick="event.stopPropagation(); deleteRecipe(${i})" class="opacity-0 group-hover:opacity-100 p-2 text-slate-500 hover:text-red-400 transition-opacity">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-            lucide.createIcons();
-        }
-
-        function loadSavedRecipe(index) {
-            const recipe = cookbook[index];
-            if (recipe) {
-                loadRecipe(recipe);
-                if (sidebarOpen) toggleSidebar();
-            }
-        }
-
-        function deleteRecipe(index) {
-            if (confirm('Delete this recipe?')) {
-                cookbook.splice(index, 1);
-                localStorage.setItem('cookit_cookbook', JSON.stringify(cookbook));
-                renderCookbook();
-            }
-        }
-
-        function showToast(msg) {
-            const toast = document.createElement('div');
-            toast.className = 'fixed top-4 right-4 bg-slate-800 text-white px-4 py-3 rounded-lg shadow-lg border border-white/10 z-50 animate-fade-in';
-            toast.textContent = msg;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
-        }
-
-        function printRecipe() {
-            if (!currentRecipe) return;
-            window.print();
-        }
-
-        function toggleSidebar() {
-            sidebarOpen = !sidebarOpen;
-            document.getElementById('sidebar').classList.toggle('open');
-            document.getElementById('mainContent').classList.toggle('sidebar-open');
-        }
-
-        function newRecipe() {
-            document.getElementById('welcomeScreen').style.display = 'flex';
-            document.getElementById('recipeDisplay').style.display = 'none';
-            document.getElementById('recipeActions').style.display = 'none';
-            document.getElementById('textInput').value = '';
-            currentRecipe = null;
-            resetVoiceState();
-            if (sidebarOpen) toggleSidebar();
-        }
-
-        function processTextInput() {
-            const val = document.getElementById('textInput').value.trim();
-            if (val) {
-                searchRecipe(val);
-                document.getElementById('textInput').value = '';
-            }
-        }
-
-        function handleKeyPress(e) {
-            if (e.key === 'Enter') processTextInput();
-        }
+        // Initialize App
+        const app = new App();
     </script>
 </body>
 </html>
