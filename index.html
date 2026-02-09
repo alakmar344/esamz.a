@@ -932,31 +932,41 @@
             }
 
             setupListeners() {
+                // Handle Input Typing
                 this.dom.input.addEventListener('input', () => {
                     this.dom.input.style.height = 'auto';
                     this.dom.input.style.height = Math.min(this.dom.input.scrollHeight, 240) + 'px';
-                    this.dom.charCount.textContent = `${this.dom.input.value.length} / ${this.state.maxChars}`;
+                    // this.dom.charCount.textContent = `${this.dom.input.value.length} / ${this.state.maxChars}`; // Optional char count if needed
                     this.updateButtonState();
                 });
 
+                // Handle Keydown (Enter to Send, Shift+Enter for New Line)
                 this.dom.input.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        if (this.state.isProcessing) {
-                            this.abortGeneration();
+                    if (e.key === 'Enter') {
+                        if (e.shiftKey) {
+                            // Allow default behavior (new line)
+                            return;
                         } else {
-                            this.handleSend();
+                            // Prevent default (new line) and handle send
+                            e.preventDefault();
+                            if (this.state.isProcessing) {
+                                this.abortGeneration();
+                            } else {
+                                this.handleSend();
+                            }
                         }
                     }
                 });
 
-                this.dom.sendBtn.onclick = () => {
+                // Handle Send Button Click
+                this.dom.sendBtn.addEventListener('click', (e) => {
+                    e.preventDefault(); // Prevent any form submission behavior
                     if (this.state.isProcessing) {
                         this.abortGeneration();
                     } else {
                         this.handleSend();
                     }
-                };
+                });
 
                 document.getElementById('btnNewChat').onclick = () => this.newChat();
                 document.getElementById('btnClearChat').onclick = () => {
