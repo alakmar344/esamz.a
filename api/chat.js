@@ -385,6 +385,32 @@ async function processUserRequest(req, res, id, message, clientHistory, clientLa
     const currentName = userName || "User";
 
     let finalMessage = message;
+    // --- 🚀 EASTER EGG: NASA ---
+    // Trigger if user mentions "nasa" or asks for a "secret"
+    const lowerMsg = message.toLowerCase();
+    if (lowerMsg.includes("nasa") || lowerMsg.includes("tell me a secret")) {
+      const eggResponse = "🤫 Kya apko pata hai... NASA bhout khatarnak hai 😱";
+
+      // 1. Send "Typing" status for effect
+      sendEvent(res, "STATUS", "TYPING");
+      
+      // 2. Fake a small delay (1s) so it feels like AI is thinking
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // 3. Send the funny response
+      sendEvent(res, "CHUNK", eggResponse);
+
+      // 4. IMPORTANT: Save this interaction to memory/history
+      // If we don't do this, the message will disappear on reload!
+      const updatedSession = await DB.saveMessage(id, "user", message, history, currentName);
+      await DB.saveMessage(id, "assistant", eggResponse, updatedSession.history, updatedSession.userName);
+
+      // 5. Close the request cleanly
+      sendEvent(res, "DONE", id);
+      res.end();
+      return; // <--- STOP here so we don't call the expensive API
+    }
+    // -------------------------------
 
     // 2. Search
     let searchContext = "";
