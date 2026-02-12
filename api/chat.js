@@ -13,10 +13,123 @@ const INACTIVITY_TIMEOUT_SEC = 30 * 60;
 // USER QUEUE: 1 second per user
 const USER_QUEUE_TIME_MS = 1000; // 1 second
 
+// Security: Input limits
+const MAX_MESSAGE_LENGTH = 4000;
+const MIN_MESSAGE_LENGTH = 1;
+const MAX_HISTORY_LENGTH = 100; // Maximum messages in history
+
+// Rate limiting
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 30; // 30 requests per minute
+const rateLimitStore = new Map();
+
 const ALLOWED_ORIGINS = [
   "https://esamz.site",
-  "https://www.esamz.site"
+  "https://www.esamz.site",
+  "https://chat.esamz.site"
 ];
+
+/* ================= SECURITY HELPERS ================= */
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const record = rateLimitStore.get(ip);
+
+  if (!record || now > record.resetTime) {
+    rateLimitStore.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - 1 };
+  }
+
+  if (record.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return { allowed: false, remaining: 0, retryAfter: Math.ceil((record.resetTime - now) / 1000) };
+  }
+
+  record.count++;
+  return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - record.count };
+}
+
+function sanitizeInput(input) {
+  if (typeof input !== "string") return "";
+  
+  return input
+    .replace(/[<>]/g, "") // Remove angle brackets (HTML injection)
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "") // Remove dangerous control chars
+    .replace(/javascript:/gi, "") // Remove javascript protocol
+    .replace(/data:/gi, "") // Remove data protocol  
+    .replace(/vbscript:/gi, "") // Remove vbscript protocol
+    .trim();
+}
+
+function validateMessage(message) {
+  if (!message || typeof message !== "string") {
+    return { valid: false, error: "Message is required" };
+  }
+  
+  const sanitized = sanitizeInput(message).slice(0, MAX_MESSAGE_LENGTH);
+  
+  if (sanitized.length < MIN_MESSAGE_LENGTH) {
+    return { valid: false, error: "Message is too short" };
+  }
+  
+  // Check for suspicious patterns
+  const suspiciousPatterns = [
+    /__proto__/i,
+    /constructor\s*\[/i,
+    /\{\{.*\}\}/,
+    /\$\{[^}]+\}/,
+  ];
+  
+  for (const pattern of suspiciousPatterns) {
+    if (pattern.test(sanitized)) {
+      return { valid: false, error: "Invalid input detected" };
+    }
+  }
+  
+  return { valid: true, sanitized };
+}
+
+function validateHistory(history) {
+  if (!history) return [];
+  if (!Array.isArray(history)) return [];
+  
+  // Limit history size
+  const limited = history.slice(-MAX_HISTORY_LENGTH);
+  
+  // Validate each message
+  return limited.filter(msg => {
+    if (!msg || typeof msg !== "object") return false;
+    if (!msg.role || !msg.content) return false;
+    if (!['user', 'assistant', 'system'].includes(msg.role)) return false;
+    if (typeof msg.content !== "string") return false;
+    return true;
+  }).map(msg => ({
+    role: msg.role,
+    content: sanitizeInput(msg.content).slice(0, MAX_MESSAGE_LENGTH * 2)
+  }));
+}
+
+function setSecurityHeaders(res, origin) {
+  // Security headers
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  res.setHeader('Content-Security-Policy', 
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com www.googletagmanager.com; " +
+    "style-src 'self' 'unsafe-inline' fonts.googleapis.com cdnjs.cloudflare.com; " +
+    "font-src 'self' fonts.gstatic.com; " +
+    "img-src 'self' data: blob:; " +
+    "connect-src 'self' api.sarvam.ai google.serper.dev www.google-analytics.com; " +
+    "frame-ancestors 'none'"
+  );
+  
+  // CORS
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+}
 
 /* ================= SYSTEM PROMPT ================= */
 const SYSTEM_PROMPT = `
@@ -117,12 +230,19 @@ const userQueue = new UserQueue();
 
 /* ================= HELPERS ================= */
 function getIP(req) {
-  return req.headers["x-forwarded-for"]?.split(",")[0] || req.socket?.remoteAddress || "unknown";
+  const forwarded = req.headers["x-forwarded-for"];
+  if (forwarded) {
+    return forwarded.split(",")[0].trim();
+  }
+  return req.headers["x-real-ip"] || req.socket?.remoteAddress || "unknown";
 }
 
 function sendEvent(res, type, data) {
-  const safeData = data.replace(/\n/g, "\\n"); 
-  res.write(`${type}|${safeData}\n`);
+  // Sanitize data to prevent injection in SSE stream
+  const sanitized = String(data)
+    .replace(/[\r\n]/g, "\\n")
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
+  res.write(`${type}|${sanitized}\n`);
 }
 
 /* ================= CONTEXT MANAGER (120k Limit) ================= */
@@ -323,54 +443,94 @@ async function streamSarvamChat({ messages, onChunk }) {
 
 /* ================= MAIN HANDLER WITH QUEUE ================= */
 export default async function handler(req, res) {
+  const clientIP = getIP(req);
+  const origin = req.headers.origin || "";
+  const isAllowed = ALLOWED_ORIGINS.includes(origin) || !origin;
+
   // Set headers immediately
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Transfer-Encoding', 'chunked');
   res.setHeader('X-Accel-Buffering', 'no');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com;");
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  
+  // Set security headers
+  setSecurityHeaders(res, isAllowed ? origin : null);
 
-  const origin = req.headers.origin;
-  if (ALLOWED_ORIGINS.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-  }
-
+  // CORS preflight
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    return res.end();
+    res.setHeader('Access-Control-Max-Age', '86400');
+    return res.status(204).end();
   }
 
+  // Method check
   if (req.method !== 'POST') { 
     res.write(`ERROR|Method not allowed\n`); 
     return res.end(); 
   }
 
+  // Origin check
+  if (origin && !ALLOWED_ORIGINS.includes(origin)) {
+    console.warn(`[Security] Blocked request from: ${origin} (IP: ${clientIP})`);
+    res.write(`ERROR|Access denied\n`);
+    return res.end();
+  }
+
+  // Rate limiting
+  const rateLimit = checkRateLimit(clientIP);
+  res.setHeader('X-RateLimit-Remaining', rateLimit.remaining.toString());
+  
+  if (!rateLimit.allowed) {
+    res.setHeader('Retry-After', rateLimit.retryAfter.toString());
+    console.warn(`[Security] Rate limit exceeded for IP: ${clientIP}`);
+    res.write(`ERROR|Too many requests. Try again in ${rateLimit.retryAfter}s\n`);
+    return res.end();
+  }
+
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    
+    if (!body || typeof body !== 'object') {
+      res.write(`ERROR|Invalid request body\n`);
+      return res.end();
+    }
+
     const { message, sessionId, clientHistory, clientLastActive } = body;
 
-    // Generate unique user ID for queue
-    let id = sessionId || req.cookies?.[COOKIE_NAME] || crypto.randomBytes(16).toString("hex");
+    // Validate message
+    const messageValidation = validateMessage(message);
+    if (!messageValidation.valid) {
+      res.write(`ERROR|${messageValidation.error}\n`);
+      return res.end();
+    }
+
+    // Validate and sanitize history
+    const sanitizedHistory = validateHistory(clientHistory);
+
+    // Generate/validate session ID
+    let id = sessionId;
+    if (!id || typeof id !== 'string' || id.length > 64) {
+      id = req.cookies?.[COOKIE_NAME] || crypto.randomBytes(16).toString("hex");
+    }
+    // Sanitize session ID
+    id = id.replace(/[^a-zA-Z0-9-_]/g, '').slice(0, 64);
     
     // Set Secure Cookie
     if (!req.cookies || !req.cookies[COOKIE_NAME]) {
-      res.setHeader('Set-Cookie', `${COOKIE_NAME}=${id}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${INACTIVITY_TIMEOUT_SEC}`);
+      res.setHeader('Set-Cookie', `${COOKIE_NAME}=${id}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${INACTIVITY_TIMEOUT_SEC}`);
     }
 
     // Add to queue and process
     await userQueue.add(id, async () => {
-      return await processUserRequest(req, res, id, message, clientHistory, clientLastActive);
+      return await processUserRequest(req, res, id, messageValidation.sanitized, sanitizedHistory, clientLastActive);
     });
 
   } catch (error) {
-    console.error("API System Error:", error.message);
+    console.error("[API] System Error:", error.message);
     if (!res.headersSent) { 
-      res.write(`ERROR|${error.message}\n`); 
+      // Don't expose internal error details
+      res.write(`ERROR|An error occurred. Please try again.\n`); 
       res.end();
     }
   }
