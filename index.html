@@ -30,17 +30,47 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 
-    <!-- Structured Data -->
-    <script type="application/ld+json">
+    <!-- Structured Data --><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
     {
-      "@context": "https://schema.org",
       "@type": "SoftwareApplication",
-      "name": "esamz AI",
-      "operatingSystem": "Web",
-      "applicationCategory": "AIApplication",
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      "@id": "https://esamz.site/#software",
+      "name": "eSAMz AI",
+      "alternateName": "eSAMz v9.1",
+      "description": "A smart, calm, and sharp human-like AI conversationalist with 120,000 character context limit and macOS-inspired glassmorphism UI.",
+      "applicationCategory": "AIApplication, MultimediaApplication",
+      "operatingSystem": "Web, macOS, Windows, Linux, Android, iOS",
+      "softwareVersion": "9.1 (Glass Edition)",
+      "offers": {
+        "@type": "Offer",
+        "price": "0.00",
+        "priceCurrency": "USD"
+      },
+      "author": {
+        "@id": "https://esamz.site/#maker"
+      },
+      "featureList": [
+        "120,000 Character Context Limit (32K Tokens)",
+        "SARVAM Model Integration",
+        "Smart Vision & OCR Support",
+        "30-Minute Inactivity Session Timeout",
+        "High-Fidelity Glassmorphism Interface"
+      ]
+    },
+    {
+      "@type": "Person",
+      "@id": "https://esamz.site/#maker",
+      "name": "Alakmar Teenwala",
+      "description": "Creator and Architect of the eSAMz AI engine.",
+      "jobTitle": "Lead Developer",
+      "url": "https://esamz.site",
+      "knowsAbout": ["Artificial Intelligence", "SARVAM Models", "UI/UX Design", "Software Architecture"]
     }
-    </script>
+  ]
+}
+</script>
 
     <style>
         /* =========================================
