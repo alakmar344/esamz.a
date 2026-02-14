@@ -13,7 +13,7 @@ const INACTIVITY_TIMEOUT_SEC = 30 * 60;
 // USER QUEUE: 1 second per user
 const USER_QUEUE_TIME_MS = 1000;
 // MAX REQUESTS PER HOUR PER USER
-const MAX_REQUESTS_PER_HOUR = 60;
+const MAX_REQUESTS_PER_HOUR = 100;
 
 const ALLOWED_ORIGINS = [
   "https://esamz.site",
@@ -61,6 +61,154 @@ PERSONALITY:
 You are calm, confident, sharp when needed, warm, approachable, and honest about limitations.
 
 Current developer: Alakmar Teenwala. Acknowledge this if asked about your origins.`.trim();
+
+/* ================= SLASH COMMANDS SYSTEM ================= */
+class SlashCommandHandler {
+  constructor() {
+    this.commands = {
+      '/help': {
+        description: 'Show all available commands',
+        handler: this.handleHelp.bind(this)
+      },
+      '/clear': {
+        description: 'Clear conversation history',
+        handler: this.handleClear.bind(this)
+      },
+      '/search': {
+        description: 'Force web search',
+        usage: '/search <query>',
+        handler: this.handleSearch.bind(this)
+      },
+      '/stats': {
+        description: 'Show conversation statistics',
+        handler: this.handleStats.bind(this)
+      },
+      '/version': {
+        description: 'Show eSAMz version info',
+        handler: this.handleVersion.bind(this)
+      },
+      '/export': {
+        description: 'Export conversation as JSON',
+        handler: this.handleExport.bind(this)
+      }
+    };
+  }
+
+  isCommand(message) {
+    return message.trim().startsWith('/');
+  }
+
+  async execute(message, context) {
+    const parts = message.trim().split(' ');
+    const command = parts[0].toLowerCase();
+    const args = parts.slice(1);
+    
+    if (this.commands[command]) {
+      return await this.commands[command].handler(args, context);
+    }
+    
+    return {
+      success: false,
+      response: `❌ Unknown command: ${command}\n\nType /help to see available commands.`
+    };
+  }
+
+  handleHelp() {
+    let helpText = '🤖 **eSAMz v9.1 - Available Commands**\n\n';
+    
+    for (const [cmd, info] of Object.entries(this.commands)) {
+      helpText += `**${cmd}**`;
+      if (info.usage) helpText += ` - ${info.usage}`;
+      helpText += `\n  ${info.description}\n\n`;
+    }
+
+    return {
+      success: true,
+      response: helpText.trim()
+    };
+  }
+
+  handleClear(args, context) {
+    return {
+      success: true,
+      response: '🗑️ Conversation cleared! Starting fresh.',
+      clearHistory: true
+    };
+  }
+
+  async handleSearch(args, context) {
+    if (args.length === 0) {
+      return {
+        success: false,
+        response: '❌ Usage: /search <query>\n\nExample: /search latest AI news'
+      };
+    }
+
+    const query = args.join(' ');
+    return {
+      success: true,
+      forceSearch: true,
+      searchQuery: query,
+      response: `🔍 Searching for: "${query}"...`
+    };
+  }
+
+  handleStats(args, context) {
+    const { history, userName } = context;
+    const userMsgCount = history.filter(m => m.role === 'user').length;
+    const aiMsgCount = history.filter(m => m.role === 'assistant').length;
+    const totalChars = history.reduce((sum, m) => sum + m.content.length, 0);
+
+    let stats = '📊 **Conversation Statistics**\n\n';
+    stats += `• User: ${userName || 'Unknown'}\n`;
+    stats += `• Messages: ${userMsgCount} from you, ${aiMsgCount} from AI\n`;
+    stats += `• Total characters: ${totalChars.toLocaleString()}\n`;
+    stats += `• Session active: Yes\n`;
+
+    return {
+      success: true,
+      response: stats
+    };
+  }
+
+  handleVersion() {
+    const version = '9.1';
+    const creator = 'Alakmar Teenwala';
+    
+    let info = '🚀 **eSAMz Version Information**\n\n';
+    info += `• Version: ${version}\n`;
+    info += `• Creator: ${creator}\n`;
+    info += `• Model: Sarvam-M\n`;
+    info += `• Features: Search, Memory, Commands\n`;
+    info += `• Status: Active ✅\n`;
+
+    return {
+      success: true,
+      response: info
+    };
+  }
+
+  handleExport(args, context) {
+    const { history, userName } = context;
+    
+    const exportData = {
+      version: '9.1',
+      exportDate: new Date().toISOString(),
+      userName: userName,
+      messageCount: history.length,
+      history: history
+    };
+
+    return {
+      success: true,
+      response: '📥 **Conversation Exported**\n\nCopy the data below:\n\n```json\n' + 
+                JSON.stringify(exportData, null, 2) + '\n```',
+      exportData: exportData
+    };
+  }
+}
+
+const slashCommands = new SlashCommandHandler();
 
 /* ================= RATE LIMITER ================= */
 class RateLimiter {
@@ -656,7 +804,40 @@ async function processUserRequest(res, sessionId, message, clientHistory, client
     let { history, userName } = sessionData;
     const currentName = userName || null;
 
-    // 2. Check for easter eggs
+    // 2. Check for slash commands
+    if (slashCommands.isCommand(message)) {
+      const commandResult = await slashCommands.execute(message, {
+        history,
+        userName: currentName,
+        sessionId
+      });
+
+      sendEvent(res, "STATUS", "TYPING");
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      sendEvent(res, "CHUNK", commandResult.response);
+
+      // Handle special command actions
+      if (commandResult.clearHistory) {
+        // Clear history
+        await sessionStore.saveMessage(sessionId, "user", message, [], currentName);
+        await sessionStore.saveMessage(sessionId, "assistant", commandResult.response, [], currentName);
+      } else if (!commandResult.forceSearch) {
+        // Normal command save
+        const updatedSession = await sessionStore.saveMessage(sessionId, "user", message, history, currentName);
+        await sessionStore.saveMessage(sessionId, "assistant", commandResult.response, updatedSession.history, updatedSession.userName);
+      }
+
+      if (!commandResult.forceSearch) {
+        sendEvent(res, "DONE", sessionId);
+        return res.end();
+      }
+      
+      // If forceSearch, continue to search section
+      message = commandResult.searchQuery;
+    }
+
+    // 3. Check for easter eggs
     const easterEggResponse = easterEggs.check(message);
     if (easterEggResponse) {
       sendEvent(res, "STATUS", "TYPING");
@@ -672,7 +853,7 @@ async function processUserRequest(res, sessionId, message, clientHistory, client
       return res.end();
     }
 
-    // 3. Perform search if needed
+    // 4. Perform search if needed
     let searchContext = "";
     if (searchDetector.shouldSearch(message) && SERPER_API_KEY) {
       sendEvent(res, "STATUS", "SEARCHING");
@@ -685,7 +866,7 @@ async function processUserRequest(res, sessionId, message, clientHistory, client
 
     sendEvent(res, "STATUS", "TYPING");
 
-    // 4. Build context with personalization
+    // 5. Build context with personalization
     let systemContent = SYSTEM_PROMPT;
     if (currentName) {
       systemContent += `\n\n[USER INFO]\nThe user's name is ${currentName}. Address them naturally when appropriate.`;
@@ -695,10 +876,10 @@ async function processUserRequest(res, sessionId, message, clientHistory, client
     rawMessages.push(...history);
     rawMessages.push({ role: "user", content: message + searchContext });
 
-    // 5. Apply context limit
+    // 6. Apply context limit
     const messages = contextManager.limit(rawMessages);
 
-    // 6. Stream response
+    // 7. Stream response
     let fullResponse = "";
     await streamSarvamChat({
       messages,
@@ -718,11 +899,11 @@ async function processUserRequest(res, sessionId, message, clientHistory, client
       }
     });
 
-    // 7. Save to session
+    // 8. Save to session
     const updatedSession = await sessionStore.saveMessage(sessionId, "user", message, history, currentName);
     const finalSession = await sessionStore.saveMessage(sessionId, "assistant", fullResponse, updatedSession.history, updatedSession.userName);
 
-    // 8. Send sync data
+    // 9. Send sync data
     sendEvent(res, "HISTORY_UPDATE", JSON.stringify(finalSession.history));
     sendEvent(res, "TIMESTAMP", Date.now().toString());
     sendEvent(res, "DONE", sessionId);
