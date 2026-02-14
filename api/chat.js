@@ -13,7 +13,7 @@ const INACTIVITY_TIMEOUT_SEC = 30 * 60;
 // USER QUEUE: 1 second per user
 const USER_QUEUE_TIME_MS = 1000;
 // MAX REQUESTS PER HOUR PER USER
-const MAX_REQUESTS_PER_HOUR = 1; // Updated to 100 as per your previous request
+const MAX_REQUESTS_PER_HOUR = 100; // Updated to 100 as per your previous request
 
 const ALLOWED_ORIGINS = [
   "https://esamz.site",
