@@ -13,12 +13,12 @@ const INACTIVITY_TIMEOUT_SEC = 30 * 60;
 // USER QUEUE: 1 second per user
 const USER_QUEUE_TIME_MS = 1000;
 // MAX REQUESTS PER HOUR PER USER
-const MAX_REQUESTS_PER_HOUR = 100; // Updated to 100 as per your previous request
+const MAX_REQUESTS_PER_HOUR = 1; // Updated to 100 as per your previous request
 
 const ALLOWED_ORIGINS = [
   "https://esamz.site",
-  "https://www.esamz.site",
-  "http://localhost:3000" // Added for local testing
+  "https://www.esamz.site"
+   // Added for local testing
 ];
 
 /* ================= ENHANCED SYSTEM PROMPT ================= */
