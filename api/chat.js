@@ -248,7 +248,7 @@ class RateLimiter {
   }
 }
 
-const rateLimiter = new RateLimiter(MAX_REQUESTS_PER_HOUR, 60 * 60 * 1000);
+const rateLimiter = new RateLimiter(MAX_REQUESTS_PER_HOUR, 1);
 
 /* ================= USER QUEUE SYSTEM ================= */
 class UserQueue {
