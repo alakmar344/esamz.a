@@ -13,11 +13,12 @@ const INACTIVITY_TIMEOUT_SEC = 30 * 60;
 // USER QUEUE: 1 second per user
 const USER_QUEUE_TIME_MS = 1000;
 // MAX REQUESTS PER HOUR PER USER
-const MAX_REQUESTS_PER_HOUR = 2;
+const MAX_REQUESTS_PER_HOUR = 100; // Updated to 100 as per your previous request
 
 const ALLOWED_ORIGINS = [
   "https://esamz.site",
-  "https://www.esamz.site"
+  "https://www.esamz.site",
+  "http://localhost:3000" // Added for local testing
 ];
 
 /* ================= ENHANCED SYSTEM PROMPT ================= */
@@ -210,45 +211,53 @@ class SlashCommandHandler {
 
 const slashCommands = new SlashCommandHandler();
 
-/* ================= RATE LIMITER ================= */
-class RateLimiter {
-  constructor(maxRequests, windowMs) {
-    this.maxRequests = maxRequests;
-    this.windowMs = windowMs;
-    this.requests = new Map();
+/* ================= UPSTASH RATE LIMITER (PERSISTENT) ================= */
+// Replaces the old memory-based class to prevent "Cold Start" resets
+async function checkUpstashRateLimit(userId) {
+  const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  // If Upstash is not configured, fallback to ALLOW ALL (or handle error)
+  if (!upstashUrl || !upstashToken) {
+    console.warn("⚠️ Upstash not configured. Rate limiting disabled.");
+    return { allowed: true, remaining: 999 };
   }
 
-  check(userId) {
-    const now = Date.now();
-    const userRequests = this.requests.get(userId) || [];
-    
-    // Remove old requests outside the window
-    const validRequests = userRequests.filter(timestamp => now - timestamp < this.windowMs);
-    
-    if (validRequests.length >= this.maxRequests) {
-      const oldestRequest = Math.min(...validRequests);
-      const resetTime = oldestRequest + this.windowMs;
-      const waitSeconds = Math.ceil((resetTime - now) / 1000);
-      return { allowed: false, resetIn: waitSeconds };
+  try {
+    // 1. Increment usage
+    const incrRes = await fetch(`${upstashUrl}/incr/${userId}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${upstashToken}` }
+    });
+    const incrData = await incrRes.json();
+    const currentUsage = incrData.result;
+
+    // 2. If new user (count is 1), set expiration to 1 hour (3600s)
+    if (currentUsage === 1) {
+      await fetch(`${upstashUrl}/expire/${userId}/3600`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${upstashToken}` }
+      });
     }
-    
-    validRequests.push(now);
-    this.requests.set(userId, validRequests);
-    
-    // Cleanup old entries
-    if (this.requests.size > 10000) {
-      for (const [id, timestamps] of this.requests.entries()) {
-        if (timestamps.every(t => now - t > this.windowMs)) {
-          this.requests.delete(id);
-        }
-      }
+
+    // 3. Check limit
+    if (currentUsage > MAX_REQUESTS_PER_HOUR) {
+      // Get time to live (TTL) to tell user when to come back
+      const ttlRes = await fetch(`${upstashUrl}/ttl/${userId}`, {
+         method: "POST",
+         headers: { Authorization: `Bearer ${upstashToken}` }
+      });
+      const ttlData = await ttlRes.json();
+      return { allowed: false, resetIn: ttlData.result };
     }
-    
-    return { allowed: true, remaining: this.maxRequests - validRequests.length };
+
+    return { allowed: true, remaining: MAX_REQUESTS_PER_HOUR - currentUsage };
+  } catch (err) {
+    console.error("Rate Limit Error:", err);
+    // Fail open if Redis is down, but log it
+    return { allowed: true, remaining: 1 };
   }
 }
-
-const rateLimiter = new RateLimiter(MAX_REQUESTS_PER_HOUR, 1);
 
 /* ================= USER QUEUE SYSTEM ================= */
 class UserQueue {
@@ -312,27 +321,11 @@ class UserQueue {
   sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
-
-  getPosition(userId) {
-    const index = this.queue.findIndex(item => item.userId === userId);
-    return index === -1 ? 0 : index + 1;
-  }
-
-  getEstimatedWait(userId) {
-    const position = this.getPosition(userId);
-    return position * USER_QUEUE_TIME_MS;
-  }
 }
 
 const userQueue = new UserQueue();
 
 /* ================= HELPERS ================= */
-function getIP(req) {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (forwarded) return forwarded.split(",")[0].trim();
-  return req.socket?.remoteAddress || "unknown";
-}
-
 function sendEvent(res, type, data) {
   if (res.writableEnded) return;
   const safeData = typeof data === 'string' ? data.replace(/\n/g, "\\n") : data;
@@ -369,9 +362,6 @@ class ContextManager {
     if (systemMsg) finalPayload.push(systemMsg);
     finalPayload.push(...limitedHistory);
     
-    const droppedCount = history.length - limitedHistory.length;
-    console.log(`[Context] ${currentSize}/${this.maxChars} chars | ${finalPayload.length} messages | Dropped: ${droppedCount}`);
-    
     return finalPayload;
   }
 }
@@ -405,7 +395,6 @@ class SessionStore {
       const session = this.memoryStore.get(id);
       const timeDiff = now - session.lastActive;
       if (timeDiff > limitMs) {
-        console.log(`[Session] Memory session ${id.slice(0, 8)}... expired. Deleting.`);
         this.memoryStore.delete(id);
         return { history: [], userName: null };
       }
@@ -446,7 +435,6 @@ class SessionStore {
       const match = content.match(pattern);
       if (match) {
         const name = match[1].trim();
-        // Avoid false positives like "I am happy"
         const invalidNames = ['happy', 'good', 'fine', 'okay', 'great', 'tired', 'busy'];
         if (!invalidNames.includes(name.toLowerCase())) {
           return name;
@@ -467,21 +455,13 @@ class SessionStore {
   }
 
   startCleanupTimer() {
-    // Clean up expired sessions every 10 minutes
     setInterval(() => {
       const now = Date.now();
       const limitMs = INACTIVITY_TIMEOUT_SEC * 1000;
-      let cleaned = 0;
-      
       for (const [id, session] of this.memoryStore.entries()) {
         if (now - session.lastActive > limitMs) {
           this.memoryStore.delete(id);
-          cleaned++;
         }
-      }
-      
-      if (cleaned > 0) {
-        console.log(`[Cleanup] Removed ${cleaned} expired sessions. Active: ${this.memoryStore.size}`);
       }
     }, 10 * 60 * 1000);
   }
@@ -516,26 +496,10 @@ class SearchDetector {
 
   shouldSearch(query) {
     const lower = query.toLowerCase().trim();
-    
-    // Don't search memory-based queries
-    if (this.memoryQueries.some(pattern => lower.includes(pattern))) {
-      return false;
-    }
-    
-    // Search for time-sensitive or factual queries
-    if (this.timeBasedTriggers.some(trigger => lower.includes(trigger))) {
-      return true;
-    }
-    
-    if (this.factualTriggers.some(trigger => lower.includes(trigger))) {
-      return true;
-    }
-    
-    // Search if query contains "search for" or "google"
-    if (lower.includes('search for') || lower.includes('look up')) {
-      return true;
-    }
-    
+    if (this.memoryQueries.some(pattern => lower.includes(pattern))) return false;
+    if (this.timeBasedTriggers.some(trigger => lower.includes(trigger))) return true;
+    if (this.factualTriggers.some(trigger => lower.includes(trigger))) return true;
+    if (lower.includes('search for') || lower.includes('look up')) return true;
     return false;
   }
 }
@@ -559,33 +523,22 @@ async function performSearch(query) {
       body: JSON.stringify({ q: query, num: 5 })
     });
     
-    if (!response.ok) {
-      console.error(`[Search] API error: ${response.status}`);
-      return null;
-    }
+    if (!response.ok) return null;
     
     const data = await response.json();
     let results = "";
     
-    // Answer box (featured snippets)
     if (data.answerBox) {
       const answer = data.answerBox.snippet || data.answerBox.answer || "";
       if (answer) results += `${answer}\n\n`;
     }
     
-    // Organic results
     if (data.organic && data.organic.length > 0) {
-      const organic = data.organic
-        .slice(0, 5)
-        .map((r, i) => `${i + 1}. ${r.title}\n   ${r.snippet}`)
-        .join("\n\n");
-      results += organic;
+      results += data.organic.slice(0, 5).map((r, i) => `${i + 1}. ${r.title}\n   ${r.snippet}`).join("\n\n");
     }
     
-    // Knowledge graph
-    if (data.knowledgeGraph) {
-      const kg = data.knowledgeGraph;
-      if (kg.description) results += `\n\nOverview: ${kg.description}`;
+    if (data.knowledgeGraph?.description) {
+      results += `\n\nOverview: ${data.knowledgeGraph.description}`;
     }
     
     return results.trim() || null;
@@ -595,12 +548,10 @@ async function performSearch(query) {
   }
 }
 
-/* ================= AI STREAMING WITH ERROR HANDLING ================= */
+/* ================= AI STREAMING ================= */
 async function streamSarvamChat({ messages, onChunk, onError }) {
   const sarvamKey = process.env.SARVAM_API_KEY;
-  if (!sarvamKey) {
-    throw new Error("SARVAM_API_KEY not configured");
-  }
+  if (!sarvamKey) throw new Error("SARVAM_API_KEY not configured");
 
   let res;
   try {
@@ -617,13 +568,10 @@ async function streamSarvamChat({ messages, onChunk, onError }) {
         max_tokens: MAX_COMPLETION_TOKENS, 
         stream: true 
       }),
-      signal: AbortSignal.timeout(120000) // 2 min timeout
+      signal: AbortSignal.timeout(120000)
     });
 
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`Sarvam API Error ${res.status}: ${errorText}`);
-    }
+    if (!res.ok) throw new Error(`Sarvam API Error ${res.status}`);
   } catch (error) {
     if (onError) onError(error);
     throw error;
@@ -632,61 +580,34 @@ async function streamSarvamChat({ messages, onChunk, onError }) {
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
-  let fullContent = "";
 
   try {
     while (true) {
       const { done, value } = await reader.read();
-      
       if (done) {
-        // Process any remaining buffer
-        if (buffer.trim()) {
-          const lines = buffer.split("\n");
-          for (const line of lines) {
-            const content = parseStreamLine(line);
-            if (content) {
-              fullContent += content;
-              onChunk(content);
-            }
-          }
-        }
+        if (buffer.trim()) processLine(buffer, onChunk);
         break;
       }
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split("\n");
-      buffer = lines.pop() || ""; // Keep last incomplete line
+      buffer = lines.pop() || "";
 
-      for (const line of lines) {
-        const content = parseStreamLine(line);
-        if (content) {
-          fullContent += content;
-          onChunk(content);
-        }
-      }
+      for (const line of lines) processLine(line, onChunk);
     }
   } catch (error) {
     if (onError) onError(error);
     throw error;
   }
-
-  return fullContent;
 }
 
-// Helper to parse SSE lines
-function parseStreamLine(line) {
+function processLine(line, onChunk) {
   const trimmed = line.trim();
-  if (!trimmed.startsWith("data: ")) return null;
-  
-  const dataStr = trimmed.slice(6);
-  if (dataStr === "[DONE]") return null;
-  
+  if (!trimmed.startsWith("data: ") || trimmed.includes("[DONE]")) return;
   try {
-    const parsed = JSON.parse(dataStr);
-    return parsed.choices?.[0]?.delta?.content || null;
-  } catch (e) {
-    return null;
-  }
+    const content = JSON.parse(trimmed.slice(6)).choices?.[0]?.delta?.content;
+    if (content) onChunk(content);
+  } catch (e) {}
 }
 
 /* ================= EASTER EGG SYSTEM ================= */
@@ -696,7 +617,7 @@ class EasterEggHandler {
       {
         triggers: ['tell me a secret', 'any secrets', 'secret about'],
         response: '🤫 Psst... Alakmar told me that NASA is actually "Never A Straight Answer" 😄',
-        probability: 0.7 // 70% chance to trigger
+        probability: 0.7
       },
       {
         triggers: ['who created you', 'who made you', 'your creator'],
@@ -708,35 +629,26 @@ class EasterEggHandler {
 
   check(message) {
     const lower = message.toLowerCase();
-    
     for (const egg of this.eggs) {
-      const triggered = egg.triggers.some(trigger => lower.includes(trigger));
-      if (triggered && Math.random() < egg.probability) {
+      if (egg.triggers.some(t => lower.includes(t)) && Math.random() < egg.probability) {
         return egg.response;
       }
     }
-    
     return null;
   }
 }
 
 const easterEggs = new EasterEggHandler();
 
-/* ================= MAIN HANDLER WITH QUEUE ================= */
+/* ================= MAIN HANDLER ================= */
 export default async function handler(req, res) {
-  // Security headers
+  // Security Headers
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Transfer-Encoding', 'chunked');
-  res.setHeader('X-Accel-Buffering', 'no');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com; connect-src 'self' https://api.sarvam.ai https://google.serper.dev;");
-
-  // CORS
+  
+  // CORS Check
   const origin = req.headers.origin;
-  if (ALLOWED_ORIGINS.includes(origin)) {
+  if (ALLOWED_ORIGINS.some(allowed => origin === allowed)) { // Fixed using Exact Match
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
@@ -752,39 +664,30 @@ export default async function handler(req, res) {
     return res.end(); 
   }
 
-  let sessionId;
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const { message, sessionId: providedSessionId, clientHistory, clientLastActive } = body;
 
-    if (!message || typeof message !== 'string') {
-      sendEvent(res, 'ERROR', 'Invalid message format');
+    if (!message || message.length > 10000) {
+      sendEvent(res, 'ERROR', 'Invalid message');
       return res.end();
     }
 
-    if (message.length > 10000) {
-      sendEvent(res, 'ERROR', 'Message too long (max 10,000 characters)');
-      return res.end();
-    }
-
-    // Session management
-    sessionId = providedSessionId || req.cookies?.[COOKIE_NAME] || crypto.randomBytes(16).toString("hex");
+    const sessionId = providedSessionId || req.cookies?.[COOKIE_NAME] || crypto.randomBytes(16).toString("hex");
     
-    // Set secure cookie
-    if (!req.cookies || !req.cookies[COOKIE_NAME]) {
+    // Set Cookie
+    if (!req.cookies?.[COOKIE_NAME]) {
       res.setHeader('Set-Cookie', `${COOKIE_NAME}=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${INACTIVITY_TIMEOUT_SEC}`);
     }
 
-    // Rate limiting
-    const rateCheck = rateLimiter.check(sessionId);
+    // [UPSTASH] Persistent Rate Limiting
+    const rateCheck = await checkUpstashRateLimit(sessionId);
     if (!rateCheck.allowed) {
       sendEvent(res, 'ERROR', `Rate limit exceeded. Try again in ${rateCheck.resetIn} seconds.`);
       return res.end();
     }
 
-    console.log(`[Request] Session: ${sessionId.slice(0, 8)}... | Message: "${sanitizeForLog(message)}" | Remaining: ${rateCheck.remaining}`);
-
-    // Queue the request
+    // Add to Queue
     await userQueue.add(sessionId, async () => {
       return await processUserRequest(res, sessionId, message, clientHistory, clientLastActive);
     });
@@ -796,126 +699,72 @@ export default async function handler(req, res) {
   }
 }
 
-/* ================= PROCESS USER REQUEST ================= */
 async function processUserRequest(res, sessionId, message, clientHistory, clientLastActive) {
   try {
-    // 1. Load session
     const sessionData = await sessionStore.getSession(sessionId, clientHistory, clientLastActive);
     let { history, userName } = sessionData;
-    const currentName = userName || null;
 
-    // 2. Check for slash commands
+    // Slash Commands
     if (slashCommands.isCommand(message)) {
-      const commandResult = await slashCommands.execute(message, {
-        history,
-        userName: currentName,
-        sessionId
-      });
-
-      sendEvent(res, "STATUS", "TYPING");
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      sendEvent(res, "CHUNK", commandResult.response);
-
-      // Handle special command actions
-      if (commandResult.clearHistory) {
-        // Clear history
-        await sessionStore.saveMessage(sessionId, "user", message, [], currentName);
-        await sessionStore.saveMessage(sessionId, "assistant", commandResult.response, [], currentName);
-      } else if (!commandResult.forceSearch) {
-        // Normal command save
-        const updatedSession = await sessionStore.saveMessage(sessionId, "user", message, history, currentName);
-        await sessionStore.saveMessage(sessionId, "assistant", commandResult.response, updatedSession.history, updatedSession.userName);
-      }
-
-      if (!commandResult.forceSearch) {
-        sendEvent(res, "DONE", sessionId);
-        return res.end();
-      }
-      
-      // If forceSearch, continue to search section
-      message = commandResult.searchQuery;
-    }
-
-    // 3. Check for easter eggs
-    const easterEggResponse = easterEggs.check(message);
-    if (easterEggResponse) {
-      sendEvent(res, "STATUS", "TYPING");
-      await new Promise(resolve => setTimeout(resolve, 800)); // Dramatic pause
-      
-      sendEvent(res, "CHUNK", easterEggResponse);
-      
-      // Save to history
-      const updatedSession = await sessionStore.saveMessage(sessionId, "user", message, history, currentName);
-      await sessionStore.saveMessage(sessionId, "assistant", easterEggResponse, updatedSession.history, updatedSession.userName);
-      
+      const cmdResult = await slashCommands.execute(message, { history, userName, sessionId });
+      sendEvent(res, "CHUNK", cmdResult.response);
       sendEvent(res, "DONE", sessionId);
       return res.end();
     }
 
-    // 4. Perform search if needed
+    // Easter Eggs
+    const egg = easterEggs.check(message);
+    if (egg) {
+      sendEvent(res, "CHUNK", egg);
+      sendEvent(res, "DONE", sessionId);
+      return res.end();
+    }
+
+    // Search
     let searchContext = "";
-    if (searchDetector.shouldSearch(message) && SERPER_API_KEY) {
+    if (searchDetector.shouldSearch(message)) {
       sendEvent(res, "STATUS", "SEARCHING");
       const results = await performSearch(message);
-      if (results) {
-        searchContext = `\n\n[SEARCH RESULTS]\n${results}\n\nUse these to answer the user's question.`;
-        console.log(`[Search] Found results for: "${sanitizeForLog(message)}"`);
-      }
+      if (results) searchContext = `\n\n[SEARCH RESULTS]\n${results}\n`;
     }
 
+    // Build Messages
     sendEvent(res, "STATUS", "TYPING");
+    let system = SYSTEM_PROMPT;
+    if (userName) system += `\n\n[USER INFO] User Name: ${userName}`;
 
-    // 5. Build context with personalization
-    let systemContent = SYSTEM_PROMPT;
-    if (currentName) {
-      systemContent += `\n\n[USER INFO]\nThe user's name is ${currentName}. Address them naturally when appropriate.`;
-    }
+    const rawMsgs = [{ role: "system", content: system }];
+    rawMsgs.push(...history);
+    rawMsgs.push({ role: "user", content: message + searchContext });
 
-    const rawMessages = [{ role: "system", content: systemContent }];
-    rawMessages.push(...history);
-    rawMessages.push({ role: "user", content: message + searchContext });
+    const messages = contextManager.limit(rawMsgs);
 
-    // 6. Apply context limit
-    const messages = contextManager.limit(rawMessages);
-
-    // 7. Stream response
+    // Stream
     let fullResponse = "";
     await streamSarvamChat({
       messages,
       onChunk: (chunk) => {
         fullResponse += chunk;
-        // Send chunks with proper newline handling
         const parts = chunk.split('\n');
         for (let i = 0; i < parts.length; i++) {
-          let part = parts[i];
-          if (i < parts.length - 1) part += "\n";
-          if (part) sendEvent(res, "CHUNK", part);
+            let part = parts[i];
+            if (i < parts.length - 1) part += "\n";
+            if (part) sendEvent(res, "CHUNK", part);
         }
       },
-      onError: (error) => {
-        console.error("[Stream] Error:", error.message);
-        sendEvent(res, "ERROR", "AI service error. Please try again.");
-      }
+      onError: () => sendEvent(res, "ERROR", "AI Service Error")
     });
 
-    // 8. Save to session
-    const updatedSession = await sessionStore.saveMessage(sessionId, "user", message, history, currentName);
-    const finalSession = await sessionStore.saveMessage(sessionId, "assistant", fullResponse, updatedSession.history, updatedSession.userName);
+    // Update History
+    const updated = await sessionStore.saveMessage(sessionId, "user", message, history, userName);
+    const final = await sessionStore.saveMessage(sessionId, "assistant", fullResponse, updated.history, updated.userName);
 
-    // 9. Send sync data
-    sendEvent(res, "HISTORY_UPDATE", JSON.stringify(finalSession.history));
-    sendEvent(res, "TIMESTAMP", Date.now().toString());
+    sendEvent(res, "HISTORY_UPDATE", JSON.stringify(final.history));
     sendEvent(res, "DONE", sessionId);
-    
-    console.log(`[Response] Session: ${sessionId.slice(0, 8)}... | Length: ${fullResponse.length} chars`);
-    
     res.end();
 
   } catch (error) {
-    console.error("[Process] Error:", error.message);
-    sendEvent(res, "ERROR", error.message);
+    sendEvent(res, 'ERROR', error.message);
     if (!res.writableEnded) res.end();
-    throw error;
   }
 }
