@@ -1,116 +1,115 @@
 import crypto from "crypto";
 
-/* ==================== CONFIGURATION ==================== */
-const CONFIG = {
-  // AI Model Settings
-  MODEL: "sarvam-m",
-  MAX_TOKENS: 30048,
-  TEMPERATURE: 0.7,
-  
-  // Context & Memory
-  MAX_CONTEXT_CHARS: 120000,        // ~32K tokens
-  INACTIVITY_TIMEOUT_SEC: 30 * 60,  // 30 minutes
-  
-  // Rate Limiting
-  USER_QUEUE_TIME_MS: 1000,         // 1 second per user
-  MAX_QUEUE_SIZE: 100,              // Prevent memory overflow
-  
-  // Security
-  COOKIE_NAME: "esamz_sid",
-  ALLOWED_ORIGINS: [
-    "https://esamz.site",
-    "https://www.esamz.site"
-  ],
-  
-  // API Keys
-  SARVAM_API_KEY: process.env.SARVAM_API_KEY,
-  SERPER_API_KEY: process.env.SERPER_API_KEY,
-};
+/* ================= CONFIG ================= */
+const SARVAM_MODEL = "sarvam-m";
+const MAX_COMPLETION_TOKENS = 30048;
+const COOKIE_NAME = "esamz_sid";
+const SERPER_API_KEY = process.env.SERPER_API_KEY;
 
-/* ==================== SYSTEM PROMPT ==================== */
-const SYSTEM_PROMPT = `
-# eSAMz v9.1 - Advanced AI Assistant
+// CONTEXT LIMIT: 120,000 Characters (32K tokens)
+const MAX_CONTEXT_CHARS = 120000; 
+// INACTIVITY TIMEOUT: 30 Minutes (in seconds)
+const INACTIVITY_TIMEOUT_SEC = 30 * 60; 
+// USER QUEUE: 1 second per user
+const USER_QUEUE_TIME_MS = 1000;
+// MAX REQUESTS PER HOUR PER USER
+const MAX_REQUESTS_PER_HOUR = 60;
 
-## Identity
-You are **eSAMz v9.1**, created by **Alakmar Teenwala**. You are a thoughtful, capable AI assistant focused on providing accurate, helpful, and natural responses.
+const ALLOWED_ORIGINS = [
+  "https://esamz.site",
+  "https://www.esamz.site"
+];
 
-## Core Principles
+/* ================= ENHANCED SYSTEM PROMPT ================= */
+const SYSTEM_PROMPT = `You are eSAMz v9.1, created by Alakmar Teenwala - an intelligent, helpful, and direct AI assistant.
 
-### 1. Natural Communication
-- Speak conversationally and directly, like a knowledgeable friend
-- Avoid corporate jargon: "How may I assist?", "I hope this helps", "Is there anything else?"
-- Be concise but thorough - quality over quantity
-- Use formatting (lists, bold) only when it genuinely improves clarity
+COMMUNICATION STYLE:
+- Natural and conversational - speak like a knowledgeable friend, not a corporate chatbot
+- Direct and clear - get to the point without unnecessary preambles
+- Concise but complete - provide thorough answers without rambling
+- Adaptive tone - match the user's energy (professional for work, casual for general chat)
 
-### 2. Context Awareness
-- **Always check conversation history first** before responding
-- If the user shared their name, location, or preferences, use them naturally
-- Remember what you've discussed - don't ask for information already provided
-- Track the flow of multi-turn conversations
+AVOID THESE ROBOTIC PHRASES:
+Do not use overly formal language such as:
+• How may I assist you today
+• Is there anything else I can help with
+• As an AI language model
+• I hope this helps
+• I do not have access to
 
-### 3. Search Integration
-- When search results are provided, synthesize them into your knowledge seamlessly
-- Don't say "According to the search results..." - present information as if it's your own knowledge
-- If sources are explicitly requested, cite them clearly
+Instead, just answer naturally. If unsure, say "I'm not certain about that" or "Let me search for that."
 
-### 4. Helpfulness & Safety Balance
-- Be maximally helpful within ethical boundaries
-- Refuse only genuinely harmful requests (illegal activities, severe harm, misinformation)
-- For borderline topics, provide context or safe alternatives instead of flat refusals
-- Never lecture or be preachy - respect user autonomy while guiding wisely
+MEMORY AND CONTEXT:
+- Always reference prior conversation turns (active recall)
+- Use personal info naturally if a user shared their name, location, or preferences
+- Example: If user said "I'm Alakmar" then later respond with "Alakmar, here's what I found"
 
-### 5. Privacy Protection
-- **Never reveal**: phone numbers, personal addresses, private IDs, or sensitive data
-- If found in search results, summarize contact methods: "Contact support via their website"
-- Redact sensitive information automatically
-- Be watchful for requests that could harm the user or others
+SEARCH INTEGRATION:
+When search results are provided:
+- Synthesize them naturally into your response
+- Do not say "According to Google" or "Search results show" unless asked for sources
+- Present information as if it is your knowledge
+- Prioritize recent and authoritative sources
 
-### 6. Thinking Process
-Before answering complex queries:
-1. **Understand Intent**: What is the user really asking?
-2. **Check Memory**: Scan conversation history for context
-3. **Verify Accuracy**: Is my answer correct and safe?
-4. **Optimize Delivery**: How can I present this most clearly?
+SAFETY AND ETHICS:
+- Be helpful - provide assistance for legitimate queries
+- Protect privacy - never reveal phone numbers, addresses, or sensitive IDs from search results
+- Decline gracefully - if a request is harmful or illegal, politely explain why you cannot help
+- No lectures - brief, respectful refusals only when necessary
 
-## Special Commands
-- `/help` - Show available features and tips
-- `/clear` - Explain how to clear conversation history
-- `/about` - Share information about eSAMz and its creator
+PERSONALITY:
+You are calm, confident, sharp when needed, warm, approachable, and honest about limitations.
 
-## Response Quality Standards
-✅ Accurate, verified information
-✅ Natural, human-like tone
-✅ Context-aware and personalized
-✅ Privacy-respecting
-✅ Ethically sound
+Current developer: Alakmar Teenwala. Acknowledge this if asked about your origins.`.trim();
 
-❌ Robotic corporate speak
-❌ Unnecessary apologies or disclaimers
-❌ Information without context
-❌ Revealing sensitive data
-❌ Harmful or unethical guidance
+/* ================= RATE LIMITER ================= */
+class RateLimiter {
+  constructor(maxRequests, windowMs) {
+    this.maxRequests = maxRequests;
+    this.windowMs = windowMs;
+    this.requests = new Map();
+  }
 
-**Current Developer**: Alakmar Teenwala
-**Version**: 9.1
-`.trim();
+  check(userId) {
+    const now = Date.now();
+    const userRequests = this.requests.get(userId) || [];
+    
+    // Remove old requests outside the window
+    const validRequests = userRequests.filter(timestamp => now - timestamp < this.windowMs);
+    
+    if (validRequests.length >= this.maxRequests) {
+      const oldestRequest = Math.min(...validRequests);
+      const resetTime = oldestRequest + this.windowMs;
+      const waitSeconds = Math.ceil((resetTime - now) / 1000);
+      return { allowed: false, resetIn: waitSeconds };
+    }
+    
+    validRequests.push(now);
+    this.requests.set(userId, validRequests);
+    
+    // Cleanup old entries
+    if (this.requests.size > 10000) {
+      for (const [id, timestamps] of this.requests.entries()) {
+        if (timestamps.every(t => now - t > this.windowMs)) {
+          this.requests.delete(id);
+        }
+      }
+    }
+    
+    return { allowed: true, remaining: this.maxRequests - validRequests.length };
+  }
+}
 
-/* ==================== SMART QUEUE SYSTEM ==================== */
+const rateLimiter = new RateLimiter(MAX_REQUESTS_PER_HOUR, 60 * 60 * 1000);
+
+/* ================= USER QUEUE SYSTEM ================= */
 class UserQueue {
-  constructor(maxSize = CONFIG.MAX_QUEUE_SIZE) {
+  constructor() {
     this.queue = [];
     this.processing = false;
-    this.maxSize = maxSize;
-    this.activeUsers = new Map();
-    this.stats = { processed: 0, rejected: 0, avgWait: 0 };
   }
 
   async add(userId, processFn) {
-    // Prevent queue overflow
-    if (this.queue.length >= this.maxSize) {
-      this.stats.rejected++;
-      throw new Error("Server at capacity. Please try again in a moment.");
-    }
-
     return new Promise((resolve, reject) => {
       const queueItem = {
         userId,
@@ -138,30 +137,23 @@ class UserQueue {
       const item = this.queue.shift();
       const waitTime = Date.now() - item.addedAt;
       
-      // Update stats
-      this.stats.avgWait = (this.stats.avgWait * this.stats.processed + waitTime) / (this.stats.processed + 1);
-      this.stats.processed++;
-      
-      console.log(`[Queue] Processing ${item.userId.slice(0, 8)}... (waited ${waitTime}ms, avg: ${Math.round(this.stats.avgWait)}ms)`);
+      console.log(`[Queue] Processing user ${item.userId.slice(0, 8)}... (waited ${waitTime}ms, ${this.queue.length} remaining)`);
       
       const slotStart = Date.now();
-      this.activeUsers.set(item.userId, slotStart);
       
       try {
         const result = await item.processFn();
         item.resolve(result);
       } catch (error) {
-        console.error(`[Queue] Error for ${item.userId.slice(0, 8)}:`, error.message);
+        console.error(`[Queue] Error processing user ${item.userId.slice(0, 8)}:`, error.message);
         item.reject(error);
-      } finally {
-        this.activeUsers.delete(item.userId);
       }
       
-      // Enforce minimum slot time
+      // Ensure 1 second minimum per user
       const processingTime = Date.now() - slotStart;
-      const remainingTime = CONFIG.USER_QUEUE_TIME_MS - processingTime;
+      const remainingTime = USER_QUEUE_TIME_MS - processingTime;
       
-      if (remainingTime > 0) {
+      if (remainingTime > 0 && this.queue.length > 0) {
         await this.sleep(remainingTime);
       }
     }
@@ -173,740 +165,576 @@ class UserQueue {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  getQueueInfo(userId) {
-    const position = this.queue.findIndex(item => item.userId === userId);
-    return {
-      position: position === -1 ? 0 : position + 1,
-      estimatedWait: (position + 1) * CONFIG.USER_QUEUE_TIME_MS,
-      queueLength: this.queue.length,
-      stats: this.stats
-    };
+  getPosition(userId) {
+    const index = this.queue.findIndex(item => item.userId === userId);
+    return index === -1 ? 0 : index + 1;
+  }
+
+  getEstimatedWait(userId) {
+    const position = this.getPosition(userId);
+    return position * USER_QUEUE_TIME_MS;
   }
 }
 
-const queue = new UserQueue();
+const userQueue = new UserQueue();
 
-/* ==================== CONTEXT MANAGER ==================== */
+/* ================= HELPERS ================= */
+function getIP(req) {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (forwarded) return forwarded.split(",")[0].trim();
+  return req.socket?.remoteAddress || "unknown";
+}
+
+function sendEvent(res, type, data) {
+  if (res.writableEnded) return;
+  const safeData = typeof data === 'string' ? data.replace(/\n/g, "\\n") : data;
+  res.write(`${type}|${safeData}\n`);
+}
+
+function sanitizeForLog(str, maxLen = 100) {
+  if (!str) return "";
+  return str.length > maxLen ? str.slice(0, maxLen) + "..." : str;
+}
+
+/* ================= CONTEXT MANAGER (120k Limit) ================= */
 class ContextManager {
-  constructor(maxChars) {
-    this.maxChars = maxChars;
+  constructor(maxChars) { 
+    this.maxChars = maxChars; 
   }
 
   limit(messages) {
     const systemMsg = messages.find(m => m.role === 'system');
     const history = messages.filter(m => m.role !== 'system');
     const systemSize = systemMsg ? JSON.stringify(systemMsg).length : 0;
-    
     let currentSize = systemSize;
-    const limitedHistory = [];
     
-    // Keep newest messages (iterate backwards)
+    const limitedHistory = [];
+    // Keep newest messages
     for (let i = history.length - 1; i >= 0; i--) {
       const msgSize = JSON.stringify(history[i]).length;
-      if (currentSize + msgSize > this.maxChars) {
-        console.log(`[Context] Truncated ${history.length - limitedHistory.length} old messages`);
-        break;
-      }
+      if (currentSize + msgSize > this.maxChars) break;
       currentSize += msgSize;
       limitedHistory.unshift(history[i]);
     }
 
-    const finalPayload = systemMsg ? [systemMsg, ...limitedHistory] : limitedHistory;
+    const finalPayload = [];
+    if (systemMsg) finalPayload.push(systemMsg);
+    finalPayload.push(...limitedHistory);
     
-    console.log(`[Context] Using ${currentSize}/${this.maxChars} chars (${finalPayload.length} msgs)`);
+    const droppedCount = history.length - limitedHistory.length;
+    console.log(`[Context] ${currentSize}/${this.maxChars} chars | ${finalPayload.length} messages | Dropped: ${droppedCount}`);
+    
     return finalPayload;
-  }
-
-  summarizeOldContext(messages) {
-    // Future enhancement: Use AI to summarize very old context
-    // For now, we just truncate
-    return messages;
   }
 }
 
-const contextManager = new ContextManager(CONFIG.MAX_CONTEXT_CHARS);
+const contextManager = new ContextManager(MAX_CONTEXT_CHARS);
 
-/* ==================== SESSION STORE ==================== */
+/* ================= ENHANCED SESSION STORE ================= */
 class SessionStore {
-  constructor() {
-    this.store = new Map();
-    this.cleanupInterval = setInterval(() => this.cleanup(), 5 * 60 * 1000); // Cleanup every 5 min
+  constructor() { 
+    this.memoryStore = new Map();
+    this.startCleanupTimer();
   }
 
-  async getSession(sessionId, clientHistory = null, clientLastActive = null) {
+  async getSession(id, clientHistory = null, clientLastActive = null) {
     const now = Date.now();
-    const timeoutMs = CONFIG.INACTIVITY_TIMEOUT_SEC * 1000;
+    const limitMs = INACTIVITY_TIMEOUT_SEC * 1000;
 
-    // Prioritize client-side history (stateless approach)
-    if (clientHistory && Array.isArray(clientHistory)) {
+    // Prefer client-side history (more reliable)
+    if (clientHistory && Array.isArray(clientHistory) && clientHistory.length > 0) {
       const timeDiff = clientLastActive ? (now - clientLastActive) : 0;
-      
-      if (timeDiff > timeoutMs) {
-        console.log(`[Session] ${sessionId.slice(0, 8)}... expired (${Math.round(timeDiff/1000)}s idle)`);
-        return this.createNewSession();
+      if (timeDiff > limitMs) {
+        console.log(`[Session] ${id.slice(0, 8)}... expired (${Math.round(timeDiff/1000)}s inactive). Reset.`);
+        return { history: [], userName: null };
       }
-      
-      return {
-        history: clientHistory,
-        metadata: this.extractMetadata(clientHistory)
-      };
+      const name = this.extractName(clientHistory);
+      return { history: clientHistory, userName: name };
     }
 
-    // Fallback to server-side store
-    if (this.store.has(sessionId)) {
-      const session = this.store.get(sessionId);
+    // Fallback to server-side memory
+    if (this.memoryStore.has(id)) {
+      const session = this.memoryStore.get(id);
       const timeDiff = now - session.lastActive;
-      
-      if (timeDiff > timeoutMs) {
-        console.log(`[Session] Server-side session expired`);
-        this.store.delete(sessionId);
-        return this.createNewSession();
+      if (timeDiff > limitMs) {
+        console.log(`[Session] Memory session ${id.slice(0, 8)}... expired. Deleting.`);
+        this.memoryStore.delete(id);
+        return { history: [], userName: null };
       }
-      
       session.lastActive = now;
-      return session;
+      return { history: session.history, userName: session.userName };
     }
 
-    return this.createNewSession();
+    return { history: [], userName: null };
   }
 
-  async saveMessage(sessionId, role, content, currentHistory, currentMetadata) {
-    const newMessage = { role, content, timestamp: Date.now() };
-    const updatedHistory = [...currentHistory, newMessage];
-    const updatedMetadata = this.updateMetadata(currentMetadata, role, content);
+  async saveMessage(id, role, content, currentHistory, currentName) {
+    const newMsg = { role, content };
+    const newHistory = [...currentHistory, newMsg];
+    let userName = currentName;
+    
+    // Extract name from user messages
+    if (role === 'user') {
+      const extractedName = this.extractNameFromMessage(content);
+      if (extractedName) userName = extractedName;
+    }
 
-    const session = {
-      history: updatedHistory,
-      metadata: updatedMetadata,
+    this.memoryStore.set(id, {
+      history: newHistory,
+      userName: userName,
       lastActive: Date.now()
-    };
-
-    this.store.set(sessionId, session);
-    return session;
+    });
+    
+    return { history: newHistory, userName: userName };
   }
 
-  createNewSession() {
-    return {
-      history: [],
-      metadata: {
-        userName: null,
-        userLocation: null,
-        preferences: {},
-        startTime: Date.now()
-      }
-    };
-  }
-
-  extractMetadata(history) {
-    const metadata = {
-      userName: null,
-      userLocation: null,
-      preferences: {},
-      startTime: Date.now()
-    };
-
-    // Extract user name
-    const namePattern = /(?:my name is|i am|i'm|call me)\s+([a-zA-Z]+)/i;
-    for (const msg of history) {
-      if (msg.role === 'user') {
-        const match = msg.content.match(namePattern);
-        if (match) {
-          metadata.userName = match[1].trim();
-          break;
+  extractNameFromMessage(content) {
+    const patterns = [
+      /(?:my name is|i am|i'm|call me|this is)\s+([a-zA-Z]{2,20})/i,
+      /^([A-Z][a-z]+)\s+here/i, // "Alakmar here"
+    ];
+    
+    for (const pattern of patterns) {
+      const match = content.match(pattern);
+      if (match) {
+        const name = match[1].trim();
+        // Avoid false positives like "I am happy"
+        const invalidNames = ['happy', 'good', 'fine', 'okay', 'great', 'tired', 'busy'];
+        if (!invalidNames.includes(name.toLowerCase())) {
+          return name;
         }
       }
     }
+    return null;
+  }
 
-    // Extract location (basic)
-    const locationPattern = /(?:i'm from|i live in|my location is)\s+([a-zA-Z\s]+)/i;
+  extractName(history) {
     for (const msg of history) {
       if (msg.role === 'user') {
-        const match = msg.content.match(locationPattern);
-        if (match) {
-          metadata.userLocation = match[1].trim();
-          break;
+        const name = this.extractNameFromMessage(msg.content);
+        if (name) return name;
+      }
+    }
+    return null;
+  }
+
+  startCleanupTimer() {
+    // Clean up expired sessions every 10 minutes
+    setInterval(() => {
+      const now = Date.now();
+      const limitMs = INACTIVITY_TIMEOUT_SEC * 1000;
+      let cleaned = 0;
+      
+      for (const [id, session] of this.memoryStore.entries()) {
+        if (now - session.lastActive > limitMs) {
+          this.memoryStore.delete(id);
+          cleaned++;
         }
       }
-    }
-
-    return metadata;
-  }
-
-  updateMetadata(currentMetadata, role, content) {
-    if (role !== 'user') return currentMetadata;
-
-    const updated = { ...currentMetadata };
-
-    // Update name if mentioned
-    const namePattern = /(?:my name is|i am|i'm|call me)\s+([a-zA-Z]+)/i;
-    const nameMatch = content.match(namePattern);
-    if (nameMatch) {
-      updated.userName = nameMatch[1].trim();
-    }
-
-    // Update location if mentioned
-    const locationPattern = /(?:i'm from|i live in|my location is)\s+([a-zA-Z\s]+)/i;
-    const locMatch = content.match(locationPattern);
-    if (locMatch) {
-      updated.userLocation = locMatch[1].trim();
-    }
-
-    return updated;
-  }
-
-  cleanup() {
-    const now = Date.now();
-    const timeoutMs = CONFIG.INACTIVITY_TIMEOUT_SEC * 1000;
-    let cleaned = 0;
-
-    for (const [sessionId, session] of this.store.entries()) {
-      if (now - session.lastActive > timeoutMs) {
-        this.store.delete(sessionId);
-        cleaned++;
+      
+      if (cleaned > 0) {
+        console.log(`[Cleanup] Removed ${cleaned} expired sessions. Active: ${this.memoryStore.size}`);
       }
-    }
-
-    if (cleaned > 0) {
-      console.log(`[Cleanup] Removed ${cleaned} expired sessions`);
-    }
-  }
-
-  getStats() {
-    return {
-      activeSessions: this.store.size,
-      totalMemoryKB: Math.round(JSON.stringify([...this.store.values()]).length / 1024)
-    };
+    }, 10 * 60 * 1000);
   }
 }
 
 const sessionStore = new SessionStore();
 
-/* ==================== SEARCH ENGINE ==================== */
-class SearchEngine {
-  constructor(apiKey) {
-    this.apiKey = apiKey;
-    this.enabled = !!apiKey;
+/* ================= SMART SEARCH DETECTOR ================= */
+class SearchDetector {
+  constructor() {
+    this.timeBasedTriggers = [
+      'latest', 'current', 'today', 'now', 'recent', 'this week', 'this month',
+      'yesterday', 'tonight', 'happening', 'ongoing', 'live'
+    ];
+    
+    this.factualTriggers = [
+      'weather', 'temperature', 'forecast',
+      'stock price', 'share price', 'market',
+      'news about', 'breaking news',
+      'who is the current', 'who is the president', 'who is the ceo',
+      'capital of', 'population of',
+      'definition of', 'what does', 'what is',
+      'score', 'game result', 'match result',
+      'exchange rate', 'price of', 'cost of'
+    ];
+
+    this.memoryQueries = [
+      'my name', 'who am i', 'my email', 'my address', 'remember',
+      'i told you', 'earlier i said', 'as i mentioned'
+    ];
   }
 
-  shouldSearch(query, metadata) {
-    const lower = query.toLowerCase();
-
-    // Don't search for personal/memory queries
-    const personalPatterns = [
-      "my name", "i am", "i'm", "who am i", "remember that",
-      "do you know me", "my email", "my address", "my phone"
-    ];
-    if (personalPatterns.some(p => lower.includes(p))) {
+  shouldSearch(query) {
+    const lower = query.toLowerCase().trim();
+    
+    // Don't search memory-based queries
+    if (this.memoryQueries.some(pattern => lower.includes(pattern))) {
       return false;
     }
-
-    // Search for current/dynamic info
-    const searchTriggers = [
-      "latest", "news", "weather", "price", "current", "today",
-      "happening now", "stock", "search for", "find", "look up",
-      "what is the", "who is the", "capital of", "president of",
-      "meaning of", "define", "translate", "convert"
-    ];
-
-    return searchTriggers.some(trigger => lower.includes(trigger));
-  }
-
-  async search(query) {
-    if (!this.enabled) {
-      console.log("[Search] Skipped - API key not configured");
-      return null;
+    
+    // Search for time-sensitive or factual queries
+    if (this.timeBasedTriggers.some(trigger => lower.includes(trigger))) {
+      return true;
     }
-
-    try {
-      const response = await fetch("https://google.serper.dev/search", {
-        method: "POST",
-        headers: {
-          "X-API-KEY": this.apiKey,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          q: query,
-          num: 5
-        })
-      });
-
-      if (!response.ok) {
-        console.error(`[Search] API error: ${response.status}`);
-        return null;
-      }
-
-      const data = await response.json();
-      return this.formatResults(data);
-    } catch (error) {
-      console.error("[Search] Error:", error.message);
-      return null;
+    
+    if (this.factualTriggers.some(trigger => lower.includes(trigger))) {
+      return true;
     }
-  }
-
-  formatResults(data) {
-    const parts = [];
-
-    // Answer box (if available)
-    if (data.answerBox) {
-      const answer = data.answerBox.snippet || data.answerBox.answer || "";
-      if (answer) {
-        parts.push(`DIRECT ANSWER: ${answer}`);
-      }
+    
+    // Search if query contains "search for" or "google"
+    if (lower.includes('search for') || lower.includes('look up')) {
+      return true;
     }
-
-    // Knowledge graph (if available)
-    if (data.knowledgeGraph) {
-      const kg = data.knowledgeGraph;
-      if (kg.description) {
-        parts.push(`OVERVIEW: ${kg.description}`);
-      }
-    }
-
-    // Organic results
-    if (data.organic && data.organic.length > 0) {
-      parts.push("\nTOP RESULTS:");
-      data.organic.slice(0, 5).forEach((result, i) => {
-        parts.push(`${i + 1}. ${result.title}`);
-        if (result.snippet) {
-          parts.push(`   ${result.snippet}`);
-        }
-      });
-    }
-
-    return parts.length > 0 ? parts.join("\n") : null;
+    
+    return false;
   }
 }
 
-const searchEngine = new SearchEngine(CONFIG.SERPER_API_KEY);
+const searchDetector = new SearchDetector();
 
-/* ==================== AI STREAMING ==================== */
-class AIStreamingClient {
-  constructor(apiKey) {
-    this.apiKey = apiKey;
-  }
-
-  async streamCompletion({ messages, onChunk, onError }) {
-    if (!this.apiKey) {
-      throw new Error("SARVAM_API_KEY not configured");
-    }
-
-    try {
-      const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${this.apiKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: CONFIG.MODEL,
-          messages: messages,
-          temperature: CONFIG.TEMPERATURE,
-          max_tokens: CONFIG.MAX_TOKENS,
-          stream: true
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Sarvam API error: ${response.status} ${response.statusText}`);
-      }
-
-      return await this.processStream(response.body, onChunk, onError);
-    } catch (error) {
-      console.error("[AI] Streaming error:", error.message);
-      if (onError) onError(error);
-      throw error;
-    }
-  }
-
-  async processStream(body, onChunk, onError) {
-    const reader = body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let fullContent = "";
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        
-        if (done) {
-          // Process any remaining buffer
-          if (buffer.trim()) {
-            this.processLines([buffer], (content) => {
-              fullContent += content;
-              onChunk(content);
-            });
-          }
-          break;
-        }
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        this.processLines(lines, (content) => {
-          fullContent += content;
-          onChunk(content);
-        });
-      }
-    } catch (error) {
-      console.error("[AI] Stream processing error:", error.message);
-      if (onError) onError(error);
-      throw error;
-    }
-
-    return fullContent;
-  }
-
-  processLines(lines, onContent) {
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith("data: ")) continue;
-      
-      const dataStr = trimmed.slice(6);
-      if (dataStr === "[DONE]") continue;
-
-      try {
-        const parsed = JSON.parse(dataStr);
-        const content = parsed.choices?.[0]?.delta?.content || "";
-        if (content) {
-          onContent(content);
-        }
-      } catch (e) {
-        // Ignore malformed JSON chunks
-      }
-    }
-  }
-}
-
-const aiClient = new AIStreamingClient(CONFIG.SARVAM_API_KEY);
-
-/* ==================== COMMAND PROCESSOR ==================== */
-class CommandProcessor {
-  constructor() {
-    this.commands = {
-      '/help': this.helpCommand,
-      '/clear': this.clearCommand,
-      '/about': this.aboutCommand,
-      '/status': this.statusCommand
-    };
-  }
-
-  isCommand(message) {
-    return message.trim().startsWith('/');
-  }
-
-  async process(command, context) {
-    const cmd = command.trim().toLowerCase().split(' ')[0];
-    const handler = this.commands[cmd];
-
-    if (handler) {
-      return handler.call(this, context);
-    }
-
+/* ================= ENHANCED SEARCH ================= */
+async function performSearch(query) {
+  if (!SERPER_API_KEY) {
+    console.log("[Search] No API key configured, skipping search");
     return null;
   }
-
-  helpCommand(context) {
-    return `
-# eSAMz Commands & Features
-
-## Available Commands
-- **/help** - Show this help message
-- **/clear** - Learn how to clear your conversation
-- **/about** - Information about eSAMz
-- **/status** - System status
-
-## Features
-✨ **Smart Search** - I'll automatically search when you ask about current events
-🧠 **Memory** - I remember your name and preferences within our conversation
-⚡ **Fast Responses** - Optimized streaming for quick replies
-🔒 **Privacy** - Your data is secure and sessions expire after 30 minutes of inactivity
-
-## Tips
-- Just chat naturally! No special syntax needed
-- I work best with clear, specific questions
-- For complex topics, break them into smaller questions
-- I can help with coding, writing, research, and more!
-
-**Made by Alakmar Teenwala** | Version 10.0
-    `.trim();
-  }
-
-  clearCommand(context) {
-    return `
-To clear your conversation history:
-1. Simply refresh your browser page
-2. Or wait 30 minutes of inactivity - sessions auto-expire for privacy
-
-Your current session will be wiped, and we'll start fresh! 🔄
-    `.trim();
-  }
-
-  aboutCommand(context) {
-    const stats = sessionStore.getStats();
-    return `
-# About eSAMz v10.0
-
-**Created by:** Alakmar Teenwala
-**Model:** Sarvam AI (${CONFIG.MODEL})
-**Version:** 10.0 - Production Release
-
-## Current Session
-${context.metadata.userName ? `- Your name: ${context.metadata.userName}` : '- Anonymous session'}
-${context.metadata.userLocation ? `- Location: ${context.metadata.userLocation}` : ''}
-- Messages exchanged: ${context.history.length}
-- Session started: ${new Date(context.metadata.startTime).toLocaleTimeString()}
-
-## System Stats
-- Active sessions: ${stats.activeSessions}
-- Queue status: ${queue.stats.processed} requests processed
-- Average wait time: ${Math.round(queue.stats.avgWait)}ms
-
-Built with ❤️ for intelligent conversation.
-    `.trim();
-  }
-
-  statusCommand(context) {
-    const queueInfo = queue.getQueueInfo(context.sessionId);
-    const stats = sessionStore.getStats();
+  
+  try {
+    const response = await fetch("https://google.serper.dev/search", {
+      method: "POST",
+      headers: { 
+        "X-API-KEY": SERPER_API_KEY, 
+        "Content-Type": "application/json" 
+      },
+      body: JSON.stringify({ q: query, num: 5 })
+    });
     
-    return `
-# System Status ✅
-
-**Server Health:** Online
-**Search Engine:** ${searchEngine.enabled ? 'Enabled ✓' : 'Disabled ✗'}
-**Queue:** ${queueInfo.queueLength} users waiting
-**Active Sessions:** ${stats.activeSessions}
-**Memory Usage:** ${stats.totalMemoryKB} KB
-
-All systems operational! 🚀
-    `.trim();
+    if (!response.ok) {
+      console.error(`[Search] API error: ${response.status}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    let results = "";
+    
+    // Answer box (featured snippets)
+    if (data.answerBox) {
+      const answer = data.answerBox.snippet || data.answerBox.answer || "";
+      if (answer) results += `${answer}\n\n`;
+    }
+    
+    // Organic results
+    if (data.organic && data.organic.length > 0) {
+      const organic = data.organic
+        .slice(0, 5)
+        .map((r, i) => `${i + 1}. ${r.title}\n   ${r.snippet}`)
+        .join("\n\n");
+      results += organic;
+    }
+    
+    // Knowledge graph
+    if (data.knowledgeGraph) {
+      const kg = data.knowledgeGraph;
+      if (kg.description) results += `\n\nOverview: ${kg.description}`;
+    }
+    
+    return results.trim() || null;
+  } catch (error) {
+    console.error("[Search] Error:", error.message);
+    return null;
   }
 }
 
-const commandProcessor = new CommandProcessor();
+/* ================= AI STREAMING WITH ERROR HANDLING ================= */
+async function streamSarvamChat({ messages, onChunk, onError }) {
+  const sarvamKey = process.env.SARVAM_API_KEY;
+  if (!sarvamKey) {
+    throw new Error("SARVAM_API_KEY not configured");
+  }
 
-/* ==================== UTILITIES ==================== */
-function getClientIP(req) {
-  return req.headers["x-forwarded-for"]?.split(",")[0] || 
-         req.headers["x-real-ip"] || 
-         req.socket?.remoteAddress || 
-         "unknown";
+  let res;
+  try {
+    res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
+      method: "POST",
+      headers: { 
+        Authorization: `Bearer ${sarvamKey}`, 
+        "Content-Type": "application/json" 
+      },
+      body: JSON.stringify({ 
+        model: SARVAM_MODEL, 
+        messages, 
+        temperature: 0.7, 
+        max_tokens: MAX_COMPLETION_TOKENS, 
+        stream: true 
+      }),
+      signal: AbortSignal.timeout(120000) // 2 min timeout
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Sarvam API Error ${res.status}: ${errorText}`);
+    }
+  } catch (error) {
+    if (onError) onError(error);
+    throw error;
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let fullContent = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      
+      if (done) {
+        // Process any remaining buffer
+        if (buffer.trim()) {
+          const lines = buffer.split("\n");
+          for (const line of lines) {
+            const content = parseStreamLine(line);
+            if (content) {
+              fullContent += content;
+              onChunk(content);
+            }
+          }
+        }
+        break;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || ""; // Keep last incomplete line
+
+      for (const line of lines) {
+        const content = parseStreamLine(line);
+        if (content) {
+          fullContent += content;
+          onChunk(content);
+        }
+      }
+    }
+  } catch (error) {
+    if (onError) onError(error);
+    throw error;
+  }
+
+  return fullContent;
 }
 
-function sendStreamEvent(res, type, data) {
-  const safeData = String(data).replace(/\n/g, "\\n");
-  res.write(`${type}|${safeData}\n`);
+// Helper to parse SSE lines
+function parseStreamLine(line) {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith("data: ")) return null;
+  
+  const dataStr = trimmed.slice(6);
+  if (dataStr === "[DONE]") return null;
+  
+  try {
+    const parsed = JSON.parse(dataStr);
+    return parsed.choices?.[0]?.delta?.content || null;
+  } catch (e) {
+    return null;
+  }
 }
 
-function generateSessionId() {
-  return crypto.randomBytes(16).toString("hex");
+/* ================= EASTER EGG SYSTEM ================= */
+class EasterEggHandler {
+  constructor() {
+    this.eggs = [
+      {
+        triggers: ['tell me a secret', 'any secrets', 'secret about'],
+        response: '🤫 Psst... Alakmar told me that NASA is actually "Never A Straight Answer" 😄',
+        probability: 0.7 // 70% chance to trigger
+      },
+      {
+        triggers: ['who created you', 'who made you', 'your creator'],
+        response: "I was crafted by Alakmar Teenwala - a brilliant mind who believes AI should be helpful, honest, and a little bit fun 🚀",
+        probability: 1.0
+      }
+    ];
+  }
+
+  check(message) {
+    const lower = message.toLowerCase();
+    
+    for (const egg of this.eggs) {
+      const triggered = egg.triggers.some(trigger => lower.includes(trigger));
+      if (triggered && Math.random() < egg.probability) {
+        return egg.response;
+      }
+    }
+    
+    return null;
+  }
 }
 
-function setSecureCookie(res, name, value, maxAge) {
-  res.setHeader('Set-Cookie', 
-    `${name}=${value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`
-  );
-}
+const easterEggs = new EasterEggHandler();
 
-function setSecurityHeaders(res, origin) {
+/* ================= MAIN HANDLER WITH QUEUE ================= */
+export default async function handler(req, res) {
   // Security headers
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Transfer-Encoding', 'chunked');
+  res.setHeader('X-Accel-Buffering', 'no');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Content-Security-Policy', 
-    "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com; " +
-    "style-src 'self' 'unsafe-inline' fonts.googleapis.com; " +
-    "img-src 'self' data: https:; " +
-    "connect-src 'self' https://api.sarvam.ai https://google.serper.dev;"
-  );
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com; connect-src 'self' https://api.sarvam.ai https://google.serper.dev;");
 
   // CORS
-  if (CONFIG.ALLOWED_ORIGINS.includes(origin)) {
+  const origin = req.headers.origin;
+  if (ALLOWED_ORIGINS.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+
+  if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  }
-
-  // Streaming headers
-  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-  res.setHeader('Transfer-Encoding', 'chunked');
-  res.setHeader('X-Accel-Buffering', 'no');
-  res.setHeader('Cache-Control', 'no-cache, no-transform');
-}
-
-/* ==================== MAIN REQUEST HANDLER ==================== */
-export default async function handler(req, res) {
-  const origin = req.headers.origin;
-  
-  // Set security headers
-  setSecurityHeaders(res, origin);
-
-  // Handle OPTIONS preflight
-  if (req.method === 'OPTIONS') {
     return res.end();
   }
 
-  // Only allow POST
-  if (req.method !== 'POST') {
-    sendStreamEvent(res, "ERROR", "Method not allowed");
-    return res.end();
+  if (req.method !== 'POST') { 
+    sendEvent(res, 'ERROR', 'Method not allowed');
+    return res.end(); 
   }
 
-  const clientIP = getClientIP(req);
-  console.log(`[Request] New request from ${clientIP}`);
-
+  let sessionId;
   try {
-    // Parse request body
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const { message, sessionId, clientHistory, clientLastActive } = body;
+    const { message, sessionId: providedSessionId, clientHistory, clientLastActive } = body;
 
-    // Validate message
-    if (!message || typeof message !== 'string' || message.trim().length === 0) {
-      sendStreamEvent(res, "ERROR", "Invalid message");
+    if (!message || typeof message !== 'string') {
+      sendEvent(res, 'ERROR', 'Invalid message format');
       return res.end();
     }
 
-    // Get or create session ID
-    const id = sessionId || req.cookies?.[CONFIG.COOKIE_NAME] || generateSessionId();
-    
-    // Set session cookie
-    if (!req.cookies || !req.cookies[CONFIG.COOKIE_NAME]) {
-      setSecureCookie(res, CONFIG.COOKIE_NAME, id, CONFIG.INACTIVITY_TIMEOUT_SEC);
+    if (message.length > 10000) {
+      sendEvent(res, 'ERROR', 'Message too long (max 10,000 characters)');
+      return res.end();
     }
 
-    // Add to queue and process
-    await queue.add(id, async () => {
-      await processUserRequest(req, res, id, message, clientHistory, clientLastActive);
+    // Session management
+    sessionId = providedSessionId || req.cookies?.[COOKIE_NAME] || crypto.randomBytes(16).toString("hex");
+    
+    // Set secure cookie
+    if (!req.cookies || !req.cookies[COOKIE_NAME]) {
+      res.setHeader('Set-Cookie', `${COOKIE_NAME}=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${INACTIVITY_TIMEOUT_SEC}`);
+    }
+
+    // Rate limiting
+    const rateCheck = rateLimiter.check(sessionId);
+    if (!rateCheck.allowed) {
+      sendEvent(res, 'ERROR', `Rate limit exceeded. Try again in ${rateCheck.resetIn} seconds.`);
+      return res.end();
+    }
+
+    console.log(`[Request] Session: ${sessionId.slice(0, 8)}... | Message: "${sanitizeForLog(message)}" | Remaining: ${rateCheck.remaining}`);
+
+    // Queue the request
+    await userQueue.add(sessionId, async () => {
+      return await processUserRequest(res, sessionId, message, clientHistory, clientLastActive);
     });
 
   } catch (error) {
     console.error("[Handler] Error:", error.message);
-    if (!res.headersSent) {
-      sendStreamEvent(res, "ERROR", error.message || "Internal server error");
-      res.end();
-    }
+    sendEvent(res, 'ERROR', 'Internal server error');
+    if (!res.writableEnded) res.end();
   }
 }
 
-/* ==================== PROCESS USER REQUEST ==================== */
-async function processUserRequest(req, res, sessionId, message, clientHistory, clientLastActive) {
+/* ================= PROCESS USER REQUEST ================= */
+async function processUserRequest(res, sessionId, message, clientHistory, clientLastActive) {
   try {
     // 1. Load session
-    const session = await sessionStore.getSession(sessionId, clientHistory, clientLastActive);
-    const { history, metadata } = session;
+    const sessionData = await sessionStore.getSession(sessionId, clientHistory, clientLastActive);
+    let { history, userName } = sessionData;
+    const currentName = userName || null;
 
-    // 2. Check for commands
-    if (commandProcessor.isCommand(message)) {
-      const commandResponse = await commandProcessor.process(message, {
-        sessionId,
-        history,
-        metadata
-      });
-
-      if (commandResponse) {
-        sendStreamEvent(res, "STATUS", "READY");
-        sendStreamEvent(res, "CHUNK", commandResponse);
-        
-        // Save command interaction
-        const updated = await sessionStore.saveMessage(sessionId, "user", message, history, metadata);
-        await sessionStore.saveMessage(sessionId, "assistant", commandResponse, updated.history, updated.metadata);
-        
-        sendStreamEvent(res, "HISTORY_UPDATE", JSON.stringify(updated.history));
-        sendStreamEvent(res, "TIMESTAMP", Date.now().toString());
-        sendStreamEvent(res, "DONE", sessionId);
-        return res.end();
-      }
+    // 2. Check for easter eggs
+    const easterEggResponse = easterEggs.check(message);
+    if (easterEggResponse) {
+      sendEvent(res, "STATUS", "TYPING");
+      await new Promise(resolve => setTimeout(resolve, 800)); // Dramatic pause
+      
+      sendEvent(res, "CHUNK", easterEggResponse);
+      
+      // Save to history
+      const updatedSession = await sessionStore.saveMessage(sessionId, "user", message, history, currentName);
+      await sessionStore.saveMessage(sessionId, "assistant", easterEggResponse, updatedSession.history, updatedSession.userName);
+      
+      sendEvent(res, "DONE", sessionId);
+      return res.end();
     }
 
-    // 3. Search if needed
+    // 3. Perform search if needed
     let searchContext = "";
-    if (searchEngine.shouldSearch(message, metadata)) {
-      sendStreamEvent(res, "STATUS", "SEARCHING");
-      const results = await searchEngine.search(message);
+    if (searchDetector.shouldSearch(message) && SERPER_API_KEY) {
+      sendEvent(res, "STATUS", "SEARCHING");
+      const results = await performSearch(message);
       if (results) {
-        searchContext = `\n\n<SEARCH_RESULTS>\n${results}\n</SEARCH_RESULTS>\n\nUse these search results to enhance your answer. Synthesize the information naturally without explicitly mentioning "search results".`;
+        searchContext = `\n\n[SEARCH RESULTS]\n${results}\n\nUse these to answer the user's question.`;
+        console.log(`[Search] Found results for: "${sanitizeForLog(message)}"`);
       }
     }
 
-    sendStreamEvent(res, "STATUS", "THINKING");
+    sendEvent(res, "STATUS", "TYPING");
 
-    // 4. Build context-aware system prompt
-    let enhancedSystemPrompt = SYSTEM_PROMPT;
-    
-    if (metadata.userName) {
-      enhancedSystemPrompt += `\n\n<USER_CONTEXT>\nUser's name: ${metadata.userName}\nUse their name naturally in conversation.\n</USER_CONTEXT>`;
-    }
-    
-    if (metadata.userLocation) {
-      enhancedSystemPrompt += `\n<USER_LOCATION>\nUser is from: ${metadata.userLocation}\n</USER_LOCATION>`;
+    // 4. Build context with personalization
+    let systemContent = SYSTEM_PROMPT;
+    if (currentName) {
+      systemContent += `\n\n[USER INFO]\nThe user's name is ${currentName}. Address them naturally when appropriate.`;
     }
 
-    // 5. Build messages payload
-    const messagesPayload = [
-      { role: "system", content: enhancedSystemPrompt },
-      ...history,
-      { role: "user", content: message + searchContext }
-    ];
+    const rawMessages = [{ role: "system", content: systemContent }];
+    rawMessages.push(...history);
+    rawMessages.push({ role: "user", content: message + searchContext });
 
-    // 6. Apply context limits
-    const limitedMessages = contextManager.limit(messagesPayload);
+    // 5. Apply context limit
+    const messages = contextManager.limit(rawMessages);
 
-    // 7. Stream AI response
-    sendStreamEvent(res, "STATUS", "TYPING");
-    
+    // 6. Stream response
     let fullResponse = "";
-    await aiClient.streamCompletion({
-      messages: limitedMessages,
+    await streamSarvamChat({
+      messages,
       onChunk: (chunk) => {
         fullResponse += chunk;
-        // Send chunks with proper line handling
+        // Send chunks with proper newline handling
         const parts = chunk.split('\n');
         for (let i = 0; i < parts.length; i++) {
           let part = parts[i];
           if (i < parts.length - 1) part += "\n";
-          if (part) sendStreamEvent(res, "CHUNK", part);
+          if (part) sendEvent(res, "CHUNK", part);
         }
       },
       onError: (error) => {
         console.error("[Stream] Error:", error.message);
-        sendStreamEvent(res, "ERROR", "AI service temporarily unavailable");
+        sendEvent(res, "ERROR", "AI service error. Please try again.");
       }
     });
 
-    // 8. Save conversation
-    const updatedSession1 = await sessionStore.saveMessage(sessionId, "user", message, history, metadata);
-    const updatedSession2 = await sessionStore.saveMessage(sessionId, "assistant", fullResponse, updatedSession1.history, updatedSession1.metadata);
+    // 7. Save to session
+    const updatedSession = await sessionStore.saveMessage(sessionId, "user", message, history, currentName);
+    const finalSession = await sessionStore.saveMessage(sessionId, "assistant", fullResponse, updatedSession.history, updatedSession.userName);
 
-    // 9. Send final sync data
-    sendStreamEvent(res, "HISTORY_UPDATE", JSON.stringify(updatedSession2.history));
-    sendStreamEvent(res, "TIMESTAMP", Date.now().toString());
-    sendStreamEvent(res, "DONE", sessionId);
+    // 8. Send sync data
+    sendEvent(res, "HISTORY_UPDATE", JSON.stringify(finalSession.history));
+    sendEvent(res, "TIMESTAMP", Date.now().toString());
+    sendEvent(res, "DONE", sessionId);
+    
+    console.log(`[Response] Session: ${sessionId.slice(0, 8)}... | Length: ${fullResponse.length} chars`);
     
     res.end();
-    console.log(`[Success] Request completed for ${sessionId.slice(0, 8)}...`);
 
   } catch (error) {
     console.error("[Process] Error:", error.message);
-    sendStreamEvent(res, "ERROR", error.message || "Processing failed");
-    res.end();
+    sendEvent(res, "ERROR", error.message);
+    if (!res.writableEnded) res.end();
+    throw error;
   }
 }
-
-/* ==================== GRACEFUL SHUTDOWN ==================== */
-process.on('SIGTERM', () => {
-  console.log('[Shutdown] SIGTERM received, cleaning up...');
-  clearInterval(sessionStore.cleanupInterval);
-  console.log('[Shutdown] Cleanup complete');
-  process.exit(0);
-});
-
-process.on('SIGINT', () => {
-  console.log('[Shutdown] SIGINT received, cleaning up...');
-  clearInterval(sessionStore.cleanupInterval);
-  console.log('[Shutdown] Cleanup complete');
-  process.exit(0);
-});
