@@ -213,39 +213,40 @@ const slashCommands = new SlashCommandHandler();
 
 /* ================= UPSTASH RATE LIMITER (PERSISTENT) ================= */
 // Replaces the old memory-based class to prevent "Cold Start" resets
+/* ================= VERCEL KV RATE LIMITER (PERSISTENT) ================= */
 async function checkUpstashRateLimit(userId) {
-  const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
-  const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  // Using your specific Vercel Environment Variable names
+  const kvUrl = process.env.KV_REST_API_URL;
+  const kvToken = process.env.KV_REST_API_TOKEN;
 
-  // If Upstash is not configured, fallback to ALLOW ALL (or handle error)
-  if (!upstashUrl || !upstashToken) {
-    console.warn("⚠️ Upstash not configured. Rate limiting disabled.");
+  // This check now uses your specific variable names
+  if (!kvUrl || !kvToken) {
+    console.warn("⚠️ Rate limiting disabled: KV_REST_API_URL or KV_REST_API_TOKEN missing.");
     return { allowed: true, remaining: 999 };
   }
 
   try {
-    // 1. Increment usage
-    const incrRes = await fetch(`${upstashUrl}/incr/${userId}`, {
+    // 1. Increment usage using Vercel KV REST API
+    const incrRes = await fetch(`${kvUrl}/incr/${userId}`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${upstashToken}` }
+      headers: { Authorization: `Bearer ${kvToken}` }
     });
     const incrData = await incrRes.json();
     const currentUsage = incrData.result;
 
-    // 2. If new user (count is 1), set expiration to 1 hour (3600s)
+    // 2. Set expiration to 1 hour (3600s) if it's a new session
     if (currentUsage === 1) {
-      await fetch(`${upstashUrl}/expire/${userId}/3600`, {
+      await fetch(`${kvUrl}/expire/${userId}/3600`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${upstashToken}` }
+        headers: { Authorization: `Bearer ${kvToken}` }
       });
     }
 
-    // 3. Check limit
+    // 3. Check against your MAX_REQUESTS_PER_HOUR limit
     if (currentUsage > MAX_REQUESTS_PER_HOUR) {
-      // Get time to live (TTL) to tell user when to come back
-      const ttlRes = await fetch(`${upstashUrl}/ttl/${userId}`, {
+      const ttlRes = await fetch(`${kvUrl}/ttl/${userId}`, {
          method: "POST",
-         headers: { Authorization: `Bearer ${upstashToken}` }
+         headers: { Authorization: `Bearer ${kvToken}` }
       });
       const ttlData = await ttlRes.json();
       return { allowed: false, resetIn: ttlData.result };
@@ -253,9 +254,8 @@ async function checkUpstashRateLimit(userId) {
 
     return { allowed: true, remaining: MAX_REQUESTS_PER_HOUR - currentUsage };
   } catch (err) {
-    console.error("Rate Limit Error:", err);
-    // Fail open if Redis is down, but log it
-    return { allowed: true, remaining: 1 };
+    console.error("KV Rate Limit Error:", err);
+    return { allowed: true, remaining: 1 }; // Fail open to keep app running
   }
 }
 
