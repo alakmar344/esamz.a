@@ -225,72 +225,138 @@
             z-index: 2;
         }
 
-        /* Cibo Banner */
-        .promo-banner {
-            background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
-            padding: 14px 24px;
+        /* Cibo Modal */
+        .cibo-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(44, 36, 25, 0.7);
+            backdrop-filter: blur(8px);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
-            border-bottom: 2px solid rgba(0, 0, 0, 0.1);
-            position: relative;
-            flex-shrink: 0;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            z-index: 9999;
+            animation: fadeIn 0.3s ease-out;
         }
 
-        .promo-banner-content {
+        .cibo-modal-overlay.hidden {
+            display: none;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .cibo-modal {
+            background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+            border-radius: var(--radius-lg);
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+            animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            text-align: center;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .cibo-modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: rgba(0, 0, 0, 0.15);
+            color: #1a1a1a;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
-            gap: 12px;
-            font-size: 15px;
-            font-weight: 600;
-            color: #1a1a1a;
+            justify-content: center;
+            font-size: 24px;
+            transition: all var(--transition-fast);
+            border: none;
+            cursor: pointer;
         }
 
-        .promo-banner-emoji {
-            font-size: 24px;
+        .cibo-modal-close:hover {
+            background: rgba(0, 0, 0, 0.25);
+            transform: scale(1.1);
+        }
+
+        .cibo-modal-emoji {
+            font-size: 64px;
+            margin-bottom: 20px;
             animation: bounce 2s infinite;
         }
 
         @keyframes bounce {
             0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-4px); }
+            50% { transform: translateY(-8px); }
         }
 
-        .promo-banner-link {
-            background: rgba(0, 0, 0, 0.15);
+        .cibo-modal h2 {
             color: #1a1a1a;
-            padding: 6px 16px;
+            font-size: 28px;
+            margin-bottom: 12px;
+            font-family: 'Merriweather', serif;
+        }
+
+        .cibo-modal p {
+            color: rgba(0, 0, 0, 0.8);
+            font-size: 16px;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .cibo-modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .cibo-modal-btn {
+            padding: 14px 28px;
             border-radius: var(--radius-full);
             font-weight: 700;
+            font-size: 15px;
             transition: all var(--transition-base);
-            text-decoration: none;
+            border: none;
+            cursor: pointer;
         }
 
-        .promo-banner-link:hover {
-            background: rgba(0, 0, 0, 0.25);
+        .cibo-modal-btn-primary {
+            background: rgba(0, 0, 0, 0.2);
+            color: #1a1a1a;
+        }
+
+        .cibo-modal-btn-primary:hover {
+            background: rgba(0, 0, 0, 0.3);
             transform: scale(1.05);
         }
 
-        .promo-banner-close {
-            position: absolute;
-            right: 16px;
-            background: rgba(0, 0, 0, 0.1);
-            color: #1a1a1a;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            transition: all var(--transition-fast);
+        .cibo-modal-btn-secondary {
+            background: transparent;
+            color: rgba(0, 0, 0, 0.7);
+            border: 2px solid rgba(0, 0, 0, 0.2);
         }
 
-        .promo-banner-close:hover {
-            background: rgba(0, 0, 0, 0.2);
-            transform: scale(1.1);
+        .cibo-modal-btn-secondary:hover {
+            background: rgba(0, 0, 0, 0.1);
+            border-color: rgba(0, 0, 0, 0.3);
         }
 
         /* Sidebar */
@@ -307,7 +373,7 @@
         .sidebar-header {
             padding: 24px 20px;
             border-bottom: 1px solid var(--border-color);
-            background: var(--bg-paper);
+            background: var(--bg-secondary);
         }
 
         .brand {
@@ -407,7 +473,7 @@
             border-top: 1px solid var(--border-color);
             font-size: 12px;
             color: var(--text-tertiary);
-            background: var(--bg-paper);
+            background: var(--bg-tertiary);
         }
 
         .footer-links {
@@ -443,7 +509,7 @@
             align-items: center;
             justify-content: space-between;
             border-bottom: 1px solid var(--border-color);
-            background: var(--bg-paper);
+            background: var(--bg-secondary);
             box-shadow: var(--shadow-sm);
         }
 
@@ -502,17 +568,6 @@
             text-align: center;
             min-height: 60vh;
             animation: fadeIn 0.6s ease-out;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
 
         .welcome-logo {
@@ -584,10 +639,10 @@
             display: flex;
             gap: 14px;
             margin-bottom: 36px;
-            animation: slideUp 0.3s ease-out;
+            animation: slideUpMsg 0.3s ease-out;
         }
 
-        @keyframes slideUp {
+        @keyframes slideUpMsg {
             from {
                 opacity: 0;
                 transform: translateY(12px);
@@ -828,7 +883,7 @@
         .input-wrapper {
             padding: 24px 28px 28px;
             border-top: 1px solid var(--border-color);
-            background: var(--bg-paper);
+            background: var(--bg-secondary);
             box-shadow: 0 -2px 8px rgba(44, 36, 25, 0.04);
         }
 
@@ -1114,9 +1169,24 @@
                 padding: 18px;
             }
 
-            .promo-banner-content {
-                font-size: 13px;
-                flex-wrap: wrap;
+            .cibo-modal {
+                padding: 32px 24px;
+            }
+
+            .cibo-modal h2 {
+                font-size: 24px;
+            }
+
+            .cibo-modal p {
+                font-size: 15px;
+            }
+
+            .cibo-modal-actions {
+                flex-direction: column;
+            }
+
+            .cibo-modal-btn {
+                width: 100%;
             }
         }
 
@@ -1125,6 +1195,24 @@
     </style>
 </head>
 <body>
+    <!-- Cibo Modal -->
+    <div class="cibo-modal-overlay" id="ciboModal">
+        <div class="cibo-modal">
+            <button class="cibo-modal-close" id="ciboModalClose">×</button>
+            <div class="cibo-modal-emoji">🍳</div>
+            <h2>Try Cibo Cocinar!</h2>
+            <p>Experience the future of cooking with voice-powered AI assistance. Get step-by-step guidance, recipe suggestions, and culinary tips—all hands-free!</p>
+            <div class="cibo-modal-actions">
+                <a href="https://cibo.esamz.site" target="_blank" rel="noopener" class="cibo-modal-btn cibo-modal-btn-primary">
+                    Try Cibo Now
+                </a>
+                <button class="cibo-modal-btn cibo-modal-btn-secondary" id="ciboModalDismiss">
+                    Maybe Later
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div id="toast-container"></div>
 
@@ -1200,18 +1288,6 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Cibo Promo Banner -->
-            <div class="promo-banner" id="promoBanner">
-                <div class="promo-banner-content">
-                    <span class="promo-banner-emoji">🍳</span>
-                    <span>Still haven't tried a cooking assistant with voice in 2026?</span>
-                    <a href="https://cibo.esamz.site" class="promo-banner-link" target="_blank" rel="noopener">
-                        Try Cibo Today →
-                    </a>
-                </div>
-                <button class="promo-banner-close" onclick="document.getElementById('promoBanner').style.display='none'">×</button>
-            </div>
-
             <!-- Header -->
             <header class="header">
                 <div style="display: flex; align-items: center; gap: 12px;">
@@ -1401,6 +1477,54 @@
             }
         };
 
+        /* Cibo Modal Handler */
+        const CiboModal = {
+            STORAGE_KEY: 'esamz_cibo_dismissed',
+            
+            init() {
+                const modal = document.getElementById('ciboModal');
+                const closeBtn = document.getElementById('ciboModalClose');
+                const dismissBtn = document.getElementById('ciboModalDismiss');
+                
+                // Check if user has already dismissed
+                const dismissed = localStorage.getItem(this.STORAGE_KEY);
+                
+                if (!dismissed) {
+                    // Show modal after a short delay for better UX
+                    setTimeout(() => {
+                        modal.classList.remove('hidden');
+                    }, 500);
+                } else {
+                    modal.classList.add('hidden');
+                }
+                
+                // Handle close button
+                closeBtn.addEventListener('click', () => this.dismiss());
+                
+                // Handle dismiss button
+                dismissBtn.addEventListener('click', () => this.dismiss());
+                
+                // Close on overlay click
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        this.dismiss();
+                    }
+                });
+            },
+            
+            dismiss() {
+                const modal = document.getElementById('ciboModal');
+                modal.style.opacity = '0';
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.style.opacity = '1';
+                }, 300);
+                
+                // Save dismissal to localStorage
+                localStorage.setItem(this.STORAGE_KEY, 'true');
+            }
+        };
+
         /* App Class */
         class App {
             constructor() {
@@ -1469,6 +1593,9 @@
             }
 
             init() {
+                // Initialize Cibo Modal
+                CiboModal.init();
+                
                 this.loadHistory();
                 this.setupListeners();
                 this.updateButtonState();
