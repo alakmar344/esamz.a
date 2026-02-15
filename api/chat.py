@@ -400,6 +400,17 @@ class SessionStore:
         now = time.time() * 1000  # Convert to milliseconds
         limit_ms = INACTIVITY_TIMEOUT_SEC * 1000
 
+        # Clean up expired sessions immediately (important for serverless)
+        expired = [
+            sid for sid, session in list(self.memory_store.items())
+            if now - session['lastActive'] > limit_ms
+        ]
+        for sid in expired:
+            del self.memory_store[sid]
+        
+        if expired:
+            print(f"[Session] Cleaned up {len(expired)} expired sessions")
+
         # Prefer client-side history
         if client_history and isinstance(client_history, list) and len(client_history) > 0:
             time_diff = (now - client_last_active) if client_last_active else 0
