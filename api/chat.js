@@ -570,15 +570,16 @@ async function streamSarvamChat({ messages, onChunk, onError }) {
       }),
       signal: AbortSignal.timeout(120000)
     });
-catch (error) {
+ if (!res.ok) {
+    const errorBody = await res.text();
+    console.error("Sarvam Error Details:", errorBody);
+    throw new Error(`Sarvam API Error ${res.status}: ${errorBody}`);
+  }
+
+} catch (error) { // 👈 Yahan bracket band hua aur catch shuru hua
   console.error("Fetch Error:", error.message);
   if (onError) onError(error);
-  throw error; // Isse request properly terminate hogi
-}
-if (!res.ok) {
-  const errorBody = await res.text();
-  console.error("Sarvam Error Details:", errorBody);
-  throw new Error(`Sarvam API Error ${res.status}: ${errorBody}`);
+  throw error; 
 }
 
   const reader = res.body.getReader();
