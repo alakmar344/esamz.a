@@ -8,7 +8,6 @@ from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, asdict
 from collections import deque
 import logging
-from logging.handlers import TimedRotatingFileHandler
 
 from fastapi import FastAPI, Request, Response, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -17,30 +16,18 @@ import httpx
 import redis.asyncio as redis
 from pydantic import BaseModel, Field, validator
 
-# ================= LOGGING SETUP (48-HOUR RETENTION) =================
-# Create logs directory if it doesn't exist
-if not os.path.exists('logs'):
-    os.makedirs('logs')
-
-# Setup rotating file handler - keeps logs for 48 hours only
-log_handler = TimedRotatingFileHandler(
-    'logs/esamz.log',
-    when='midnight',
-    interval=1,
-    backupCount=2  # Keep only 2 days (48 hours) as per privacy policy
-)
-log_handler.setFormatter(logging.Formatter(
+# ================= LOGGING SETUP (SERVERLESS-COMPATIBLE) =================
+# Vercel has read-only filesystem, so we log to stdout/stderr only
+logger = logging.getLogger('esamz')
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter(
     '%(asctime)s - %(levelname)s - %(message)s'
 ))
-
-logger = logging.getLogger('esamz')
-logger.addHandler(log_handler)
+logger.addHandler(console_handler)
 logger.setLevel(logging.INFO)
 
-# Also log to console in development
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
-logger.addHandler(console_handler)
+# Note: In Vercel, logs are captured automatically and retained for 48 hours
+# No need for file-based logging in serverless environment
 
 # ================= CONFIG =================
 SARVAM_MODEL = "sarvam-m"
@@ -63,13 +50,14 @@ USER_QUEUE_TIME_MS = 1.0
 MAX_REQUESTS_PER_HOUR = 100
 
 # MAX CONCURRENT SESSIONS (prevent memory exhaustion)
-MAX_CONCURRENT_SESSIONS = 500  # Reduced from 1000 for 4GB RAM
+# Lower for serverless since each invocation has limited memory
+MAX_CONCURRENT_SESSIONS = 200
 
 # PRIVACY MODE: If True, never store conversations server-side (fully client-managed)
 PRIVACY_MODE = os.getenv("PRIVACY_MODE", "false").lower() == "true"
 
-# CLEANUP FREQUENCY: Run cleanup every 5 minutes to ensure 30-min timeout compliance
-CLEANUP_INTERVAL_SEC = 5 * 60
+# SERVERLESS MODE: Disable background cleanup task (runs on each request instead)
+IS_SERVERLESS = os.getenv("VERCEL", "0") == "1" or os.getenv("AWS_LAMBDA_FUNCTION_NAME") is not None
 
 ALLOWED_ORIGINS = [
     "https://esamz.site",
@@ -152,15 +140,8 @@ app = FastAPI(
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize background tasks on startup"""
-    try:
-        import psutil
-        process = psutil.Process()
-        mem_mb = process.memory_info().rss / 1024 / 1024
-        logger.info(f"eSAMz v9.1 starting - Memory: {mem_mb:.1f} MB")
-    except ImportError:
-        logger.info("eSAMz v9.1 starting (psutil not available for memory monitoring)")
-    
+    """Initialize on startup"""
+    logger.info(f"eSAMz v9.1 starting in {'SERVERLESS' if IS_SERVERLESS else 'SERVER'} mode")
     logger.info(f"Privacy Mode: {'ENABLED' if PRIVACY_MODE else 'DISABLED'}")
     logger.info(f"Session Timeout: {INACTIVITY_TIMEOUT_SEC // 60} minutes")
 
@@ -292,6 +273,7 @@ class SlashCommandHandler:
         info += f'• Model: Sarvam-M\n'
         info += f'• Features: Search, Memory, Commands\n'
         info += f'• Privacy Mode: {"Enabled" if PRIVACY_MODE else "Disabled"}\n'
+        info += f'• Deployment: {"Serverless" if IS_SERVERLESS else "Server"}\n'
         info += f'• Status: Active ✅\n'
 
         return CommandResult(success=True, response=info)
@@ -322,7 +304,8 @@ class SlashCommandHandler:
         privacy_info += f'• Data Retention: {INACTIVITY_TIMEOUT_SEC // 60} minutes of inactivity\n'
         privacy_info += f'• Your Session ID: {session_id[:8]}...\n'
         privacy_info += f'• Storage Location: {"Local browser only" if PRIVACY_MODE else "Browser + Server (30 min)"}\n'
-        privacy_info += f'• Auto-Deletion: Every {CLEANUP_INTERVAL_SEC // 60} minutes\n\n'
+        privacy_info += f'• Deployment: {"Serverless (stateless)" if IS_SERVERLESS else "Persistent server"}\n'
+        privacy_info += f'• Log Retention: 48 hours (platform managed)\n\n'
         privacy_info += '**Your Rights:**\n'
         privacy_info += '• Data is deleted automatically after 30 minutes\n'
         privacy_info += '• Use /clear to wipe history immediately\n'
@@ -467,30 +450,26 @@ class ContextManager:
 
 context_manager = ContextManager(MAX_CONTEXT_CHARS)
 
-# ================= SESSION STORE WITH ENHANCED PRIVACY =================
+# ================= SESSION STORE (SERVERLESS-COMPATIBLE) =================
 class SessionStore:
     def __init__(self):
+        # In serverless, this is per-invocation memory (doesn't persist between cold starts)
         self.memory_store: Dict[str, Dict] = {}
-        self._cleanup_started = False
 
     async def get_session(self, session_id: str, client_history: Optional[List] = None, 
                          client_last_active: Optional[int] = None) -> Dict[str, Any]:
-        # Start cleanup task lazily (only once)
-        if not self._cleanup_started:
-            self._cleanup_started = True
-            asyncio.create_task(self.cleanup_task())
-        
         now = time.time() * 1000  # Convert to milliseconds
         limit_ms = INACTIVITY_TIMEOUT_SEC * 1000
 
-        # PRIVACY: Clean up expired sessions immediately
+        # SERVERLESS: Clean up expired sessions on EVERY request (no background task)
         expired = [
             sid for sid, session in list(self.memory_store.items())
             if now - session['lastActive'] > limit_ms
         ]
         for sid in expired:
             del self.memory_store[sid]
-            logger.info(f"Privacy: Deleted expired session {sid[:8]}... (30min timeout)")
+            if expired:  # Only log if we deleted something
+                logger.info(f"Privacy: Deleted {len(expired)} expired sessions (30min timeout)")
         
         # PRIVACY: Prefer client-side history over server storage
         if client_history and isinstance(client_history, list) and len(client_history) > 0:
@@ -514,7 +493,7 @@ class SessionStore:
             user_name = self.extract_name(converted_history)
             return {'history': converted_history, 'userName': user_name}
 
-        # Fallback to server-side memory
+        # Fallback to server-side memory (serverless: likely empty on cold start)
         if session_id in self.memory_store:
             session = self.memory_store[session_id]
             time_diff = now - session['lastActive']
@@ -542,27 +521,8 @@ class SessionStore:
 
         # PRIVACY: Only store if not in privacy mode
         if not PRIVACY_MODE:
-            # MEMORY SAFETY: Check system memory before storing
-            try:
-                import psutil
-                mem_usage = psutil.Process().memory_info().rss / 1024 / 1024  # MB
-                
-                # If using >3.5GB on a 4GB system, force cleanup
-                if mem_usage > 3500:
-                    logger.warning(f"Memory: High usage ({mem_usage:.0f}MB), forcing cleanup")
-                    # Clear oldest 50% of sessions
-                    if self.memory_store:
-                        to_remove = sorted(
-                            self.memory_store.keys(),
-                            key=lambda k: self.memory_store[k]['lastActive']
-                        )[:len(self.memory_store)//2]
-                        for sid in to_remove:
-                            del self.memory_store[sid]
-                        logger.info(f"Memory: Cleared {len(to_remove)} oldest sessions")
-            except ImportError:
-                pass  # psutil not available
-            
-            # SECURITY: Prevent memory exhaustion - limit total sessions
+            # SERVERLESS: No need for memory monitoring (each invocation is isolated)
+            # Just enforce session limit
             if len(self.memory_store) >= MAX_CONCURRENT_SESSIONS:
                 # Remove oldest session
                 oldest_sid = min(self.memory_store.keys(), 
@@ -601,32 +561,6 @@ class SessionStore:
                 if name:
                     return name
         return None
-
-    async def cleanup_task(self):
-        """PRIVACY COMPLIANCE: Cleanup runs every 5 minutes to ensure 30-min timeout"""
-        try:
-            while True:
-                await asyncio.sleep(CLEANUP_INTERVAL_SEC)  # Every 5 minutes
-                now = time.time() * 1000
-                limit_ms = INACTIVITY_TIMEOUT_SEC * 1000
-                
-                expired = [
-                    sid for sid, session in self.memory_store.items()
-                    if now - session['lastActive'] > limit_ms
-                ]
-                
-                for sid in expired:
-                    del self.memory_store[sid]
-                
-                if expired:
-                    logger.info(f"Privacy Cleanup: Deleted {len(expired)} sessions (30min timeout)")
-                
-                # Log current session count
-                logger.info(f"Active Sessions: {len(self.memory_store)}/{MAX_CONCURRENT_SESSIONS}")
-                
-        except Exception as e:
-            # Silently fail in serverless environments
-            logger.error(f"Cleanup task error (expected in serverless): {e}")
 
 session_store = SessionStore()
 
@@ -1017,7 +951,7 @@ async def privacy_status(request: Request):
         "serverStoresHistory": not PRIVACY_MODE,
         "activeSessions": len(session_store.memory_store),
         "maxSessions": MAX_CONCURRENT_SESSIONS,
-        "cleanupIntervalMinutes": CLEANUP_INTERVAL_SEC // 60,
+        "deploymentMode": "serverless" if IS_SERVERLESS else "server",
         "logRetentionHours": 48,
     }
     
@@ -1064,17 +998,6 @@ async def clear_session_endpoint(request: Request, response: Response):
 @app.get("/health")
 async def health_check():
     """System health and status check"""
-    try:
-        import psutil
-        process = psutil.Process()
-        mem_mb = process.memory_info().rss / 1024 / 1024
-        mem_info = {
-            "memoryUsageMB": round(mem_mb, 1),
-            "memoryAvailable": mem_mb < 3500  # Safe threshold for 4GB system
-        }
-    except ImportError:
-        mem_info = {"memoryMonitoring": "unavailable"}
-    
     return {
         "status": "healthy",
         "version": "9.1",
@@ -1082,7 +1005,7 @@ async def health_check():
         "privacyMode": PRIVACY_MODE,
         "activeSessions": len(session_store.memory_store),
         "maxSessions": MAX_CONCURRENT_SESSIONS,
-        **mem_info
+        "deploymentMode": "serverless" if IS_SERVERLESS else "server"
     }
 
 @app.get("/")
@@ -1093,6 +1016,7 @@ async def root():
         "version": "9.1",
         "creator": "Alakmar Teenwala",
         "privacyPolicy": "https://esamz.site/privacy",
+        "deploymentMode": "serverless" if IS_SERVERLESS else "server",
         "endpoints": {
             "chat": "POST /api/chat",
             "health": "GET /health",
@@ -1101,7 +1025,11 @@ async def root():
         }
     }
 
-# ================= RUN SERVER =================
+# ================= VERCEL SERVERLESS HANDLER =================
+# This is the entry point for Vercel
+handler = app
+
+# ================= RUN SERVER (Local development only) =================
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
