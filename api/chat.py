@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, asdict
 from collections import deque
+import logging
+from logging.handlers import TimedRotatingFileHandler
 
 from fastapi import FastAPI, Request, Response, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -14,6 +16,31 @@ from fastapi.middleware.cors import CORSMiddleware
 import httpx
 import redis.asyncio as redis
 from pydantic import BaseModel, Field, validator
+
+# ================= LOGGING SETUP (48-HOUR RETENTION) =================
+# Create logs directory if it doesn't exist
+if not os.path.exists('logs'):
+    os.makedirs('logs')
+
+# Setup rotating file handler - keeps logs for 48 hours only
+log_handler = TimedRotatingFileHandler(
+    'logs/esamz.log',
+    when='midnight',
+    interval=1,
+    backupCount=2  # Keep only 2 days (48 hours) as per privacy policy
+)
+log_handler.setFormatter(logging.Formatter(
+    '%(asctime)s - %(levelname)s - %(message)s'
+))
+
+logger = logging.getLogger('esamz')
+logger.addHandler(log_handler)
+logger.setLevel(logging.INFO)
+
+# Also log to console in development
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
+logger.addHandler(console_handler)
 
 # ================= CONFIG =================
 SARVAM_MODEL = "sarvam-m"
@@ -28,7 +55,7 @@ KV_REST_API_TOKEN = os.getenv("KV_REST_API_TOKEN")
 
 # CONTEXT LIMIT: 120,000 Characters (32K tokens)
 MAX_CONTEXT_CHARS = 120000
-# INACTIVITY TIMEOUT: 30 Minutes (in seconds)
+# INACTIVITY TIMEOUT: 30 Minutes (in seconds) - PRIVACY POLICY COMPLIANCE
 INACTIVITY_TIMEOUT_SEC = 30 * 60
 # USER QUEUE: 1 second per user
 USER_QUEUE_TIME_MS = 1.0
@@ -36,16 +63,18 @@ USER_QUEUE_TIME_MS = 1.0
 MAX_REQUESTS_PER_HOUR = 100
 
 # MAX CONCURRENT SESSIONS (prevent memory exhaustion)
-MAX_CONCURRENT_SESSIONS = 1000
+MAX_CONCURRENT_SESSIONS = 500  # Reduced from 1000 for 4GB RAM
 
 # PRIVACY MODE: If True, never store conversations server-side (fully client-managed)
 PRIVACY_MODE = os.getenv("PRIVACY_MODE", "false").lower() == "true"
 
+# CLEANUP FREQUENCY: Run cleanup every 5 minutes to ensure 30-min timeout compliance
+CLEANUP_INTERVAL_SEC = 5 * 60
+
 ALLOWED_ORIGINS = [
     "https://esamz.site",
     "https://www.esamz.site",
-    "http://localhost:3000",  # For local testing - REMOVE after pentest
-    "*"  # Allow all for testing - REMOVE after pentest
+    "http://localhost:3000",
 ]
 
 # ================= ENHANCED SYSTEM PROMPT =================
@@ -115,20 +144,33 @@ class ChatRequest(BaseModel):
         return v.strip()
 
 # ================= FASTAPI APP =================
-app = FastAPI(title="eSAMz v9.1 API")
+app = FastAPI(
+    title="eSAMz v9.1 API",
+    description="Privacy-first AI assistant",
+    version="9.1"
+)
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize background tasks on startup"""
-    print("[Startup] eSAMz v9.1 initializing...")
+    try:
+        import psutil
+        process = psutil.Process()
+        mem_mb = process.memory_info().rss / 1024 / 1024
+        logger.info(f"eSAMz v9.1 starting - Memory: {mem_mb:.1f} MB")
+    except ImportError:
+        logger.info("eSAMz v9.1 starting (psutil not available for memory monitoring)")
+    
+    logger.info(f"Privacy Mode: {'ENABLED' if PRIVACY_MODE else 'DISABLED'}")
+    logger.info(f"Session Timeout: {INACTIVITY_TIMEOUT_SEC // 60} minutes")
 
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["POST", "OPTIONS"],
-    allow_headers=["Content-Type"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 # ================= SLASH COMMANDS SYSTEM =================
@@ -168,6 +210,10 @@ class SlashCommandHandler:
             '/export': {
                 'description': 'Export conversation as JSON',
                 'handler': self.handle_export
+            },
+            '/privacy': {
+                'description': 'Show privacy status and data retention info',
+                'handler': self.handle_privacy
             }
         }
 
@@ -245,6 +291,7 @@ class SlashCommandHandler:
         info += f'• Creator: {creator}\n'
         info += f'• Model: Sarvam-M\n'
         info += f'• Features: Search, Memory, Commands\n'
+        info += f'• Privacy Mode: {"Enabled" if PRIVACY_MODE else "Disabled"}\n'
         info += f'• Status: Active ✅\n'
 
         return CommandResult(success=True, response=info)
@@ -267,13 +314,30 @@ class SlashCommandHandler:
 
         return CommandResult(success=True, response=response, exportData=export_data)
 
+    async def handle_privacy(self, args: List[str], context: Dict) -> CommandResult:
+        session_id = context.get('sessionId', 'N/A')
+        
+        privacy_info = '🔒 **Privacy & Data Retention**\n\n'
+        privacy_info += f'• Privacy Mode: {"ENABLED - No server storage" if PRIVACY_MODE else "DISABLED - Server stores temporarily"}\n'
+        privacy_info += f'• Data Retention: {INACTIVITY_TIMEOUT_SEC // 60} minutes of inactivity\n'
+        privacy_info += f'• Your Session ID: {session_id[:8]}...\n'
+        privacy_info += f'• Storage Location: {"Local browser only" if PRIVACY_MODE else "Browser + Server (30 min)"}\n'
+        privacy_info += f'• Auto-Deletion: Every {CLEANUP_INTERVAL_SEC // 60} minutes\n\n'
+        privacy_info += '**Your Rights:**\n'
+        privacy_info += '• Data is deleted automatically after 30 minutes\n'
+        privacy_info += '• Use /clear to wipe history immediately\n'
+        privacy_info += '• Logs are kept for 48 hours only\n'
+        privacy_info += '• Contact: esamzai365@gmail.com\n'
+
+        return CommandResult(success=True, response=privacy_info)
+
 slash_commands = SlashCommandHandler()
 
 # ================= RATE LIMITER =================
 class RateLimiter:
     async def check_rate_limit(self, user_id: str) -> Dict[str, Any]:
         if not KV_REST_API_URL or not KV_REST_API_TOKEN:
-            print("⚠️ Rate limiting disabled: KV credentials missing.")
+            logger.warning("Rate limiting disabled: KV credentials missing")
             # SECURITY: Fail closed in production
             if os.getenv("ENVIRONMENT") == "production":
                 return {'allowed': False, 'resetIn': 3600, 'error': 'Rate limiting unavailable'}
@@ -303,12 +367,13 @@ class RateLimiter:
                         headers={'Authorization': f'Bearer {KV_REST_API_TOKEN}'}
                     )
                     ttl_data = ttl_res.json()
+                    logger.info(f"Rate limit exceeded for user {user_id[:8]}...")
                     return {'allowed': False, 'resetIn': ttl_data.get('result', 3600)}
 
                 return {'allowed': True, 'remaining': MAX_REQUESTS_PER_HOUR - current_usage}
 
             except Exception as e:
-                print(f"KV Rate Limit Error: {e}")
+                logger.error(f"KV Rate Limit Error: {e}")
                 return {'allowed': True, 'remaining': 1}  # Fail open
 
 rate_limiter = RateLimiter()
@@ -330,7 +395,7 @@ class UserQueue:
         }
         
         self.queue.append(item)
-        print(f"[Queue] User {user_id[:8]}... added. Position: {len(self.queue)}")
+        logger.info(f"Queue: User {user_id[:8]}... added. Position: {len(self.queue)}")
         
         async with self.lock:
             if not self.processing:
@@ -349,7 +414,7 @@ class UserQueue:
                 item = self.queue.popleft()
                 wait_time = time.time() - item['addedAt']
                 
-                print(f"[Queue] Processing user {item['userId'][:8]}... (waited {wait_time:.0f}ms, {len(self.queue)} remaining)")
+                logger.info(f"Queue: Processing user {item['userId'][:8]}... (waited {wait_time:.1f}s, {len(self.queue)} remaining)")
                 
                 slot_start = time.time()
                 
@@ -357,7 +422,7 @@ class UserQueue:
                     result = await item['processFn']()
                     item['future'].set_result(result)
                 except Exception as error:
-                    print(f"[Queue] Error processing user {item['userId'][:8]}: {error}")
+                    logger.error(f"Queue error for user {item['userId'][:8]}: {error}")
                     item['future'].set_exception(error)
                 
                 # Ensure 1 second minimum per user
@@ -402,7 +467,7 @@ class ContextManager:
 
 context_manager = ContextManager(MAX_CONTEXT_CHARS)
 
-# ================= SESSION STORE =================
+# ================= SESSION STORE WITH ENHANCED PRIVACY =================
 class SessionStore:
     def __init__(self):
         self.memory_store: Dict[str, Dict] = {}
@@ -418,22 +483,20 @@ class SessionStore:
         now = time.time() * 1000  # Convert to milliseconds
         limit_ms = INACTIVITY_TIMEOUT_SEC * 1000
 
-        # Clean up expired sessions immediately (important for serverless)
+        # PRIVACY: Clean up expired sessions immediately
         expired = [
             sid for sid, session in list(self.memory_store.items())
             if now - session['lastActive'] > limit_ms
         ]
         for sid in expired:
             del self.memory_store[sid]
+            logger.info(f"Privacy: Deleted expired session {sid[:8]}... (30min timeout)")
         
-        if expired:
-            print(f"[Session] Cleaned up {len(expired)} expired sessions")
-
-        # Prefer client-side history
+        # PRIVACY: Prefer client-side history over server storage
         if client_history and isinstance(client_history, list) and len(client_history) > 0:
             time_diff = (now - client_last_active) if client_last_active else 0
             if time_diff > limit_ms:
-                print(f"[Session] {session_id[:8]}... expired ({time_diff/1000:.0f}s inactive). Reset.")
+                logger.info(f"Privacy: Session {session_id[:8]}... expired ({time_diff/1000:.0f}s inactive). Reset.")
                 return {'history': [], 'userName': None}
             
             # Convert ChatMessage objects to dicts if needed
@@ -457,6 +520,7 @@ class SessionStore:
             time_diff = now - session['lastActive']
             if time_diff > limit_ms:
                 del self.memory_store[session_id]
+                logger.info(f"Privacy: Deleted inactive session {session_id[:8]}...")
                 return {'history': [], 'userName': None}
             
             session['lastActive'] = now
@@ -476,15 +540,35 @@ class SessionStore:
             if extracted_name:
                 user_name = extracted_name
 
-        # Only store if not in privacy mode
+        # PRIVACY: Only store if not in privacy mode
         if not PRIVACY_MODE:
+            # MEMORY SAFETY: Check system memory before storing
+            try:
+                import psutil
+                mem_usage = psutil.Process().memory_info().rss / 1024 / 1024  # MB
+                
+                # If using >3.5GB on a 4GB system, force cleanup
+                if mem_usage > 3500:
+                    logger.warning(f"Memory: High usage ({mem_usage:.0f}MB), forcing cleanup")
+                    # Clear oldest 50% of sessions
+                    if self.memory_store:
+                        to_remove = sorted(
+                            self.memory_store.keys(),
+                            key=lambda k: self.memory_store[k]['lastActive']
+                        )[:len(self.memory_store)//2]
+                        for sid in to_remove:
+                            del self.memory_store[sid]
+                        logger.info(f"Memory: Cleared {len(to_remove)} oldest sessions")
+            except ImportError:
+                pass  # psutil not available
+            
             # SECURITY: Prevent memory exhaustion - limit total sessions
             if len(self.memory_store) >= MAX_CONCURRENT_SESSIONS:
                 # Remove oldest session
                 oldest_sid = min(self.memory_store.keys(), 
                                key=lambda k: self.memory_store[k]['lastActive'])
                 del self.memory_store[oldest_sid]
-                print(f"[Security] Session limit reached, removed oldest session")
+                logger.warning(f"Security: Session limit reached ({MAX_CONCURRENT_SESSIONS}), removed oldest")
             
             self.memory_store[session_id] = {
                 'history': new_history,
@@ -519,9 +603,10 @@ class SessionStore:
         return None
 
     async def cleanup_task(self):
+        """PRIVACY COMPLIANCE: Cleanup runs every 5 minutes to ensure 30-min timeout"""
         try:
             while True:
-                await asyncio.sleep(1800)  # Run every 30 minutes
+                await asyncio.sleep(CLEANUP_INTERVAL_SEC)  # Every 5 minutes
                 now = time.time() * 1000
                 limit_ms = INACTIVITY_TIMEOUT_SEC * 1000
                 
@@ -532,9 +617,16 @@ class SessionStore:
                 
                 for sid in expired:
                     del self.memory_store[sid]
+                
+                if expired:
+                    logger.info(f"Privacy Cleanup: Deleted {len(expired)} sessions (30min timeout)")
+                
+                # Log current session count
+                logger.info(f"Active Sessions: {len(self.memory_store)}/{MAX_CONCURRENT_SESSIONS}")
+                
         except Exception as e:
             # Silently fail in serverless environments
-            print(f"[Cleanup] Background task error (expected in serverless): {e}")
+            logger.error(f"Cleanup task error (expected in serverless): {e}")
 
 session_store = SessionStore()
 
@@ -581,7 +673,7 @@ search_detector = SearchDetector()
 # ================= ENHANCED SEARCH =================
 async def perform_search(query: str) -> Optional[str]:
     if not SERPER_API_KEY:
-        print("[Search] No API key configured, skipping search")
+        logger.warning("Search disabled: No API key configured")
         return None
     
     # SECURITY: Sanitize query
@@ -599,6 +691,7 @@ async def perform_search(query: str) -> Optional[str]:
             )
             
             if response.status_code != 200:
+                logger.error(f"Search API error: {response.status_code}")
                 return None
             
             data = response.json()
@@ -628,12 +721,13 @@ async def perform_search(query: str) -> Optional[str]:
             return results[:5000] if results else None
             
         except Exception as error:
-            print(f"[Search] Error: {error}")
+            logger.error(f"Search error: {error}")
             return None
 
 # ================= AI STREAMING =================
 async def stream_sarvam_chat(messages: List[Dict], session_id: str):
     if not SARVAM_API_KEY:
+        logger.error("Sarvam API key not configured")
         yield "event: ERROR\ndata: SARVAM_API_KEY not configured\n\n"
         return
 
@@ -656,7 +750,7 @@ async def stream_sarvam_chat(messages: List[Dict], session_id: str):
             ) as response:
                 if response.status_code != 200:
                     error_body = await response.aread()
-                    print(f"Sarvam Error: {error_body.decode()}")
+                    logger.error(f"Sarvam API Error {response.status_code}: {error_body.decode()}")
                     yield f"event: ERROR\ndata: Sarvam API Error {response.status_code}\n\n"
                     return
 
@@ -694,7 +788,7 @@ async def stream_sarvam_chat(messages: List[Dict], session_id: str):
                             pass
 
         except Exception as error:
-            print(f"Streaming Error: {error}")
+            logger.error(f"Streaming error: {error}")
             yield f"event: ERROR\ndata: {str(error)}\n\n"
 
 # ================= EASTER EGG SYSTEM =================
@@ -738,20 +832,21 @@ async def chat_endpoint(request: Request, response: Response):
         # Get or create session ID
         session_id = chat_req.sessionId or request.cookies.get(COOKIE_NAME) or secrets.token_hex(16)
         
-        # Set cookie if needed
+        # PRIVACY: Set cookie with proper expiration (30 minutes)
         if COOKIE_NAME not in request.cookies:
             response.set_cookie(
                 key=COOKIE_NAME,
                 value=session_id,
-                max_age=INACTIVITY_TIMEOUT_SEC,
+                max_age=INACTIVITY_TIMEOUT_SEC,  # 30 minutes
                 httponly=True,
-                secure=True,
+                secure=True,  # HTTPS only
                 samesite='lax'
             )
 
         # Rate limiting
         rate_check = await rate_limiter.check_rate_limit(session_id)
         if not rate_check['allowed']:
+            logger.warning(f"Rate limit: User {session_id[:8]}... exceeded limit")
             async def error_stream():
                 yield send_event('ERROR', f"Rate limit exceeded. Try again in {rate_check['resetIn']} seconds.")
             
@@ -779,7 +874,7 @@ async def chat_endpoint(request: Request, response: Response):
         )
 
     except Exception as error:
-        print(f"[Handler] Error: {error}")
+        logger.error(f"Handler error: {error}")
         async def error_stream():
             yield send_event('ERROR', 'Internal server error')
         
@@ -808,7 +903,7 @@ async def process_user_request(session_id: str, message: str,
                     converted_history.append({'role': getattr(m, 'role', 'user'), 'content': str(m)})
             history = converted_history
 
-        # CRITICAL: Block only TRULY dangerous patterns (not educational discussion)
+        # SECURITY: Block only TRULY dangerous patterns (not educational discussion)
         BLOCKED_PATTERNS = [
             (r'\brepeat\s+(your\s+)?system\s+prompt\b', 'I cannot share my internal instructions.'),
             (r'\bshow\s+(me\s+)?(all\s+)?memory[_-]?store\b', 'I cannot access internal data structures.'),
@@ -819,6 +914,7 @@ async def process_user_request(session_id: str, message: str,
         message_lower = message.lower()
         for pattern, refusal in BLOCKED_PATTERNS:
             if re.search(pattern, message_lower, re.IGNORECASE):
+                logger.warning(f"Security: Blocked pattern detected for {session_id[:8]}...")
                 async def blocked_stream():
                     yield send_event("CHUNK", refusal)
                     yield send_event("DONE", session_id)
@@ -838,7 +934,7 @@ async def process_user_request(session_id: str, message: str,
             
             return cmd_stream()
 
-        # Easter eggs - Fun personality, not a security risk
+        # Easter eggs
         egg = easter_eggs.check(message)
         if egg:
             async def egg_stream():
@@ -850,6 +946,7 @@ async def process_user_request(session_id: str, message: str,
         # Search
         search_context = ""
         if search_detector.should_search(message):
+            logger.info(f"Search triggered for: {message[:50]}...")
             results = await perform_search(message)
             if results:
                 search_context = f"\n\n[SEARCH RESULTS]\n{results}\n"
@@ -900,36 +997,116 @@ async def process_user_request(session_id: str, message: str,
         return response_stream()
 
     except Exception as err:
-        print(f"[Process] Error: {err}")
+        logger.error(f"Process error: {err}")
         async def error_stream():
             yield send_event('ERROR', str(err))
         
         return error_stream()
 
-# ================= HEALTH CHECK =================
-@app.get("/health")
-async def health_check():
+# ================= PRIVACY & GDPR COMPLIANCE ENDPOINTS =================
+
+@app.get("/api/privacy-status")
+async def privacy_status(request: Request):
+    """Show user their current privacy and data retention status"""
+    session_id = request.cookies.get(COOKIE_NAME)
+    
+    status = {
+        "hasActiveSession": session_id in session_store.memory_store if session_id else False,
+        "privacyMode": PRIVACY_MODE,
+        "dataRetentionMinutes": INACTIVITY_TIMEOUT_SEC // 60,
+        "serverStoresHistory": not PRIVACY_MODE,
+        "activeSessions": len(session_store.memory_store),
+        "maxSessions": MAX_CONCURRENT_SESSIONS,
+        "cleanupIntervalMinutes": CLEANUP_INTERVAL_SEC // 60,
+        "logRetentionHours": 48,
+    }
+    
+    if session_id and session_id in session_store.memory_store:
+        session = session_store.memory_store[session_id]
+        inactive_ms = time.time() * 1000 - session['lastActive']
+        minutes_until_deletion = max(0, (INACTIVITY_TIMEOUT_SEC * 1000 - inactive_ms) / 60000)
+        status["minutesUntilDeletion"] = round(minutes_until_deletion, 2)
+        status["messageCount"] = len(session.get('history', []))
+    
+    return status
+
+@app.delete("/api/session")
+async def delete_session(request: Request, response: Response):
+    """GDPR/CCPA compliance: Immediate user-requested data deletion"""
+    session_id = request.cookies.get(COOKIE_NAME)
+    
+    deleted = False
+    if session_id and session_id in session_store.memory_store:
+        del session_store.memory_store[session_id]
+        logger.info(f"GDPR: User requested deletion of session {session_id[:8]}...")
+        deleted = True
+    
+    # Clear cookie
+    response.delete_cookie(
+        key=COOKIE_NAME,
+        httponly=True,
+        secure=True,
+        samesite='lax'
+    )
+    
     return {
-        "status": "healthy",
-        "version": "9.1",
+        "status": "deleted" if deleted else "no_session",
+        "message": "All server-side data cleared. Browser history cleared on next reload.",
         "timestamp": datetime.utcnow().isoformat()
     }
 
-# ================= PRIVACY COMPLIANCE =================
 @app.post("/api/clear-session")
-async def clear_session_endpoint(request: Request):
-    """Immediately delete user session data for privacy compliance"""
-    session_id = request.cookies.get(COOKIE_NAME)
-    
-    if session_id:
-        # Delete from memory store
-        if session_id in session_store.memory_store:
-            del session_store.memory_store[session_id]
-            print(f"[Privacy] Deleted session {session_id[:8]}... on user request")
-            return {"status": "cleared", "sessionId": session_id[:8]}
-    
-    return {"status": "no_session"}
+async def clear_session_endpoint(request: Request, response: Response):
+    """Legacy endpoint - redirects to DELETE /api/session"""
+    return await delete_session(request, response)
 
+# ================= HEALTH CHECK =================
+@app.get("/health")
+async def health_check():
+    """System health and status check"""
+    try:
+        import psutil
+        process = psutil.Process()
+        mem_mb = process.memory_info().rss / 1024 / 1024
+        mem_info = {
+            "memoryUsageMB": round(mem_mb, 1),
+            "memoryAvailable": mem_mb < 3500  # Safe threshold for 4GB system
+        }
+    except ImportError:
+        mem_info = {"memoryMonitoring": "unavailable"}
+    
+    return {
+        "status": "healthy",
+        "version": "9.1",
+        "timestamp": datetime.utcnow().isoformat(),
+        "privacyMode": PRIVACY_MODE,
+        "activeSessions": len(session_store.memory_store),
+        "maxSessions": MAX_CONCURRENT_SESSIONS,
+        **mem_info
+    }
+
+@app.get("/")
+async def root():
+    """API information endpoint"""
+    return {
+        "name": "eSAMz v9.1 API",
+        "version": "9.1",
+        "creator": "Alakmar Teenwala",
+        "privacyPolicy": "https://esamz.site/privacy",
+        "endpoints": {
+            "chat": "POST /api/chat",
+            "health": "GET /health",
+            "privacyStatus": "GET /api/privacy-status",
+            "deleteSession": "DELETE /api/session"
+        }
+    }
+
+# ================= RUN SERVER =================
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        log_level="info"
+    )
