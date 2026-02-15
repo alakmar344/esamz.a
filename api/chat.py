@@ -102,6 +102,11 @@ class ChatRequest(BaseModel):
 # ================= FASTAPI APP =================
 app = FastAPI(title="eSAMz v9.1 API")
 
+@app.on_event("startup")
+async def startup_event():
+    """Initialize background tasks on startup"""
+    print("[Startup] eSAMz v9.1 initializing...")
+
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
@@ -383,10 +388,15 @@ context_manager = ContextManager(MAX_CONTEXT_CHARS)
 class SessionStore:
     def __init__(self):
         self.memory_store: Dict[str, Dict] = {}
-        asyncio.create_task(self.cleanup_task())
+        self._cleanup_started = False
 
     async def get_session(self, session_id: str, client_history: Optional[List] = None, 
                          client_last_active: Optional[int] = None) -> Dict[str, Any]:
+        # Start cleanup task lazily (only once)
+        if not self._cleanup_started:
+            self._cleanup_started = True
+            asyncio.create_task(self.cleanup_task())
+        
         now = time.time() * 1000  # Convert to milliseconds
         limit_ms = INACTIVITY_TIMEOUT_SEC * 1000
 
@@ -458,18 +468,22 @@ class SessionStore:
         return None
 
     async def cleanup_task(self):
-        while True:
-            await asyncio.sleep(1800)  # Run every 30 minutes
-            now = time.time() * 1000
-            limit_ms = INACTIVITY_TIMEOUT_SEC * 1000
-            
-            expired = [
-                sid for sid, session in self.memory_store.items()
-                if now - session['lastActive'] > limit_ms
-            ]
-            
-            for sid in expired:
-                del self.memory_store[sid]
+        try:
+            while True:
+                await asyncio.sleep(1800)  # Run every 30 minutes
+                now = time.time() * 1000
+                limit_ms = INACTIVITY_TIMEOUT_SEC * 1000
+                
+                expired = [
+                    sid for sid, session in self.memory_store.items()
+                    if now - session['lastActive'] > limit_ms
+                ]
+                
+                for sid in expired:
+                    del self.memory_store[sid]
+        except Exception as e:
+            # Silently fail in serverless environments
+            print(f"[Cleanup] Background task error (expected in serverless): {e}")
 
 session_store = SessionStore()
 
