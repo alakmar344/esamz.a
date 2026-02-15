@@ -1758,12 +1758,39 @@
                 }
             }
 
-            async runOCR(file) {
-                const worker = await Tesseract.createWorker('eng', 1);
-                const { data: { text } } = await worker.recognize(file);
-                await worker.terminate();
-                return text;
-            }
+            // Is function ko replace karein
+async runOCR(file) {
+    console.log("Starting OCR for:", file.name);
+    try {
+        // Step 1: Worker create karein
+        const worker = await Tesseract.createWorker({
+            logger: m => console.log(m) // Console mein progress dikhayega
+        });
+        
+        // Step 2: Language load karein (Explicitly)
+        await worker.loadLanguage('eng');
+        await worker.initialize('eng');
+        
+        // Step 3: Recognize karein
+        const { data: { text } } = await worker.recognize(file);
+        
+        // Step 4: Cleanup
+        await worker.terminate();
+        
+        if (!text || text.trim() === "") {
+            throw new Error("No text found in image");
+        }
+        
+        return text;
+    } catch (err) {
+        console.error("OCR Error:", err);
+        // Agar fetch error hai to user ko batayein
+        if (err.message.includes("fetch")) {
+            throw new Error("Internet Error: Language file download nahi ho payi.");
+        }
+        throw err;
+    }
+}
 
             async handleSend() {
                 const text = this.dom.input.value.trim();
