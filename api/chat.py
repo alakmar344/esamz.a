@@ -35,6 +35,9 @@ USER_QUEUE_TIME_MS = 1.0
 # MAX REQUESTS PER HOUR PER USER
 MAX_REQUESTS_PER_HOUR = 100
 
+# PRIVACY MODE: If True, never store conversations server-side (fully client-managed)
+PRIVACY_MODE = os.getenv("PRIVACY_MODE", "false").lower() == "true"
+
 ALLOWED_ORIGINS = [
     "https://esamz.site",
     "https://www.esamz.site"
@@ -458,11 +461,13 @@ class SessionStore:
             if extracted_name:
                 user_name = extracted_name
 
-        self.memory_store[session_id] = {
-            'history': new_history,
-            'userName': user_name,
-            'lastActive': time.time() * 1000
-        }
+        # Only store if not in privacy mode
+        if not PRIVACY_MODE:
+            self.memory_store[session_id] = {
+                'history': new_history,
+                'userName': user_name,
+                'lastActive': time.time() * 1000
+            }
         
         return {'history': new_history, 'userName': user_name}
 
@@ -861,6 +866,21 @@ async def health_check():
         "version": "9.1",
         "timestamp": datetime.utcnow().isoformat()
     }
+
+# ================= PRIVACY COMPLIANCE =================
+@app.post("/api/clear-session")
+async def clear_session_endpoint(request: Request):
+    """Immediately delete user session data for privacy compliance"""
+    session_id = request.cookies.get(COOKIE_NAME)
+    
+    if session_id:
+        # Delete from memory store
+        if session_id in session_store.memory_store:
+            del session_store.memory_store[session_id]
+            print(f"[Privacy] Deleted session {session_id[:8]}... on user request")
+            return {"status": "cleared", "sessionId": session_id[:8]}
+    
+    return {"status": "no_session"}
 
 if __name__ == "__main__":
     import uvicorn
