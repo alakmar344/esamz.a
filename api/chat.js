@@ -570,6 +570,11 @@ async function streamSarvamChat({ messages, onChunk, onError }) {
       }),
       signal: AbortSignal.timeout(120000)
     });
+catch (error) {
+  console.error("Fetch Error:", error.message);
+  if (onError) onError(error);
+  throw error; // Isse request properly terminate hogi
+}
 if (!res.ok) {
   const errorBody = await res.text();
   console.error("Sarvam Error Details:", errorBody);
