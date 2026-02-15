@@ -668,7 +668,7 @@ export default async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const { message, sessionId: providedSessionId, clientHistory, clientLastActive } = body;
 
-    if (!message || message.length > 10000) {
+    if (!message || message.length > 50000) {
       sendEvent(res, 'ERROR', 'Invalid message');
       return res.end();
     }
