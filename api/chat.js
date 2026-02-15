@@ -463,7 +463,7 @@ class SessionStore {
           this.memoryStore.delete(id);
         }
       }
-    }, 10 * 60 * 1000);
+    }, 1800);
   }
 }
 
@@ -570,12 +570,11 @@ async function streamSarvamChat({ messages, onChunk, onError }) {
       }),
       signal: AbortSignal.timeout(120000)
     });
-
-    if (!res.ok) throw new Error(`Sarvam API Error ${res.status}`);
-  } catch (error) {
-    if (onError) onError(error);
-    throw error;
-  }
+if (!res.ok) {
+  const errorBody = await res.text();
+  console.error("Sarvam Error Details:", errorBody);
+  throw new Error(`Sarvam API Error ${res.status}: ${errorBody}`);
+}
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
