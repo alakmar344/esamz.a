@@ -108,16 +108,6 @@ class ChatRequest(BaseModel):
 # ================= FASTAPI APP =================
 app = FastAPI(title="eSAMz v9.1 API")
 
-# Add request size limit for security
-app.add_middleware(
-    type("RequestSizeLimitMiddleware", (), {
-        "__init__": lambda self, app: setattr(self, "app", app),
-        "__call__": lambda self, scope, receive, send: self.app(scope, receive, send) if scope.get("type") != "http" else self.check_size(scope, receive, send),
-        "check_size": lambda self, scope, receive, send: self.app(scope, receive, send)  # Simplified for now
-    }),
-    app
-)
-
 @app.on_event("startup")
 async def startup_event():
     """Initialize background tasks on startup"""
