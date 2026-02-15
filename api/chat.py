@@ -27,7 +27,7 @@ logger.addHandler(console_handler)
 logger.setLevel(logging.INFO)
 
 # Note: In Vercel, logs are captured automatically and retained for 48 hours
-# No need for file-based logging in serverless environment
+# This maintains privacy policy compliance without file-based logging
 
 # ================= CONFIG =================
 SARVAM_MODEL = "sarvam-m"
@@ -1024,10 +1024,6 @@ async def root():
             "deleteSession": "DELETE /api/session"
         }
     }
-
-# ================= VERCEL SERVERLESS HANDLER =================
-# This is the entry point for Vercel
-handler = app
 
 # ================= RUN SERVER (Local development only) =================
 if __name__ == "__main__":
