@@ -2,7 +2,7 @@ import crypto from "crypto";
 
 /* ================= CONFIG ================= */
 const SARVAM_MODEL = "sarvam-m";
-const MAX_COMPLETION_TOKENS = 30048;
+const MAX_COMPLETION_TOKENS = 4098;
 const COOKIE_NAME = "esamz_sid";
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
 
