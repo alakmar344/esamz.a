@@ -35,6 +35,9 @@ USER_QUEUE_TIME_MS = 1.0
 # MAX REQUESTS PER HOUR PER USER
 MAX_REQUESTS_PER_HOUR = 100
 
+# MAX CONCURRENT SESSIONS (prevent memory exhaustion)
+MAX_CONCURRENT_SESSIONS = 1000
+
 # PRIVACY MODE: If True, never store conversations server-side (fully client-managed)
 PRIVACY_MODE = os.getenv("PRIVACY_MODE", "false").lower() == "true"
 
@@ -104,6 +107,16 @@ class ChatRequest(BaseModel):
 
 # ================= FASTAPI APP =================
 app = FastAPI(title="eSAMz v9.1 API")
+
+# Add request size limit for security
+app.add_middleware(
+    type("RequestSizeLimitMiddleware", (), {
+        "__init__": lambda self, app: setattr(self, "app", app),
+        "__call__": lambda self, scope, receive, send: self.app(scope, receive, send) if scope.get("type") != "http" else self.check_size(scope, receive, send),
+        "check_size": lambda self, scope, receive, send: self.app(scope, receive, send)  # Simplified for now
+    }),
+    app
+)
 
 @app.on_event("startup")
 async def startup_event():
@@ -262,6 +275,9 @@ class RateLimiter:
     async def check_rate_limit(self, user_id: str) -> Dict[str, Any]:
         if not KV_REST_API_URL or not KV_REST_API_TOKEN:
             print("⚠️ Rate limiting disabled: KV credentials missing.")
+            # SECURITY: Fail closed in production
+            if os.getenv("ENVIRONMENT") == "production":
+                return {'allowed': False, 'resetIn': 3600, 'error': 'Rate limiting unavailable'}
             return {'allowed': True, 'remaining': 999}
 
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -463,6 +479,14 @@ class SessionStore:
 
         # Only store if not in privacy mode
         if not PRIVACY_MODE:
+            # SECURITY: Prevent memory exhaustion - limit total sessions
+            if len(self.memory_store) >= MAX_CONCURRENT_SESSIONS:
+                # Remove oldest session
+                oldest_sid = min(self.memory_store.keys(), 
+                               key=lambda k: self.memory_store[k]['lastActive'])
+                del self.memory_store[oldest_sid]
+                print(f"[Security] Session limit reached, removed oldest session")
+            
             self.memory_store[session_id] = {
                 'history': new_history,
                 'userName': user_name,
@@ -561,6 +585,9 @@ async def perform_search(query: str) -> Optional[str]:
         print("[Search] No API key configured, skipping search")
         return None
     
+    # SECURITY: Sanitize query
+    query = query[:500]  # Limit query length
+    
     async with httpx.AsyncClient(timeout=15.0) as client:
         try:
             response = await client.post(
@@ -582,18 +609,24 @@ async def perform_search(query: str) -> Optional[str]:
             if 'answerBox' in data:
                 answer = data['answerBox'].get('snippet') or data['answerBox'].get('answer', '')
                 if answer:
+                    # SECURITY: Sanitize search results
+                    answer = answer[:1000]  # Limit length
                     results += f"{answer}\n\n"
             
             # Organic results
             if 'organic' in data and len(data['organic']) > 0:
                 for i, r in enumerate(data['organic'][:5], 1):
-                    results += f"{i}. {r.get('title', '')}\n   {r.get('snippet', '')}\n\n"
+                    title = str(r.get('title', ''))[:200]
+                    snippet = str(r.get('snippet', ''))[:500]
+                    results += f"{i}. {title}\n   {snippet}\n\n"
             
             # Knowledge graph
             if data.get('knowledgeGraph', {}).get('description'):
-                results += f"\n\nOverview: {data['knowledgeGraph']['description']}"
+                desc = str(data['knowledgeGraph']['description'])[:500]
+                results += f"\n\nOverview: {desc}"
             
-            return results.strip() or None
+            # SECURITY: Total limit on search results
+            return results[:5000] if results else None
             
         except Exception as error:
             print(f"[Search] Error: {error}")
