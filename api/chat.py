@@ -407,8 +407,20 @@ class SessionStore:
                 print(f"[Session] {session_id[:8]}... expired ({time_diff/1000:.0f}s inactive). Reset.")
                 return {'history': [], 'userName': None}
             
-            user_name = self.extract_name(client_history)
-            return {'history': client_history, 'userName': user_name}
+            # Convert ChatMessage objects to dicts if needed
+            converted_history = []
+            for msg in client_history:
+                if isinstance(msg, dict):
+                    converted_history.append(msg)
+                else:
+                    # Handle ChatMessage or other objects
+                    converted_history.append({
+                        'role': getattr(msg, 'role', 'user'),
+                        'content': getattr(msg, 'content', str(msg))
+                    })
+            
+            user_name = self.extract_name(converted_history)
+            return {'history': converted_history, 'userName': user_name}
 
         # Fallback to server-side memory
         if session_id in self.memory_store:
@@ -735,9 +747,18 @@ async def process_user_request(session_id: str, message: str,
         history = session_data['history']
         user_name = session_data['userName']
 
-        # Convert to dict if needed
-        if history and isinstance(history[0], ChatMessage):
-            history = [{'role': m.role, 'content': m.content} for m in history]
+        # Convert to dict if needed (handle both ChatMessage objects and dicts)
+        if history:
+            converted_history = []
+            for m in history:
+                if isinstance(m, ChatMessage):
+                    converted_history.append({'role': m.role, 'content': m.content})
+                elif isinstance(m, dict):
+                    converted_history.append(m)
+                else:
+                    # Handle any other format
+                    converted_history.append({'role': getattr(m, 'role', 'user'), 'content': str(m)})
+            history = converted_history
 
         # Slash commands
         if slash_commands.is_command(message):
@@ -814,10 +835,10 @@ async def process_user_request(session_id: str, message: str,
 
         return response_stream()
 
-    except Exception as error:
-        print(f"[Process] Error: {error}")
+    except Exception as err:
+        print(f"[Process] Error: {err}")
         async def error_stream():
-            yield send_event('ERROR', str(error))
+            yield send_event('ERROR', str(err))
         
         return error_stream()
 
