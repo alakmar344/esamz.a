@@ -30,8 +30,8 @@ logger.setLevel(logging.INFO)
 # This maintains privacy policy compliance without file-based logging
 
 # ================= CONFIG =================
-SARVAM_MODEL = "sarvam-m"
-MAX_COMPLETION_TOKENS = 4098
+SARVAM_MODEL = "sarvam-m-large"
+MAX_COMPLETION_TOKENS = 24000
 COOKIE_NAME = "esamz_sid"
 SERPER_API_KEY = os.getenv("SERPER_API_KEY")
 SARVAM_API_KEY = os.getenv("SARVAM_API_KEY")
