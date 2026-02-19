@@ -1764,6 +1764,7 @@ async runOCR(file) {
             s.onload = resolve;
             document.head.appendChild(s);
         });
+    }
     try {
         // Step 1: Worker create karein
         const worker = await Tesseract.createWorker({
