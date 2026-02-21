@@ -30,92 +30,323 @@
 {
   "@context": "https://schema.org",
   "@graph": [
+
     {
-      "@type": "Organization",
-      "@id": "https://esamz.info/#organization",
-      "name": "eSAMz",
-      "url": "https://esamz.info",
-      "description": "An innovative AI technology company focusing on privacy-first artificial intelligence solutions.",
-      "founder": {
-        "@id": "https://esamz.info/#founder"
+      "@type": "Person",
+      "@id": "https://portfolio.esamz.info/#alakmar",
+      "name": "Alakmar Teenwala",
+      "alternateName": "alakmar344",
+      "description": "13-year-old AI architect, full-stack developer, and founder of eSAMz AI. Self-taught builder from Mandsaur, Madhya Pradesh, India. Creator of the eSAMz Strategic Artificial Mind and CiboCocinar AI cooking assistant.",
+      "url": "https://portfolio.esamz.info",
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://portfolio.esamz.info/avatar.png",
+        "caption": "Alakmar Teenwala — Founder of eSAMz AI"
       },
-      "location": {
+      "birthPlace": {
         "@type": "Place",
+        "name": "Mandsaur",
         "address": {
           "@type": "PostalAddress",
           "addressLocality": "Mandsaur",
           "addressRegion": "Madhya Pradesh",
           "addressCountry": "IN"
         }
-      }
-    },
-    {
-      "@type": "Person",
-      "@id": "https://esamz.info/#founder",
-      "name": "Alakmar Teenwala",
-      "jobTitle": "Founder & AI Architect",
+      },
+      "nationality": {
+        "@type": "Country",
+        "name": "India"
+      },
+      "jobTitle": "AI Architect & Full-Stack Developer",
       "worksFor": {
+        "@id": "https://esamz.info/#organization"
+      },
+      "founder": {
         "@id": "https://esamz.info/#organization"
       },
       "knowsAbout": [
         "Artificial Intelligence",
-        "Web Development",
+        "Large Language Models",
         "Prompt Engineering",
-        "Zero-Storage Architecture"
+        "Full-Stack Web Development",
+        "JavaScript",
+        "Python",
+        "API Integration",
+        "UI/UX Design",
+        "Sarvam AI",
+        "Vercel Deployment",
+        "Redis",
+        "Natural Language Processing"
+      ],
+      "sameAs": [
+        "https://github.com/alakmar344",
+        "https://linkedin.com/in/alakmarteenwala",
+        "https://twitter.com/alakmarteenwala",
+        "https://esamz.info",
+        "https://esamz.site",
+        "https://portfolio.esamz.info"
+      ],
+      "email": "esamzai365@gmail.com",
+      "award": [
+        "Sole creator of eSAMz AI — 2500+ users at age 13",
+        "Built production AI product for under ₹700"
       ]
     },
+
     {
-      "@type": "WebSite",
-      "@id": "https://esamz.info/#website",
+      "@type": "Organization",
+      "@id": "https://esamz.info/#organization",
+      "name": "eSAMz AI",
+      "legalName": "eSAMz AI",
+      "alternateName": [
+        "eSAMz",
+        "Strategic Artificial Mind",
+        "esamz"
+      ],
+      "description": "eSAMz AI is a next-generation artificial intelligence platform built on a Strategic Artificial Mind (SAM) architecture. Founded by Alakmar Teenwala in Mandsaur, India. Features a 32K context window, Heart First emotional intelligence philosophy, 100% privacy-first architecture, and Indian context optimization powered by Sarvam AI.",
       "url": "https://esamz.info",
-      "name": "eSAMz AI - Strategic Artificial Mind",
-      "description": "Learn about eSAMz AI, a privacy-first AI chat engine featuring instant answers and live web search.",
-      "publisher": {
-        "@id": "https://esamz.info/#organization"
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://esamz.info/logo.png",
+        "caption": "eSAMz AI Logo"
+      },
+      "foundingDate": "2025-10-21",
+      "foundingLocation": {
+        "@type": "Place",
+        "name": "Mandsaur, Madhya Pradesh, India",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Mandsaur",
+          "addressRegion": "Madhya Pradesh",
+          "addressCountry": "IN"
+        }
+      },
+      "founder": {
+        "@id": "https://portfolio.esamz.info/#alakmar"
+      },
+      "employee": {
+        "@id": "https://portfolio.esamz.info/#alakmar"
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "email": "esamzai365@gmail.com",
+        "contactType": "customer support",
+        "availableLanguage": ["English", "Hindi"]
+      },
+      "sameAs": [
+        "https://esamz.site",
+        "https://github.com/alakmar344",
+        "https://twitter.com/alakmarteenwala",
+        "https://linkedin.com/in/alakmarteenwala"
+      ],
+      "slogan": "The AI that understands you in 2 messages, not 2 years.",
+      "knowsAbout": [
+        "Artificial Intelligence",
+        "Strategic Reasoning",
+        "Emotional Intelligence",
+        "Privacy-First Architecture",
+        "Indian Language AI"
+      ],
+      "areaServed": {
+        "@type": "GeoShape",
+        "name": "Worldwide"
+      },
+      "numberOfEmployees": {
+        "@type": "QuantitativeValue",
+        "value": 1
       }
     },
+
     {
-      "@type": "WebApplication",
-      "@id": "https://esamz.site/#application",
-      "name": "eSAMz AI Chat Engine",
+      "@type": "SoftwareApplication",
+      "@id": "https://esamz.site/#app",
+      "name": "eSAMz AI",
+      "alternateName": "Strategic Artificial Mind",
+      "description": "eSAMz AI is a completely free, privacy-first strategic AI assistant featuring a 32K-token context window, Heart First emotional intelligence, hybrid cognitive engine, and Indian context optimization. Built on Sarvam AI with zero server-side conversation storage. Features include multi-turn conversation, chat export, voice input, file analysis, and web search.",
       "url": "https://esamz.site",
-      "applicationCategory": "BrowserApplication",
-      "softwareVersion": "9.1",
-      "operatingSystem": "All",
-      "featureList": [
-        "Zero-Storage Privacy Architecture",
-        "Powered by Sarvam AI",
-        "Live Web Search",
-        "Deep Reasoning"
+      "applicationCategory": "AIApplication",
+      "applicationSubCategory": [
+        "Chatbot",
+        "AI Assistant",
+        "Productivity",
+        "Research Tool"
       ],
-      "creator": {
-        "@id": "https://esamz.info/#founder"
-      },
-      "provider": {
-        "@id": "https://esamz.info/#organization"
-      },
+      "operatingSystem": [
+        "Web Browser",
+        "Android",
+        "iOS",
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
       "offers": {
         "@type": "Offer",
         "price": "0",
-        "priceCurrency": "USD"
+        "priceCurrency": "INR",
+        "availability": "https://schema.org/InStock",
+        "description": "Completely free to use. No credit card required."
+      },
+      "featureList": [
+        "32K token context window",
+        "Heart First emotional intelligence",
+        "Privacy-first zero server storage architecture",
+        "Local browser history",
+        "Chat export as JSON",
+        "Voice input support",
+        "File analysis",
+        "Web search integration",
+        "Indian context optimization",
+        "GDPR and CCPA compliant",
+        "Multi-language support",
+        "Rate limiting for fair usage",
+        "Strategic Alignment Benchmark ethical framework"
+      ],
+      "screenshot": "https://esamz.site/screenshot.png",
+      "softwareVersion": "9.1",
+      "datePublished": "2025-10-21",
+      "dateModified": "2026-02-20",
+      "author": {
+        "@id": "https://portfolio.esamz.info/#alakmar"
+      },
+      "publisher": {
+        "@id": "https://esamz.info/#organization"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "bestRating": "5",
+        "worstRating": "1",
+        "ratingCount": "100",
+        "reviewCount": "100"
+      },
+      "inLanguage": ["en", "hi"],
+      "isAccessibleForFree": true,
+      "browserRequirements": "Requires a modern web browser with JavaScript enabled",
+      "memoryRequirements": "30-40MB RAM",
+      "countriesSupported": "Worldwide",
+      "availableOnDevice": [
+        "Desktop",
+        "Mobile",
+        "Tablet"
+      ],
+      "softwareRequirements": "Modern web browser",
+      "releaseNotes": "v9.1 — New AI model integration, enhanced privacy features, improved reasoning stability, restored web search capability.",
+      "maintainer": {
+        "@id": "https://portfolio.esamz.info/#alakmar"
       }
     },
+
     {
-      "@type": "WebApplication",
-      "@id": "https://cibo.esamz.site/#application",
-      "name": "Cibo Cocinar",
-      "url": "https://cibo.esamz.site",
-      "applicationCategory": "LifestyleApplication",
-      "description": "A voice-first AI cooking assistant providing hands-free step-by-step guidance and culinary tips.",
-      "creator": {
-        "@id": "https://esamz.info/#founder"
-      },
-      "provider": {
+      "@type": "WebSite",
+      "@id": "https://esamz.info/#website",
+      "name": "eSAMz AI — Strategic Artificial Mind",
+      "url": "https://esamz.info",
+      "description": "Official website of eSAMz AI. Learn about the Strategic Artificial Mind architecture, Heart First philosophy, privacy-first design, and the story of Alakmar Teenwala from Mandsaur, India.",
+      "publisher": {
         "@id": "https://esamz.info/#organization"
+      },
+      "author": {
+        "@id": "https://portfolio.esamz.info/#alakmar"
+      },
+      "inLanguage": "en",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://esamz.site/?q={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
       }
+    },
+
+    {
+      "@type": "WebSite",
+      "@id": "https://esamz.site/#website",
+      "name": "eSAMz AI App",
+      "url": "https://esamz.site",
+      "description": "Launch eSAMz AI — the Strategic Artificial Mind. A completely free, privacy-first AI assistant with 32K context window, emotional intelligence, and Indian context optimization.",
+      "publisher": {
+        "@id": "https://esamz.info/#organization"
+      },
+      "author": {
+        "@id": "https://portfolio.esamz.info/#alakmar"
+      },
+      "inLanguage": "en"
+    },
+
+    {
+      "@type": "FAQPage",
+      "@id": "https://esamz.info/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is eSAMz AI?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "eSAMz AI is a Strategic Artificial Mind — a completely free, privacy-first AI assistant that combines deep logical reasoning with emotional intelligence. It features a 32K token context window, Heart First philosophy, and is optimized for Indian users. Built by Alakmar Teenwala from Mandsaur, India."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Who created eSAMz AI?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "eSAMz AI was created by Alakmar Teenwala, a 13-year-old self-taught AI architect and developer from Mandsaur, Madhya Pradesh, India. Founded on October 21, 2025."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is eSAMz AI free to use?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. eSAMz AI is completely free to use. No credit card, no signup required. Just open esamz.site and start thinking."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is my data private on eSAMz AI?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. eSAMz uses a zero server storage architecture. Your conversations are never permanently stored on servers. Session memory expires after 30 minutes of inactivity. Chat history is stored locally in your browser only. eSAMz is fully GDPR and CCPA compliant."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What AI model powers eSAMz?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "eSAMz is powered by Sarvam AI — an Indian large language model optimized for Indian context and languages. This makes eSAMz particularly effective for Indian users while maintaining global capability."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the Heart First philosophy?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Heart First is eSAMz's core design philosophy — placing emotional understanding before logical processing. The system comprehends tone, context, and long-term goals before executing logical operations, making interactions more human and meaningful."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Where is eSAMz AI from?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "eSAMz AI was built in Mandsaur, Madhya Pradesh, India. It is proudly Made in India, powered by an Indian AI model, and designed with Indian users in mind while serving users globally."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How is eSAMz different from ChatGPT or Gemini?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "eSAMz differs in three key ways: it is powered by Sarvam AI — an Indian model with Indian context optimization; it follows a Heart First philosophy that prioritizes emotional understanding before logic; and it operates on a strict privacy-first architecture with zero permanent server storage, unlike most AI products."
+          }
+        }
+      ]
     }
+
   ]
-}
+}     
 </script>
 
     <style>
