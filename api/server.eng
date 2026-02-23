@@ -1,0 +1,207 @@
+#!/usr/bin/env python3
+"""
+SINGLE FILE ENG SERVER
+Everything in one file - no dependencies, no extra files!
+"""
+
+# ================= EMBEDDED TRANSPILER =================
+import sys, os, re, json, time, asyncio, secrets
+from datetime import datetime
+import httpx
+from fastapi import FastAPI, Request, Response
+from fastapi.responses import StreamingResponse
+import uvicorn
+
+class EngRunner:
+    """Runs Eng code directly"""
+    
+    @staticmethod
+    def run_eng_code(code):
+        """Convert and run Eng code"""
+        
+        # Simple pattern replacement
+        patterns = [
+            (r'create\s+(\w+)\s+with\s+value\s+(.+)', r'{0} = {1}'),
+            (r'if\s+(.+):', r'if {0}:'),
+            (r'otherwise\s+if\s+(.+):', r'elif {0}:'),
+            (r'otherwise:', r'else:'),
+            (r'for\s+each\s+(\w+)\s+in\s+(.+):', r'for {0} in {1}:'),
+            (r'async\s+function\s+(\w+)\s+takes\s*\((.+)\):', r'async def {0}({1}):'),
+            (r'function\s+(\w+)\s+takes\s*\((.+)\):', r'def {0}({1}):'),
+            (r'show\s+(.+)', r'print({0})'),
+            (r'return\s+(.+)', r'return {0}'),
+            (r'import\s+"([^"]+)"', r'import {0}'),
+            (r'from\s+"([^"]+)"\s+import\s+(\w+)', r'from {0} import {1}'),
+            (r'append\(\s*(\w+)\s*,\s*(.+)\s*\)', r'{0}.append({1})'),
+            (r'true\b', r'True'),
+            (r'false\b', r'False'),
+            (r'nothing\b', r'None'),
+        ]
+        
+        lines = code.split('\n')
+        python_lines = []
+        indent = 0
+        
+        for line in lines:
+            stripped = line.strip()
+            if not stripped or stripped.startswith('#'):
+                python_lines.append(line)
+                continue
+            
+            converted = stripped
+            for pattern, repl in patterns:
+                match = re.match(pattern, stripped, re.IGNORECASE)
+                if match:
+                    if len(match.groups()) == 2:
+                        converted = repl.format(match.group(1), match.group(2))
+                    elif len(match.groups()) == 1:
+                        converted = repl.format(match.group(1))
+                    else:
+                        converted = repl
+                    break
+            
+            if stripped.endswith(':'):
+                python_lines.append('    ' * indent + converted)
+                indent += 1
+            else:
+                python_lines.append('    ' * indent + converted)
+        
+        python_code = '\n'.join(python_lines)
+        
+        # Create namespace with all imports
+        namespace = {
+            'app': None,
+            'FastAPI': FastAPI,
+            'Request': Request,
+            'Response': Response,
+            'StreamingResponse': StreamingResponse,
+            'json': json,
+            'time': time,
+            'asyncio': asyncio,
+            'secrets': secrets,
+            'datetime': datetime,
+            'httpx': httpx,
+            'print': print,
+            'len': len,
+            'str': str,
+            'int': int,
+            'float': float,
+            'list': list,
+            'dict': dict,
+            'range': range,
+        }
+        
+        # Execute the converted code
+        exec(python_code, namespace)
+        return namespace.get('app')
+
+# ================= YOUR ENG CODE STARTS HERE =================
+# Everything below is pure Eng syntax!
+
+ENG_CODE = """
+import "os"
+import "json"
+import "time"
+import "asyncio"
+import "secrets"
+from "datetime" import datetime
+from "fastapi" import FastAPI, Request, Response
+from "fastapi.responses" import StreamingResponse
+import "httpx"
+
+# Create FastAPI app
+create app as new FastAPI(title = "Single File Eng Server")
+
+# Configuration
+create COOKIE_NAME with value "eng_sid"
+create INACTIVITY_TIMEOUT with value 1800
+create sessions with value {}
+
+# Root endpoint
+@app.get("/")
+async function root takes ():
+    return {
+        "message": "Eng server running from ONE FILE!",
+        "status": "alive",
+        "time": datetime.utcnow().isoformat()
+    }
+
+# Health check
+@app.get("/health")
+async function health takes ():
+    return {"status": "healthy", "sessions": len(sessions)}
+
+# Chat endpoint with streaming
+@app.post("/api/chat")
+async function chat takes (request, response):
+    try:
+        # Get message
+        create body with value await request.json()
+        create message with value body.get("message", "")
+        
+        # Create session
+        create session_id with value secrets.token_hex(16)
+        response.set_cookie(
+            key = COOKIE_NAME,
+            value = session_id,
+            max_age = INACTIVITY_TIMEOUT,
+            httponly = true
+        )
+        
+        # Store session
+        sessions[session_id] = {
+            "history": [{"role": "user", "content": message}],
+            "time": time.time()
+        }
+        
+        # Stream response
+        async function generate():
+            yield "event: START|" + session_id + "\\n"
+            yield "event: CHUNK|Hello! You said: " + message + "\\n"
+            yield "event: CHUNK|This is streaming from a single Eng file! 🚀\\n"
+            yield "event: DONE|" + session_id + "\\n"
+        
+        return new StreamingResponse(
+            generate(),
+            media_type = "text/plain"
+        )
+        
+    catch error:
+        async function error_stream():
+            yield "event: ERROR|" + str(error) + "\\n"
+        return new StreamingResponse(error_stream(), media_type = "text/plain")
+
+# Session info
+@app.get("/session/{session_id}")
+async function get_session takes (session_id):
+    if session_id in sessions:
+        return {
+            "exists": true,
+            "history": sessions[session_id]["history"]
+        }
+    return {"exists": false}
+
+# Delete session
+@app.delete("/session/{session_id}")
+async function delete_session takes (session_id):
+    if session_id in sessions:
+        del sessions[session_id]
+        return {"deleted": true}
+    return {"deleted": false}
+"""
+
+# ================= BOOTSTRAP =================
+if __name__ == "__main__":
+    print("🚀 Starting Single File Eng Server...")
+    print("📄 Reading Eng code from within this file")
+    
+    # Run the Eng code
+    app = EngRunner.run_eng_code(ENG_CODE)
+    
+    if app:
+        print("✅ Eng code compiled successfully!")
+        print("🌐 Server running on http://localhost:8000")
+        print("📝 Press Ctrl+C to stop")
+        uvicorn.run(app, host="0.0.0.0", port=8000)
+    else:
+        print("❌ Failed to create app")
