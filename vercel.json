@@ -1,14 +1,16 @@
 {
-  "builds": [
-    {
-      "src": "server.eng",
-      "use": "@vercel/python"
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "functions": {
+    "api/*.py": {
+      "memory": 1024,
+      "maxDuration": 60
     }
-  ],
-  "routes": [
+  },
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "server.eng"
+      "source": "/api/chat",
+      "destination": "/api/chat.py"
     }
   ]
 }
