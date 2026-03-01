@@ -27,81 +27,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js" defer></script>
-    <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "SoftwareApplication",
-      "@id": "https://esamz.ai/#software",
-      "name": "eSAMz AI",
-      "alternateName": ["eSAMz", "eSAMz AI Chat Engine"],
-      "description": "An advanced AI chat engine designed for instant answers, live web search, and a zero-storage privacy architecture. Built for students, creators, and developers seeking clean, efficient, and private AI interactions.",
-      "applicationCategory": "MultimediaApplication, EducationalApplication",
-      "operatingSystem": "Web-based, Windows, macOS, Android, iOS",
-      "softwareVersion": "v11",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
-      },
-      "featureList": [
-        "Live Web Search Integration",
-        "Zero-Storage Privacy Architecture",
-        "Instant Response Engine",
-        "Clean UI/UX Design",
-        "Optimized for Student Workflow",
-        "v8 and v11 Model Support"
-      ],
-      "screenshot": "https://esamz.ai/assets/dashboard-preview.png",
-      "author": {
-        "@type": "Person",
-        "name": "Alakmar Teenwala"
-      },
-      "publisher": {
-        "@id": "https://esamz.ai/#organization"
-      },
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "5",
-        "reviewCount": "1"
-      },
-      "keywords": "AI chat, private search engine, eSAMz, zero-storage AI, student AI tools, web development AI, live web search"
-    },
-    {
-      "@type": "Organization",
-      "@id": "https://esamz.ai/#organization",
-      "name": "eSAMz",
-      "url": "https://esamz.ai",
-      "logo": "https://esamz.ai/logo.png",
-      "founder": {
-        "@type": "Person",
-        "name": "Alakmar Teenwala"
-      },
-      "foundingDate": "2024",
-      "knowsAbout": ["Artificial Intelligence", "Web Development", "User Privacy", "Prompt Engineering"],
-      "contactPoint": {
-        "@type": "ContactPoint",
-        "contactType": "technical support",
-        "url": "https://esamz.ai/support"
-      }
-    },
-    {
-      "@type": "WebSite",
-      "url": "https://esamz.ai",
-      "name": "eSAMz AI",
-      "potentialAction": {
-        "@type": "SearchAction",
-        "target": {
-          "@type": "EntryPoint",
-          "urlTemplate": "https://esamz.ai/search?q={search_term_string}"
-        },
-        "query-input": "required name=search_term_string"
-      }
-    }
-  ]
-}
-</script>
 
     <style>
         .hidden { display: none !important; }
@@ -162,43 +87,43 @@
          */
         @media (prefers-color-scheme: dark) {
             :root {
-                --ink: #ede8df;
-                --ink-light: #ccc5b8;
-                --ink-faint: #9d9488;
-                --ink-ghost: #5e574f;
-                --paper: #1a1714;
-                --paper-warm: #201d19;
-                --paper-aged: #2a2520;
-                --paper-dark: #322d27;
-                --rule: rgba(237,232,223,0.07);
-                --rule-bold: rgba(237,232,223,0.15);
-                --vermillion: #c94b3a;
-                --vermillion-soft: rgba(201, 75, 58, 0.1);
-                --gold: #c9981a;
+                --ink: #f0ece4;
+                --ink-light: #d8d0c4;
+                --ink-faint: #a89e94;
+                --ink-ghost: #6e6760;
+                --paper: #26221e;
+                --paper-warm: #2e2924;
+                --paper-aged: #38322b;
+                --paper-dark: #453e36;
+                --rule: rgba(240,236,228,0.09);
+                --rule-bold: rgba(240,236,228,0.18);
+                --vermillion: #d45744;
+                --vermillion-soft: rgba(212, 87, 68, 0.12);
+                --gold: #d4a520;
 
-                /* Darker, warmer texture for night mode */
-                --texture-dot: rgba(237,232,223,0.018);
-                --texture-rule: rgba(237,232,223,0.03);
+                /* Slightly more visible texture for the brighter dark surfaces */
+                --texture-dot: rgba(240,236,228,0.022);
+                --texture-rule: rgba(240,236,228,0.04);
 
-                /* Sidebar flips: now it's a *lighter* dark surface against the main dark bg */
-                --sidebar-bg: #100e0c;
-                --sidebar-border: rgba(237,232,223,0.06);
-                --sidebar-text: rgba(237,232,223,0.4);
-                --sidebar-text-bright: #ede8df;
-                --sidebar-hover-bg: rgba(237,232,223,0.04);
-                --sidebar-hover-border: rgba(237,232,223,0.12);
-                --sidebar-active-bg: rgba(237,232,223,0.06);
-                --sidebar-label: rgba(237,232,223,0.2);
-                --sidebar-footer-text: rgba(237,232,223,0.18);
-                --sidebar-footer-link: rgba(237,232,223,0.28);
-                --sidebar-footer-link-hover: rgba(237,232,223,0.55);
-                --sidebar-eyebrow: rgba(237,232,223,0.3);
-                --sidebar-tagline: rgba(237,232,223,0.35);
-                --sidebar-new-chat-border: rgba(237,232,223,0.15);
-                --sidebar-new-chat-color: rgba(237,232,223,0.6);
-                --sidebar-new-chat-hover-bg: rgba(237,232,223,0.05);
-                --sidebar-new-chat-hover-border: rgba(237,232,223,0.3);
-                --sidebar-edge: linear-gradient(to bottom, transparent, rgba(237,232,223,0.07) 20%, rgba(237,232,223,0.07) 80%, transparent);
+                /* Sidebar: a touch deeper than main bg to keep contrast */
+                --sidebar-bg: #1c1915;
+                --sidebar-border: rgba(240,236,228,0.08);
+                --sidebar-text: rgba(240,236,228,0.5);
+                --sidebar-text-bright: #f0ece4;
+                --sidebar-hover-bg: rgba(240,236,228,0.06);
+                --sidebar-hover-border: rgba(240,236,228,0.16);
+                --sidebar-active-bg: rgba(240,236,228,0.08);
+                --sidebar-label: rgba(240,236,228,0.28);
+                --sidebar-footer-text: rgba(240,236,228,0.24);
+                --sidebar-footer-link: rgba(240,236,228,0.36);
+                --sidebar-footer-link-hover: rgba(240,236,228,0.65);
+                --sidebar-eyebrow: rgba(240,236,228,0.38);
+                --sidebar-tagline: rgba(240,236,228,0.42);
+                --sidebar-new-chat-border: rgba(240,236,228,0.2);
+                --sidebar-new-chat-color: rgba(240,236,228,0.7);
+                --sidebar-new-chat-hover-bg: rgba(240,236,228,0.07);
+                --sidebar-new-chat-hover-border: rgba(240,236,228,0.36);
+                --sidebar-edge: linear-gradient(to bottom, transparent, rgba(240,236,228,0.09) 20%, rgba(240,236,228,0.09) 80%, transparent);
             }
 
             /* In dark mode, scrollbar adapts to dark surfaces */
@@ -1794,10 +1719,12 @@
 
             async runOCR(file) {
                 if (typeof Tesseract === 'undefined') {
-                    await new Promise(resolve => { const s = document.createElement('script'); s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"; s.onload = resolve; document.head.appendChild(s); });
+                    const script = document.createElement('script');
+                    script.src = "https://cdn.jsdelivr.net/npm/tesseract.js@v5/dist/tesseract.min.js";
+                    document.head.appendChild(script);
+                    await new Promise(r => script.onload = r);
                 }
-                const worker = await Tesseract.createWorker({ logger: m => console.log(m) });
-                await worker.loadLanguage('eng'); await worker.initialize('eng');
+                const worker = await Tesseract.createWorker('eng');
                 const { data: { text } } = await worker.recognize(file);
                 await worker.terminate();
                 if (!text || text.trim() === "") throw new Error("No text found in image");
