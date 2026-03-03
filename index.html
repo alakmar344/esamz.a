@@ -1445,7 +1445,7 @@
                 width: var(--sidebar-w);
                 min-width: var(--sidebar-w);
                 transform: translateX(-100%);
-                z-index: 100;
+                z-index: 110;
                 box-shadow: 4px 0 24px rgba(0,0,0,0.3);
                 transition: transform 200ms ease;
                 isolation: isolate;
@@ -1464,9 +1464,12 @@
             .overlay {
                 display: block;
                 position: fixed;
-                inset: 0;
+                top: 0;
+                left: var(--sidebar-w);
+                right: 0;
+                bottom: 0;
                 background: rgba(15,13,11,0.5);
-                z-index: 90;
+                z-index: 99;
                 opacity: 0;
                 pointer-events: none;
                 transition: opacity 200ms;
@@ -2039,7 +2042,10 @@
 
                 // Mobile sidebar
                 document.getElementById('openSidebar').onclick = () => { this.dom.sidebar.classList.add('active'); this.dom.overlay.classList.add('active'); };
-                this.dom.overlay.onclick = () => { this.dom.sidebar.classList.remove('active'); this.dom.overlay.classList.remove('active'); };
+                this.dom.overlay.onclick = () => {
+                    this.dom.sidebar.classList.remove('active');
+                    this.dom.overlay.classList.remove('active');
+                };
 
                 // Desktop sidebar close
                 document.getElementById('btnCloseSidebar').onclick = () => { this.dom.sidebar.classList.add('collapsed'); };
@@ -2323,7 +2329,9 @@
                 const raw = localStorage.getItem(this.storageKey); const history = raw ? JSON.parse(raw) : [];
                 const chat = history.find(c => c.id === id);
                 if (chat && chat.messages) chat.messages.forEach(m => this.appendMessage(m.role, m.content));
-                if (window.innerWidth <= 768) { this.dom.sidebar.classList.remove('active'); this.dom.overlay.classList.remove('active'); }
+                if (window.innerWidth <= 768) {
+                    // Don't auto-close — user taps overlay to close
+                }
                 this.updateButtonState();
             }
 
