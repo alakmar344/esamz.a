@@ -22,6 +22,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
     <!-- Structured Data -->
     <script type="application/ld+json">{
         "@context": "https://schema.org",
@@ -35,7 +36,7 @@
                 "description": "A privacy-first, zero-storage AI chatbot built for deep reasoning and emotional clarity. Features instant answers, live web search, and cross-device sync.",
                 "applicationCategory": "UtilitiesApplication, BusinessApplication",
                 "operatingSystem": "Windows, macOS, Android, iOS, Web",
-                "softwareVersion": "v9.1
+                "softwareVersion": "v9.1",
         ,
                 "inLanguage": ["en", "hi"],
                 "contentRating": "Everyone",
@@ -1549,7 +1550,7 @@
                                     const cleanData = data.replace(/\\n/g, '\n');
                                     fullText += cleanData;
                                     try {
-                                        contentDiv.innerHTML = marked.parse(fullText);
+                                        contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(fullText));
                                         if (window.Prism) Prism.highlightAllUnder(contentDiv);
                                         this.injectCodeButtons(contentDiv);
                                     } catch (e) {
@@ -1633,7 +1634,7 @@
                         bubble.innerHTML = `<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
                     } else {
                         try {
-                            bubble.innerHTML = marked.parse(text);
+                           bubble.innerHTML = DOMPurify.sanitize(marked.parse(text));
                             if (window.Prism) Prism.highlightAllUnder(bubble);
                             this.injectCodeButtons(bubble);
                         } catch (e) {
