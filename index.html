@@ -1963,12 +1963,17 @@ this.peer.on('open', (id) => {
                 _setupConn(conn) {
                     const pid = conn.peer;
                     this.connections[pid] = conn;
-                    conn.on('open', () => {
-                        this._updatePeersList();
-                        this._setStatus('connected');
-                        this._saveKnownPeer(pid);
-                        this._sendFull(conn);
-                    });
+                   conn.on('open', () => {
+    this._updatePeersList();
+    this._setStatus('connected');
+    this._saveKnownPeer(pid);
+    
+    // Wait 500ms to make sure the data channel is stable before sending
+    setTimeout(() => {
+        console.log("Sending initial sync to:", pid);
+        this._sendFull(conn);
+    }, 500);
+});
                     conn.on('data', (packet) => this._handlePacket(packet));
                     conn.on('close', () => {
                         delete this.connections[pid];
