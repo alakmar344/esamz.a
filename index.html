@@ -30,22 +30,72 @@
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "WebApplication",
-  "name": "eSAMz AI",
-  "url": "https://esamz.site",
-  "description": "Strategic Artificial Mind with deep reasoning and emotional clarity.",
-  "applicationCategory": "MultimediaApplication",
-  "operatingSystem": "Web, Android, iOS",
-  "softwareVersion": "v10",
-  "author": {
-    "@type": "Person",
-    "name": "Alakmar Teenwala"
-  },
-  "offers": {
-    "@type": "Offer",
-    "price": "0",
-    "priceCurrency": "INR"
-  }
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      "@id": "https://esamz.site/#software",
+      "name": "eSAMz AI",
+      "alternateName": "Strategic Artificial Mind",
+      "url": "https://esamz.site",
+      "description": "A privacy-first, zero-storage AI chatbot built for deep reasoning and emotional clarity. Features instant answers, live web search, and cross-device sync.",
+      "applicationCategory": "UtilitiesApplication, BusinessApplication",
+      "operatingSystem": "Windows, macOS, Android, iOS, Web",
+      "softwareVersion": "v10.0",
+      "inLanguage": ["en", "hi"],
+      "contentRating": "Everyone",
+      "isAccessibleForFree": "True",
+      "offers": {
+        "@type": "AggregateOffer",
+        "lowPrice": "0",
+        "highPrice": "249",
+        "priceCurrency": "INR",
+        "offerCount": "3"
+      },
+      "author": {
+        "@id": "https://esamz.site/#person"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.9",
+        "reviewCount": "3000"
+      },
+      "featureList": [
+        "Zero-Storage Privacy Architecture",
+        "Deep Reasoning Engine",
+        "Hyper-realistic 3D Figurine Generation",
+        "Live Web Search Integration",
+        "P2P Device Syncing"
+      ],
+      "screenshot": "https://esamz.site/assets/preview-v10.png"
+    },
+    {
+      "@type": "Person",
+      "@id": "https://esamz.site/#person",
+      "name": "Al Aqmar Tinwala",
+      "jobTitle": "Founder & Lead Developer",
+      "url": "https://esamz.info",
+      "knowsAbout": ["Web Development", "AI Prompt Engineering", "Python", "Rust"],
+      "hasOccupation": {
+        "@type": "Occupation",
+        "name": "Software Developer"
+      }
+    },
+    {
+      "@type": "Organization",
+      "name": "eSAMz AI Labs",
+      "url": "https://esamz.site",
+      "logo": "https://esamz.site/favicon-32x32.png",
+      "founder": {
+        "@id": "https://esamz.site/#person"
+      },
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Mandsaur",
+        "addressRegion": "Madhya Pradesh",
+        "addressCountry": "IN"
+      }
+    }
+  ]
 }
 </script>
     <style>
