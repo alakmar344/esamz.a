@@ -50,41 +50,127 @@
             --head-h: 56px;
             --r: 2px;
 
-            /* Texture overlay values for light mode */
             --texture-dot: rgba(15,13,11,0.025);
             --texture-rule: rgba(15,13,11,0.04);
-            --sidebar-bg: var(--ink);
-            --sidebar-border: rgba(248,244,238,0.08);
-            --sidebar-text: rgba(248,244,238,0.5);
-            --sidebar-text-bright: var(--paper);
-            --sidebar-hover-bg: rgba(248,244,238,0.04);
-            --sidebar-hover-border: rgba(248,244,238,0.15);
-            --sidebar-active-bg: rgba(248,244,238,0.06);
-            --sidebar-label: rgba(248,244,238,0.25);
-            --sidebar-footer-text: rgba(248,244,238,0.2);
-            --sidebar-footer-link: rgba(248,244,238,0.3);
-            --sidebar-footer-link-hover: rgba(248,244,238,0.6);
-            --sidebar-eyebrow: rgba(248,244,238,0.35);
-            --sidebar-tagline: rgba(248,244,238,0.4);
-            --sidebar-new-chat-border: rgba(248,244,238,0.2);
-            --sidebar-new-chat-color: rgba(248,244,238,0.7);
-            --sidebar-new-chat-hover-bg: rgba(248,244,238,0.06);
-            --sidebar-new-chat-hover-border: rgba(248,244,238,0.4);
-            --sidebar-edge: linear-gradient(to bottom, transparent, rgba(248,244,238,0.1) 20%, rgba(248,244,238,0.1) 80%, transparent);
+
+            /* BRIGHT SIDEBAR — warm parchment instead of dark ink */
+            --sidebar-bg: #ede7db;
+            --sidebar-border: rgba(15,13,11,0.10);
+            --sidebar-text: rgba(15,13,11,0.5);
+            --sidebar-text-bright: #0f0d0b;
+            --sidebar-hover-bg: rgba(15,13,11,0.05);
+            --sidebar-hover-border: rgba(15,13,11,0.18);
+            --sidebar-active-bg: rgba(15,13,11,0.07);
+            --sidebar-label: rgba(15,13,11,0.35);
+            --sidebar-footer-text: rgba(15,13,11,0.35);
+            --sidebar-footer-link: rgba(15,13,11,0.45);
+            --sidebar-footer-link-hover: rgba(15,13,11,0.75);
+            --sidebar-eyebrow: rgba(15,13,11,0.4);
+            --sidebar-tagline: rgba(15,13,11,0.45);
+            --sidebar-new-chat-border: rgba(15,13,11,0.22);
+            --sidebar-new-chat-color: rgba(15,13,11,0.65);
+            --sidebar-new-chat-hover-bg: rgba(15,13,11,0.06);
+            --sidebar-new-chat-hover-border: rgba(15,13,11,0.4);
+            --sidebar-edge: linear-gradient(to bottom, transparent, rgba(15,13,11,0.08) 20%, rgba(15,13,11,0.08) 80%, transparent);
         }
 
+        /* ==================== THEME TOGGLE ==================== */
+        .theme-toggle {
+            width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: 1px solid var(--rule-bold);
+            color: var(--ink-faint);
+            cursor: pointer;
+            transition: all 120ms;
+            border-radius: var(--r);
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+        }
+        .theme-toggle:hover { background: var(--paper-aged); color: var(--ink); border-color: var(--ink); }
+        .theme-toggle .icon-sun,
+        .theme-toggle .icon-moon { position: absolute; transition: opacity 150ms, transform 150ms; }
+        /* light mode: show moon (click to go dark), hide sun */
+        body.theme-light .theme-toggle .icon-sun { opacity: 0; transform: scale(0.6) rotate(30deg); }
+        body.theme-light .theme-toggle .icon-moon { opacity: 1; transform: scale(1) rotate(0deg); }
+        /* dark mode: show sun (click to go light), hide moon */
+        body.theme-dark .theme-toggle .icon-sun { opacity: 1; transform: scale(1) rotate(0deg); }
+        body.theme-dark .theme-toggle .icon-moon { opacity: 0; transform: scale(0.6) rotate(-30deg); }
+
+        /* ==================== SIDEBAR CLOSE BUTTON (desktop) ==================== */
+        .btn-sidebar-close {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: 1px solid var(--sidebar-border);
+            color: var(--sidebar-text);
+            cursor: pointer;
+            transition: all 120ms;
+            border-radius: var(--r);
+            flex-shrink: 0;
+        }
+        .btn-sidebar-close:hover { background: var(--sidebar-hover-bg); color: var(--sidebar-text-bright); border-color: var(--sidebar-hover-border); }
+
+        /* Sidebar hidden state (desktop) */
+        .sidebar.collapsed {
+            width: 0;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        /* Show sidebar toggle in header when sidebar collapsed */
+        .btn-open-sidebar-desktop {
+            display: none;
+        }
+        .sidebar.collapsed ~ .main-content .btn-open-sidebar-desktop {
+            display: flex;
+        }
+
+        /* ==================== NAV ITEM ROW (for delete button) ==================== */
+        .nav-item-row {
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+        .nav-item-row .nav-item {
+            flex: 1;
+            min-width: 0;
+            padding-right: 8px;
+        }
+        .nav-item-row .nav-item-actions {
+            display: flex;
+            gap: 2px;
+            opacity: 0;
+            transition: opacity 120ms;
+            padding-right: 8px;
+            flex-shrink: 0;
+        }
+        .nav-item-row:hover .nav-item-actions { opacity: 1; }
+        .nav-item-action-btn {
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            color: var(--sidebar-text);
+            cursor: pointer;
+            transition: color 100ms;
+            border-radius: 2px;
+            padding: 0;
+        }
+        .nav-item-action-btn:hover { color: var(--vermillion); }
+
         /* ==================== NIGHT JOURNAL (DARK MODE) ==================== */
-        /*
-         * Design concept: "Negative Film / Night Journal"
-         * Instead of a simple color-inversion, this rethinks the paper-and-ink
-         * metaphor as a journal written by candlelight on dark parchment.
-         * - Background: deep charcoal with a warm brown undertone (not pure black)
-         * - "Paper" surfaces: dark sepia tones, as if parchment were left in darkness
-         * - "Ink": pale cream, like writing in light ink on dark paper
-         * - Ruled lines: barely-visible sepia, preserving the editorial texture
-         * - Vermillion accent is kept (candle-flame red) but slightly desaturated
-         * - Gold remains as a warm highlight
-         */
+        /* Applied via body.theme-dark (JS toggle) OR system prefers-color-scheme */
         @media (prefers-color-scheme: dark) {
             :root {
                 --ink: #f0ece4;
@@ -100,13 +186,9 @@
                 --vermillion: #d45744;
                 --vermillion-soft: rgba(212, 87, 68, 0.12);
                 --gold: #d4a520;
-
-                /* Slightly more visible texture for the brighter dark surfaces */
                 --texture-dot: rgba(240,236,228,0.022);
                 --texture-rule: rgba(240,236,228,0.04);
-
-                /* Sidebar: a touch deeper than main bg to keep contrast */
-                --sidebar-bg: #1c1915;
+                --sidebar-bg: #1f1c18;
                 --sidebar-border: rgba(240,236,228,0.08);
                 --sidebar-text: rgba(240,236,228,0.5);
                 --sidebar-text-bright: #f0ece4;
@@ -125,31 +207,95 @@
                 --sidebar-new-chat-hover-border: rgba(240,236,228,0.36);
                 --sidebar-edge: linear-gradient(to bottom, transparent, rgba(240,236,228,0.09) 20%, rgba(240,236,228,0.09) 80%, transparent);
             }
-
-            /* In dark mode, scrollbar adapts to dark surfaces */
             ::-webkit-scrollbar-track { background: var(--paper-warm); }
             ::-webkit-scrollbar-thumb { background: var(--paper-dark); }
             ::-webkit-scrollbar-thumb:hover { background: var(--ink-ghost); }
+            dialog { box-shadow: 8px 8px 0 rgba(240,236,228,0.12) !important; }
+            .cibo-modal { box-shadow: 12px 12px 0 rgba(240,236,228,0.08) !important; }
+            .toast { background: var(--paper-aged) !important; color: var(--ink) !important; border: 1px solid var(--rule-bold); }
+        }
 
-            /* Dialogs and modals use dark paper surfaces */
-            dialog {
-                box-shadow: 8px 8px 0 rgba(237,232,223,0.12) !important;
-            }
+        /* JS-controlled dark theme — overrides media query and light preference */
+        body.theme-dark {
+            --ink: #f0ece4;
+            --ink-light: #d8d0c4;
+            --ink-faint: #a89e94;
+            --ink-ghost: #6e6760;
+            --paper: #26221e;
+            --paper-warm: #2e2924;
+            --paper-aged: #38322b;
+            --paper-dark: #453e36;
+            --rule: rgba(240,236,228,0.09);
+            --rule-bold: rgba(240,236,228,0.18);
+            --vermillion: #d45744;
+            --vermillion-soft: rgba(212, 87, 68, 0.12);
+            --gold: #d4a520;
+            --texture-dot: rgba(240,236,228,0.022);
+            --texture-rule: rgba(240,236,228,0.04);
+            --sidebar-bg: #1f1c18;
+            --sidebar-border: rgba(240,236,228,0.08);
+            --sidebar-text: rgba(240,236,228,0.5);
+            --sidebar-text-bright: #f0ece4;
+            --sidebar-hover-bg: rgba(240,236,228,0.06);
+            --sidebar-hover-border: rgba(240,236,228,0.16);
+            --sidebar-active-bg: rgba(240,236,228,0.08);
+            --sidebar-label: rgba(240,236,228,0.28);
+            --sidebar-footer-text: rgba(240,236,228,0.24);
+            --sidebar-footer-link: rgba(240,236,228,0.36);
+            --sidebar-footer-link-hover: rgba(240,236,228,0.65);
+            --sidebar-eyebrow: rgba(240,236,228,0.38);
+            --sidebar-tagline: rgba(240,236,228,0.42);
+            --sidebar-new-chat-border: rgba(240,236,228,0.2);
+            --sidebar-new-chat-color: rgba(240,236,228,0.7);
+            --sidebar-new-chat-hover-bg: rgba(240,236,228,0.07);
+            --sidebar-new-chat-hover-border: rgba(240,236,228,0.36);
+            --sidebar-edge: linear-gradient(to bottom, transparent, rgba(240,236,228,0.09) 20%, rgba(240,236,228,0.09) 80%, transparent);
+        }
+        body.theme-dark ::-webkit-scrollbar-track { background: var(--paper-warm); }
+        body.theme-dark ::-webkit-scrollbar-thumb { background: var(--paper-dark); }
+        body.theme-dark dialog { box-shadow: 8px 8px 0 rgba(240,236,228,0.12) !important; }
+        body.theme-dark .cibo-modal { box-shadow: 12px 12px 0 rgba(240,236,228,0.08) !important; }
+        body.theme-dark .toast { background: var(--paper-aged) !important; color: var(--ink) !important; border: 1px solid var(--rule-bold); }
 
-            .cibo-modal {
-                box-shadow: 12px 12px 0 rgba(237,232,223,0.08) !important;
-            }
-
-            /* Toast adapts to inverted contrast */
-            .toast {
-                background: var(--paper-aged) !important;
-                color: var(--ink) !important;
-                border: 1px solid var(--rule-bold);
-            }
+        /* JS-controlled light theme — overrides dark system preference */
+        body.theme-light {
+            --ink: #0f0d0b;
+            --ink-light: #2c2825;
+            --ink-faint: #5a5450;
+            --ink-ghost: #9e9892;
+            --paper: #f8f4ee;
+            --paper-warm: #f2ece2;
+            --paper-aged: #e8dfd0;
+            --paper-dark: #ddd3c4;
+            --rule: rgba(15, 13, 11, 0.12);
+            --rule-bold: rgba(15, 13, 11, 0.25);
+            --vermillion: #c0392b;
+            --vermillion-soft: rgba(192, 57, 43, 0.08);
+            --gold: #b8860b;
+            --texture-dot: rgba(15,13,11,0.025);
+            --texture-rule: rgba(15,13,11,0.04);
+            --sidebar-bg: #ede7db;
+            --sidebar-border: rgba(15,13,11,0.10);
+            --sidebar-text: rgba(15,13,11,0.5);
+            --sidebar-text-bright: #0f0d0b;
+            --sidebar-hover-bg: rgba(15,13,11,0.05);
+            --sidebar-hover-border: rgba(15,13,11,0.18);
+            --sidebar-active-bg: rgba(15,13,11,0.07);
+            --sidebar-label: rgba(15,13,11,0.35);
+            --sidebar-footer-text: rgba(15,13,11,0.35);
+            --sidebar-footer-link: rgba(15,13,11,0.45);
+            --sidebar-footer-link-hover: rgba(15,13,11,0.75);
+            --sidebar-eyebrow: rgba(15,13,11,0.4);
+            --sidebar-tagline: rgba(15,13,11,0.45);
+            --sidebar-new-chat-border: rgba(15,13,11,0.22);
+            --sidebar-new-chat-color: rgba(15,13,11,0.65);
+            --sidebar-new-chat-hover-bg: rgba(15,13,11,0.06);
+            --sidebar-new-chat-hover-border: rgba(15,13,11,0.4);
+            --sidebar-edge: linear-gradient(to bottom, transparent, rgba(15,13,11,0.08) 20%, rgba(15,13,11,0.08) 80%, transparent);
         }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body { height: 100%; width: 100%; overflow: hidden; }
+        html, body { height: 100dvh; width: 100%; overflow: hidden; }
 
         body {
             background: var(--paper);
@@ -211,17 +357,61 @@
             height: 100dvh;
             position: relative;
             z-index: 2;
+            overflow: hidden;
         }
 
         /* ==================== SIDEBAR ==================== */
         .sidebar {
             width: var(--sidebar-w);
-            background: var(--sidebar-bg);
+            min-width: var(--sidebar-w);
+            height: 100%;
+            background: var(--sidebar-bg, #ede7db);
             display: flex;
             flex-direction: column;
             flex-shrink: 0;
             position: relative;
+            transition: width 200ms ease, min-width 200ms ease;
         }
+
+        /* Only clip overflow when collapsing */
+        .sidebar.collapsed {
+            width: 0;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        /* Light mode sidebar — warm parchment */
+        body:not(.theme-dark) .sidebar {
+            background: #ede7db;
+            border-right: 1px solid rgba(15,13,11,0.10);
+        }
+
+        /* Dark mode sidebar */
+        body.theme-dark .sidebar {
+            background: #1f1c18;
+            border-right: 1px solid rgba(240,236,228,0.06);
+        }
+
+        /* Light sidebar — all text is dark ink */
+        body:not(.theme-dark) .brand-eyebrow { color: rgba(15,13,11,0.45); }
+        body:not(.theme-dark) .brand-name { color: #0f0d0b; }
+        body:not(.theme-dark) .brand-tagline { color: rgba(15,13,11,0.5); }
+        body:not(.theme-dark) .nav-label { color: rgba(15,13,11,0.38); }
+        body:not(.theme-dark) .nav-item { color: rgba(15,13,11,0.55); border-left-color: transparent; }
+        body:not(.theme-dark) .nav-item:hover { color: #0f0d0b; background: rgba(15,13,11,0.06); border-left-color: rgba(15,13,11,0.2); }
+        body:not(.theme-dark) .nav-item.active { color: #0f0d0b; background: rgba(15,13,11,0.08); border-left-color: var(--vermillion); }
+        body:not(.theme-dark) .btn-new-chat { border-color: rgba(15,13,11,0.22); color: rgba(15,13,11,0.65); }
+        body:not(.theme-dark) .btn-new-chat:hover { background: rgba(15,13,11,0.06); border-color: rgba(15,13,11,0.4); color: #0f0d0b; }
+        body:not(.theme-dark) .sidebar-header { border-bottom-color: rgba(15,13,11,0.10); }
+        body:not(.theme-dark) .sidebar-footer { border-top-color: rgba(15,13,11,0.10); }
+        body:not(.theme-dark) .sidebar-footer-text { color: rgba(15,13,11,0.38); }
+        body:not(.theme-dark) .footer-link { color: rgba(15,13,11,0.48); }
+        body:not(.theme-dark) .footer-link:hover { color: rgba(15,13,11,0.78); }
+        body:not(.theme-dark) .btn-sidebar-close { border-color: rgba(15,13,11,0.18); color: rgba(15,13,11,0.45); }
+        body:not(.theme-dark) .btn-sidebar-close:hover { background: rgba(15,13,11,0.06); color: #0f0d0b; }
+        body:not(.theme-dark) .sidebar::after { background: linear-gradient(to bottom, transparent, rgba(15,13,11,0.08) 20%, rgba(15,13,11,0.08) 80%, transparent); }
+        body:not(.theme-dark) .nav-item-action-btn { color: rgba(15,13,11,0.4); }
+        body:not(.theme-dark) .nav-item-action-btn:hover { color: var(--vermillion); }
 
         /* Fine vertical rule on sidebar right edge */
         .sidebar::after {
@@ -1238,43 +1428,37 @@
             color: var(--ink);
         }
 
-        /* ==================== MOBILE — FIX 2: z-index audit ==================== */
-        /*
-         * Stacking context map (lowest → highest):
-         *   z-index: 0  — body::before (halftone dots) + body::after (ruled lines)
-         *   z-index: 2  — .app-container (establishes child stacking context)
-         *   z-index: 10 — .header (ensures mobile-toggle button is never obscured
-         *                  by any pseudo-element from body)
-         *   z-index: 90 — .overlay (backdrop behind sidebar)
-         *   z-index: 100— .sidebar (mobile drawer — clears overlay)
-         *   z-index: 101— .mobile-toggle wrapper (explicitly lifted so it is ALWAYS
-         *                  clickable even when a paper ::after pseudo-element from a
-         *                  parent element might creep over it on certain render paths)
-         *   z-index: 9999 — .cibo-modal-overlay
-         *   z-index: 1000 — #toast-container
-         *
-         * The key fix: .header has z-index: 10, which creates its own stacking context,
-         * so the mobile-toggle .icon-btn inside it can never be clipped by body::after.
-         * The sidebar z-index is lifted from 100 to 100 (unchanged) but the mobile-toggle
-         * now lives safely in the header's stacking context above the paper rules.
-         */
+        /* ==================== MOBILE / SIDEBAR RESPONSIVE ==================== */
         .mobile-toggle { display: none; }
         .overlay { display: none; }
+
+        /* Desktop: open button only shows when sidebar is collapsed */
+        .btn-open-sidebar-desktop { display: none; }
+        .sidebar.collapsed + .main-content .btn-open-sidebar-desktop { display: flex; }
 
         @media (max-width: 768px) {
             .sidebar {
                 position: fixed;
-                top: 0; left: 0; bottom: 0;
+                top: 0; left: 0;
+                height: 100dvh;
+                width: var(--sidebar-w);
+                min-width: var(--sidebar-w);
                 transform: translateX(-100%);
                 z-index: 100;
                 box-shadow: 4px 0 24px rgba(0,0,0,0.3);
                 transition: transform 200ms ease;
-                /* Sidebar itself creates a stacking context so its ::after edge rule
-                   never leaks outside the sidebar bounds on mobile */
                 isolation: isolate;
+                overflow: hidden;
             }
 
             .sidebar.active { transform: translateX(0); }
+
+            /* Reset desktop collapse on mobile — drawer handles open/close */
+            .sidebar.collapsed {
+                width: var(--sidebar-w);
+                min-width: var(--sidebar-w);
+                overflow: hidden;
+            }
 
             .overlay {
                 display: block;
@@ -1291,17 +1475,16 @@
 
             .mobile-toggle {
                 display: flex;
-                /* Inherits header's z-index: 10 stacking context — safely above body::after */
                 position: relative;
                 z-index: 1;
             }
 
+            .btn-open-sidebar-desktop { display: none !important; }
+            .btn-sidebar-close { display: none; }
+
             .suggestions { grid-template-columns: 1fr; }
-
             .chat-wrapper { padding: 32px 20px; }
-
             .input-wrapper { padding: 16px 20px 20px; }
-
             .cibo-modal-actions { flex-direction: column; }
             .cibo-modal-btn { width: 100%; text-align: center; }
         }
@@ -1336,10 +1519,17 @@
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <div class="brand">
-                    <div class="brand-eyebrow">Strategic Mind</div>
-                    <div class="brand-name">e<span>S</span>AMz</div>
-                    <div class="brand-tagline">Understands in 2 messages, not 2 years.</div>
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;">
+                    <div class="brand" style="margin-bottom:0;">
+                        <div class="brand-eyebrow">Strategic Mind</div>
+                        <div class="brand-name">e<span>S</span>AMz</div>
+                        <div class="brand-tagline">Understands in 2 messages, not 2 years.</div>
+                    </div>
+                    <button class="btn-sidebar-close" id="btnCloseSidebar" title="Close sidebar">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <path d="M15 18l-6-6 6-6"/>
+                        </svg>
+                    </button>
                 </div>
                 <button class="btn-new-chat" id="btnNewChat">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -1365,24 +1555,6 @@
                         Cibo Cocinar
                     </a>
                 </div>
-
-                <div class="nav-section">
-                    <div class="nav-label">Actions</div>
-                    <button class="nav-item" id="btnExport">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                            <polyline points="7 10 12 15 17 10"/>
-                            <line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                        Export Chat
-                    </button>
-                    <button class="nav-item" id="btnClearCache">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                        </svg>
-                        Clear History
-                    </button>
-                </div>
             </div>
 
             <div class="sidebar-footer">
@@ -1395,7 +1567,16 @@
         <main class="main-content">
             <header class="header">
                 <div style="display:flex;align-items:center;gap:14px;">
+                    <!-- Mobile toggle -->
                     <button class="icon-btn mobile-toggle" id="openSidebar">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="3" y1="12" x2="21" y2="12"/>
+                            <line x1="3" y1="6" x2="21" y2="6"/>
+                            <line x1="3" y1="18" x2="21" y2="18"/>
+                        </svg>
+                    </button>
+                    <!-- Desktop: open collapsed sidebar -->
+                    <button class="icon-btn btn-open-sidebar-desktop" id="btnOpenSidebarDesktop" title="Open sidebar">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <line x1="3" y1="12" x2="21" y2="12"/>
                             <line x1="3" y1="6" x2="21" y2="6"/>
@@ -1408,6 +1589,22 @@
                     </div>
                 </div>
                 <div class="header-right">
+                    <!-- Theme toggle -->
+                    <button class="theme-toggle" id="btnThemeToggle" title="Toggle theme">
+                        <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="5"/>
+                            <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                            <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                        </svg>
+                        <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                        </svg>
+                    </button>
+                    <!-- Export current chat -->
+                    <button class="btn-clear" id="btnExportChat" title="Export chat">Export</button>
+                    <!-- Clear chat -->
                     <button class="btn-clear" id="btnClearChat">Clear Chat</button>
                 </div>
             </header>
@@ -1634,6 +1831,7 @@
             }
 
             init() {
+                this.initTheme();
                 CiboModal.init();
                 this.loadHistory();
                 this.setupListeners();
@@ -1664,17 +1862,52 @@
                     if (this.state.isProcessing) this.abortGeneration();
                     else this.handleSend();
                 });
+
                 document.getElementById('btnNewChat').onclick = () => this.newChat();
                 document.getElementById('btnClearChat').onclick = async () => { const c = await Utils.confirm("Clear current chat session?", "Clear Chat"); if (c) this.newChat(); };
-                document.getElementById('btnClearCache').onclick = async () => { const c = await Utils.confirm("Delete all chat history permanently?", "Clear History"); if (c) { localStorage.removeItem(this.storageKey); localStorage.removeItem(this.LAST_CHAT_KEY); location.reload(); } };
                 document.getElementById('btnUpload').onclick = () => document.getElementById('fileInput').click();
                 document.getElementById('fileInput').onchange = (e) => this.handleFiles(e.target.files);
                 document.getElementById('btnVoice').onclick = () => { if (this.state.isRecording) this.recognition.stop(); else this.recognition.start(); };
+
+                // Export dialog (opened from header Export button)
                 const dialog = document.getElementById('exportDialog');
-                document.getElementById('btnExport').onclick = () => dialog.showModal();
                 document.getElementById('closeDialog').onclick = () => dialog.close();
+                document.getElementById('btnExportChat').onclick = () => {
+                    if (this.state.chatId) { dialog.showModal(); }
+                    else { Utils.showToast('No chat to export', 'error'); }
+                };
+
+                // Mobile sidebar
                 document.getElementById('openSidebar').onclick = () => { this.dom.sidebar.classList.add('active'); this.dom.overlay.classList.add('active'); };
                 this.dom.overlay.onclick = () => { this.dom.sidebar.classList.remove('active'); this.dom.overlay.classList.remove('active'); };
+
+                // Desktop sidebar close
+                document.getElementById('btnCloseSidebar').onclick = () => { this.dom.sidebar.classList.add('collapsed'); };
+                document.getElementById('btnOpenSidebarDesktop').onclick = () => { this.dom.sidebar.classList.remove('collapsed'); };
+
+                // Theme toggle
+                document.getElementById('btnThemeToggle').onclick = () => this.toggleTheme();
+            }
+
+            toggleTheme() {
+                const body = document.body;
+                const isDark = body.classList.contains('theme-dark');
+                if (isDark) {
+                    body.classList.remove('theme-dark');
+                    body.classList.add('theme-light');
+                    localStorage.setItem('esamz_theme', 'light');
+                } else {
+                    body.classList.remove('theme-light');
+                    body.classList.add('theme-dark');
+                    localStorage.setItem('esamz_theme', 'dark');
+                }
+            }
+
+            initTheme() {
+                const saved = localStorage.getItem('esamz_theme');
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const theme = saved || (prefersDark ? 'dark' : 'light');
+                document.body.classList.add(`theme-${theme}`);
             }
 
             updateButtonState() {
@@ -1858,11 +2091,50 @@
             loadHistory() { const raw = localStorage.getItem(this.storageKey); const history = raw ? JSON.parse(raw) : []; history.forEach(chat => { if (chat.id) this.renderHistoryItem(chat.id, chat.title); }); }
 
             renderHistoryItem(id, title) {
-                if (document.querySelector(`button[data-id="${id}"]`)) return;
-                const btn = document.createElement('button'); btn.className = 'nav-item'; btn.setAttribute('data-id', id);
+                if (document.querySelector(`[data-row-id="${id}"]`)) return;
+                const row = document.createElement('div');
+                row.className = 'nav-item-row';
+                row.setAttribute('data-row-id', id);
+
+                const btn = document.createElement('button');
+                btn.className = 'nav-item';
+                btn.setAttribute('data-id', id);
                 btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>${title}`;
                 btn.onclick = () => this.loadChat(id);
-                this.dom.historyList.prepend(btn);
+
+                const actions = document.createElement('div');
+                actions.className = 'nav-item-actions';
+
+                // Export single chat
+                const exportBtn = document.createElement('button');
+                exportBtn.className = 'nav-item-action-btn';
+                exportBtn.title = 'Export chat';
+                exportBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+                exportBtn.onclick = (e) => { e.stopPropagation(); this.exportSingleChat(id, title); };
+
+                // Delete single chat
+                const delBtn = document.createElement('button');
+                delBtn.className = 'nav-item-action-btn';
+                delBtn.title = 'Delete chat';
+                delBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>`;
+                delBtn.onclick = async (e) => {
+                    e.stopPropagation();
+                    const ok = await Utils.confirm(`Delete "${title}"?`, 'Delete Chat');
+                    if (!ok) return;
+                    const raw = localStorage.getItem(this.storageKey);
+                    let all = raw ? JSON.parse(raw) : [];
+                    all = all.filter(c => c.id !== id);
+                    localStorage.setItem(this.storageKey, JSON.stringify(all));
+                    row.remove();
+                    if (this.state.chatId === id) this.newChat();
+                    Utils.showToast('Chat deleted', 'success');
+                };
+
+                actions.appendChild(exportBtn);
+                actions.appendChild(delBtn);
+                row.appendChild(btn);
+                row.appendChild(actions);
+                this.dom.historyList.prepend(row);
             }
 
             loadChat(id) {
@@ -1887,6 +2159,22 @@
                 const content = messages.map(m => { const role = m.classList.contains('user') ? 'User' : 'eSAMz AI'; const txt = m.querySelector('.bubble').innerText; return `### ${role}\n${txt}`; }).join('\n\n---\n\n');
                 const blob = new Blob([content], { type: 'text/plain' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `esamz-chat-${Date.now()}.${type}`; a.click(); URL.revokeObjectURL(url);
                 document.getElementById('exportDialog').close();
+            }
+
+            exportSingleChat(chatId, title) {
+                const raw = localStorage.getItem(this.storageKey);
+                const all = raw ? JSON.parse(raw) : [];
+                const chat = all.find(c => c.id === chatId);
+                if (!chat || !chat.messages || !chat.messages.length) return Utils.showToast('No messages to export', 'error');
+                const content = chat.messages.map(m => `### ${m.role === 'user' ? 'User' : 'eSAMz AI'}\n${m.content}`).join('\n\n---\n\n');
+                const blob = new Blob([content], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `esamz-${title.slice(0,20).replace(/\s+/g,'-')}-${chatId}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+                Utils.showToast('Chat exported', 'success');
             }
         }
 
