@@ -493,6 +493,7 @@
             flex: 1;
             overflow-y: auto;
             padding: 16px 0;
+            min-height: 0;
         }
 
         .nav-section { margin-bottom: 24px; }
@@ -1489,7 +1490,135 @@
             .cibo-modal-btn { width: 100%; text-align: center; }
         }
 
+        /* ==================== SYNC PANEL ==================== */
+        .sync-section {
+            padding: 12px 22px;
+            border-top: 1px solid var(--sidebar-border);
+            flex-shrink: 0;
+        }
+        body:not(.theme-dark) .sync-section { border-top-color: rgba(15,13,11,0.10); }
+
+        .sync-label {
+            font-family: 'DM Mono', monospace;
+            font-size: 9px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--sidebar-label);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+        .sync-label .sync-status-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--ink-ghost);
+            flex-shrink: 0;
+            transition: background 200ms;
+        }
+        .sync-status-dot.connected { background: #22c55e; animation: pulse 2s infinite; }
+        .sync-status-dot.connecting { background: var(--gold); animation: pulse 1s infinite; }
+
+        .sync-code-display {
+            background: var(--paper-aged);
+            border: 1px solid var(--rule-bold);
+            padding: 10px 14px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        body.theme-dark .sync-code-display { background: rgba(240,236,228,0.05); border-color: rgba(240,236,228,0.12); }
+
+        .sync-code-value {
+            font-family: 'DM Mono', monospace;
+            font-size: 18px;
+            font-weight: 500;
+            letter-spacing: 0.18em;
+            color: var(--ink);
+        }
+        .sync-code-copy {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--ink-ghost);
+            padding: 2px;
+            transition: color 120ms;
+            display: flex;
+            align-items: center;
+        }
+        .sync-code-copy:hover { color: var(--vermillion); }
+
+        .sync-input-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        .sync-input {
+            flex: 1;
+            background: var(--paper-warm);
+            border: 1px solid var(--rule-bold);
+            color: var(--ink);
+            font-family: 'DM Mono', monospace;
+            font-size: 13px;
+            letter-spacing: 0.12em;
+            padding: 7px 10px;
+            outline: none;
+            text-transform: uppercase;
+            min-width: 0;
+        }
+        body.theme-dark .sync-input { background: rgba(240,236,228,0.05); border-color: rgba(240,236,228,0.12); }
+        .sync-input:focus { border-color: var(--ink-faint); }
+        .sync-input::placeholder { color: var(--ink-ghost); letter-spacing: 0.05em; text-transform: none; }
+
+        .sync-btn {
+            padding: 7px 12px;
+            background: var(--ink);
+            color: var(--paper);
+            border: none;
+            font-family: 'DM Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background 120ms;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .sync-btn:hover { background: var(--vermillion); }
+        .sync-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .sync-peers-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 6px;
+        }
+        .sync-peer-chip {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-family: 'DM Mono', monospace;
+            font-size: 10px;
+            color: var(--sidebar-text);
+            padding: 4px 0;
+        }
+        .sync-peer-chip .dot { width: 5px; height: 5px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
+        .sync-disconnect-btn {
+            margin-left: auto;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--ink-ghost);
+            font-size: 12px;
+            padding: 0 2px;
+            transition: color 100ms;
+        }
+        .sync-disconnect-btn:hover { color: var(--vermillion); }
+
         .hidden { display: none !important; }
+
     </style>
 
     <script type="application/ld+json">
@@ -1554,6 +1683,33 @@
                         </svg>
                         Cibo Cocinar
                     </a>
+                </div>
+            </div>
+
+            <!-- Sync Panel -->
+            <div class="sync-section" id="syncSection">
+                <div class="sync-label">
+                    <span class="sync-status-dot" id="syncDot"></span>
+                    <span id="syncLabelText">Sync Devices</span>
+                </div>
+
+                <!-- Your code to share -->
+                <div class="sync-code-display">
+                    <span class="sync-code-value" id="myPeerCode">——————</span>
+                    <button class="sync-code-copy" id="btnCopyCode" title="Copy code">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <rect x="9" y="9" width="13" height="13" rx="1"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Connected peers -->
+                <div class="sync-peers-list" id="syncPeersList"></div>
+
+                <!-- Join with a code -->
+                <div class="sync-input-row">
+                    <input class="sync-input" id="syncJoinInput" placeholder="Enter 6-digit code" maxlength="6" />
+                    <button class="sync-btn" id="btnSyncJoin">Join</button>
                 </div>
             </div>
 
@@ -1843,6 +1999,10 @@
                     if (history.find(c => c.id === lastActiveId)) this.loadChat(lastActiveId);
                 }
                 this.dom.input.focus();
+
+                // Init sync — PeerJS loads lazily inside SyncManager
+                this.sync = new SyncManager(this.storageKey);
+                this.sync.onMerge = () => this._refreshHistoryFromStorage();
             }
 
             setupListeners() {
@@ -1992,7 +2152,7 @@
                 const clientHistory = this.getRawHistory(this.state.chatId);
                 const clientLastActive = Date.now();
                 try {
-                        const response = await fetch("https://backend.esamz.site/api/chat", {
+                    const response = await fetch("https://backend-for-esamzai.onrender.com/api/chat", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ message: finalPayload, sessionId: this.state.chatId, clientHistory, clientLastActive }),
@@ -2085,6 +2245,24 @@
                     allChats[chatIndex].messages = newMessages;
                     if (allChats[chatIndex].title === 'Untitled Chat' && newMessages.length > 0) { const firstUserMsg = newMessages.find(m => m.role === 'user'); if (firstUserMsg) { allChats[chatIndex].title = firstUserMsg.content.slice(0, 30) + '...'; this.renderHistoryItem(chatId, allChats[chatIndex].title); } }
                     localStorage.setItem(this.storageKey, JSON.stringify(allChats));
+                    if (this.sync) this.sync.broadcast();
+                }
+            }
+
+            _refreshHistoryFromStorage() {
+                this.dom.historyList.innerHTML = '';
+                const raw = localStorage.getItem(this.storageKey);
+                const history = raw ? JSON.parse(raw) : [];
+                [...history].reverse().forEach(chat => {
+                    if (chat.id) this.renderHistoryItem(chat.id, chat.title);
+                });
+                if (this.state.chatId) {
+                    const updated = history.find(c => c.id === this.state.chatId);
+                    if (updated) {
+                        this.dom.chatList.innerHTML = '';
+                        updated.messages.forEach(m => this.appendMessage(m.role, m.content));
+                        this.scrollToBottom();
+                    }
                 }
             }
 
@@ -2149,7 +2327,15 @@
                 this.updateButtonState();
             }
 
-            saveToHistory(chatObj) { const raw = localStorage.getItem(this.storageKey); let history = raw ? JSON.parse(raw) : []; history = history.filter(h => h.id !== chatObj.id); history.unshift(chatObj); if (history.length > 50) history = history.slice(0, 50); localStorage.setItem(this.storageKey, JSON.stringify(history)); }
+            saveToHistory(chatObj) {
+                const raw = localStorage.getItem(this.storageKey);
+                let history = raw ? JSON.parse(raw) : [];
+                history = history.filter(h => h.id !== chatObj.id);
+                history.unshift(chatObj);
+                if (history.length > 50) history = history.slice(0, 50);
+                localStorage.setItem(this.storageKey, JSON.stringify(history));
+                if (this.sync) this.sync.broadcast();
+            }
 
             newChat() { localStorage.removeItem(this.LAST_CHAT_KEY); this.state.chatId = null; this.state.files = []; this.dom.chatList.innerHTML = ''; this.dom.welcome.classList.remove('hidden'); this.dom.input.focus(); document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active')); this.updateButtonState(); }
 
@@ -2175,6 +2361,283 @@
                 a.click();
                 URL.revokeObjectURL(url);
                 Utils.showToast('Chat exported', 'success');
+            }
+        }
+
+        // ==================== SYNC MANAGER (WebRTC / PeerJS) ====================
+        // Architecture:
+        //  - Every device gets a stable 6-digit peer ID stored in localStorage
+        //  - Device A shares its code → Device B enters it and connects
+        //  - On connect: both sides do a full MERGE of all chats (union by chat ID,
+        //    messages merged by timestamp, newest wins per message index)
+        //  - On every localStorage change (new message, new chat, delete):
+        //    broadcast a SYNC packet to all connected peers
+        //  - On receive: merge incoming data into local storage, refresh sidebar
+
+        class SyncManager {
+            constructor(storageKey) {
+                this.storageKey = storageKey;
+                this.peer = null;
+                this.connections = {}; // peerId → DataConnection
+                this.myCode = null;
+                this.onMerge = null; // callback → app reloads history
+
+                this._dot = document.getElementById('syncDot');
+                this._label = document.getElementById('syncLabelText');
+                this._codeEl = document.getElementById('myPeerCode');
+                this._peersList = document.getElementById('syncPeersList');
+                this._joinInput = document.getElementById('syncJoinInput');
+                this._joinBtn = document.getElementById('btnSyncJoin');
+                this._copyBtn = document.getElementById('btnCopyCode');
+
+                this._joinBtn.onclick = () => this._joinFromInput();
+                this._copyBtn.onclick = () => this._copyCode();
+                this._joinInput.addEventListener('keydown', e => { if (e.key === 'Enter') this._joinFromInput(); });
+                this._joinInput.addEventListener('input', e => {
+                    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
+                });
+
+                this._initPeer();
+
+                // Watch localStorage for changes made by the App (new messages, etc.)
+                // We hook into the App's saveToHistory/overwriteHistory via a debounced broadcast
+                this._broadcastDebounce = null;
+            }
+
+            _generateCode() {
+                // Try to restore saved code so it stays stable across refreshes
+                let code = localStorage.getItem('esamz_peer_code');
+                if (!code || code.length !== 6) {
+                    code = String(Math.floor(100000 + Math.random() * 900000));
+                    localStorage.setItem('esamz_peer_code', code);
+                }
+                return code;
+            }
+
+            async _initPeer() {
+                // Lazy-load PeerJS only when sync is first used
+                if (typeof Peer === 'undefined') {
+                    await new Promise((resolve, reject) => {
+                        const s = document.createElement('script');
+                        s.src = 'https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js';
+                        s.onload = resolve;
+                        s.onerror = reject;
+                        document.head.appendChild(s);
+                    });
+                }
+
+                this.myCode = this._generateCode();
+                this._codeEl.textContent = this.myCode;
+                this._setStatus('connecting');
+
+                // Use PeerJS public cloud (no self-hosted server needed)
+                this.peer = new Peer(this.myCode, {
+                    debug: 0
+                });
+
+                this.peer.on('open', (id) => {
+                    this._setStatus('ready');
+                    this._codeEl.textContent = id;
+                    // Reconnect to any previously known peers
+                    this._reconnectKnown();
+                });
+
+                this.peer.on('connection', (conn) => {
+                    this._setupConn(conn);
+                });
+
+                this.peer.on('error', (err) => {
+                    // ID taken (rare) — generate a new one
+                    if (err.type === 'unavailable-id') {
+                        localStorage.removeItem('esamz_peer_code');
+                        this._initPeer();
+                    } else {
+                        this._setStatus('ready');
+                    }
+                });
+
+                this.peer.on('disconnected', () => {
+                    this._setStatus('ready');
+                    // Try to reconnect peer server
+                    setTimeout(() => { try { this.peer.reconnect(); } catch(e){} }, 3000);
+                });
+            }
+
+            _setupConn(conn) {
+                const pid = conn.peer;
+                this.connections[pid] = conn;
+
+                conn.on('open', () => {
+                    this._updatePeersList();
+                    this._setStatus('connected');
+                    this._saveKnownPeer(pid);
+                    // Send our full history immediately on connect
+                    this._sendFull(conn);
+                });
+
+                conn.on('data', (packet) => {
+                    this._handlePacket(packet);
+                });
+
+                conn.on('close', () => {
+                    delete this.connections[pid];
+                    this._updatePeersList();
+                    if (Object.keys(this.connections).length === 0) this._setStatus('ready');
+                });
+
+                conn.on('error', () => {
+                    delete this.connections[pid];
+                    this._updatePeersList();
+                    if (Object.keys(this.connections).length === 0) this._setStatus('ready');
+                });
+            }
+
+            _sendFull(conn) {
+                const raw = localStorage.getItem(this.storageKey);
+                const chats = raw ? JSON.parse(raw) : [];
+                conn.send({ type: 'FULL_SYNC', chats });
+            }
+
+            broadcast(immediate = false) {
+                // Debounce rapid saves (streaming responses) to avoid flooding
+                clearTimeout(this._broadcastDebounce);
+                const delay = immediate ? 0 : 600;
+                this._broadcastDebounce = setTimeout(() => {
+                    const raw = localStorage.getItem(this.storageKey);
+                    const chats = raw ? JSON.parse(raw) : [];
+                    const packet = { type: 'FULL_SYNC', chats };
+                    Object.values(this.connections).forEach(conn => {
+                        try { if (conn.open) conn.send(packet); } catch(e){}
+                    });
+                }, delay);
+            }
+
+            _handlePacket(packet) {
+                if (packet.type === 'FULL_SYNC') {
+                    this._mergeChats(packet.chats);
+                }
+            }
+
+            _mergeChats(incoming) {
+                const raw = localStorage.getItem(this.storageKey);
+                const local = raw ? JSON.parse(raw) : [];
+
+                // Build a map of local chats by ID
+                const merged = {};
+                local.forEach(c => { merged[c.id] = c; });
+
+                // Merge incoming chats
+                incoming.forEach(inc => {
+                    if (!merged[inc.id]) {
+                        // New chat from peer — add it
+                        merged[inc.id] = inc;
+                    } else {
+                        const loc = merged[inc.id];
+                        // Merge messages: take the longer array, fill gaps from the other
+                        const locMsgs = loc.messages || [];
+                        const incMsgs = inc.messages || [];
+                        const maxLen = Math.max(locMsgs.length, incMsgs.length);
+                        const mergedMsgs = [];
+                        for (let i = 0; i < maxLen; i++) {
+                            // Prefer whichever side has the message; if both, prefer longer content
+                            const lm = locMsgs[i];
+                            const im = incMsgs[i];
+                            if (lm && im) {
+                                mergedMsgs.push(lm.content.length >= im.content.length ? lm : im);
+                            } else {
+                                mergedMsgs.push(lm || im);
+                            }
+                        }
+                        merged[inc.id] = { ...loc, messages: mergedMsgs };
+                    }
+                });
+
+                // Sort by id descending (newest first, since IDs are timestamps)
+                const result = Object.values(merged).sort((a, b) => Number(b.id) - Number(a.id)).slice(0, 50);
+                localStorage.setItem(this.storageKey, JSON.stringify(result));
+
+                // Notify App to refresh sidebar
+                if (this.onMerge) this.onMerge();
+                Utils.showToast('Chats synced with peer ✓', 'success');
+            }
+
+            _joinFromInput() {
+                const code = this._joinInput.value.trim();
+                if (code.length !== 6) { Utils.showToast('Enter a 6-digit code', 'error'); return; }
+                if (code === this.myCode) { Utils.showToast('Cannot connect to yourself', 'error'); return; }
+                if (this.connections[code]) { Utils.showToast('Already connected', 'info'); return; }
+                this._connect(code);
+                this._joinInput.value = '';
+            }
+
+            _connect(peerId) {
+                if (!this.peer || this.peer.destroyed) return;
+                this._setStatus('connecting');
+                const conn = this.peer.connect(peerId, { reliable: true });
+                this._setupConn(conn);
+            }
+
+            disconnect(peerId) {
+                const conn = this.connections[peerId];
+                if (conn) { try { conn.close(); } catch(e){} }
+                delete this.connections[peerId];
+                this._removeKnownPeer(peerId);
+                this._updatePeersList();
+                if (Object.keys(this.connections).length === 0) this._setStatus('ready');
+            }
+
+            _reconnectKnown() {
+                const known = this._getKnownPeers();
+                known.forEach(pid => {
+                    if (!this.connections[pid]) this._connect(pid);
+                });
+            }
+
+            _getKnownPeers() {
+                try { return JSON.parse(localStorage.getItem('esamz_known_peers') || '[]'); } catch(e) { return []; }
+            }
+            _saveKnownPeer(pid) {
+                const known = this._getKnownPeers();
+                if (!known.includes(pid)) { known.push(pid); localStorage.setItem('esamz_known_peers', JSON.stringify(known)); }
+            }
+            _removeKnownPeer(pid) {
+                const known = this._getKnownPeers().filter(p => p !== pid);
+                localStorage.setItem('esamz_known_peers', JSON.stringify(known));
+            }
+
+            _copyCode() {
+                navigator.clipboard.writeText(this.myCode).then(() => {
+                    Utils.showToast('Code copied!', 'success');
+                    this._copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+                    setTimeout(() => {
+                        this._copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="1"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`;
+                    }, 2000);
+                });
+            }
+
+            _setStatus(state) {
+                this._dot.className = 'sync-status-dot';
+                if (state === 'connected') { this._dot.classList.add('connected'); this._label.textContent = `Synced (${Object.keys(this.connections).length})`; }
+                else if (state === 'connecting') { this._dot.classList.add('connecting'); this._label.textContent = 'Connecting…'; }
+                else { this._label.textContent = 'Sync Devices'; }
+            }
+
+            _updatePeersList() {
+                this._peersList.innerHTML = '';
+                const peers = Object.keys(this.connections);
+                peers.forEach(pid => {
+                    const chip = document.createElement('div');
+                    chip.className = 'sync-peer-chip';
+                    chip.innerHTML = `<span class="dot"></span><span>Device ${pid}</span>`;
+                    const disBtn = document.createElement('button');
+                    disBtn.className = 'sync-disconnect-btn';
+                    disBtn.title = 'Disconnect';
+                    disBtn.textContent = '✕';
+                    disBtn.onclick = () => this.disconnect(pid);
+                    chip.appendChild(disBtn);
+                    this._peersList.appendChild(chip);
+                });
+                if (peers.length > 0) this._setStatus('connected');
             }
         }
 
