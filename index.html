@@ -1911,35 +1911,41 @@
                         this._codeEl.textContent = this.myCode;
                         this._setStatus('connecting');
 
-                        this.peer = new Peer(this.myCode, { debug: 0 });
+                       // Add a unique prefix and STUN server to bypass firewalls
+this.peer = new Peer(`esamz-v10-${this.myCode}`, { 
+    debug: 0,
+    config: { 
+        'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] 
+    }
+});
 
-                        this.peer.on('open', (id) => {
-                            this._setStatus('ready');
-                            this._codeEl.textContent = id;
-                            this._reconnectKnown();
-                        });
-
-                        // Replace this.peer.on('connection', ...) with:
-this.peer.on('connection', async (conn) => {
-    // 1. Check Blacklist first
+this.peer.on('open', (id) => {
+    this._setStatus('ready');
+    // We strip the prefix when displaying it so the user only sees the 6 digits
+    this._codeEl.textContent = id.replace('esamz-v10-', ''); 
+    this._reconnectKnown();
+});
+         this.peer.on('connection', (conn) => {
     if (this.blacklist.includes(conn.peer)) {
         conn.close();
         return;
     }
 
-    // 2. Ask for Permission (The Handshake)
-    const allow = await Utils.confirm(
-        `Device ${conn.peer} wants to sync your chat history. Allow connection?`, 
-        "Sync Request"
-    );
+    // Step 1: Establish connection immediately to prevent timeout
+    this._setupConn(conn);
 
-    if (allow) {
-        this._setupConn(conn);
-        Utils.showToast("Device connected", "success");
-    } else {
-        conn.send({ type: 'REJECTED' }); // Optional: tell them why
-        conn.close();
-    }
+    // Step 2: Ask for permission. If they say no, then disconnect.
+    Utils.confirm(
+        `Device ${conn.peer.replace('esamz-v10-', '')} wants to sync. Allow?`, 
+        "Sync Request"
+    ).then(allow => {
+        if (!allow) {
+            conn.send({ type: 'REJECTED' });
+            this.disconnect(conn.peer);
+        } else {
+            Utils.showToast("Device connected", "success");
+        }
+    });
 });
                         this.peer.on('disconnected', () => {
                             this._setStatus('ready');
@@ -2083,14 +2089,15 @@ this.peer.on('connection', async (conn) => {
                 }
 
                 _connect(peerId) {
-                    if (!this.peer || this.peer.destroyed) {
-                        Utils.showToast('Peer not ready, please wait', 'error');
-                        return;
-                    }
-                    this._setStatus('connecting');
-                    const conn = this.peer.connect(peerId, { reliable: true });
-                    this._setupConn(conn);
-                }
+    if (!this.peer || this.peer.destroyed) {
+        Utils.showToast('Peer not ready, please wait', 'error');
+        return;
+    }
+    this._setStatus('connecting');
+    // We add the prefix here to match the target device
+    const conn = this.peer.connect(`esamz-v10-${peerId}`, { reliable: true });
+    this._setupConn(conn);
+}
 
                 disconnect(peerId) {
                     const conn = this.connections[peerId];
