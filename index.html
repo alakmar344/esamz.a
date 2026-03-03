@@ -1877,7 +1877,7 @@
                     this._joinBtn = document.getElementById('btnSyncJoin');
                     this._copyBtn = document.getElementById('btnCopyCode');
                     this._broadcastDebounce = null;
-
+                    this.blacklist = JSON.parse(localStorage.getItem('esamz_blacklist') || '[]');
                     this._joinBtn.addEventListener('click', () => this._joinFromInput());
                     this._copyBtn.addEventListener('click', () => this._copyCode());
                     this._joinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') this._joinFromInput(); });
@@ -1920,16 +1920,28 @@
                             this._reconnectKnown();
                         });
 
-                        this.peer.on('connection', (conn) => this._setupConn(conn));
-                        this.peer.on('error', (err) => {
-                            console.warn('PeerJS error:', err);
-                            if (err.type === 'unavailable-id') {
-                                localStorage.removeItem('esamz_peer_code');
-                                this._initPeer();
-                            } else {
-                                this._setStatus('ready');
-                            }
-                        });
+                        // Replace this.peer.on('connection', ...) with:
+this.peer.on('connection', async (conn) => {
+    // 1. Check Blacklist first
+    if (this.blacklist.includes(conn.peer)) {
+        conn.close();
+        return;
+    }
+
+    // 2. Ask for Permission (The Handshake)
+    const allow = await Utils.confirm(
+        `Device ${conn.peer} wants to sync your chat history. Allow connection?`, 
+        "Sync Request"
+    );
+
+    if (allow) {
+        this._setupConn(conn);
+        Utils.showToast("Device connected", "success");
+    } else {
+        conn.send({ type: 'REJECTED' }); // Optional: tell them why
+        conn.close();
+    }
+});
                         this.peer.on('disconnected', () => {
                             this._setStatus('ready');
                             setTimeout(() => {
@@ -1964,6 +1976,14 @@
                         if (Object.keys(this.connections).length === 0) this._setStatus('ready');
                     });
                 }
+                blockPeer(peerId) {
+    if (!this.blacklist.includes(peerId)) {
+        this.blacklist.push(peerId);
+        localStorage.setItem('esamz_blacklist', JSON.stringify(this.blacklist));
+    }
+    this.disconnect(peerId); // Close current connection
+    Utils.showToast(`Device ${peerId} blocked`, 'info');
+}
 
                 _sendFull(conn) {
                     const raw = localStorage.getItem(this.storageKey);
@@ -2130,23 +2150,52 @@
                 }
 
                 _updatePeersList() {
-                    this._peersList.innerHTML = '';
-                    const peers = Object.keys(this.connections);
-                    peers.forEach(pid => {
-                        const chip = document.createElement('div');
-                        chip.className = 'sync-peer-chip';
-                        chip.innerHTML = `<span class="dot"></span><span>Device ${pid}</span>`;
-                        const disBtn = document.createElement('button');
-                        disBtn.className = 'sync-disconnect-btn';
-                        disBtn.title = 'Disconnect';
-                        disBtn.textContent = '✕';
-                        disBtn.onclick = () => this.disconnect(pid);
-                        chip.appendChild(disBtn);
-                        this._peersList.appendChild(chip);
-                    });
-                    if (peers.length > 0) this._setStatus('connected');
-                }
-            }
+    this._peersList.innerHTML = '';
+    const peers = Object.keys(this.connections);
+
+    peers.forEach(pid => {
+        // Create the container chip
+        const chip = document.createElement('div');
+        chip.className = 'sync-peer-chip';
+        chip.innerHTML = `<span class="dot"></span><span>Device ${pid}</span>`;
+
+        // Action wrapper (to keep buttons grouped)
+        const actions = document.createElement('div');
+        actions.style.display = 'flex';
+        actions.style.gap = '8px';
+        actions.style.marginLeft = 'auto';
+
+        // Disconnect Button
+        const disBtn = document.createElement('button');
+        disBtn.className = 'sync-disconnect-btn';
+        disBtn.title = 'Disconnect';
+        disBtn.textContent = '✕';
+        disBtn.onclick = () => this.disconnect(pid);
+
+        // Block Button
+        const blockBtn = document.createElement('button');
+        blockBtn.className = 'sync-disconnect-btn';
+        blockBtn.title = 'Block Device';
+        blockBtn.innerHTML = '🚫';
+        blockBtn.style.fontSize = '10px';
+        blockBtn.onclick = async () => {
+            const ok = await Utils.confirm(`Block Device ${pid}? They won't be able to reconnect.`, "Block Peer");
+            if (ok) this.blockPeer(pid);
+        };
+
+        // Assemble the UI
+        actions.appendChild(disBtn);
+        actions.appendChild(blockBtn);
+        chip.appendChild(actions);
+        this._peersList.appendChild(chip);
+    });
+
+    if (peers.length > 0) {
+        this._setStatus('connected');
+    } else {
+        this._setStatus('ready');
+    }
+}
 
             // Start the app
             window.app = new App();
