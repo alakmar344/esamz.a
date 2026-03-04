@@ -2371,7 +2371,7 @@
                 }
 
                 initDraft() {
-                    const DRAFT_KEY = 'esamz_input_draft';
+                    const DRAFT_KEY = 'esamz_draft_v9';
                     const saved = localStorage.getItem(DRAFT_KEY);
                     if (saved && saved.trim()) { this.dom.input.value = saved; this.handleInput(); }
                     let draftTimer;
@@ -2415,6 +2415,7 @@
                             if (err.name === 'AbortError') throw err;
                             lastError = err;
                             if (attempt < maxRetries - 1) {
+                                // Exponential backoff: attempt 0→1s, attempt 1→2s, attempt 2→4s
                                 await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 1000));
                             }
                         }
@@ -3098,6 +3099,8 @@
             updateRamadanCountdown();
 
             // ----- MOON PHASE WIDGET -----
+            const MOON_PHASE_ICONS = ['🌑','🌒','🌒','🌓','🌓','🌔','🌔','🌔','🌕','🌕','🌕','🌕','🌕','🌕','🌕','🌖','🌖','🌖','🌗','🌗','🌘','🌘','🌘','🌘','🌘','🌘','🌘','🌘','🌙','🌙'];
+            const MOON_PHASE_LABELS = ['New Moon','Waxing Crescent','Waxing Crescent','First Quarter','First Quarter','Waxing Gibbous','Waxing Gibbous','Waxing Gibbous','Full Moon','Full Moon','Full Moon','Full Moon','Full Moon','Full Moon','Full Moon','Waning Gibbous','Waning Gibbous','Waning Gibbous','Last Quarter','Last Quarter','Waning Crescent','Waning Crescent','Waning Crescent','Waning Crescent','Waning Crescent','Waning Crescent','Waning Crescent','Waning Crescent','Crescent','Crescent'];
             function updateMoonPhase() {
                 const icon = document.getElementById('moonPhaseIcon');
                 const label = document.getElementById('moonPhaseLabel');
@@ -3105,11 +3108,9 @@
                 const now = new Date();
                 const ramadanStart = new Date('2026-02-18');
                 const dayNum = Math.max(1, Math.floor((now - ramadanStart) / 86400000) + 1);
-                const phases = ['🌑','🌒','🌒','🌓','🌓','🌔','🌔','🌔','🌕','🌕','🌕','🌕','🌕','🌕','🌕','🌖','🌖','🌖','🌗','🌗','🌘','🌘','🌘','🌘','🌘','🌘','🌘','🌘','🌙','🌙'];
-                const phaseLabels = ['New Moon','Waxing Crescent','Waxing Crescent','First Quarter','First Quarter','Waxing Gibbous','Waxing Gibbous','Waxing Gibbous','Full Moon','Full Moon','Full Moon','Full Moon','Full Moon','Full Moon','Full Moon','Waning Gibbous','Waning Gibbous','Waning Gibbous','Last Quarter','Last Quarter','Waning Crescent','Waning Crescent','Waning Crescent','Waning Crescent','Waning Crescent','Waning Crescent','Waning Crescent','Waning Crescent','Crescent','Crescent'];
                 const idx = Math.min(dayNum - 1, 29);
-                icon.textContent = phases[idx];
-                label.textContent = phaseLabels[idx];
+                icon.textContent = MOON_PHASE_ICONS[idx];
+                label.textContent = MOON_PHASE_LABELS[idx];
             }
             updateMoonPhase();
 
@@ -3280,9 +3281,12 @@
                     const LATENCY_WARN = 500;
                     const start = Date.now();
                     try {
+                        const pingSignal = typeof AbortSignal.timeout === 'function'
+                            ? AbortSignal.timeout(5000)
+                            : (() => { const ac = new AbortController(); setTimeout(() => ac.abort(), 5000); return ac.signal; })();
                         await fetch('https://backend-for-esamzai.onrender.com/api/chat', {
                             method: 'HEAD',
-                            signal: AbortSignal.timeout(5000),
+                            signal: pingSignal,
                             cache: 'no-store'
                         });
                         const ms = Date.now() - start;
