@@ -783,6 +783,23 @@
         .typing-dot:nth-child(2) { animation-delay: -0.16s; }
         @keyframes tdot { 0%,80%,100%{transform:scale(0);opacity:0} 40%{transform:scale(1);opacity:0.7} }
 
+        /* ----- MSG COPY BUTTON ----- */
+        .msg-copy-btn {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 3px 10px;
+            background: none;
+            border: 1px solid var(--rule-bold);
+            cursor: pointer;
+            font-family: 'DM Mono', monospace;
+            font-size: 9px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--ink-faint);
+            transition: color 120ms, border-color 120ms;
+        }
+        .msg-copy-btn:hover { color: var(--crescent); border-color: var(--crescent); }
+
         /* ----- INPUT AREA ----- */
         .input-wrapper {
             padding: 20px 32px 24px;
@@ -1199,53 +1216,6 @@
             95% { opacity: 0; transform: translateX(120px) rotate(-30deg); }
         }
 
-        /* ----- RAMADAN COUNTDOWN BANNER ----- */
-        .ramadan-banner {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 14px;
-            background: linear-gradient(to right, var(--crescent-soft), transparent);
-            border: 1px solid rgba(212,168,75,0.2);
-            border-left: 3px solid var(--crescent);
-            margin-bottom: 20px;
-            font-family: 'DM Mono', monospace;
-            font-size: 11px;
-            letter-spacing: 0.08em;
-            color: var(--ink-faint);
-            animation: fadeUp 0.6s ease-out 0.3s both;
-        }
-        .ramadan-banner .banner-moon {
-            font-size: 16px;
-            animation: moonGlow 3s ease-in-out infinite;
-            flex-shrink: 0;
-        }
-        .ramadan-banner .banner-text { flex: 1; }
-        .ramadan-banner .banner-day {
-            font-weight: 600;
-            color: var(--crescent);
-        }
-
-        /* ----- MOON PHASE WIDGET ----- */
-        .moon-phase-widget {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 0;
-            margin-top: 8px;
-        }
-        .moon-phase-icon {
-            font-size: 18px;
-            animation: moonGlow 4s ease-in-out infinite;
-        }
-        .moon-phase-label {
-            font-family: 'DM Mono', monospace;
-            font-size: 9px;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: var(--sidebar-tagline);
-        }
-
         /* ----- ISLAMIC GEOMETRIC BORDER (hover) ----- */
         .input-box:focus-within {
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M10 0 L20 10 L10 20 L0 10 Z' fill='none' stroke='rgba(212,168,75,0.06)' stroke-width='0.5'/%3E%3C/svg%3E");
@@ -1255,76 +1225,6 @@
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M10 0 L20 10 L10 20 L0 10 Z' fill='none' stroke='rgba(212,168,75,0.07)' stroke-width='0.5'/%3E%3C/svg%3E");
             background-size: 20px 20px;
             background-color: var(--crescent-soft);
-        }
-
-        /* ----- TASBIH COUNTER ----- */
-        .tasbih-widget {
-            padding: 10px 22px 14px;
-            border-top: 1px solid var(--sidebar-border);
-        }
-        .tasbih-label {
-            font-family: 'DM Mono', monospace;
-            font-size: 9px;
-            letter-spacing: 0.18em;
-            text-transform: uppercase;
-            color: var(--sidebar-label);
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .tasbih-btn {
-            width: 100%;
-            padding: 12px;
-            background: var(--paper-aged);
-            border: 1px solid var(--rule-bold);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            transition: all 150ms;
-            font-family: 'DM Mono', monospace;
-        }
-        body.theme-dark .tasbih-btn { background: rgba(245,237,224,0.05); }
-        .tasbih-btn:hover { background: var(--crescent-soft); border-color: var(--crescent); }
-        .tasbih-btn:active { transform: scale(0.97); }
-        .tasbih-count {
-            font-family: 'Playfair Display', serif;
-            font-size: 22px;
-            font-weight: 700;
-            color: var(--crescent);
-            min-width: 36px;
-            text-align: center;
-        }
-        .tasbih-bead { font-size: 18px; }
-        .tasbih-reset {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-family: 'DM Mono', monospace;
-            font-size: 9px;
-            letter-spacing: 0.1em;
-            color: var(--sidebar-label);
-            padding: 0;
-            text-transform: uppercase;
-            transition: color 120ms;
-        }
-        .tasbih-reset:hover { color: var(--vermillion); }
-        .tasbih-milestone {
-            font-size: 10px;
-            text-align: center;
-            color: var(--crescent);
-            font-family: 'DM Mono', monospace;
-            letter-spacing: 0.1em;
-            min-height: 14px;
-            margin-top: 4px;
-            animation: fadeUp 0.3s ease-out;
-        }
-        @keyframes tasbihPop {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.08); }
-            100% { transform: scale(1); }
         }
 
         /* ----- MESSAGE SEARCH ----- */
@@ -1637,10 +1537,6 @@
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
                     New Conversation
                 </button>
-            <div class="moon-phase-widget">
-                <span class="moon-phase-icon" id="moonPhaseIcon">🌙</span>
-                <span class="moon-phase-label" id="moonPhaseLabel">Ramadan Moon</span>
-            </div>
             </div>
             <div class="search-box">
                 <input class="search-input" id="historySearch" placeholder="Search conversations…" type="text" autocomplete="off">
@@ -1657,18 +1553,6 @@
                         Cibo Cocinar
                     </a>
                 </div>
-            </div>
-            <!-- Tasbih Counter -->
-            <div class="tasbih-widget">
-                <div class="tasbih-label">
-                    <span>Tasbih</span>
-                    <button class="tasbih-reset" id="tasbihReset">Reset</button>
-                </div>
-                <button class="tasbih-btn" id="tasbihBtn" title="Click to count (SubhanAllah)">
-                    <span class="tasbih-bead">📿</span>
-                    <span class="tasbih-count" id="tasbihCount">0</span>
-                </button>
-                <div class="tasbih-milestone" id="tasbihMilestone"></div>
             </div>
             <!-- Sync Panel -->
             <div class="sync-section" id="syncSection">
@@ -1778,10 +1662,6 @@
 
                     <!-- Welcome screen -->
                     <div class="welcome" id="welcomeScreen">
-                        <div class="ramadan-banner" id="ramadanBanner">
-                            <span class="banner-moon">☽</span>
-                            <span class="banner-text"><span class="banner-day" id="ramadanDayText">Ramadan</span> · <span id="ramadanCountText">Loading…</span></span>
-                        </div>
                         <div class="welcome-dateline">eSAMz AI · Strategic Artificial Mind</div>
                         <h1 class="welcome-headline" id="welcomeHeadline">What shall we<br><em>think through</em> today?</h1>
                         <p class="welcome-deck">Deep reasoning with emotional clarity — for complex problems that demand more than a quick answer.</p>
@@ -2334,6 +2214,7 @@
                             this.overwriteHistory(this.state.chatId, msgs);
                         }
                         this.addReactions(aiMsgDiv);
+                        this.addCopyButton(aiMsgDiv);
                         this.updateChatStats();
                     } catch (error) {
                         if (error.name === 'AbortError') {
@@ -2442,6 +2323,27 @@
                     content.appendChild(bar);
                 }
 
+                addCopyButton(msgDiv) {
+                    if (!msgDiv || !msgDiv.classList.contains('ai')) return;
+                    const content = msgDiv.querySelector('.message-content');
+                    if (!content || content.querySelector('.msg-copy-btn')) return;
+                    const bubble = msgDiv.querySelector('.bubble');
+                    if (!bubble) return;
+                    const copyBtn = document.createElement('button');
+                    copyBtn.className = 'msg-copy-btn';
+                    copyBtn.textContent = 'Copy';
+                    copyBtn.addEventListener('click', function() {
+                        navigator.clipboard.writeText(bubble.innerText || bubble.textContent).then(() => {
+                            copyBtn.textContent = 'Copied!';
+                            setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+                        }).catch(() => {
+                            copyBtn.textContent = 'Failed';
+                            setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+                        });
+                    });
+                    content.appendChild(copyBtn);
+                }
+
                 updateChatStats() {
                     let statsEl = this.dom.chatList.querySelector('.chat-stats');
                     if (!statsEl) {
@@ -2502,6 +2404,7 @@
                     div.appendChild(avatar);
                     div.appendChild(content);
                     this.dom.chatList.appendChild(div);
+                    if (role === 'ai' && !isLoading) this.addCopyButton(div);
                     return div;
                 }
 
@@ -3074,46 +2977,6 @@
             }
             updateWelcomeGreeting();
 
-            // ----- RAMADAN COUNTDOWN -----
-            function updateRamadanCountdown() {
-                const dayEl = document.getElementById('ramadanDayText');
-                const countEl = document.getElementById('ramadanCountText');
-                if (!dayEl || !countEl) return;
-                const now = new Date();
-                const ramadanStart = new Date('2026-02-18');
-                const ramadanEnd = new Date('2026-03-19');
-                if (now >= ramadanStart && now <= ramadanEnd) {
-                    const dayNum = Math.floor((now - ramadanStart) / 86400000) + 1;
-                    const daysLeft = Math.ceil((ramadanEnd - now) / 86400000);
-                    dayEl.textContent = `Ramadan Day ${dayNum} of 30`;
-                    countEl.textContent = `${daysLeft} day${daysLeft !== 1 ? 's' : ''} remaining`;
-                } else if (now < ramadanStart) {
-                    const daysUntil = Math.ceil((ramadanStart - now) / 86400000);
-                    dayEl.textContent = 'Ramadan';
-                    countEl.textContent = `begins in ${daysUntil} day${daysUntil !== 1 ? 's' : ''}`;
-                } else {
-                    dayEl.textContent = 'Ramadan 2026';
-                    countEl.textContent = 'Eid Mubarak!';
-                }
-            }
-            updateRamadanCountdown();
-
-            // ----- MOON PHASE WIDGET -----
-            const MOON_PHASE_ICONS = ['🌑','🌒','🌒','🌓','🌓','🌔','🌔','🌔','🌕','🌕','🌕','🌕','🌕','🌕','🌕','🌖','🌖','🌖','🌗','🌗','🌘','🌘','🌘','🌘','🌘','🌘','🌘','🌘','🌙','🌙'];
-            const MOON_PHASE_LABELS = ['New Moon','Waxing Crescent','Waxing Crescent','First Quarter','First Quarter','Waxing Gibbous','Waxing Gibbous','Waxing Gibbous','Full Moon','Full Moon','Full Moon','Full Moon','Full Moon','Full Moon','Full Moon','Waning Gibbous','Waning Gibbous','Waning Gibbous','Last Quarter','Last Quarter','Waning Crescent','Waning Crescent','Waning Crescent','Waning Crescent','Waning Crescent','Waning Crescent','Waning Crescent','Waning Crescent','Crescent','Crescent'];
-            function updateMoonPhase() {
-                const icon = document.getElementById('moonPhaseIcon');
-                const label = document.getElementById('moonPhaseLabel');
-                if (!icon || !label) return;
-                const now = new Date();
-                const ramadanStart = new Date('2026-02-18');
-                const dayNum = Math.max(1, Math.floor((now - ramadanStart) / 86400000) + 1);
-                const idx = Math.min(dayNum - 1, 29);
-                icon.textContent = MOON_PHASE_ICONS[idx];
-                label.textContent = MOON_PHASE_LABELS[idx];
-            }
-            updateMoonPhase();
-
             // ----- STAR PARALLAX -----
             document.addEventListener('mousemove', function(e) {
                 const stars = document.querySelectorAll('.eid-star');
@@ -3126,77 +2989,6 @@
                     s.style.transform = `translate(${dx * depth * 3}px, ${dy * depth * 2}px)`;
                 });
             });
-
-            // ----- PRAYER TIME REMINDERS -----
-            (function initPrayerReminders() {
-                const prayers = [
-                    { name: 'Fajr', hour: 5, minute: 30 },
-                    { name: 'Dhuhr', hour: 13, minute: 0 },
-                    { name: 'Asr', hour: 16, minute: 30 },
-                    { name: 'Maghrib', hour: 19, minute: 0 },
-                    { name: 'Isha', hour: 21, minute: 0 },
-                ];
-                const PRAYER_KEY = 'esamz_prayer_notified';
-                const today = new Date().toDateString();
-                let notified = JSON.parse(localStorage.getItem(PRAYER_KEY) || '{}');
-                if (notified.date !== today) {
-                    notified = { date: today, prayers: [] };
-                    localStorage.setItem(PRAYER_KEY, JSON.stringify(notified));
-                }
-
-                function checkPrayers() {
-                    const now = new Date();
-                    const h = now.getHours();
-                    const m = now.getMinutes();
-                    prayers.forEach(p => {
-                        if (h === p.hour && m === p.minute && !notified.prayers.includes(p.name)) {
-                            Utils.showToast(`🕌 Time for ${p.name}`, 'info');
-                            notified.prayers.push(p.name);
-                            localStorage.setItem(PRAYER_KEY, JSON.stringify(notified));
-                        }
-                    });
-                }
-                setInterval(checkPrayers, 60000);
-                checkPrayers();
-            })();
-
-            // ----- TASBIH COUNTER -----
-            (function initTasbih() {
-                const btn = document.getElementById('tasbihBtn');
-                const countEl = document.getElementById('tasbihCount');
-                const milestoneEl = document.getElementById('tasbihMilestone');
-                const resetBtn = document.getElementById('tasbihReset');
-                if (!btn || !countEl) return;
-
-                let count = parseInt(localStorage.getItem('esamz_tasbih') || '0');
-                countEl.textContent = count;
-
-                btn.addEventListener('click', function() {
-                    count++;
-                    if (count > 99) count = 0;
-                    countEl.textContent = count;
-                    localStorage.setItem('esamz_tasbih', count);
-                    btn.style.animation = 'none';
-                    requestAnimationFrame(() => { btn.style.animation = 'tasbihPop 0.2s ease-out'; });
-                    if (navigator.vibrate) navigator.vibrate(20);
-                    if (count === 33) {
-                        milestoneEl.textContent = 'SubhanAllah ×33 ✓';
-                    } else if (count === 66) {
-                        milestoneEl.textContent = 'Alhamdulillah ×33 ✓';
-                    } else if (count === 99) {
-                        milestoneEl.textContent = 'Allahu Akbar ×33 ✓ 🌟';
-                    } else {
-                        milestoneEl.textContent = '';
-                    }
-                });
-
-                resetBtn.addEventListener('click', function() {
-                    count = 0;
-                    countEl.textContent = 0;
-                    milestoneEl.textContent = '';
-                    localStorage.setItem('esamz_tasbih', 0);
-                });
-            })();
 
             // ----- KEYBOARD SHORTCUTS -----
             (function initKeyboardShortcuts() {
