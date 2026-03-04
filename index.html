@@ -102,82 +102,92 @@
             display: flex;
             position: relative;
         }
-        /* ----- THEME VARIABLES (light default) ----- */
+
+        /* ----- EID / RAMADAN THEME VARIABLES (light default) ----- */
         :root {
-            --ink: #0f0d0b;
-            --ink-light: #2c2825;
-            --ink-faint: #5a5450;
-            --ink-ghost: #9e9892;
-            --paper: #f8f4ee;
-            --paper-warm: #f2ece2;
-            --paper-aged: #e8dfd0;
-            --paper-dark: #ddd3c4;
-            --rule: rgba(15, 13, 11, 0.12);
-            --rule-bold: rgba(15, 13, 11, 0.25);
-            --vermillion: #c0392b;
-            --vermillion-soft: rgba(192, 57, 43, 0.08);
-            --gold: #b8860b;
+            --ink: #2a1f1a;
+            --ink-light: #3d2e27;
+            --ink-faint: #6b5048;
+            --ink-ghost: #a8907e;
+            --paper: #fdf6ee;
+            --paper-warm: #faf0e4;
+            --paper-aged: #f3e4cf;
+            --paper-dark: #e8d0b8;
+            --rule: rgba(42,31,26,0.10);
+            --rule-bold: rgba(42,31,26,0.20);
+            /* Rose-gold replacing vermillion */
+            --vermillion: #b5704a;
+            --vermillion-soft: rgba(181,112,74,0.09);
+            /* Richer gold */
+            --gold: #c9920a;
+            /* Crescent accent */
+            --crescent: #d4a84b;
+            --crescent-soft: rgba(212,168,75,0.15);
             --sidebar-w: 260px;
             --head-h: 56px;
             --r: 2px;
-            --texture-dot: rgba(15,13,11,0.025);
-            --texture-rule: rgba(15,13,11,0.04);
-            --sidebar-bg: #ede7db;
-            --sidebar-border: rgba(15,13,11,0.10);
-            --sidebar-text: rgba(15,13,11,0.5);
-            --sidebar-text-bright: #0f0d0b;
-            --sidebar-hover-bg: rgba(15,13,11,0.05);
-            --sidebar-hover-border: rgba(15,13,11,0.18);
-            --sidebar-active-bg: rgba(15,13,11,0.07);
-            --sidebar-label: rgba(15,13,11,0.35);
-            --sidebar-footer-text: rgba(15,13,11,0.35);
-            --sidebar-footer-link: rgba(15,13,11,0.45);
-            --sidebar-footer-link-hover: rgba(15,13,11,0.75);
-            --sidebar-eyebrow: rgba(15,13,11,0.4);
-            --sidebar-tagline: rgba(15,13,11,0.45);
-            --sidebar-new-chat-border: rgba(15,13,11,0.22);
-            --sidebar-new-chat-color: rgba(15,13,11,0.65);
-            --sidebar-new-chat-hover-bg: rgba(15,13,11,0.06);
-            --sidebar-new-chat-hover-border: rgba(15,13,11,0.4);
-            --sidebar-edge: linear-gradient(to bottom, transparent, rgba(15,13,11,0.08) 20%, rgba(15,13,11,0.08) 80%, transparent);
+            --texture-dot: rgba(42,31,26,0.018);
+            --texture-rule: rgba(42,31,26,0.035);
+            --sidebar-bg: #f5ead8;
+            --sidebar-border: rgba(42,31,26,0.10);
+            --sidebar-text: rgba(42,31,26,0.50);
+            --sidebar-text-bright: #2a1f1a;
+            --sidebar-hover-bg: rgba(212,168,75,0.08);
+            --sidebar-hover-border: rgba(181,112,74,0.25);
+            --sidebar-active-bg: rgba(212,168,75,0.12);
+            --sidebar-label: rgba(42,31,26,0.32);
+            --sidebar-footer-text: rgba(42,31,26,0.32);
+            --sidebar-footer-link: rgba(42,31,26,0.42);
+            --sidebar-footer-link-hover: rgba(42,31,26,0.72);
+            --sidebar-eyebrow: rgba(181,112,74,0.7);
+            --sidebar-tagline: rgba(42,31,26,0.42);
+            --sidebar-new-chat-border: rgba(181,112,74,0.30);
+            --sidebar-new-chat-color: rgba(42,31,26,0.60);
+            --sidebar-new-chat-hover-bg: rgba(212,168,75,0.09);
+            --sidebar-new-chat-hover-border: rgba(181,112,74,0.50);
+            --sidebar-edge: linear-gradient(to bottom, transparent, rgba(181,112,74,0.07) 20%, rgba(181,112,74,0.07) 80%, transparent);
         }
-        /* Dark theme (applied via class) */
+
+        /* Dark Eid theme */
         body.theme-dark {
-            --ink: #f0ece4;
-            --ink-light: #d8d0c4;
-            --ink-faint: #a89e94;
-            --ink-ghost: #6e6760;
-            --paper: #26221e;
-            --paper-warm: #2e2924;
-            --paper-aged: #38322b;
-            --paper-dark: #453e36;
-            --rule: rgba(240,236,228,0.09);
-            --rule-bold: rgba(240,236,228,0.18);
-            --vermillion: #d45744;
-            --vermillion-soft: rgba(212,87,68,0.12);
-            --gold: #d4a520;
-            --texture-dot: rgba(240,236,228,0.022);
-            --texture-rule: rgba(240,236,228,0.04);
-            --sidebar-bg: #1f1c18;
-            --sidebar-border: rgba(240,236,228,0.08);
-            --sidebar-text: rgba(240,236,228,0.5);
-            --sidebar-text-bright: #f0ece4;
-            --sidebar-hover-bg: rgba(240,236,228,0.06);
-            --sidebar-hover-border: rgba(240,236,228,0.16);
-            --sidebar-active-bg: rgba(240,236,228,0.08);
-            --sidebar-label: rgba(240,236,228,0.28);
-            --sidebar-footer-text: rgba(240,236,228,0.24);
-            --sidebar-footer-link: rgba(240,236,228,0.36);
-            --sidebar-footer-link-hover: rgba(240,236,228,0.65);
-            --sidebar-eyebrow: rgba(240,236,228,0.38);
-            --sidebar-tagline: rgba(240,236,228,0.42);
-            --sidebar-new-chat-border: rgba(240,236,228,0.2);
-            --sidebar-new-chat-color: rgba(240,236,228,0.7);
-            --sidebar-new-chat-hover-bg: rgba(240,236,228,0.07);
-            --sidebar-new-chat-hover-border: rgba(240,236,228,0.36);
-            --sidebar-edge: linear-gradient(to bottom, transparent, rgba(240,236,228,0.09) 20%, rgba(240,236,228,0.09) 80%, transparent);
+            --ink: #f5ede0;
+            --ink-light: #e0cfbc;
+            --ink-faint: #b09880;
+            --ink-ghost: #7a6450;
+            --paper: #1e1812;
+            --paper-warm: #261f16;
+            --paper-aged: #32291c;
+            --paper-dark: #3e3224;
+            --rule: rgba(245,237,224,0.08);
+            --rule-bold: rgba(245,237,224,0.16);
+            --vermillion: #d4855a;
+            --vermillion-soft: rgba(212,133,90,0.12);
+            --gold: #ddb84a;
+            --crescent: #e8c96a;
+            --crescent-soft: rgba(232,201,106,0.12);
+            --texture-dot: rgba(245,237,224,0.018);
+            --texture-rule: rgba(245,237,224,0.032);
+            --sidebar-bg: #181410;
+            --sidebar-border: rgba(245,237,224,0.08);
+            --sidebar-text: rgba(245,237,224,0.46);
+            --sidebar-text-bright: #f5ede0;
+            --sidebar-hover-bg: rgba(232,201,106,0.07);
+            --sidebar-hover-border: rgba(212,133,90,0.18);
+            --sidebar-active-bg: rgba(232,201,106,0.10);
+            --sidebar-label: rgba(245,237,224,0.26);
+            --sidebar-footer-text: rgba(245,237,224,0.22);
+            --sidebar-footer-link: rgba(245,237,224,0.34);
+            --sidebar-footer-link-hover: rgba(245,237,224,0.62);
+            --sidebar-eyebrow: rgba(232,201,106,0.60);
+            --sidebar-tagline: rgba(245,237,224,0.38);
+            --sidebar-new-chat-border: rgba(212,133,90,0.22);
+            --sidebar-new-chat-color: rgba(245,237,224,0.65);
+            --sidebar-new-chat-hover-bg: rgba(232,201,106,0.07);
+            --sidebar-new-chat-hover-border: rgba(212,133,90,0.38);
+            --sidebar-edge: linear-gradient(to bottom, transparent, rgba(232,201,106,0.07) 20%, rgba(232,201,106,0.07) 80%, transparent);
         }
-        /* Paper texture & ruled lines */
+
+        /* Warm parchment dot texture */
         body::before {
             content: '';
             position: fixed;
@@ -195,15 +205,41 @@
             pointer-events: none;
             z-index: 0;
         }
+
+        /* Floating stars decoration */
+        .eid-stars {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+        .eid-star {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background: var(--crescent);
+            border-radius: 50%;
+            opacity: 0;
+            animation: starTwinkle var(--dur, 4s) var(--delay, 0s) infinite ease-in-out;
+        }
+        @keyframes starTwinkle {
+            0%, 100% { opacity: 0; transform: scale(0.5); }
+            50% { opacity: 0.45; transform: scale(1.2); }
+        }
+
         /* ----- TYPOGRAPHY ----- */
         h1, h2, h3, h4 { font-family: 'Playfair Display', Georgia, serif; font-weight: 700; line-height: 1.2; color: var(--ink); }
+
         /* ----- SCROLLBAR ----- */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: var(--paper-warm); }
         ::-webkit-scrollbar-thumb { background: var(--paper-dark); border-radius: 0; }
         ::-webkit-scrollbar-thumb:hover { background: var(--ink-ghost); }
+
         /* ----- LAYOUT ----- */
         .app-container { display: flex; width: 100%; height: 100dvh; position: relative; z-index: 2; overflow: hidden; }
+
         /* ----- SIDEBAR ----- */
         .sidebar {
             width: var(--sidebar-w);
@@ -225,9 +261,121 @@
             width: 1px;
             background: var(--sidebar-edge);
         }
-        .sidebar-header { padding: 28px 22px 20px; border-bottom: 1px solid var(--sidebar-border); }
-        .brand { margin-bottom: 22px; }
-        .brand-eyebrow { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--sidebar-eyebrow); margin-bottom: 6px; }
+
+        /* ----- EID POPUP MODAL ----- */
+        .eid-modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(42,31,26,0.72);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            animation: fadeIn 0.4s ease-out;
+        }
+        .eid-modal-overlay.hidden { display: none; }
+        .eid-modal {
+            background: var(--paper);
+            border: 1px solid rgba(212,168,75,0.35);
+            box-shadow: 0 0 0 1px rgba(212,168,75,0.12), 12px 12px 0 var(--crescent);
+            max-width: 400px;
+            width: 90%;
+            position: relative;
+            text-align: center;
+            animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            overflow: hidden;
+        }
+        .eid-modal-top {
+            background: linear-gradient(135deg, rgba(212,168,75,0.15) 0%, rgba(181,112,74,0.08) 100%);
+            border-bottom: 1px solid rgba(212,168,75,0.18);
+            padding: 30px 36px 20px;
+            position: relative;
+        }
+        .eid-modal-top::before {
+            content: '\2726  \263D  \2726';
+            display: block;
+            font-size: 10px;
+            letter-spacing: 0.5em;
+            color: var(--crescent);
+            opacity: 0.65;
+            margin-bottom: 12px;
+        }
+        .eid-modal-moon {
+            font-size: 52px;
+            line-height: 1;
+            display: block;
+            margin-bottom: 10px;
+            animation: moonGlow 3s ease-in-out infinite;
+        }
+        .eid-modal-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 26px;
+            font-weight: 900;
+            color: var(--ink);
+            letter-spacing: -0.01em;
+            margin-bottom: 4px;
+        }
+        .eid-modal-arabic {
+            font-size: 12px;
+            color: var(--crescent);
+            font-style: italic;
+            font-family: 'Source Serif 4', serif;
+            letter-spacing: 0.06em;
+        }
+        .eid-modal-body { padding: 20px 36px 26px; }
+        .eid-modal-body p {
+            font-size: 13px;
+            color: var(--ink-faint);
+            font-style: italic;
+            line-height: 1.65;
+            margin-bottom: 20px;
+        }
+        .eid-modal-close-btn {
+            position: absolute; top: 10px; right: 10px;
+            background: none;
+            border: 1px solid rgba(212,168,75,0.22);
+            color: var(--ink-ghost);
+            width: 24px; height: 24px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 120ms;
+        }
+        .eid-modal-close-btn:hover { background: var(--crescent); color: var(--paper); border-color: var(--crescent); }
+        .eid-modal-dismiss {
+            width: 100%; height: 40px;
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            cursor: pointer;
+            border: 1px solid var(--crescent);
+            background: var(--crescent);
+            color: var(--paper);
+            transition: all 120ms;
+        }
+        .eid-modal-dismiss:hover { background: var(--vermillion); border-color: var(--vermillion); }
+
+        /* ----- HANGING DECORATION ----- */
+        .eid-hanging {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            pointer-events: none;
+            z-index: 3;
+            overflow: hidden;
+            height: 260px;
+        }
+
+        .sidebar-header { padding: 22px 22px 18px; border-bottom: 1px solid var(--sidebar-border); }
+        .brand { margin-bottom: 16px; }
+        .brand-eyebrow {
+            font-family: 'DM Mono', monospace;
+            font-size: 9px;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--sidebar-eyebrow);
+            margin-bottom: 6px;
+        }
         .brand-name { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 900; color: var(--sidebar-text-bright); letter-spacing: -0.02em; line-height: 1; }
         .brand-name span { color: var(--vermillion); }
         .brand-tagline { font-family: 'Source Serif 4', serif; font-style: italic; font-size: 11px; color: var(--sidebar-tagline); margin-top: 4px; }
@@ -293,7 +441,7 @@
         .nav-item.active {
             color: var(--sidebar-text-bright);
             background: var(--sidebar-active-bg);
-            border-left-color: var(--vermillion);
+            border-left-color: var(--crescent);
         }
         .nav-item svg { width: 14px; height: 14px; flex-shrink: 0; opacity: 0.6; }
         .nav-item-row { display: flex; align-items: center; position: relative; }
@@ -342,6 +490,7 @@
             transition: color 120ms;
         }
         .footer-link:hover { color: var(--sidebar-footer-link-hover); }
+
         /* ----- MAIN CONTENT ----- */
         .main-content {
             flex: 1;
@@ -350,6 +499,7 @@
             min-width: 0;
             background: var(--paper);
         }
+
         /* ----- HEADER ----- */
         .header {
             height: var(--head-h);
@@ -363,12 +513,13 @@
             flex-shrink: 0;
             z-index: 10;
         }
+        /* Subtle crescent gold line under header */
         .header::after {
             content: '';
             position: absolute;
             bottom: -5px; left: 0; right: 0;
             height: 1px;
-            background: var(--rule);
+            background: linear-gradient(to right, transparent, var(--crescent-soft), transparent);
         }
         .status-pill {
             display: flex;
@@ -397,7 +548,7 @@
             transition: all 120ms;
             border-radius: var(--r);
         }
-        .btn-clear:hover { border-color: var(--ink); color: var(--ink); background: var(--paper-aged); }
+        .btn-clear:hover { border-color: var(--crescent); color: var(--ink); background: var(--crescent-soft); }
         .theme-toggle {
             width: 34px; height: 34px;
             display: flex;
@@ -412,31 +563,39 @@
             flex-shrink: 0;
             position: relative;
         }
-        .theme-toggle:hover { background: var(--paper-aged); color: var(--ink); border-color: var(--ink); }
+        .theme-toggle:hover { background: var(--crescent-soft); color: var(--ink); border-color: var(--crescent); }
         .theme-toggle .icon-sun,
         .theme-toggle .icon-moon { position: absolute; transition: opacity 150ms, transform 150ms; }
         body.theme-light .theme-toggle .icon-sun { opacity: 0; transform: scale(0.6) rotate(30deg); }
         body.theme-light .theme-toggle .icon-moon { opacity: 1; transform: scale(1) rotate(0deg); }
         body.theme-dark .theme-toggle .icon-sun { opacity: 1; transform: scale(1) rotate(0deg); }
         body.theme-dark .theme-toggle .icon-moon { opacity: 0; transform: scale(0.6) rotate(-30deg); }
+
         /* ----- CHAT AREA ----- */
-        .chat-container { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
+        .chat-container { flex: 1; overflow-y: auto; scroll-behavior: smooth; position: relative; }
         .chat-wrapper { max-width: 760px; margin: 0 auto; padding: 48px 40px; }
-        /* Welcome screen */
+
+        /* ----- WELCOME SCREEN (Eid themed) ----- */
         .welcome { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; min-height: 65vh; animation: fadeUp 0.5s ease-out both; }
         @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes moonGlow {
+            0%,100% { filter: drop-shadow(0 0 4px rgba(212,168,75,0.3)); }
+            50% { filter: drop-shadow(0 0 10px rgba(212,168,75,0.7)); }
+        }
+
         .welcome-dateline {
             font-family: 'DM Mono', monospace;
             font-size: 10px;
             letter-spacing: 0.18em;
             text-transform: uppercase;
             color: var(--ink-ghost);
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             display: flex;
             align-items: center;
             gap: 12px;
         }
-        .welcome-dateline::before { content: ''; display: block; width: 32px; height: 1px; background: var(--ink-ghost); }
+        .welcome-dateline::before { content: ''; display: block; width: 32px; height: 1px; background: var(--crescent); opacity: 0.5; }
+
         .welcome-headline {
             font-family: 'Playfair Display', serif;
             font-size: clamp(36px, 5vw, 52px);
@@ -448,22 +607,27 @@
         }
         .welcome-headline em { font-style: italic; color: var(--vermillion); }
         .welcome-deck { font-size: 16px; font-style: italic; color: var(--ink-faint); margin-bottom: 44px; max-width: 480px; line-height: 1.6; }
+
         .welcome-rule {
             width: 100%; height: 1px;
             background: var(--rule-bold);
             margin-bottom: 36px;
             position: relative;
         }
+        /* Replaced § with crescent star separator */
         .welcome-rule::after {
-            content: '§';
+            content: '☽ ✦ ☾';
             position: absolute;
             left: 50%; top: 50%;
             transform: translate(-50%, -50%);
             background: var(--paper);
-            padding: 0 12px;
-            font-size: 12px;
-            color: var(--ink-ghost);
+            padding: 0 14px;
+            font-size: 11px;
+            color: var(--crescent);
+            letter-spacing: 0.2em;
         }
+
+        /* Suggestion cards */
         .suggestions {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -481,14 +645,16 @@
             border: none;
             display: block;
         }
-        .suggestion-card:hover { background: var(--paper-warm); }
+        .suggestion-card:hover { background: var(--crescent-soft); }
         .suggestion-card:hover .suggestion-arrow { opacity: 1; transform: translateX(0); }
         .suggestion-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-        .suggestion-kicker { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--vermillion); }
+        /* Kicker uses crescent gold */
+        .suggestion-kicker { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--crescent); }
         .suggestion-arrow { font-size: 14px; color: var(--ink-ghost); opacity: 0; transform: translateX(-4px); transition: all 150ms; }
         .suggestion-title { font-family: 'Playfair Display', serif; font-size: 14px; font-weight: 700; color: var(--ink); line-height: 1.3; margin-bottom: 4px; }
         .suggestion-desc { font-size: 12px; color: var(--ink-ghost); font-style: italic; }
-        /* Messages */
+
+        /* ----- MESSAGES ----- */
         .message { display: flex; gap: 18px; margin-bottom: 40px; animation: fadeUp 0.25s ease-out both; }
         .message.user { flex-direction: row-reverse; }
         .avatar {
@@ -505,6 +671,7 @@
         .message.ai .avatar { background: var(--ink); color: var(--paper); }
         .message.user .avatar { background: var(--paper-aged); color: var(--ink-faint); border: 1px solid var(--rule-bold); }
         .message-content { flex: 1; min-width: 0; }
+
         /* User bubble */
         .message.user .bubble {
             display: block;
@@ -512,7 +679,7 @@
             margin-left: auto;
             background: var(--paper-warm);
             border: 1px solid var(--rule-bold);
-            border-top: 3px solid var(--ink);
+            border-top: 3px solid var(--crescent);
             padding: 14px 18px;
             font-size: 15px;
             color: var(--ink);
@@ -540,12 +707,13 @@
             font-size: 12.5px;
             border-bottom: 1px solid var(--rule-bold);
         }
+
         /* AI bubble */
         .message.ai .bubble {
             color: var(--ink-light);
             font-size: 15px;
             line-height: 1.8;
-            border-left: 3px solid var(--rule-bold);
+            border-left: 3px solid var(--crescent-soft);
             padding-left: 20px;
         }
         .message.ai .bubble h1, .message.ai .bubble h2, .message.ai .bubble h3 {
@@ -561,6 +729,7 @@
         .message.ai .bubble ul, .message.ai .bubble ol { margin: 0.8em 0; padding-left: 1.4em; }
         .message.ai .bubble li { margin-bottom: 0.4em; }
         .message.ai .bubble blockquote { border-left: 3px solid var(--gold); padding-left: 16px; font-style: italic; color: var(--ink-faint); margin: 1em 0; }
+
         /* Code blocks */
         .code-block-wrapper { background: var(--ink); border: none; margin: 1.4em 0; overflow: hidden; }
         .code-header {
@@ -606,12 +775,14 @@
             font-size: 12.5px;
             border-bottom: 1px solid var(--rule-bold);
         }
+
         /* Typing indicator */
         .typing-indicator { display: inline-flex; gap: 5px; align-items: center; padding: 6px 0; }
-        .typing-dot { width: 4px; height: 4px; background: var(--ink-ghost); border-radius: 50%; animation: tdot 1.4s infinite ease-in-out both; }
+        .typing-dot { width: 4px; height: 4px; background: var(--crescent); border-radius: 50%; animation: tdot 1.4s infinite ease-in-out both; opacity: 0.5; }
         .typing-dot:nth-child(1) { animation-delay: -0.32s; }
         .typing-dot:nth-child(2) { animation-delay: -0.16s; }
-        @keyframes tdot { 0%,80%,100%{transform:scale(0);opacity:0} 40%{transform:scale(1);opacity:1} }
+        @keyframes tdot { 0%,80%,100%{transform:scale(0);opacity:0} 40%{transform:scale(1);opacity:0.7} }
+
         /* ----- INPUT AREA ----- */
         .input-wrapper {
             padding: 20px 32px 24px;
@@ -625,17 +796,17 @@
             position: absolute;
             top: -5px; left: 0; right: 0;
             height: 1px;
-            background: var(--rule);
+            background: linear-gradient(to right, transparent, var(--crescent-soft), transparent);
         }
         .input-container { max-width: 760px; margin: 0 auto; }
         .input-box {
             background: var(--paper-warm);
             border: 1px solid var(--rule-bold);
-            border-top: 2px solid var(--ink-light);
+            border-top: 2px solid var(--crescent);
             padding: 12px 14px;
             transition: border-color 150ms;
         }
-        .input-box:focus-within { border-top-color: var(--ink); border-color: var(--ink-faint); }
+        .input-box:focus-within { border-top-color: var(--gold); border-color: var(--crescent); }
         .file-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
         .file-chip {
             background: var(--paper-aged);
@@ -666,7 +837,7 @@
             position: relative;
             z-index: 1;
         }
-        .icon-btn:hover { color: var(--ink); }
+        .icon-btn:hover { color: var(--crescent); }
         .icon-btn.recording { color: var(--vermillion); }
         textarea {
             flex: 1;
@@ -684,7 +855,7 @@
         .send-btn {
             width: 34px; height: 34px;
             flex-shrink: 0;
-            background: var(--ink);
+            background: var(--crescent);
             color: var(--paper);
             border: none;
             cursor: pointer;
@@ -708,7 +879,8 @@
             text-align: center;
         }
         .input-footer a { color: var(--ink-faint); text-decoration: underline; text-decoration-color: var(--rule-bold); }
-        .input-footer a:hover { color: var(--ink); }
+        .input-footer a:hover { color: var(--crescent); }
+
         /* ----- SYNC PANEL ----- */
         .sync-section { padding: 12px 22px; border-top: 1px solid var(--sidebar-border); flex-shrink: 0; }
         .sync-label {
@@ -735,10 +907,10 @@
             justify-content: space-between;
             gap: 8px;
         }
-        body.theme-dark .sync-code-display { background: rgba(240,236,228,0.05); border-color: rgba(240,236,228,0.12); }
+        body.theme-dark .sync-code-display { background: rgba(245,237,224,0.05); border-color: rgba(245,237,224,0.12); }
         .sync-code-value { font-family: 'DM Mono', monospace; font-size: 18px; font-weight: 500; letter-spacing: 0.18em; color: var(--ink); }
         .sync-code-copy { background: none; border: none; cursor: pointer; color: var(--ink-ghost); padding: 2px; transition: color 120ms; display: flex; align-items: center; }
-        .sync-code-copy:hover { color: var(--vermillion); }
+        .sync-code-copy:hover { color: var(--crescent); }
         .sync-input-row { display: flex; gap: 6px; margin-bottom: 8px; }
         .sync-input {
             flex: 1;
@@ -753,12 +925,12 @@
             text-transform: uppercase;
             min-width: 0;
         }
-        body.theme-dark .sync-input { background: rgba(240,236,228,0.05); border-color: rgba(240,236,228,0.12); }
-        .sync-input:focus { border-color: var(--ink-faint); }
+        body.theme-dark .sync-input { background: rgba(245,237,224,0.05); border-color: rgba(245,237,224,0.12); }
+        .sync-input:focus { border-color: var(--crescent); }
         .sync-input::placeholder { color: var(--ink-ghost); letter-spacing: 0.05em; text-transform: none; }
         .sync-btn {
             padding: 7px 12px;
-            background: var(--ink);
+            background: var(--crescent);
             color: var(--paper);
             border: none;
             font-family: 'DM Mono', monospace;
@@ -785,6 +957,7 @@
         .sync-peer-chip .dot { width: 5px; height: 5px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
         .sync-disconnect-btn { margin-left: auto; background: none; border: none; cursor: pointer; color: var(--ink-ghost); font-size: 12px; padding: 0 2px; transition: color 100ms; }
         .sync-disconnect-btn:hover { color: var(--vermillion); }
+
         /* ----- TOAST & DIALOGS ----- */
         #toast-container {
             position: fixed;
@@ -818,7 +991,7 @@
             box-shadow: 8px 8px 0 var(--ink);
             color: var(--ink);
         }
-        dialog::backdrop { background: rgba(15,13,11,0.5); backdrop-filter: blur(2px); }
+        dialog::backdrop { background: rgba(42,31,26,0.5); backdrop-filter: blur(2px); }
         .dialog-header { padding: 18px 22px; border-bottom: 1px solid var(--rule-bold); font-family: 'Playfair Display', serif; font-weight: 700; font-size: 16px; color: var(--ink); display: flex; justify-content: space-between; align-items: center; }
         .dialog-body { padding: 18px 22px; }
         .dialog-option {
@@ -837,7 +1010,7 @@
             background: none;
             transition: all 120ms;
         }
-        .dialog-option:hover { background: var(--paper-aged); color: var(--ink); border-color: var(--rule-bold); }
+        .dialog-option:hover { background: var(--crescent-soft); color: var(--ink); border-color: var(--rule-bold); }
         .dialog-actions { display: flex; gap: 10px; margin-top: 18px; }
         .dialog-actions button {
             flex: 1; height: 38px;
@@ -851,13 +1024,14 @@
             color: var(--ink-faint);
             transition: all 120ms;
         }
-        .dialog-actions .btn-primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+        .dialog-actions .btn-primary { background: var(--crescent); color: var(--paper); border-color: var(--crescent); }
         .dialog-actions .btn-primary:hover { background: var(--vermillion); border-color: var(--vermillion); }
-        .dialog-actions .btn-secondary:hover { background: var(--paper-aged); color: var(--ink); }
+        .dialog-actions .btn-secondary:hover { background: var(--crescent-soft); color: var(--ink); }
+
         /* Cibo modal */
         .cibo-modal-overlay {
             position: fixed; inset: 0;
-            background: rgba(15,13,11,0.75);
+            background: rgba(42,31,26,0.75);
             backdrop-filter: blur(4px);
             display: flex;
             align-items: center;
@@ -870,7 +1044,7 @@
         .cibo-modal {
             background: var(--paper);
             border: 2px solid var(--ink);
-            box-shadow: 12px 12px 0 var(--ink);
+            box-shadow: 12px 12px 0 var(--crescent);
             padding: 40px;
             max-width: 480px;
             width: 90%;
@@ -906,10 +1080,11 @@
             text-decoration: none;
             border: 1px solid var(--ink);
         }
-        .cibo-modal-btn-primary { background: var(--ink); color: var(--paper); }
+        .cibo-modal-btn-primary { background: var(--crescent); color: var(--paper); border-color: var(--crescent); }
         .cibo-modal-btn-primary:hover { background: var(--vermillion); border-color: var(--vermillion); color: var(--paper); }
         .cibo-modal-btn-secondary { background: transparent; color: var(--ink-faint); border-color: var(--rule-bold); }
-        .cibo-modal-btn-secondary:hover { background: var(--paper-aged); color: var(--ink); }
+        .cibo-modal-btn-secondary:hover { background: var(--crescent-soft); color: var(--ink); }
+
         /* ----- MOBILE RESPONSIVE ----- */
         .mobile-toggle { display: none; }
         .overlay { display: none; }
@@ -935,7 +1110,7 @@
                 display: block;
                 position: fixed;
                 top: 0; left: var(--sidebar-w); right: 0; bottom: 0;
-                background: rgba(15,13,11,0.5);
+                background: rgba(42,31,26,0.5);
                 z-index: 99;
                 opacity: 0;
                 pointer-events: none;
@@ -955,6 +1130,36 @@
     </style>
 </head>
 <body>
+    <!-- Floating stars decoration -->
+    <div class="eid-stars" aria-hidden="true">
+        <div class="eid-star" style="top:8%;left:15%;--dur:5s;--delay:0s;"></div>
+        <div class="eid-star" style="top:12%;left:72%;--dur:4s;--delay:0.8s;"></div>
+        <div class="eid-star" style="top:22%;left:88%;--dur:6s;--delay:1.5s;"></div>
+        <div class="eid-star" style="top:35%;left:5%;--dur:4.5s;--delay:0.3s;"></div>
+        <div class="eid-star" style="top:55%;left:92%;--dur:5.5s;--delay:2s;"></div>
+        <div class="eid-star" style="top:70%;left:20%;--dur:4s;--delay:1.2s;"></div>
+        <div class="eid-star" style="top:80%;left:60%;--dur:6s;--delay:0.6s;"></div>
+        <div class="eid-star" style="top:90%;left:40%;--dur:4.8s;--delay:1.8s;width:4px;height:4px;"></div>
+        <div class="eid-star" style="top:48%;left:50%;--dur:3.8s;--delay:2.4s;"></div>
+        <div class="eid-star" style="top:5%;left:45%;--dur:5.2s;--delay:0.4s;"></div>
+    </div>
+
+    <!-- Eid / Ramadan Mubarak Popup -->
+    <div class="eid-modal-overlay hidden" id="eidModal">
+        <div class="eid-modal">
+            <button class="eid-modal-close-btn" id="eidModalClose" aria-label="Close">&#x2715;</button>
+            <div class="eid-modal-top">
+                <span class="eid-modal-moon">&#x263D;</span>
+                <div class="eid-modal-title">Ramadan Mubarak</div>
+                <div class="eid-modal-arabic">&#x2014; From eSAMz AI &#x2014;</div>
+            </div>
+            <div class="eid-modal-body">
+                <p>May this holy month bring you peace, clarity, and beautiful conversations. eSAMz AI is here for you — day and night.</p>
+                <button class="eid-modal-dismiss" id="eidModalDismiss">&#x263D;&nbsp;&nbsp;Continue to eSAMz</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Cibo Modal -->
     <div class="cibo-modal-overlay hidden" id="ciboModal">
         <div class="cibo-modal">
@@ -975,7 +1180,7 @@
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;">
                     <div class="brand" style="margin-bottom:0;">
                         <div class="brand-eyebrow">Strategic Mind</div>
                         <div class="brand-name">e<span>S</span>AMz</div>
@@ -985,6 +1190,7 @@
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
                     </button>
                 </div>
+
                 <button class="btn-new-chat" id="btnNewChat">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
                     New Conversation
@@ -1054,8 +1260,64 @@
 
             <div class="chat-container" id="chatContainer">
                 <div class="chat-wrapper">
+                    <!-- Eid hanging decoration: strings from top bar with crescent & stars -->
+                    <div class="eid-hanging" aria-hidden="true">
+                        <svg viewBox="0 0 1200 260" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMin slice">
+                            <defs>
+                                <style>
+                                    .hang-string { stroke: rgba(212,168,75,0.30); stroke-width: 0.8; fill: none; }
+                                    .hang-crescent { fill: none; stroke: rgba(212,168,75,0.55); stroke-width: 1; }
+                                    .hang-star { fill: rgba(212,168,75,0.50); }
+                                    .hang-gem { fill: none; stroke: rgba(212,168,75,0.40); stroke-width: 0.8; }
+                                </style>
+                            </defs>
+
+                            <!-- String 1 - left crescent -->
+                            <line class="hang-string" x1="180" y1="0" x2="180" y2="72"/>
+                            <!-- crescent at end of string 1 -->
+                            <path class="hang-crescent" d="M180,85 a12,12 0 1,1 0,0.01 a8,8 0 1,0 0,-0.01" transform="translate(0,0)"/>
+                            <path class="hang-crescent" d="M174,78 a12,12 0 0,1 12,0 a9,9 0 0,0 -12,0" fill="rgba(212,168,75,0.15)" stroke="none"/>
+                            <!-- tiny stars on string 1 -->
+                            <polygon class="hang-star" points="180,30 181.2,33.6 185,33.6 182,35.8 183.2,39.4 180,37.2 176.8,39.4 178,35.8 175,33.6 178.8,33.6" transform="scale(0.45) translate(220,-50)"/>
+
+                            <!-- String 2 - center left star -->
+                            <line class="hang-string" x1="360" y1="0" x2="360" y2="55"/>
+                            <polygon class="hang-star" points="0,-9 2.1,-2.9 8.6,-2.9 3.5,1.1 5.6,7.2 0,3.2 -5.6,7.2 -3.5,1.1 -8.6,-2.9 -2.1,-2.9" transform="translate(360,64) scale(1.1)"/>
+                            <!-- mini bead on string 2 -->
+                            <circle class="hang-gem" cx="360" cy="35" r="2.5"/>
+
+                            <!-- String 3 - center crescent large -->
+                            <line class="hang-string" x1="580" y1="0" x2="580" y2="88"/>
+                            <path class="hang-crescent" d="M568,102 a14,14 0 1,1 0.01,0 a10,10 0 1,0 -0.01,0" />
+                            <path d="M568,88 a14,14 0 0,1 14.5,0 a10.5,10.5 0 0,0 -14.5,0" fill="rgba(212,168,75,0.18)" stroke="none"/>
+                            <!-- tiny star mid-string 3 -->
+                            <polygon class="hang-star" points="0,-5 1.2,-1.6 4.9,-1.6 2,0.6 3.2,4.2 0,2 -3.2,4.2 -2,0.6 -4.9,-1.6 -1.2,-1.6" transform="translate(580,44)"/>
+                            <!-- bead on string 3 -->
+                            <circle class="hang-gem" cx="580" cy="68" r="3"/>
+
+                            <!-- String 4 - center right star -->
+                            <line class="hang-string" x1="800" y1="0" x2="800" y2="60"/>
+                            <polygon class="hang-star" points="0,-9 2.1,-2.9 8.6,-2.9 3.5,1.1 5.6,7.2 0,3.2 -5.6,7.2 -3.5,1.1 -8.6,-2.9 -2.1,-2.9" transform="translate(800,70) scale(1.0)"/>
+                            <circle class="hang-gem" cx="800" cy="38" r="2.5"/>
+
+                            <!-- String 5 - right crescent -->
+                            <line class="hang-string" x1="1020" y1="0" x2="1020" y2="75"/>
+                            <path class="hang-crescent" d="M1008,89 a12,12 0 1,1 0.01,0 a8,8 0 1,0 -0.01,0" />
+                            <path d="M1009,76 a12,12 0 0,1 12,0 a9,9 0 0,0 -12,0" fill="rgba(212,168,75,0.15)" stroke="none"/>
+                            <!-- mid star on string 5 -->
+                            <polygon class="hang-star" points="0,-5 1.2,-1.6 4.9,-1.6 2,0.6 3.2,4.2 0,2 -3.2,4.2 -2,0.6 -4.9,-1.6 -1.2,-1.6" transform="translate(1020,38)"/>
+
+                            <!-- Very small scattered accent stars -->
+                            <polygon class="hang-star" points="0,-3.5 0.8,-1.1 3.3,-1.1 1.3,0.4 2.1,2.8 0,1.3 -2.1,2.8 -1.3,0.4 -3.3,-1.1 -0.8,-1.1" transform="translate(260,18)" opacity="0.6"/>
+                            <polygon class="hang-star" points="0,-3.5 0.8,-1.1 3.3,-1.1 1.3,0.4 2.1,2.8 0,1.3 -2.1,2.8 -1.3,0.4 -3.3,-1.1 -0.8,-1.1" transform="translate(470,12)" opacity="0.5"/>
+                            <polygon class="hang-star" points="0,-3.5 0.8,-1.1 3.3,-1.1 1.3,0.4 2.1,2.8 0,1.3 -2.1,2.8 -1.3,0.4 -3.3,-1.1 -0.8,-1.1" transform="translate(690,20)" opacity="0.6"/>
+                            <polygon class="hang-star" points="0,-3.5 0.8,-1.1 3.3,-1.1 1.3,0.4 2.1,2.8 0,1.3 -2.1,2.8 -1.3,0.4 -3.3,-1.1 -0.8,-1.1" transform="translate(910,10)" opacity="0.5"/>
+                        </svg>
+                    </div>
+
                     <!-- Welcome screen -->
                     <div class="welcome" id="welcomeScreen">
+
                         <div class="welcome-dateline">eSAMz AI · Strategic Artificial Mind</div>
                         <h1 class="welcome-headline">What shall we<br><em>think through</em> today?</h1>
                         <p class="welcome-deck">Deep reasoning with emotional clarity — for complex problems that demand more than a quick answer.</p>
@@ -1183,6 +1445,25 @@
                 }
             };
 
+            // ----- EID MODAL -----
+            const EidModal = {
+                STORAGE_KEY: 'esamz_eid_ramadan_2025',
+                modal: document.getElementById('eidModal'),
+                init() {
+                    const dismissed = localStorage.getItem(this.STORAGE_KEY);
+                    if (!dismissed) setTimeout(() => this.modal.classList.remove('hidden'), 300);
+                    document.getElementById('eidModalClose').addEventListener('click', () => this.dismiss());
+                    document.getElementById('eidModalDismiss').addEventListener('click', () => this.dismiss());
+                    this.modal.addEventListener('click', (e) => { if (e.target === this.modal) this.dismiss(); });
+                },
+                dismiss() {
+                    this.modal.style.opacity = '0';
+                    this.modal.style.transition = 'opacity 0.3s';
+                    setTimeout(() => { this.modal.classList.add('hidden'); this.modal.style.opacity = '1'; }, 300);
+                    localStorage.setItem(this.STORAGE_KEY, 'true');
+                }
+            };
+
             // ----- CIBO MODAL -----
             const CiboModal = {
                 STORAGE_KEY: 'esamz_cibo_dismissed',
@@ -1232,7 +1513,7 @@
                     };
                     this.state = { 
                         chatId: null, 
-                        files: [],          // { id, name, content, url? (for images) }
+                        files: [],
                         isProcessing: false, 
                         isRecording: false, 
                         abortController: null 
@@ -1244,6 +1525,7 @@
 
                 init() {
                     this.initTheme();
+                    EidModal.init();
                     CiboModal.init();
                     this.loadHistory();
                     this.setupEventListeners();
@@ -1256,7 +1538,6 @@
                     }
                     this.dom.input.focus();
 
-                    // Initialize sync manager (will load PeerJS lazily)
                     this.sync = new SyncManager(this.storageKey, () => this._refreshHistoryFromStorage());
                 }
 
@@ -1266,7 +1547,6 @@
                 }
 
                 setupEventListeners() {
-                    // Input
                     this.dom.input.addEventListener('input', () => this.handleInput());
                     this.dom.input.addEventListener('keydown', (e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
@@ -1278,7 +1558,6 @@
                         this.state.isProcessing ? this.abortGeneration() : this.handleSend();
                     });
 
-                    // Buttons
                     this.dom.newChatBtn.addEventListener('click', () => this.newChat());
                     this.dom.clearChatBtn.addEventListener('click', async () => {
                         if (await Utils.confirm("Clear current chat session?", "Clear Chat")) this.newChat();
@@ -1289,7 +1568,6 @@
                         this.dom.voiceBtn.addEventListener('click', () => this.toggleVoiceRecording());
                     }
 
-                    // Export dialog
                     const exportDialog = document.getElementById('exportDialog');
                     document.getElementById('closeDialog').addEventListener('click', () => exportDialog.close());
                     this.dom.exportBtn.addEventListener('click', () => {
@@ -1300,7 +1578,6 @@
                         btn.addEventListener('click', (e) => this.exportChat(e.target.dataset.exportType));
                     });
 
-                    // Sidebar
                     this.dom.openSidebarMobileBtn.addEventListener('click', () => {
                         this.dom.sidebar.classList.add('active');
                         this.dom.overlay.classList.add('active');
@@ -1318,10 +1595,8 @@
                         this.dom.sidebar.classList.remove('collapsed');
                     });
 
-                    // Theme
                     this.dom.themeToggle.addEventListener('click', () => this.toggleTheme());
 
-                    // Suggestion cards
                     document.querySelectorAll('.suggestion-card').forEach(card => {
                         card.addEventListener('click', () => {
                             const prompt = card.dataset.prompt;
@@ -1406,7 +1681,6 @@
                         removeBtn.onclick = () => {
                             chip.remove();
                             this.state.files = this.state.files.filter(f => f.id !== chipId);
-                            // Revoke object URL if any
                             const fileObj = this.state.files.find(f => f.id === chipId);
                             if (fileObj && fileObj.url) URL.revokeObjectURL(fileObj.url);
                             this.updateButtonState();
@@ -1440,7 +1714,6 @@
                             if (objectUrl) URL.revokeObjectURL(objectUrl);
                         }
                     }
-                    // Reset file input to allow re-upload of same file
                     this.dom.fileInput.value = '';
                 }
 
@@ -1465,7 +1738,6 @@
                     const text = this.dom.input.value.trim();
                     if ((!text && this.state.files.length === 0) || this.state.isProcessing) return;
 
-                    // Clear input and revoke all object URLs from files
                     this.dom.input.value = '';
                     this.dom.input.style.height = 'auto';
                     this.state.files.forEach(f => { if (f.url) URL.revokeObjectURL(f.url); });
@@ -1483,7 +1755,6 @@
                         localStorage.setItem(this.LAST_CHAT_KEY, this.state.chatId);
                     }
 
-                    // Build user message with file contents
                     let userMsgText = text;
                     if (attachedFiles.length > 0) {
                         const fileContent = attachedFiles.map(f => 
@@ -1493,7 +1764,6 @@
                     }
                     this.appendMessage('user', userMsgText);
 
-                    // Prepare payload for API
                     let finalPayload = text;
                     if (attachedFiles.length > 0) {
                         const extracted = attachedFiles.map(f => f.content).join('\n\n');
@@ -1511,7 +1781,7 @@
                     const clientLastActive = Date.now();
 
                     try {
-                        const response = await fetch("api/chat", {
+                        const response = await fetch("https://backend-for-esamzai.onrender.com/api/chat", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ 
@@ -1567,7 +1837,6 @@
                         if (incomingHistory) {
                             this.overwriteHistory(this.state.chatId, incomingHistory);
                         } else {
-                            // Build history from DOM
                             const msgs = Array.from(this.dom.chatList.querySelectorAll('.message')).map(m => ({
                                 role: m.classList.contains('user') ? 'user' : 'assistant',
                                 content: m.querySelector('.bubble').innerText
@@ -1777,7 +2046,6 @@
                     const chat = history.find(c => c.id === id);
                     if (chat && chat.messages) chat.messages.forEach(m => this.appendMessage(m.role, m.content));
                     if (window.innerWidth <= 768) {
-                        // Auto-close mobile sidebar
                         this.dom.sidebar.classList.remove('active');
                         this.dom.overlay.classList.remove('active');
                         document.body.style.overflow = '';
@@ -1883,7 +2151,6 @@
                     this._joinInput.addEventListener('input', (e) => {
                         e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
                     });
-
                     this._initPeer();
                 }
 
@@ -1900,53 +2167,52 @@
                     try {
                         if (typeof Peer === 'undefined') {
                             await new Promise((resolve, reject) => {
-                                const s = document.createElement('script');
-                                s.src = 'https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js';
-                                s.onload = resolve;
-                                s.onerror = reject;
-                                document.head.appendChild(s);
+                                const primary = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js';
+                                const fallback = 'https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js';
+                                const tryLoad = (src, onFail) => {
+                                    const s = document.createElement('script');
+                                    s.src = src;
+                                    s.onload = resolve;
+                                    s.onerror = onFail;
+                                    document.head.appendChild(s);
+                                };
+                                tryLoad(primary, () => tryLoad(fallback, reject));
                             });
                         }
                         this.myCode = this._generateCode();
                         this._codeEl.textContent = this.myCode;
                         this._setStatus('connecting');
 
-                       // Add a unique prefix and STUN server to bypass firewalls
-this.peer = new Peer(`esamz-v10-${this.myCode}`, { 
-    debug: 0,
-    config: { 
-        'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] 
-    }
-});
+                        this.peer = new Peer(`esamz-v10-${this.myCode}`, { 
+                            debug: 0,
+                            config: { 
+                                'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] 
+                            }
+                        });
 
-this.peer.on('open', (id) => {
-    this._setStatus('ready');
-    // We strip the prefix when displaying it so the user only sees the 6 digits
-    this._codeEl.textContent = id.replace('esamz-v10-', ''); 
-    this._reconnectKnown();
-});
-         this.peer.on('connection', (conn) => {
-    if (this.blacklist.includes(conn.peer)) {
-        conn.close();
-        return;
-    }
-
-    // Step 1: Establish connection immediately to prevent timeout
-    this._setupConn(conn);
-
-    // Step 2: Ask for permission. If they say no, then disconnect.
-    Utils.confirm(
-        `Device ${conn.peer.replace('esamz-v10-', '')} wants to sync. Allow?`, 
-        "Sync Request"
-    ).then(allow => {
-        if (!allow) {
-            conn.send({ type: 'REJECTED' });
-            this.disconnect(conn.peer);
-        } else {
-            Utils.showToast("Device connected", "success");
-        }
-    });
-});
+                        this.peer.on('open', (id) => {
+                            this._setStatus('ready');
+                            this._codeEl.textContent = id.replace('esamz-v10-', ''); 
+                            this._reconnectKnown();
+                        });
+                        this.peer.on('connection', (conn) => {
+                            if (this.blacklist.includes(conn.peer)) {
+                                conn.close();
+                                return;
+                            }
+                            this._setupConn(conn);
+                            Utils.confirm(
+                                `Device ${conn.peer.replace('esamz-v10-', '')} wants to sync. Allow?`, 
+                                "Sync Request"
+                            ).then(allow => {
+                                if (!allow) {
+                                    conn.send({ type: 'REJECTED' });
+                                    this.disconnect(conn.peer);
+                                } else {
+                                    Utils.showToast("Device connected", "success");
+                                }
+                            });
+                        });
                         this.peer.on('disconnected', () => {
                             this._setStatus('ready');
                             setTimeout(() => {
@@ -1963,17 +2229,15 @@ this.peer.on('open', (id) => {
                 _setupConn(conn) {
                     const pid = conn.peer;
                     this.connections[pid] = conn;
-                   conn.on('open', () => {
-    this._updatePeersList();
-    this._setStatus('connected');
-    this._saveKnownPeer(pid);
-    
-    // Wait 500ms to make sure the data channel is stable before sending
-    setTimeout(() => {
-        console.log("Sending initial sync to:", pid);
-        this._sendFull(conn);
-    }, 500);
-});
+                    conn.on('open', () => {
+                        this._updatePeersList();
+                        this._setStatus('connected');
+                        this._saveKnownPeer(pid);
+                        setTimeout(() => {
+                            console.log("Sending initial sync to:", pid);
+                            this._sendFull(conn);
+                        }, 500);
+                    });
                     conn.on('data', (packet) => this._handlePacket(packet));
                     conn.on('close', () => {
                         delete this.connections[pid];
@@ -1986,14 +2250,15 @@ this.peer.on('open', (id) => {
                         if (Object.keys(this.connections).length === 0) this._setStatus('ready');
                     });
                 }
+
                 blockPeer(peerId) {
-    if (!this.blacklist.includes(peerId)) {
-        this.blacklist.push(peerId);
-        localStorage.setItem('esamz_blacklist', JSON.stringify(this.blacklist));
-    }
-    this.disconnect(peerId); // Close current connection
-    Utils.showToast(`Device ${peerId} blocked`, 'info');
-}
+                    if (!this.blacklist.includes(peerId)) {
+                        this.blacklist.push(peerId);
+                        localStorage.setItem('esamz_blacklist', JSON.stringify(this.blacklist));
+                    }
+                    this.disconnect(peerId);
+                    Utils.showToast(`Device ${peerId} blocked`, 'info');
+                }
 
                 _sendFull(conn) {
                     const raw = localStorage.getItem(this.storageKey);
@@ -2059,7 +2324,6 @@ this.peer.on('open', (id) => {
                             } else if (incTime < locTime) {
                                 // keep local
                             } else {
-                                // Same timestamp – merge messages
                                 const locMsgs = loc.messages || [];
                                 const incMsgs = inc.messages || [];
                                 const maxLen = Math.max(locMsgs.length, incMsgs.length);
@@ -2094,15 +2358,14 @@ this.peer.on('open', (id) => {
                 }
 
                 _connect(peerId) {
-    if (!this.peer || this.peer.destroyed) {
-        Utils.showToast('Peer not ready, please wait', 'error');
-        return;
-    }
-    this._setStatus('connecting');
-    // We add the prefix here to match the target device
-    const conn = this.peer.connect(`esamz-v10-${peerId}`, { reliable: true });
-    this._setupConn(conn);
-}
+                    if (!this.peer || this.peer.destroyed) {
+                        Utils.showToast('Peer not ready, please wait', 'error');
+                        return;
+                    }
+                    this._setStatus('connecting');
+                    const conn = this.peer.connect(`esamz-v10-${peerId}`, { reliable: true });
+                    this._setupConn(conn);
+                }
 
                 disconnect(peerId) {
                     const conn = this.connections[peerId];
@@ -2161,54 +2424,50 @@ this.peer.on('open', (id) => {
                 }
 
                 _updatePeersList() {
-    this._peersList.innerHTML = '';
-    const peers = Object.keys(this.connections);
+                    this._peersList.innerHTML = '';
+                    const peers = Object.keys(this.connections);
 
-    peers.forEach(pid => {
-        // Create the container chip
-        const chip = document.createElement('div');
-        chip.className = 'sync-peer-chip';
-        chip.innerHTML = `<span class="dot"></span><span>Device ${pid}</span>`;
+                    peers.forEach(pid => {
+                        const chip = document.createElement('div');
+                        chip.className = 'sync-peer-chip';
+                        chip.innerHTML = `<span class="dot"></span><span>Device ${pid}</span>`;
 
-        // Action wrapper (to keep buttons grouped)
-        const actions = document.createElement('div');
-        actions.style.display = 'flex';
-        actions.style.gap = '8px';
-        actions.style.marginLeft = 'auto';
+                        const actions = document.createElement('div');
+                        actions.style.display = 'flex';
+                        actions.style.gap = '8px';
+                        actions.style.marginLeft = 'auto';
 
-        // Disconnect Button
-        const disBtn = document.createElement('button');
-        disBtn.className = 'sync-disconnect-btn';
-        disBtn.title = 'Disconnect';
-        disBtn.textContent = '✕';
-        disBtn.onclick = () => this.disconnect(pid);
+                        const disBtn = document.createElement('button');
+                        disBtn.className = 'sync-disconnect-btn';
+                        disBtn.title = 'Disconnect';
+                        disBtn.textContent = '✕';
+                        disBtn.onclick = () => this.disconnect(pid);
 
-        // Block Button
-        const blockBtn = document.createElement('button');
-        blockBtn.className = 'sync-disconnect-btn';
-        blockBtn.title = 'Block Device';
-        blockBtn.innerHTML = '🚫';
-        blockBtn.style.fontSize = '10px';
-        blockBtn.onclick = async () => {
-            const ok = await Utils.confirm(`Block Device ${pid}? They won't be able to reconnect.`, "Block Peer");
-            if (ok) this.blockPeer(pid);
-        };
+                        const blockBtn = document.createElement('button');
+                        blockBtn.className = 'sync-disconnect-btn';
+                        blockBtn.title = 'Block Device';
+                        blockBtn.innerHTML = '🚫';
+                        blockBtn.style.fontSize = '10px';
+                        blockBtn.onclick = async () => {
+                            const ok = await Utils.confirm(`Block Device ${pid}? They won't be able to reconnect.`, "Block Peer");
+                            if (ok) this.blockPeer(pid);
+                        };
 
-        // Assemble the UI
-        actions.appendChild(disBtn);
-        actions.appendChild(blockBtn);
-        chip.appendChild(actions);
-        this._peersList.appendChild(chip);
-    });
+                        actions.appendChild(disBtn);
+                        actions.appendChild(blockBtn);
+                        chip.appendChild(actions);
+                        this._peersList.appendChild(chip);
+                    });
 
-    if (peers.length > 0) {
-        this._setStatus('connected');
-    } else {
-        this._setStatus('ready');
-    }
-                } 
+                    if (peers.length > 0) {
+                        this._setStatus('connected');
+                    } else {
+                        this._setStatus('ready');
+                    }
+                }
             }
-     // Start the app
+
+            // Start the app
             window.app = new App();
         })();
     </script>
