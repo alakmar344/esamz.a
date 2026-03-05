@@ -3230,6 +3230,54 @@
             // Start the app
             window.app = new App();
         })();
+        // --- ESAMZ ANALYTICS ADD-ON ---
+// Place this inside your existing <script> tag, at the very bottom.
+
+(function() {
+    const TRACKER_URL = 'http://localhost:3000/track';
+
+    async function logEvent(name, extra = {}) {
+        try {
+            await fetch(TRACKER_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    event: name,
+                    page: window.location.pathname,
+                    meta: extra
+                })
+            });
+        } catch (e) { /* Analytics offline */ }
+    }
+
+    // 1. Trace Pageview (Bounce Rate)
+    logEvent('pageview');
+
+    // 2. Trace Cibo "Try Now" Click
+    // Targets your primary action button in the Cibo modal
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('cibo-modal-btn-primary')) {
+            logEvent('cibo_try_now', { location: 'popup' });
+        }
+    });
+
+    // 3. Trace Questions Asked Rate
+    // This safely hooks into your existing App's handleSend logic
+    const interval = setInterval(() => {
+        if (window.app) {
+            const originalSend = window.app.handleSend.bind(window.app);
+            window.app.handleSend = () => {
+                const text = document.getElementById('userInput').value.trim();
+                if (text) {
+                    logEvent('question_asked', { length: text.length });
+                }
+                originalSend();
+            };
+            clearInterval(interval);
+        }
+    }, 500);
+})();
     </script>
 </body>
 </html>
+         
