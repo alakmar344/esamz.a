@@ -271,9 +271,13 @@
             align-items: center;
             justify-content: center;
             z-index: 10000;
-            animation: fadeIn 0.4s ease-out;
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.15s ease-out, visibility 0s 0s;
+            will-change: opacity;
         }
-        .eid-modal-overlay.hidden { display: none; }
+        .eid-modal-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.15s ease-out, visibility 0s 0.15s; }
+        .eid-modal-overlay.hidden .eid-modal { transform: translateY(20px); opacity: 0; }
         .eid-modal {
             background: var(--paper);
             border: 1px solid rgba(212,168,75,0.35);
@@ -282,8 +286,11 @@
             width: 90%;
             position: relative;
             text-align: center;
-            animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
             overflow: hidden;
+            transform: translateY(0);
+            opacity: 1;
+            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s ease-out;
+            will-change: transform, opacity;
         }
         .eid-modal-top {
             background: linear-gradient(135deg, rgba(212,168,75,0.15) 0%, rgba(181,112,74,0.08) 100%);
@@ -1113,10 +1120,13 @@
             align-items: center;
             justify-content: center;
             z-index: 9999;
-            animation: fadeIn 0.3s ease-out;
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.15s ease-out, visibility 0s 0s;
+            will-change: opacity;
         }
-        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-        .cibo-modal-overlay.hidden { display: none; }
+        .cibo-modal-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.15s ease-out, visibility 0s 0.15s; }
+        .cibo-modal-overlay.hidden .cibo-modal { transform: translateY(20px); opacity: 0; }
         .cibo-modal {
             background: var(--paper);
             border: 2px solid var(--ink);
@@ -1126,9 +1136,11 @@
             width: 90%;
             position: relative;
             text-align: center;
-            animation: slideUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform: translateY(0);
+            opacity: 1;
+            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s ease-out;
+            will-change: transform, opacity;
         }
-        @keyframes slideUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
         .cibo-modal-close {
             position: absolute; top: 14px; right: 14px;
             background: none;
@@ -1317,9 +1329,13 @@
             align-items: center;
             justify-content: center;
             z-index: 10001;
-            animation: fadeIn 0.2s ease-out;
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.15s ease-out, visibility 0s 0s;
+            will-change: opacity;
         }
-        .shortcuts-modal-overlay.hidden { display: none; }
+        .shortcuts-modal-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.15s ease-out, visibility 0s 0.15s; }
+        .shortcuts-modal-overlay.hidden .shortcuts-modal { transform: translateY(20px); opacity: 0; }
         .shortcuts-modal {
             background: var(--paper);
             border: 2px solid var(--ink);
@@ -1327,7 +1343,10 @@
             padding: 0;
             max-width: 460px;
             width: 90%;
-            animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform: translateY(0);
+            opacity: 1;
+            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s ease-out;
+            will-change: transform, opacity;
         }
         .shortcuts-modal-header {
             padding: 18px 22px;
@@ -1813,15 +1832,13 @@
             const EidModal = {
                 modal: document.getElementById('eidModal'),
                 init() {
-                    setTimeout(() => this.modal.classList.remove('hidden'), 300);
+                    requestAnimationFrame(() => this.modal.classList.remove('hidden'));
                     document.getElementById('eidModalClose').addEventListener('click', () => this.dismiss());
                     document.getElementById('eidModalDismiss').addEventListener('click', () => this.dismiss());
                     this.modal.addEventListener('click', (e) => { if (e.target === this.modal) this.dismiss(); });
                 },
                 dismiss() {
-                    this.modal.style.opacity = '0';
-                    this.modal.style.transition = 'opacity 0.3s';
-                    setTimeout(() => { this.modal.classList.add('hidden'); this.modal.style.opacity = '1'; }, 300);
+                    this.modal.classList.add('hidden');
                 }
             };
 
@@ -1829,15 +1846,13 @@
             const CiboModal = {
                 modal: document.getElementById('ciboModal'),
                 init() {
-                    setTimeout(() => this.modal.classList.remove('hidden'), 800); // staggered after Ramadan popup
+                    setTimeout(() => this.modal.classList.remove('hidden'), 150); // small stagger after Eid popup
                     document.getElementById('ciboModalClose').addEventListener('click', () => this.dismiss());
                     document.getElementById('ciboModalDismiss').addEventListener('click', () => this.dismiss());
                     this.modal.addEventListener('click', (e) => { if (e.target === this.modal) this.dismiss(); });
                 },
                 dismiss() {
-                    this.modal.style.opacity = '0';
-                    this.modal.style.transition = 'opacity 0.25s';
-                    setTimeout(() => { this.modal.classList.add('hidden'); this.modal.style.opacity = '1'; }, 250);
+                    this.modal.classList.add('hidden');
                 }
             };
 
