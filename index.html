@@ -783,22 +783,81 @@
         .typing-dot:nth-child(2) { animation-delay: -0.16s; }
         @keyframes tdot { 0%,80%,100%{transform:scale(0);opacity:0} 40%{transform:scale(1);opacity:0.7} }
 
-        /* ----- MSG COPY BUTTON ----- */
-        .msg-copy-btn {
-            display: inline-block;
-            margin-top: 8px;
-            padding: 3px 10px;
-            background: none;
+        /* ----- MSG ACTION BUTTONS ----- */
+        .msg-action-bar {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .msg-copy-btn, .msg-regen-btn, .msg-edit-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 12px;
+            background: var(--paper-warm);
             border: 1px solid var(--rule-bold);
             cursor: pointer;
             font-family: 'DM Mono', monospace;
-            font-size: 9px;
-            letter-spacing: 0.1em;
+            font-size: 10px;
+            letter-spacing: 0.08em;
             text-transform: uppercase;
             color: var(--ink-faint);
+            transition: color 120ms, border-color 120ms, background 120ms;
+            border-radius: 2px;
+        }
+        body.theme-dark .msg-copy-btn, body.theme-dark .msg-regen-btn, body.theme-dark .msg-edit-btn {
+            background: rgba(245,237,224,0.04);
+        }
+        .msg-copy-btn:hover { color: var(--crescent); border-color: var(--crescent); background: var(--crescent-soft); }
+        .msg-regen-btn:hover { color: var(--vermillion); border-color: var(--vermillion); background: rgba(167,57,57,0.07); }
+        .msg-edit-btn:hover { color: var(--crescent); border-color: var(--crescent); background: var(--crescent-soft); }
+        .msg-copy-btn svg, .msg-regen-btn svg, .msg-edit-btn svg { flex-shrink: 0; opacity: 0.7; }
+        /* Edit inline container */
+        .msg-edit-container { width: 100%; }
+        .msg-edit-textarea {
+            width: 100%;
+            min-height: 80px;
+            background: var(--paper-warm);
+            border: 1px solid var(--crescent);
+            color: var(--ink);
+            font-family: 'Source Serif 4', Georgia, serif;
+            font-size: 14px;
+            line-height: 1.6;
+            padding: 10px 14px;
+            resize: vertical;
+            outline: none;
+            box-shadow: 0 0 0 2px var(--crescent-soft);
+        }
+        body.theme-dark .msg-edit-textarea { background: rgba(245,237,224,0.06); }
+        .msg-edit-actions { display: flex; gap: 8px; margin-top: 8px; }
+        .msg-edit-save-btn {
+            padding: 5px 16px;
+            background: var(--crescent);
+            color: var(--paper);
+            border: 1px solid var(--crescent);
+            font-family: 'DM Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background 120ms;
+        }
+        .msg-edit-save-btn:hover { background: var(--vermillion); border-color: var(--vermillion); }
+        .msg-edit-cancel-btn {
+            padding: 5px 14px;
+            background: none;
+            color: var(--ink-faint);
+            border: 1px solid var(--rule-bold);
+            font-family: 'DM Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            cursor: pointer;
             transition: color 120ms, border-color 120ms;
         }
-        .msg-copy-btn:hover { color: var(--crescent); border-color: var(--crescent); }
+        .msg-edit-cancel-btn:hover { color: var(--ink); border-color: var(--ink); }
 
         /* ----- INPUT AREA ----- */
         .input-wrapper {
@@ -1331,72 +1390,9 @@
         .scroll-top-btn.visible { opacity: 1; pointer-events: auto; }
         .scroll-top-btn:hover { background: var(--vermillion); }
 
-        /* ----- CHAT STATS ----- */
-        .chat-stats {
-            display: flex;
-            gap: 16px;
-            padding: 12px 0 0;
-            border-top: 1px solid var(--rule);
-            margin-top: 24px;
-            font-family: 'DM Mono', monospace;
-            font-size: 10px;
-            letter-spacing: 0.08em;
-            color: var(--ink-ghost);
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        .stat-item { display: flex; align-items: center; gap: 5px; }
-        .stat-bar {
-            display: flex;
-            gap: 2px;
-            align-items: flex-end;
-            height: 14px;
-        }
-        .stat-bar-seg {
-            width: 8px;
-            background: var(--crescent);
-            opacity: 0.5;
-            transition: height 0.3s;
-        }
-        .stat-bar-seg.user-seg { background: var(--vermillion); opacity: 0.4; }
 
-        /* ----- MESSAGE REACTIONS ----- */
-        .reaction-bar {
-            display: flex;
-            gap: 4px;
-            margin-top: 6px;
-            flex-wrap: wrap;
-        }
-        .reaction-btn {
-            background: var(--paper-aged);
-            border: 1px solid var(--rule-bold);
-            font-size: 13px;
-            padding: 2px 7px;
-            cursor: pointer;
-            transition: all 120ms;
-            font-family: 'DM Mono', monospace;
-            color: var(--ink-ghost);
-            display: flex;
-            align-items: center;
-            gap: 3px;
-        }
-        body.theme-dark .reaction-btn { background: rgba(245,237,224,0.05); }
-        .reaction-btn:hover { background: var(--crescent-soft); border-color: var(--crescent); }
-        .reaction-btn.reacted { background: var(--crescent-soft); border-color: var(--crescent); color: var(--ink); }
-        .reaction-badge {
-            display: inline-flex;
-            gap: 4px;
-            flex-wrap: wrap;
-            margin-top: 6px;
-        }
-        .reaction-badge span {
-            background: var(--crescent-soft);
-            border: 1px solid rgba(212,168,75,0.2);
-            padding: 1px 6px;
-            font-size: 11px;
-            font-family: 'DM Mono', monospace;
-            color: var(--ink-faint);
-        }
+
+
 
         /* ----- STREAMING CURSOR ----- */
         .streaming-cursor {
@@ -1815,11 +1811,9 @@
 
             // ----- EID MODAL -----
             const EidModal = {
-                STORAGE_KEY: 'esamz_eid_ramadan_2025',
                 modal: document.getElementById('eidModal'),
                 init() {
-                    const dismissed = localStorage.getItem(this.STORAGE_KEY);
-                    if (!dismissed) setTimeout(() => this.modal.classList.remove('hidden'), 300);
+                    setTimeout(() => this.modal.classList.remove('hidden'), 300);
                     document.getElementById('eidModalClose').addEventListener('click', () => this.dismiss());
                     document.getElementById('eidModalDismiss').addEventListener('click', () => this.dismiss());
                     this.modal.addEventListener('click', (e) => { if (e.target === this.modal) this.dismiss(); });
@@ -1828,17 +1822,14 @@
                     this.modal.style.opacity = '0';
                     this.modal.style.transition = 'opacity 0.3s';
                     setTimeout(() => { this.modal.classList.add('hidden'); this.modal.style.opacity = '1'; }, 300);
-                    localStorage.setItem(this.STORAGE_KEY, 'true');
                 }
             };
 
             // ----- CIBO MODAL -----
             const CiboModal = {
-                STORAGE_KEY: 'esamz_cibo_dismissed',
                 modal: document.getElementById('ciboModal'),
                 init() {
-                    const dismissed = localStorage.getItem(this.STORAGE_KEY);
-                    if (!dismissed) setTimeout(() => this.modal.classList.remove('hidden'), 500);
+                    setTimeout(() => this.modal.classList.remove('hidden'), 800); // staggered after Ramadan popup
                     document.getElementById('ciboModalClose').addEventListener('click', () => this.dismiss());
                     document.getElementById('ciboModalDismiss').addEventListener('click', () => this.dismiss());
                     this.modal.addEventListener('click', (e) => { if (e.target === this.modal) this.dismiss(); });
@@ -1847,7 +1838,6 @@
                     this.modal.style.opacity = '0';
                     this.modal.style.transition = 'opacity 0.25s';
                     setTimeout(() => { this.modal.classList.add('hidden'); this.modal.style.opacity = '1'; }, 250);
-                    localStorage.setItem(this.STORAGE_KEY, 'true');
                 }
             };
 
@@ -2213,9 +2203,8 @@
                             }));
                             this.overwriteHistory(this.state.chatId, msgs);
                         }
-                        this.addReactions(aiMsgDiv);
                         this.addCopyButton(aiMsgDiv);
-                        this.updateChatStats();
+                        this.addRegenButton(aiMsgDiv);
                     } catch (error) {
                         if (error.name === 'AbortError') {
                             contentDiv.innerHTML += '<p style="font-style:italic;color:var(--ink-ghost);margin-top:10px;">[Stopped by user]</p>';
@@ -2304,67 +2293,142 @@
                     throw lastError;
                 }
 
-                addReactions(msgDiv) {
-                    if (!msgDiv || !msgDiv.classList.contains('ai')) return;
-                    const content = msgDiv.querySelector('.message-content');
-                    if (!content || content.querySelector('.reaction-bar')) return;
-                    const bar = document.createElement('div');
-                    bar.className = 'reaction-bar';
-                    const emojis = ['👍', '❤️', '🌙', '✨', '🤲'];
-                    emojis.forEach(emoji => {
-                        const btn = document.createElement('button');
-                        btn.className = 'reaction-btn';
-                        btn.textContent = emoji;
-                        btn.addEventListener('click', function() {
-                            this.classList.toggle('reacted');
-                        });
-                        bar.appendChild(btn);
-                    });
-                    content.appendChild(bar);
-                }
 
                 addCopyButton(msgDiv) {
                     if (!msgDiv || !msgDiv.classList.contains('ai')) return;
                     const content = msgDiv.querySelector('.message-content');
-                    if (!content || content.querySelector('.msg-copy-btn')) return;
+                    if (!content || content.querySelector('.msg-action-bar')) return;
                     const bubble = msgDiv.querySelector('.bubble');
                     if (!bubble) return;
+                    const bar = document.createElement('div');
+                    bar.className = 'msg-action-bar';
                     const copyBtn = document.createElement('button');
                     copyBtn.className = 'msg-copy-btn';
-                    copyBtn.textContent = 'Copy';
+                    copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="1"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copy`;
                     copyBtn.addEventListener('click', function() {
                         navigator.clipboard.writeText(bubble.innerText || bubble.textContent).then(() => {
-                            copyBtn.textContent = 'Copied!';
-                            setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+                            copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Copied!`;
+                            setTimeout(() => { copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="1"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copy`; }, 2000);
                         }).catch(() => {
-                            copyBtn.textContent = 'Failed';
-                            setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+                            copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Failed`;
+                            setTimeout(() => { copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="1"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copy`; }, 2000);
                         });
                     });
-                    content.appendChild(copyBtn);
+                    bar.appendChild(copyBtn);
+                    content.appendChild(bar);
                 }
 
-                updateChatStats() {
-                    let statsEl = this.dom.chatList.querySelector('.chat-stats');
-                    if (!statsEl) {
-                        statsEl = document.createElement('div');
-                        statsEl.className = 'chat-stats';
-                        this.dom.chatList.appendChild(statsEl);
-                    }
-                    const messages = this.dom.chatList.querySelectorAll('.message');
-                    let userCount = 0, aiCount = 0, totalChars = 0;
-                    messages.forEach(m => {
-                        const isUser = m.classList.contains('user');
-                        if (isUser) userCount++; else aiCount++;
-                        totalChars += (m.querySelector('.bubble')?.textContent || '').length;
-                    });
-                    const words = Math.round(totalChars / 5);
-                    statsEl.innerHTML = `
-                        <span class="stat-item">💬 ${userCount + aiCount} messages</span>
-                        <span class="stat-item">📝 ~${words} words</span>
-                        <span class="stat-item">👤 ${userCount} you · 🤖 ${aiCount} AI</span>
-                    `;
+                addRegenButton(msgDiv) {
+                    if (!msgDiv || !msgDiv.classList.contains('ai')) return;
+                    const content = msgDiv.querySelector('.message-content');
+                    if (!content) return;
+                    let bar = content.querySelector('.msg-action-bar');
+                    if (!bar) { bar = document.createElement('div'); bar.className = 'msg-action-bar'; content.appendChild(bar); }
+                    if (bar.querySelector('.msg-regen-btn')) return;
+                    const regenBtn = document.createElement('button');
+                    regenBtn.className = 'msg-regen-btn';
+                    regenBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Regenerate`;
+                    regenBtn.addEventListener('click', () => this.regenerateMessage(msgDiv));
+                    bar.appendChild(regenBtn);
                 }
+
+                addEditButton(msgDiv) {
+                    if (!msgDiv || !msgDiv.classList.contains('user')) return;
+                    const content = msgDiv.querySelector('.message-content');
+                    if (!content || content.querySelector('.msg-edit-btn')) return;
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'msg-edit-btn';
+                    editBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit`;
+                    editBtn.addEventListener('click', () => this.editMessage(msgDiv));
+                    content.appendChild(editBtn);
+                }
+
+                editMessage(msgDiv) {
+                    if (this.state.isProcessing) return;
+                    const bubble = msgDiv.querySelector('.bubble');
+                    if (!bubble) return;
+                    const originalText = bubble.innerText;
+                    bubble.style.display = 'none';
+                    const editBtn = msgDiv.querySelector('.msg-edit-btn');
+                    if (editBtn) editBtn.style.display = 'none';
+                    const editContainer = document.createElement('div');
+                    editContainer.className = 'msg-edit-container';
+                    const textarea = document.createElement('textarea');
+                    textarea.className = 'msg-edit-textarea';
+                    textarea.value = originalText;
+                    const actions = document.createElement('div');
+                    actions.className = 'msg-edit-actions';
+                    const saveBtn = document.createElement('button');
+                    saveBtn.className = 'msg-edit-save-btn';
+                    saveBtn.textContent = 'Save & Resend';
+                    const cancelBtn = document.createElement('button');
+                    cancelBtn.className = 'msg-edit-cancel-btn';
+                    cancelBtn.textContent = 'Cancel';
+                    cancelBtn.addEventListener('click', () => {
+                        editContainer.remove();
+                        bubble.style.display = '';
+                        if (editBtn) editBtn.style.display = '';
+                    });
+                    saveBtn.addEventListener('click', () => {
+                        const newText = textarea.value.trim();
+                        if (!newText) return;
+                        editContainer.remove();
+                        bubble.style.display = '';
+                        if (editBtn) editBtn.style.display = '';
+                        this.resendEditedMessage(msgDiv, newText);
+                    });
+                    textarea.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            saveBtn.click();
+                        }
+                        if (e.key === 'Escape') cancelBtn.click();
+                    });
+                    actions.appendChild(saveBtn);
+                    actions.appendChild(cancelBtn);
+                    editContainer.appendChild(textarea);
+                    editContainer.appendChild(actions);
+                    const content = msgDiv.querySelector('.message-content');
+                    content.insertBefore(editContainer, bubble);
+                    textarea.focus();
+                    textarea.select();
+                }
+
+                resendEditedMessage(msgDiv, newText) {
+                    const chatList = this.dom.chatList;
+                    const allMessages = Array.from(chatList.querySelectorAll('.message'));
+                    const msgIndex = allMessages.indexOf(msgDiv);
+                    for (let i = msgIndex; i < allMessages.length; i++) allMessages[i].remove();
+                    if (this.state.chatId) {
+                        const trimmed = this.getRawHistory(this.state.chatId).slice(0, msgIndex);
+                        this.overwriteHistory(this.state.chatId, trimmed);
+                    }
+                    this.dom.input.value = newText;
+                    this.handleSend();
+                }
+
+                regenerateMessage(msgDiv) {
+                    if (this.state.isProcessing) return;
+                    const chatList = this.dom.chatList;
+                    const allMessages = Array.from(chatList.querySelectorAll('.message'));
+                    const aiIndex = allMessages.indexOf(msgDiv);
+                    let userMsg = null;
+                    for (let i = aiIndex - 1; i >= 0; i--) {
+                        if (allMessages[i].classList.contains('user')) { userMsg = allMessages[i]; break; }
+                    }
+                    if (!userMsg) return;
+                    const userText = userMsg.querySelector('.bubble')?.innerText;
+                    if (!userText) return;
+                    const userIndex = allMessages.indexOf(userMsg);
+                    for (let i = userIndex; i < allMessages.length; i++) allMessages[i].remove();
+                    if (this.state.chatId) {
+                        const trimmed = this.getRawHistory(this.state.chatId).slice(0, userIndex);
+                        this.overwriteHistory(this.state.chatId, trimmed);
+                    }
+                    this.dom.input.value = userText;
+                    this.handleSend();
+                }
+
 
                 abortGeneration() {
                     if (this.state.abortController) this.state.abortController.abort();
@@ -2405,6 +2469,7 @@
                     div.appendChild(content);
                     this.dom.chatList.appendChild(div);
                     if (role === 'ai' && !isLoading) this.addCopyButton(div);
+                    if (role === 'user' && !isLoading) this.addEditButton(div);
                     return div;
                 }
 
