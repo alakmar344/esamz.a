@@ -1213,6 +1213,14 @@
             .input-wrapper { padding: 16px 20px 20px; }
             .cibo-modal-actions { flex-direction: column; }
             .cibo-modal-btn { width: 100%; text-align: center; }
+            .header { padding: 0 14px; }
+            .header-right { gap: 6px; }
+            .btn-clear { padding: 5px 9px; font-size: 9px; letter-spacing: 0.06em; }
+            .scroll-top-btn { bottom: 80px; right: 14px; }
+            .eid-modal { max-width: 92%; }
+            .eid-modal-top { padding: 22px 20px 16px; }
+            .eid-modal-body { padding: 16px 20px 20px; }
+            .cibo-modal { padding: 28px 24px; }
         }
         .hidden { display: none !important; }
 
@@ -1832,6 +1840,7 @@
             const EidModal = {
                 modal: document.getElementById('eidModal'),
                 init() {
+                    if (localStorage.getItem('esamz_eid_shown') === '1') return;
                     requestAnimationFrame(() => this.modal.classList.remove('hidden'));
                     document.getElementById('eidModalClose').addEventListener('click', () => this.dismiss());
                     document.getElementById('eidModalDismiss').addEventListener('click', () => this.dismiss());
@@ -1839,20 +1848,43 @@
                 },
                 dismiss() {
                     this.modal.classList.add('hidden');
+                    localStorage.setItem('esamz_eid_shown', '1');
+                    CiboModal.show();
                 }
             };
 
             // ----- CIBO MODAL -----
             const CiboModal = {
                 modal: document.getElementById('ciboModal'),
-                init() {
-                    setTimeout(() => this.modal.classList.remove('hidden'), 150); // small stagger after Eid popup
+                _listenersBound: false,
+                _bindListeners() {
+                    if (this._listenersBound) return;
+                    this._listenersBound = true;
                     document.getElementById('ciboModalClose').addEventListener('click', () => this.dismiss());
                     document.getElementById('ciboModalDismiss').addEventListener('click', () => this.dismiss());
                     this.modal.addEventListener('click', (e) => { if (e.target === this.modal) this.dismiss(); });
                 },
+                init() {
+                    if (localStorage.getItem('esamz_cibo_shown') === '1') return;
+                    this._bindListeners();
+                    // Only show immediately if Eid modal was already dismissed in a previous session
+                    if (localStorage.getItem('esamz_eid_shown') === '1') {
+                        setTimeout(() => {
+                            if (localStorage.getItem('esamz_cibo_shown') !== '1') this.modal.classList.remove('hidden');
+                        }, 150);
+                    }
+                    // Otherwise CiboModal.show() will be called by EidModal.dismiss()
+                },
+                show() {
+                    if (localStorage.getItem('esamz_cibo_shown') === '1') return;
+                    this._bindListeners();
+                    setTimeout(() => {
+                        if (localStorage.getItem('esamz_cibo_shown') !== '1') this.modal.classList.remove('hidden');
+                    }, 300);
+                },
                 dismiss() {
                     this.modal.classList.add('hidden');
+                    localStorage.setItem('esamz_cibo_shown', '1');
                 }
             };
 
@@ -1950,7 +1982,7 @@
                         else Utils.showToast('No chat to export', 'error');
                     });
                     document.querySelectorAll('[data-export-type]').forEach(btn => {
-                        btn.addEventListener('click', (e) => this.exportChat(e.target.dataset.exportType));
+                        btn.addEventListener('click', (e) => this.exportChat(e.currentTarget.dataset.exportType));
                     });
 
                     this.dom.openSidebarMobileBtn.addEventListener('click', () => {
@@ -2021,6 +2053,12 @@
                                 this.dom.voiceBtn.classList.remove('recording');
                                 if (!this.state.isProcessing) this.updateStatus("Ready");
                             };
+                            this.recognition.onerror = (e) => {
+                                this.state.isRecording = false;
+                                this.dom.voiceBtn.classList.remove('recording');
+                                if (!this.state.isProcessing) this.updateStatus("Ready");
+                                if (e.error !== 'aborted') Utils.showToast(`Voice error: ${e.error}`, 'error');
+                            };
                             this.recognition.onresult = (e) => {
                                 const transcript = e.results[0][0].transcript;
                                 this.dom.input.value += (this.dom.input.value ? ' ' : '') + transcript;
@@ -2055,9 +2093,9 @@
                         removeBtn.innerHTML = '✕';
                         removeBtn.onclick = () => {
                             chip.remove();
-                            this.state.files = this.state.files.filter(f => f.id !== chipId);
                             const fileObj = this.state.files.find(f => f.id === chipId);
                             if (fileObj && fileObj.url) URL.revokeObjectURL(fileObj.url);
+                            this.state.files = this.state.files.filter(f => f.id !== chipId);
                             this.updateButtonState();
                         };
                         chip.appendChild(removeBtn);
@@ -2493,7 +2531,8 @@
                     pres.forEach(pre => {
                         if (pre.parentElement.classList.contains('code-block-wrapper')) return;
                         const code = pre.querySelector('code');
-                        const lang = code ? code.className.replace('language-', '') : 'Code';
+                        const langMatch = code ? code.className.match(/language-(\w+)/) : null;
+                        const lang = langMatch ? langMatch[1] : 'code';
                         const wrapper = document.createElement('div');
                         wrapper.className = 'code-block-wrapper';
                         const header = document.createElement('div');
@@ -2553,13 +2592,21 @@
 
                 loadHistory() {
                     const history = this.getHistory();
-                    history.forEach(chat => {
+                    [...history].reverse().forEach(chat => {
                         if (chat.id) this.renderHistoryItem(chat.id, chat.title);
                     });
                 }
 
                 renderHistoryItem(id, title) {
-                    if (document.querySelector(`[data-row-id="${id}"]`)) return;
+                    const existing = document.querySelector(`[data-row-id="${id}"]`);
+                    if (existing) {
+                        const navBtn = existing.querySelector('.nav-item');
+                        if (navBtn) {
+                            navBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>${title}`;
+                            navBtn.onclick = () => this.loadChat(id);
+                        }
+                        return;
+                    }
                     const row = document.createElement('div');
                     row.className = 'nav-item-row';
                     row.setAttribute('data-row-id', id);
@@ -2614,6 +2661,7 @@
                     const history = this.getHistory();
                     const chat = history.find(c => c.id === id);
                     if (chat && chat.messages) chat.messages.forEach(m => this.appendMessage(m.role, m.content));
+                    this.scrollToBottom();
                     if (window.innerWidth <= 768) {
                         this.dom.sidebar.classList.remove('active');
                         this.dom.overlay.classList.remove('active');
@@ -2634,7 +2682,9 @@
                 newChat() {
                     localStorage.removeItem(this.LAST_CHAT_KEY);
                     this.state.chatId = null;
+                    this.state.files.forEach(f => { if (f.url) URL.revokeObjectURL(f.url); });
                     this.state.files = [];
+                    this.dom.filePreview.innerHTML = '';
                     this.dom.chatList.innerHTML = '';
                     this.dom.welcome.classList.remove('hidden');
                     this.dom.input.focus();
@@ -2921,7 +2971,7 @@
                     const code = this._joinInput.value.trim();
                     if (code.length !== 6) { Utils.showToast('Enter a 6-digit code', 'error'); return; }
                     if (code === this.myCode) { Utils.showToast('Cannot connect to yourself', 'error'); return; }
-                    if (this.connections[code]) { Utils.showToast('Already connected', 'info'); return; }
+                    if (this.connections[`esamz-v10-${code}`]) { Utils.showToast('Already connected', 'info'); return; }
                     this._connect(code);
                     this._joinInput.value = '';
                 }
@@ -2999,7 +3049,7 @@
                     peers.forEach(pid => {
                         const chip = document.createElement('div');
                         chip.className = 'sync-peer-chip';
-                        chip.innerHTML = `<span class="dot"></span><span>Device ${pid}</span>`;
+                        chip.innerHTML = `<span class="dot"></span><span>Device ${pid.replace('esamz-v10-', '')}</span>`;
 
                         const actions = document.createElement('div');
                         actions.style.display = 'flex';
