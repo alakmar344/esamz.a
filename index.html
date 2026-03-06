@@ -103,7 +103,7 @@
             position: relative;
         }
 
-        /* ----- EID / RAMADAN THEME VARIABLES (light default) ----- */
+        /* ----- THEME VARIABLES (light default) ----- */
         :root {
             --ink: #2a1f1a;
             --ink-light: #3d2e27;
@@ -115,14 +115,11 @@
             --paper-dark: #e8d0b8;
             --rule: rgba(42,31,26,0.10);
             --rule-bold: rgba(42,31,26,0.20);
-            /* Rose-gold replacing vermillion */
             --vermillion: #b5704a;
             --vermillion-soft: rgba(181,112,74,0.09);
-            /* Richer gold */
-            --gold: #c9920a;
-            /* Crescent accent */
-            --crescent: #d4a84b;
-            --crescent-soft: rgba(212,168,75,0.15);
+            --gold: #5f7a99;
+            --crescent: #5f7a99;
+            --crescent-soft: rgba(95,122,153,0.12);
             --sidebar-w: 260px;
             --head-h: 56px;
             --r: 2px;
@@ -132,23 +129,23 @@
             --sidebar-border: rgba(42,31,26,0.10);
             --sidebar-text: rgba(42,31,26,0.50);
             --sidebar-text-bright: #2a1f1a;
-            --sidebar-hover-bg: rgba(212,168,75,0.08);
-            --sidebar-hover-border: rgba(181,112,74,0.25);
-            --sidebar-active-bg: rgba(212,168,75,0.12);
+            --sidebar-hover-bg: rgba(95,122,153,0.07);
+            --sidebar-hover-border: rgba(95,122,153,0.20);
+            --sidebar-active-bg: rgba(95,122,153,0.10);
             --sidebar-label: rgba(42,31,26,0.32);
             --sidebar-footer-text: rgba(42,31,26,0.32);
             --sidebar-footer-link: rgba(42,31,26,0.42);
             --sidebar-footer-link-hover: rgba(42,31,26,0.72);
-            --sidebar-eyebrow: rgba(181,112,74,0.7);
+            --sidebar-eyebrow: rgba(95,122,153,0.7);
             --sidebar-tagline: rgba(42,31,26,0.42);
-            --sidebar-new-chat-border: rgba(181,112,74,0.30);
+            --sidebar-new-chat-border: rgba(95,122,153,0.25);
             --sidebar-new-chat-color: rgba(42,31,26,0.60);
-            --sidebar-new-chat-hover-bg: rgba(212,168,75,0.09);
-            --sidebar-new-chat-hover-border: rgba(181,112,74,0.50);
-            --sidebar-edge: linear-gradient(to bottom, transparent, rgba(181,112,74,0.07) 20%, rgba(181,112,74,0.07) 80%, transparent);
+            --sidebar-new-chat-hover-bg: rgba(95,122,153,0.07);
+            --sidebar-new-chat-hover-border: rgba(95,122,153,0.40);
+            --sidebar-edge: linear-gradient(to bottom, transparent, rgba(95,122,153,0.06) 20%, rgba(95,122,153,0.06) 80%, transparent);
         }
 
-        /* Dark Eid theme */
+        /* Dark theme */
         body.theme-dark {
             --ink: #f5ede0;
             --ink-light: #e0cfbc;
@@ -162,29 +159,29 @@
             --rule-bold: rgba(245,237,224,0.16);
             --vermillion: #d4855a;
             --vermillion-soft: rgba(212,133,90,0.12);
-            --gold: #ddb84a;
-            --crescent: #e8c96a;
-            --crescent-soft: rgba(232,201,106,0.12);
+            --gold: #7da3c4;
+            --crescent: #7da3c4;
+            --crescent-soft: rgba(125,163,196,0.12);
             --texture-dot: rgba(245,237,224,0.018);
             --texture-rule: rgba(245,237,224,0.032);
             --sidebar-bg: #181410;
             --sidebar-border: rgba(245,237,224,0.08);
             --sidebar-text: rgba(245,237,224,0.46);
             --sidebar-text-bright: #f5ede0;
-            --sidebar-hover-bg: rgba(232,201,106,0.07);
-            --sidebar-hover-border: rgba(212,133,90,0.18);
-            --sidebar-active-bg: rgba(232,201,106,0.10);
+            --sidebar-hover-bg: rgba(125,163,196,0.07);
+            --sidebar-hover-border: rgba(125,163,196,0.18);
+            --sidebar-active-bg: rgba(125,163,196,0.10);
             --sidebar-label: rgba(245,237,224,0.26);
             --sidebar-footer-text: rgba(245,237,224,0.22);
             --sidebar-footer-link: rgba(245,237,224,0.34);
             --sidebar-footer-link-hover: rgba(245,237,224,0.62);
-            --sidebar-eyebrow: rgba(232,201,106,0.60);
+            --sidebar-eyebrow: rgba(125,163,196,0.60);
             --sidebar-tagline: rgba(245,237,224,0.38);
-            --sidebar-new-chat-border: rgba(212,133,90,0.22);
+            --sidebar-new-chat-border: rgba(125,163,196,0.22);
             --sidebar-new-chat-color: rgba(245,237,224,0.65);
-            --sidebar-new-chat-hover-bg: rgba(232,201,106,0.07);
-            --sidebar-new-chat-hover-border: rgba(212,133,90,0.38);
-            --sidebar-edge: linear-gradient(to bottom, transparent, rgba(232,201,106,0.07) 20%, rgba(232,201,106,0.07) 80%, transparent);
+            --sidebar-new-chat-hover-bg: rgba(125,163,196,0.07);
+            --sidebar-new-chat-hover-border: rgba(125,163,196,0.38);
+            --sidebar-edge: linear-gradient(to bottom, transparent, rgba(125,163,196,0.07) 20%, rgba(125,163,196,0.07) 80%, transparent);
         }
 
         /* Warm parchment dot texture */
@@ -204,28 +201,6 @@
             background-image: repeating-linear-gradient(transparent, transparent 27px, var(--texture-rule) 27px, var(--texture-rule) 28px);
             pointer-events: none;
             z-index: 0;
-        }
-
-        /* Floating stars decoration */
-        .eid-stars {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            z-index: 1;
-            overflow: hidden;
-        }
-        .eid-star {
-            position: absolute;
-            width: 3px;
-            height: 3px;
-            background: var(--crescent);
-            border-radius: 50%;
-            opacity: 0;
-            animation: starTwinkle var(--dur, 4s) var(--delay, 0s) infinite ease-in-out;
-        }
-        @keyframes starTwinkle {
-            0%, 100% { opacity: 0; transform: scale(0.5); }
-            50% { opacity: 0.45; transform: scale(1.2); }
         }
 
         /* ----- TYPOGRAPHY ----- */
@@ -280,8 +255,8 @@
         .eid-modal-overlay.hidden .eid-modal { transform: translateY(20px); opacity: 0; }
         .eid-modal {
             background: var(--paper);
-            border: 1px solid rgba(212,168,75,0.35);
-            box-shadow: 0 0 0 1px rgba(212,168,75,0.12), 12px 12px 0 var(--crescent);
+            border: 1px solid var(--rule-bold);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.12);
             max-width: 400px;
             width: 90%;
             position: relative;
@@ -293,30 +268,23 @@
             will-change: transform, opacity;
         }
         .eid-modal-top {
-            background: linear-gradient(135deg, rgba(212,168,75,0.15) 0%, rgba(181,112,74,0.08) 100%);
-            border-bottom: 1px solid rgba(212,168,75,0.18);
+            background: var(--paper-warm);
+            border-bottom: 1px solid var(--rule);
             padding: 30px 36px 20px;
             position: relative;
         }
         .eid-modal-top::before {
-            content: '\2726  \263D  \2726';
-            display: block;
-            font-size: 10px;
-            letter-spacing: 0.5em;
-            color: var(--crescent);
-            opacity: 0.65;
-            margin-bottom: 12px;
+            display: none;
         }
         .eid-modal-moon {
-            font-size: 52px;
+            font-size: 40px;
             line-height: 1;
             display: block;
             margin-bottom: 10px;
-            animation: moonGlow 3s ease-in-out infinite;
         }
         .eid-modal-title {
             font-family: 'Playfair Display', serif;
-            font-size: 26px;
+            font-size: 22px;
             font-weight: 900;
             color: var(--ink);
             letter-spacing: -0.01em;
@@ -324,7 +292,7 @@
         }
         .eid-modal-arabic {
             font-size: 12px;
-            color: var(--crescent);
+            color: var(--ink-faint);
             font-style: italic;
             font-family: 'Source Serif 4', serif;
             letter-spacing: 0.06em;
@@ -340,7 +308,7 @@
         .eid-modal-close-btn {
             position: absolute; top: 10px; right: 10px;
             background: none;
-            border: 1px solid rgba(212,168,75,0.22);
+            border: 1px solid var(--rule-bold);
             color: var(--ink-ghost);
             width: 24px; height: 24px;
             display: flex; align-items: center; justify-content: center;
@@ -348,7 +316,7 @@
             cursor: pointer;
             transition: all 120ms;
         }
-        .eid-modal-close-btn:hover { background: var(--crescent); color: var(--paper); border-color: var(--crescent); }
+        .eid-modal-close-btn:hover { background: var(--rule-bold); color: var(--ink); }
         .eid-modal-dismiss {
             width: 100%; height: 40px;
             font-family: 'DM Mono', monospace;
@@ -356,22 +324,12 @@
             letter-spacing: 0.12em;
             text-transform: uppercase;
             cursor: pointer;
-            border: 1px solid var(--crescent);
-            background: var(--crescent);
+            border: 1px solid var(--ink);
+            background: var(--ink);
             color: var(--paper);
             transition: all 120ms;
         }
         .eid-modal-dismiss:hover { background: var(--vermillion); border-color: var(--vermillion); }
-
-        /* ----- HANGING DECORATION ----- */
-        .eid-hanging {
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            pointer-events: none;
-            z-index: 3;
-            overflow: hidden;
-            height: 260px;
-        }
 
         .sidebar-header { padding: 22px 22px 18px; border-bottom: 1px solid var(--sidebar-border); }
         .brand { margin-bottom: 16px; }
@@ -520,7 +478,7 @@
             flex-shrink: 0;
             z-index: 10;
         }
-        /* Subtle crescent gold line under header */
+        /* Subtle accent line under header */
         .header::after {
             content: '';
             position: absolute;
@@ -582,13 +540,9 @@
         .chat-container { flex: 1; overflow-y: auto; scroll-behavior: smooth; position: relative; }
         .chat-wrapper { max-width: 760px; margin: 0 auto; padding: 48px 40px; }
 
-        /* ----- WELCOME SCREEN (Eid themed) ----- */
+        /* ----- WELCOME SCREEN ----- */
         .welcome { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; min-height: 65vh; animation: fadeUp 0.5s ease-out both; }
         @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes moonGlow {
-            0%,100% { filter: drop-shadow(0 0 4px rgba(212,168,75,0.3)); }
-            50% { filter: drop-shadow(0 0 10px rgba(212,168,75,0.7)); }
-        }
 
         .welcome-dateline {
             font-family: 'DM Mono', monospace;
@@ -621,16 +575,16 @@
             margin-bottom: 36px;
             position: relative;
         }
-        /* Replaced § with crescent star separator */
+        /* Plain rule separator */
         .welcome-rule::after {
-            content: '☽ ✦ ☾';
+            content: '✦';
             position: absolute;
             left: 50%; top: 50%;
             transform: translate(-50%, -50%);
             background: var(--paper);
             padding: 0 14px;
             font-size: 11px;
-            color: var(--crescent);
+            color: var(--ink-ghost);
             letter-spacing: 0.2em;
         }
 
@@ -655,8 +609,8 @@
         .suggestion-card:hover { background: var(--crescent-soft); }
         .suggestion-card:hover .suggestion-arrow { opacity: 1; transform: translateX(0); }
         .suggestion-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-        /* Kicker uses crescent gold */
-        .suggestion-kicker { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--crescent); }
+        /* Kicker accent */
+        .suggestion-kicker { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink-faint); }
         .suggestion-arrow { font-size: 14px; color: var(--ink-ghost); opacity: 0; transform: translateX(-4px); transition: all 150ms; }
         .suggestion-title { font-family: 'Playfair Display', serif; font-size: 14px; font-weight: 700; color: var(--ink); line-height: 1.3; margin-bottom: 4px; }
         .suggestion-desc { font-size: 12px; color: var(--ink-ghost); font-style: italic; }
@@ -801,8 +755,9 @@
         .msg-copy-btn, .msg-regen-btn, .msg-edit-btn {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            padding: 4px 12px;
+            justify-content: center;
+            gap: 0;
+            padding: 5px 7px;
             background: var(--paper-warm);
             border: 1px solid var(--rule-bold);
             cursor: pointer;
@@ -820,7 +775,7 @@
         .msg-copy-btn:hover { color: var(--crescent); border-color: var(--crescent); background: var(--crescent-soft); }
         .msg-regen-btn:hover { color: var(--vermillion); border-color: var(--vermillion); background: rgba(167,57,57,0.07); }
         .msg-edit-btn:hover { color: var(--crescent); border-color: var(--crescent); background: var(--crescent-soft); }
-        .msg-copy-btn svg, .msg-regen-btn svg, .msg-edit-btn svg { flex-shrink: 0; opacity: 0.7; }
+        .msg-copy-btn svg, .msg-regen-btn svg, .msg-edit-btn svg { flex-shrink: 0; opacity: 0.75; }
         /* Edit inline container */
         .msg-edit-container { width: 100%; }
         .msg-edit-textarea {
@@ -1130,7 +1085,7 @@
         .cibo-modal {
             background: var(--paper);
             border: 2px solid var(--ink);
-            box-shadow: 12px 12px 0 var(--crescent);
+            box-shadow: 4px 4px 0 var(--rule-bold);
             padding: 40px;
             max-width: 480px;
             width: 90%;
@@ -1224,88 +1179,6 @@
         }
         .hidden { display: none !important; }
 
-        /* ----- RAMADAN LANTERNS ----- */
-        .ramadan-lanterns {
-            position: fixed;
-            top: 0; left: 0; right: 0;
-            pointer-events: none;
-            z-index: 2;
-            height: 0;
-            overflow: visible;
-        }
-        .ramadan-lantern {
-            position: absolute;
-            top: -10px;
-            transform-origin: top center;
-            animation: lanternSway var(--sway-dur, 4s) var(--sway-delay, 0s) ease-in-out infinite alternate;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .ramadan-lantern .lantern-string {
-            width: 1px;
-            height: var(--string-h, 40px);
-            background: rgba(212,168,75,0.35);
-        }
-        .ramadan-lantern .lantern-body {
-            width: var(--lantern-w, 18px);
-            height: var(--lantern-h, 28px);
-            background: linear-gradient(135deg, rgba(212,168,75,0.25), rgba(181,112,74,0.18));
-            border: 1px solid rgba(212,168,75,0.5);
-            border-radius: 40% 40% 50% 50% / 30% 30% 50% 50%;
-            position: relative;
-            box-shadow: 0 0 6px rgba(212,168,75,0.2), inset 0 0 6px rgba(212,168,75,0.12);
-            animation: lanternGlow var(--glow-dur, 3s) var(--sway-delay, 0s) ease-in-out infinite alternate;
-        }
-        .ramadan-lantern .lantern-top {
-            width: calc(var(--lantern-w, 18px) + 4px);
-            height: 5px;
-            background: rgba(212,168,75,0.5);
-            border-radius: 2px;
-        }
-        .ramadan-lantern .lantern-bottom {
-            width: 6px;
-            height: 6px;
-            background: rgba(212,168,75,0.4);
-            border-radius: 50%;
-            margin-top: 1px;
-        }
-        @keyframes lanternSway {
-            0% { transform: rotate(-8deg); }
-            100% { transform: rotate(8deg); }
-        }
-        @keyframes lanternGlow {
-            0% { box-shadow: 0 0 4px rgba(212,168,75,0.15), inset 0 0 4px rgba(212,168,75,0.1); }
-            100% { box-shadow: 0 0 12px rgba(212,168,75,0.45), inset 0 0 8px rgba(212,168,75,0.25); }
-        }
-
-        /* ----- SHOOTING STARS ----- */
-        .shooting-star {
-            position: absolute;
-            width: 80px;
-            height: 1px;
-            background: linear-gradient(to right, transparent, var(--crescent), transparent);
-            opacity: 0;
-            animation: shootStar var(--shoot-dur, 6s) var(--shoot-delay, 2s) infinite ease-in-out;
-            transform: rotate(-30deg);
-        }
-        @keyframes shootStar {
-            0%, 85%, 100% { opacity: 0; transform: translateX(0) rotate(-30deg); }
-            88% { opacity: 0.7; }
-            95% { opacity: 0; transform: translateX(120px) rotate(-30deg); }
-        }
-
-        /* ----- ISLAMIC GEOMETRIC BORDER (hover) ----- */
-        .input-box:focus-within {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M10 0 L20 10 L10 20 L0 10 Z' fill='none' stroke='rgba(212,168,75,0.06)' stroke-width='0.5'/%3E%3C/svg%3E");
-            background-size: 20px 20px;
-        }
-        .suggestion-card:hover {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M10 0 L20 10 L10 20 L0 10 Z' fill='none' stroke='rgba(212,168,75,0.07)' stroke-width='0.5'/%3E%3C/svg%3E");
-            background-size: 20px 20px;
-            background-color: var(--crescent-soft);
-        }
-
         /* ----- MESSAGE SEARCH ----- */
         .search-box {
             padding: 10px 16px;
@@ -1347,7 +1220,7 @@
         .shortcuts-modal {
             background: var(--paper);
             border: 2px solid var(--ink);
-            box-shadow: 8px 8px 0 var(--crescent);
+            box-shadow: 4px 4px 0 var(--rule-bold);
             padding: 0;
             max-width: 460px;
             width: 90%;
@@ -1465,62 +1338,18 @@
     </style>
 </head>
 <body>
-    <!-- Floating stars decoration (enhanced) -->
-    <div class="eid-stars" aria-hidden="true">
-        <div class="eid-star" style="top:8%;left:15%;--dur:5s;--delay:0s;"></div>
-        <div class="eid-star" style="top:12%;left:72%;--dur:4s;--delay:0.8s;"></div>
-        <div class="eid-star" style="top:22%;left:88%;--dur:6s;--delay:1.5s;"></div>
-        <div class="eid-star" style="top:35%;left:5%;--dur:4.5s;--delay:0.3s;"></div>
-        <div class="eid-star" style="top:55%;left:92%;--dur:5.5s;--delay:2s;"></div>
-        <div class="eid-star" style="top:70%;left:20%;--dur:4s;--delay:1.2s;"></div>
-        <div class="eid-star" style="top:80%;left:60%;--dur:6s;--delay:0.6s;"></div>
-        <div class="eid-star" style="top:90%;left:40%;--dur:4.8s;--delay:1.8s;width:4px;height:4px;"></div>
-        <div class="eid-star" style="top:48%;left:50%;--dur:3.8s;--delay:2.4s;"></div>
-        <div class="eid-star" style="top:5%;left:45%;--dur:5.2s;--delay:0.4s;"></div>
-        <div class="eid-star" style="top:18%;left:30%;--dur:4.3s;--delay:1.6s;width:2px;height:2px;"></div>
-        <div class="eid-star" style="top:28%;left:65%;--dur:5.8s;--delay:0.9s;width:2px;height:2px;"></div>
-        <div class="eid-star" style="top:42%;left:78%;--dur:3.5s;--delay:2.1s;width:5px;height:5px;"></div>
-        <div class="eid-star" style="top:62%;left:12%;--dur:6.2s;--delay:0.2s;width:2px;height:2px;"></div>
-        <div class="eid-star" style="top:75%;left:85%;--dur:4.1s;--delay:1.0s;width:4px;height:4px;"></div>
-        <div class="eid-star" style="top:15%;left:55%;--dur:5.5s;--delay:1.3s;width:2px;height:2px;"></div>
-        <div class="eid-star" style="top:38%;left:38%;--dur:4.7s;--delay:0.7s;"></div>
-        <div class="eid-star" style="top:52%;left:25%;--dur:3.9s;--delay:2.8s;width:2px;height:2px;"></div>
-        <div class="eid-star" style="top:68%;left:70%;--dur:5.3s;--delay:0.5s;width:4px;height:4px;"></div>
-        <div class="eid-star" style="top:85%;left:10%;--dur:4.6s;--delay:1.9s;"></div>
-        <div class="eid-star" style="top:92%;left:80%;--dur:6.1s;--delay:0.1s;width:2px;height:2px;"></div>
-        <div class="eid-star" style="top:3%;left:25%;--dur:5.0s;--delay:2.5s;width:5px;height:5px;"></div>
-        <div class="eid-star" style="top:58%;left:55%;--dur:4.4s;--delay:1.7s;"></div>
-        <div class="eid-star" style="top:30%;left:95%;--dur:3.7s;--delay:0.6s;width:2px;height:2px;"></div>
-        <div class="eid-star" style="top:45%;left:2%;--dur:5.6s;--delay:2.2s;width:4px;height:4px;"></div>
-        <!-- Shooting stars -->
-        <div class="shooting-star" style="top:15%;left:20%;--shoot-dur:7s;--shoot-delay:1s;"></div>
-        <div class="shooting-star" style="top:35%;left:60%;--shoot-dur:9s;--shoot-delay:4s;"></div>
-        <div class="shooting-star" style="top:10%;left:45%;--shoot-dur:11s;--shoot-delay:7s;"></div>
-    </div>
-
-    <!-- Ramadan Lanterns -->
-    <div class="ramadan-lanterns" aria-hidden="true">
-        <div class="ramadan-lantern" style="left:5%;--sway-dur:3.5s;--sway-delay:0s;--string-h:35px;--lantern-w:14px;--lantern-h:22px;--glow-dur:2.5s;"><div class="lantern-top"></div><div class="lantern-string"></div><div class="lantern-body"></div><div class="lantern-bottom"></div></div>
-        <div class="ramadan-lantern" style="left:18%;--sway-dur:4.2s;--sway-delay:0.6s;--string-h:50px;--lantern-w:20px;--lantern-h:32px;--glow-dur:3.5s;"><div class="lantern-top"></div><div class="lantern-string"></div><div class="lantern-body"></div><div class="lantern-bottom"></div></div>
-        <div class="ramadan-lantern" style="left:32%;--sway-dur:3.8s;--sway-delay:1.1s;--string-h:42px;--lantern-w:16px;--lantern-h:26px;--glow-dur:2.8s;"><div class="lantern-top"></div><div class="lantern-string"></div><div class="lantern-body"></div><div class="lantern-bottom"></div></div>
-        <div class="ramadan-lantern" style="left:50%;--sway-dur:4.5s;--sway-delay:0.3s;--string-h:55px;--lantern-w:22px;--lantern-h:36px;--glow-dur:4s;"><div class="lantern-top"></div><div class="lantern-string"></div><div class="lantern-body"></div><div class="lantern-bottom"></div></div>
-        <div class="ramadan-lantern" style="left:65%;--sway-dur:3.6s;--sway-delay:1.8s;--string-h:38px;--lantern-w:15px;--lantern-h:24px;--glow-dur:2.6s;"><div class="lantern-top"></div><div class="lantern-string"></div><div class="lantern-body"></div><div class="lantern-bottom"></div></div>
-        <div class="ramadan-lantern" style="left:78%;--sway-dur:4.8s;--sway-delay:0.9s;--string-h:48px;--lantern-w:18px;--lantern-h:30px;--glow-dur:3.2s;"><div class="lantern-top"></div><div class="lantern-string"></div><div class="lantern-body"></div><div class="lantern-bottom"></div></div>
-        <div class="ramadan-lantern" style="left:91%;--sway-dur:3.9s;--sway-delay:1.4s;--string-h:40px;--lantern-w:14px;--lantern-h:22px;--glow-dur:2.9s;"><div class="lantern-top"></div><div class="lantern-string"></div><div class="lantern-body"></div><div class="lantern-bottom"></div></div>
-    </div>
-
-    <!-- Eid / Ramadan Mubarak Popup -->
+    <!-- Welcome Popup -->
     <div class="eid-modal-overlay hidden" id="eidModal">
         <div class="eid-modal">
             <button class="eid-modal-close-btn" id="eidModalClose" aria-label="Close">&#x2715;</button>
             <div class="eid-modal-top">
-                <span class="eid-modal-moon">&#x263D;</span>
-                <div class="eid-modal-title">Ramadan Mubarak</div>
+                <span class="eid-modal-moon">✦</span>
+                <div class="eid-modal-title">What do you want to build today?</div>
                 <div class="eid-modal-arabic">&#x2014; From eSAMz AI &#x2014;</div>
             </div>
             <div class="eid-modal-body">
-                <p>May this holy month bring you peace, clarity, and beautiful conversations. eSAMz AI is here for you — day and night.</p>
-                <button class="eid-modal-dismiss" id="eidModalDismiss">&#x263D;&nbsp;&nbsp;Continue to eSAMz</button>
+                <p>Deep reasoning with emotional clarity — for complex problems that demand more than a quick answer.</p>
+                <button class="eid-modal-dismiss" id="eidModalDismiss">Start Building</button>
             </div>
         </div>
     </div>
@@ -1628,65 +1457,10 @@
 
             <div class="chat-container" id="chatContainer">
                 <div class="chat-wrapper">
-                    <!-- Eid hanging decoration: strings from top bar with crescent & stars -->
-                    <div class="eid-hanging" aria-hidden="true">
-                        <svg viewBox="0 0 1200 260" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMin slice">
-                            <defs>
-                                <style>
-                                    .hang-string { stroke: rgba(212,168,75,0.30); stroke-width: 0.8; fill: none; }
-                                    .hang-crescent { fill: none; stroke: rgba(212,168,75,0.55); stroke-width: 1; }
-                                    .hang-star { fill: rgba(212,168,75,0.50); }
-                                    .hang-gem { fill: none; stroke: rgba(212,168,75,0.40); stroke-width: 0.8; }
-                                </style>
-                            </defs>
-
-                            <!-- String 1 - left crescent -->
-                            <line class="hang-string" x1="180" y1="0" x2="180" y2="72"/>
-                            <!-- crescent at end of string 1 -->
-                            <path class="hang-crescent" d="M180,85 a12,12 0 1,1 0,0.01 a8,8 0 1,0 0,-0.01" transform="translate(0,0)"/>
-                            <path class="hang-crescent" d="M174,78 a12,12 0 0,1 12,0 a9,9 0 0,0 -12,0" fill="rgba(212,168,75,0.15)" stroke="none"/>
-                            <!-- tiny stars on string 1 -->
-                            <polygon class="hang-star" points="180,30 181.2,33.6 185,33.6 182,35.8 183.2,39.4 180,37.2 176.8,39.4 178,35.8 175,33.6 178.8,33.6" transform="scale(0.45) translate(220,-50)"/>
-
-                            <!-- String 2 - center left star -->
-                            <line class="hang-string" x1="360" y1="0" x2="360" y2="55"/>
-                            <polygon class="hang-star" points="0,-9 2.1,-2.9 8.6,-2.9 3.5,1.1 5.6,7.2 0,3.2 -5.6,7.2 -3.5,1.1 -8.6,-2.9 -2.1,-2.9" transform="translate(360,64) scale(1.1)"/>
-                            <!-- mini bead on string 2 -->
-                            <circle class="hang-gem" cx="360" cy="35" r="2.5"/>
-
-                            <!-- String 3 - center crescent large -->
-                            <line class="hang-string" x1="580" y1="0" x2="580" y2="88"/>
-                            <path class="hang-crescent" d="M568,102 a14,14 0 1,1 0.01,0 a10,10 0 1,0 -0.01,0" />
-                            <path d="M568,88 a14,14 0 0,1 14.5,0 a10.5,10.5 0 0,0 -14.5,0" fill="rgba(212,168,75,0.18)" stroke="none"/>
-                            <!-- tiny star mid-string 3 -->
-                            <polygon class="hang-star" points="0,-5 1.2,-1.6 4.9,-1.6 2,0.6 3.2,4.2 0,2 -3.2,4.2 -2,0.6 -4.9,-1.6 -1.2,-1.6" transform="translate(580,44)"/>
-                            <!-- bead on string 3 -->
-                            <circle class="hang-gem" cx="580" cy="68" r="3"/>
-
-                            <!-- String 4 - center right star -->
-                            <line class="hang-string" x1="800" y1="0" x2="800" y2="60"/>
-                            <polygon class="hang-star" points="0,-9 2.1,-2.9 8.6,-2.9 3.5,1.1 5.6,7.2 0,3.2 -5.6,7.2 -3.5,1.1 -8.6,-2.9 -2.1,-2.9" transform="translate(800,70) scale(1.0)"/>
-                            <circle class="hang-gem" cx="800" cy="38" r="2.5"/>
-
-                            <!-- String 5 - right crescent -->
-                            <line class="hang-string" x1="1020" y1="0" x2="1020" y2="75"/>
-                            <path class="hang-crescent" d="M1008,89 a12,12 0 1,1 0.01,0 a8,8 0 1,0 -0.01,0" />
-                            <path d="M1009,76 a12,12 0 0,1 12,0 a9,9 0 0,0 -12,0" fill="rgba(212,168,75,0.15)" stroke="none"/>
-                            <!-- mid star on string 5 -->
-                            <polygon class="hang-star" points="0,-5 1.2,-1.6 4.9,-1.6 2,0.6 3.2,4.2 0,2 -3.2,4.2 -2,0.6 -4.9,-1.6 -1.2,-1.6" transform="translate(1020,38)"/>
-
-                            <!-- Very small scattered accent stars -->
-                            <polygon class="hang-star" points="0,-3.5 0.8,-1.1 3.3,-1.1 1.3,0.4 2.1,2.8 0,1.3 -2.1,2.8 -1.3,0.4 -3.3,-1.1 -0.8,-1.1" transform="translate(260,18)" opacity="0.6"/>
-                            <polygon class="hang-star" points="0,-3.5 0.8,-1.1 3.3,-1.1 1.3,0.4 2.1,2.8 0,1.3 -2.1,2.8 -1.3,0.4 -3.3,-1.1 -0.8,-1.1" transform="translate(470,12)" opacity="0.5"/>
-                            <polygon class="hang-star" points="0,-3.5 0.8,-1.1 3.3,-1.1 1.3,0.4 2.1,2.8 0,1.3 -2.1,2.8 -1.3,0.4 -3.3,-1.1 -0.8,-1.1" transform="translate(690,20)" opacity="0.6"/>
-                            <polygon class="hang-star" points="0,-3.5 0.8,-1.1 3.3,-1.1 1.3,0.4 2.1,2.8 0,1.3 -2.1,2.8 -1.3,0.4 -3.3,-1.1 -0.8,-1.1" transform="translate(910,10)" opacity="0.5"/>
-                        </svg>
-                    </div>
-
-                    <!-- Welcome screen -->
+                <!-- Welcome screen -->
                     <div class="welcome" id="welcomeScreen">
                         <div class="welcome-dateline">eSAMz AI · Strategic Artificial Mind</div>
-                        <h1 class="welcome-headline" id="welcomeHeadline">What shall we<br><em>think through</em> today?</h1>
+                        <h1 class="welcome-headline" id="welcomeHeadline">What do you want<br>to <em>build</em> today?</h1>
                         <p class="welcome-deck">Deep reasoning with emotional clarity — for complex problems that demand more than a quick answer.</p>
                         <div class="welcome-rule"></div>
                         <div class="suggestions">
@@ -2357,14 +2131,15 @@
                     bar.className = 'msg-action-bar';
                     const copyBtn = document.createElement('button');
                     copyBtn.className = 'msg-copy-btn';
-                    copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="1"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copy`;
+                    copyBtn.title = 'Copy';
+                    copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="1"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`;
                     copyBtn.addEventListener('click', function() {
                         navigator.clipboard.writeText(bubble.innerText || bubble.textContent).then(() => {
-                            copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Copied!`;
-                            setTimeout(() => { copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="1"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copy`; }, 2000);
+                            copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+                            setTimeout(() => { copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="1"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`; }, 2000);
                         }).catch(() => {
-                            copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Failed`;
-                            setTimeout(() => { copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="1"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copy`; }, 2000);
+                            copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
+                            setTimeout(() => { copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="1"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`; }, 2000);
                         });
                     });
                     bar.appendChild(copyBtn);
@@ -2380,7 +2155,8 @@
                     if (bar.querySelector('.msg-regen-btn')) return;
                     const regenBtn = document.createElement('button');
                     regenBtn.className = 'msg-regen-btn';
-                    regenBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Regenerate`;
+                    regenBtn.title = 'Regenerate';
+                    regenBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>`;
                     regenBtn.addEventListener('click', () => this.regenerateMessage(msgDiv));
                     bar.appendChild(regenBtn);
                 }
@@ -2388,12 +2164,30 @@
                 addEditButton(msgDiv) {
                     if (!msgDiv || !msgDiv.classList.contains('user')) return;
                     const content = msgDiv.querySelector('.message-content');
-                    if (!content || content.querySelector('.msg-edit-btn')) return;
+                    if (!content || content.querySelector('.msg-action-bar')) return;
+                    const bubble = msgDiv.querySelector('.bubble');
+                    const bar = document.createElement('div');
+                    bar.className = 'msg-action-bar';
+                    const copyBtn = document.createElement('button');
+                    copyBtn.className = 'msg-copy-btn';
+                    copyBtn.title = 'Copy';
+                    copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="1"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`;
+                    if (bubble) {
+                        copyBtn.addEventListener('click', function() {
+                            navigator.clipboard.writeText(bubble.innerText || bubble.textContent).then(() => {
+                                copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+                                setTimeout(() => { copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="1"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`; }, 2000);
+                            });
+                        });
+                    }
                     const editBtn = document.createElement('button');
                     editBtn.className = 'msg-edit-btn';
-                    editBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit`;
+                    editBtn.title = 'Edit';
+                    editBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
                     editBtn.addEventListener('click', () => this.editMessage(msgDiv));
-                    content.appendChild(editBtn);
+                    bar.appendChild(copyBtn);
+                    bar.appendChild(editBtn);
+                    content.appendChild(bar);
                 }
 
                 editMessage(msgDiv) {
@@ -2402,8 +2196,8 @@
                     if (!bubble) return;
                     const originalText = bubble.innerText;
                     bubble.style.display = 'none';
-                    const editBtn = msgDiv.querySelector('.msg-edit-btn');
-                    if (editBtn) editBtn.style.display = 'none';
+                    const bar = msgDiv.querySelector('.msg-action-bar');
+                    if (bar) bar.style.display = 'none';
                     const editContainer = document.createElement('div');
                     editContainer.className = 'msg-edit-container';
                     const textarea = document.createElement('textarea');
@@ -2420,14 +2214,14 @@
                     cancelBtn.addEventListener('click', () => {
                         editContainer.remove();
                         bubble.style.display = '';
-                        if (editBtn) editBtn.style.display = '';
+                        if (bar) bar.style.display = '';
                     });
                     saveBtn.addEventListener('click', () => {
                         const newText = textarea.value.trim();
                         if (!newText) return;
                         editContainer.remove();
                         bubble.style.display = '';
-                        if (editBtn) editBtn.style.display = '';
+                        if (bar) bar.style.display = '';
                         this.resendEditedMessage(msgDiv, newText);
                     });
                     textarea.addEventListener('keydown', (e) => {
@@ -3085,40 +2879,6 @@
                     }
                 }
             }
-
-            // ----- DYNAMIC GREETING -----
-            function updateWelcomeGreeting() {
-                const h = document.getElementById('welcomeHeadline');
-                if (!h) return;
-                const hour = new Date().getHours();
-                let greeting, em;
-                if (hour >= 3 && hour < 5) {
-                    greeting = 'Suhoor Mubarak'; em = '☽';
-                } else if (hour >= 5 && hour < 12) {
-                    greeting = 'Ramadan Kareem'; em = '☀';
-                } else if (hour >= 12 && hour < 17) {
-                    greeting = 'Ramadan Kareem'; em = '✦';
-                } else if (hour >= 17 && hour < 20) {
-                    greeting = 'Iftar Mubarak'; em = '🌙';
-                } else {
-                    greeting = 'Blessed Night'; em = '✨';
-                }
-                h.innerHTML = `${greeting} <em>${em}</em>`;
-            }
-            updateWelcomeGreeting();
-
-            // ----- STAR PARALLAX -----
-            document.addEventListener('mousemove', function(e) {
-                const stars = document.querySelectorAll('.eid-star');
-                const cx = window.innerWidth / 2;
-                const cy = window.innerHeight / 2;
-                const dx = (e.clientX - cx) / cx;
-                const dy = (e.clientY - cy) / cy;
-                stars.forEach((s, i) => {
-                    const depth = (i % 3 + 1) * 0.5;
-                    s.style.transform = `translate(${dx * depth * 3}px, ${dy * depth * 2}px)`;
-                });
-            });
 
             // ----- KEYBOARD SHORTCUTS -----
             (function initKeyboardShortcuts() {
