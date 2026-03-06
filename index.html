@@ -273,14 +273,12 @@
             padding: 30px 36px 20px;
             position: relative;
         }
-        .eid-modal-top::before {
-            display: none;
-        }
         .eid-modal-moon {
-            font-size: 40px;
+            font-size: 28px;
             line-height: 1;
             display: block;
             margin-bottom: 10px;
+            color: var(--ink-faint);
         }
         .eid-modal-title {
             font-family: 'Playfair Display', serif;
@@ -2132,6 +2130,7 @@
                     const copyBtn = document.createElement('button');
                     copyBtn.className = 'msg-copy-btn';
                     copyBtn.title = 'Copy';
+                    copyBtn.setAttribute('aria-label', 'Copy');
                     copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="1"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`;
                     copyBtn.addEventListener('click', function() {
                         navigator.clipboard.writeText(bubble.innerText || bubble.textContent).then(() => {
@@ -2156,6 +2155,7 @@
                     const regenBtn = document.createElement('button');
                     regenBtn.className = 'msg-regen-btn';
                     regenBtn.title = 'Regenerate';
+                    regenBtn.setAttribute('aria-label', 'Regenerate');
                     regenBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>`;
                     regenBtn.addEventListener('click', () => this.regenerateMessage(msgDiv));
                     bar.appendChild(regenBtn);
@@ -2171,6 +2171,7 @@
                     const copyBtn = document.createElement('button');
                     copyBtn.className = 'msg-copy-btn';
                     copyBtn.title = 'Copy';
+                    copyBtn.setAttribute('aria-label', 'Copy prompt');
                     copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="1"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`;
                     if (bubble) {
                         copyBtn.addEventListener('click', function() {
@@ -2183,6 +2184,7 @@
                     const editBtn = document.createElement('button');
                     editBtn.className = 'msg-edit-btn';
                     editBtn.title = 'Edit';
+                    editBtn.setAttribute('aria-label', 'Edit message');
                     editBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
                     editBtn.addEventListener('click', () => this.editMessage(msgDiv));
                     bar.appendChild(copyBtn);
