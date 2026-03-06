@@ -1603,19 +1603,29 @@
                     }, 3000);
                 },
                 confirm(message, title = "Confirm") {
-                    return new Promise((resolve) => {
+                    let _cancel = null;
+                    const promise = new Promise((resolve) => {
                         const dialog = document.getElementById('confirmDialog');
                         document.getElementById('confirmTitle').textContent = title;
                         document.getElementById('confirmMessage').textContent = message;
                         const confirmBtn = document.getElementById('confirmOk');
                         const cancelBtn = document.getElementById('confirmCancel');
-                        const close = () => { dialog.close(); confirmBtn.removeEventListener('click', onConfirm); cancelBtn.removeEventListener('click', onCancel); };
+                        const close = () => {
+                            _cancel = null;
+                            dialog.close();
+                            confirmBtn.removeEventListener('click', onConfirm);
+                            cancelBtn.removeEventListener('click', onCancel);
+                        };
                         const onConfirm = () => { close(); resolve(true); };
                         const onCancel = () => { close(); resolve(false); };
+                        _cancel = onCancel;
                         confirmBtn.addEventListener('click', onConfirm);
                         cancelBtn.addEventListener('click', onCancel);
                         dialog.showModal();
                     });
+                    // Allow external callers to dismiss the dialog programmatically
+                    promise.cancel = () => { if (_cancel) _cancel(); };
+                    return promise;
                 }
             };
 
@@ -2650,7 +2660,13 @@
                         this.peer = new Peer(`esamz-v10-${this.myCode}`, { 
                             debug: 0,
                             config: { 
-                                'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] 
+                                'iceServers': [
+                                    { 'urls': 'stun:stun.l.google.com:19302' },
+                                    { 'urls': 'stun:stun1.l.google.com:19302' },
+                                    { 'urls': 'stun:stun2.l.google.com:19302' },
+                                    { 'urls': 'stun:stun3.l.google.com:19302' },
+                                    { 'urls': 'stun:stun4.l.google.com:19302' }
+                                ]
                             }
                         });
 
@@ -2669,6 +2685,21 @@
                             // so we never merge or expose chats until the connection is confirmed.
                             let approvalDecision = null; // null=pending, true=approved, false=rejected
                             const pendingData = [];
+                            let pendingConfirmPromise = null;
+
+                            const shortId = conn.peer.replace('esamz-v10-', '');
+
+                            const onConnLost = () => {
+                                if (approvalDecision !== null) return; // already decided
+                                approvalDecision = false;
+                                pendingData.length = 0;
+                                // Dismiss the approval dialog so it doesn't hang
+                                try { if (pendingConfirmPromise) pendingConfirmPromise.cancel(); } catch(e) {}
+                                Utils.showToast(`Device ${shortId} disconnected before you could approve`, 'info');
+                                delete this.connections[conn.peer];
+                                this._updatePeersList();
+                                if (Object.keys(this.connections).length === 0) this._setStatus('ready');
+                            };
 
                             conn.on('data', (packet) => {
                                 if (approvalDecision === null) {
@@ -2679,31 +2710,15 @@
                                 // If rejected, silently discard
                             });
 
-                            conn.on('close', () => {
-                                if (approvalDecision === null) {
-                                    // Connection closed before user decided – treat as rejected
-                                    approvalDecision = false;
-                                    pendingData.length = 0;
-                                }
-                                delete this.connections[conn.peer];
-                                this._updatePeersList();
-                                if (Object.keys(this.connections).length === 0) this._setStatus('ready');
-                            });
+                            conn.on('close', onConnLost);
+                            conn.on('error', onConnLost);
 
-                            conn.on('error', () => {
-                                if (approvalDecision === null) {
-                                    approvalDecision = false;
-                                    pendingData.length = 0;
-                                }
-                                delete this.connections[conn.peer];
-                                this._updatePeersList();
-                                if (Object.keys(this.connections).length === 0) this._setStatus('ready');
-                            });
-
-                            Utils.confirm(
-                                `Device ${conn.peer.replace('esamz-v10-', '')} wants to sync. Allow?`,
+                            pendingConfirmPromise = Utils.confirm(
+                                `Device ${shortId} wants to sync. Allow?`,
                                 "Sync Request"
-                            ).then(allow => {
+                            );
+                            pendingConfirmPromise.then(allow => {
+                                pendingConfirmPromise = null;
                                 if (!allow) {
                                     approvalDecision = false;
                                     pendingData.length = 0; // Discard – prevent data leak
