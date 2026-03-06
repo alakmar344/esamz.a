@@ -2664,16 +2664,76 @@
                                 conn.close();
                                 return;
                             }
-                            this._setupConn(conn);
+
+                            // Buffer any data that arrives before the user approves,
+                            // so we never merge or expose chats until the connection is confirmed.
+                            let approvalDecision = null; // null=pending, true=approved, false=rejected
+                            const pendingData = [];
+
+                            conn.on('data', (packet) => {
+                                if (approvalDecision === null) {
+                                    pendingData.push(packet);
+                                } else if (approvalDecision === true) {
+                                    this._handlePacket(packet);
+                                }
+                                // If rejected, silently discard
+                            });
+
+                            conn.on('close', () => {
+                                if (approvalDecision === null) {
+                                    // Connection closed before user decided – treat as rejected
+                                    approvalDecision = false;
+                                    pendingData.length = 0;
+                                }
+                                delete this.connections[conn.peer];
+                                this._updatePeersList();
+                                if (Object.keys(this.connections).length === 0) this._setStatus('ready');
+                            });
+
+                            conn.on('error', () => {
+                                if (approvalDecision === null) {
+                                    approvalDecision = false;
+                                    pendingData.length = 0;
+                                }
+                                delete this.connections[conn.peer];
+                                this._updatePeersList();
+                                if (Object.keys(this.connections).length === 0) this._setStatus('ready');
+                            });
+
                             Utils.confirm(
-                                `Device ${conn.peer.replace('esamz-v10-', '')} wants to sync. Allow?`, 
+                                `Device ${conn.peer.replace('esamz-v10-', '')} wants to sync. Allow?`,
                                 "Sync Request"
                             ).then(allow => {
                                 if (!allow) {
-                                    conn.send({ type: 'REJECTED' });
-                                    this.disconnect(conn.peer);
+                                    approvalDecision = false;
+                                    pendingData.length = 0; // Discard – prevent data leak
+                                    try { conn.send({ type: 'REJECTED' }); } catch(e) { /* connection may already be closing */ }
+                                    conn.close();
+                                    delete this.connections[conn.peer];
+                                    this._updatePeersList();
+                                    if (Object.keys(this.connections).length === 0) this._setStatus('ready');
+                                    return;
+                                }
+
+                                // Approved – now register and sync
+                                approvalDecision = true;
+                                const pid = conn.peer;
+                                this.connections[pid] = conn;
+                                this._updatePeersList();
+                                this._setStatus('connected');
+                                this._saveKnownPeer(pid);
+                                Utils.showToast("Device connected", "success");
+
+                                const sendAndFlush = () => {
+                                    this._sendFull(conn);
+                                    const queued = pendingData.splice(0);
+                                    queued.forEach(p => this._handlePacket(p));
+                                };
+
+                                if (conn.open) {
+                                    sendAndFlush();
                                 } else {
-                                    Utils.showToast("Device connected", "success");
+                                    conn.on('open', () => sendAndFlush());
                                 }
                             });
                         });
@@ -2702,7 +2762,14 @@
                             this._sendFull(conn);
                         }, 500);
                     });
-                    conn.on('data', (packet) => this._handlePacket(packet));
+                    conn.on('data', (packet) => {
+                        if (packet.type === 'REJECTED') {
+                            this._removeKnownPeer(pid);
+                            Utils.showToast('Sync request was declined by the other device', 'info');
+                            return;
+                        }
+                        this._handlePacket(packet);
+                    });
                     conn.on('close', () => {
                         delete this.connections[pid];
                         this._updatePeersList();
