@@ -690,42 +690,53 @@
         .message.ai .bubble blockquote { border-left: 3px solid var(--gold); padding-left: 16px; font-style: italic; color: var(--ink-faint); margin: 1em 0; }
 
         /* Code blocks */
-        .code-block-wrapper { background: var(--ink); border: none; margin: 1.4em 0; overflow: hidden; }
+        .code-block-wrapper { background: var(--paper-aged); border: 1px solid var(--rule-bold); border-radius: 2px; margin: 1.4em 0; overflow: hidden; }
         .code-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 16px;
-            border-bottom: 1px solid rgba(248,244,238,0.08);
+            padding: 6px 12px;
+            border-bottom: 1px solid var(--rule-bold);
             font-family: 'DM Mono', monospace;
             font-size: 10px;
             letter-spacing: 0.1em;
             text-transform: uppercase;
-            color: rgba(248,244,238,0.35);
+            color: var(--ink-faint);
         }
+        .code-header-btns { display: flex; gap: 2px; }
         .code-header button {
-            font-family: 'DM Mono', monospace;
-            font-size: 10px;
-            letter-spacing: 0.1em;
-            padding: 4px 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            padding: 0;
             background: transparent;
-            border: 1px solid rgba(248,244,238,0.15);
-            color: rgba(248,244,238,0.4);
+            border: none;
+            color: var(--ink-ghost);
             cursor: pointer;
-            text-transform: uppercase;
-            transition: all 120ms;
+            border-radius: 2px;
+            transition: color 120ms, background 120ms;
         }
-        .code-header button:hover { background: rgba(248,244,238,0.08); color: var(--paper); border-color: rgba(248,244,238,0.3); }
-        .message.ai .bubble pre { margin: 0 !important; padding: 18px 16px !important; background: transparent !important; overflow-x: auto; }
-        .message.ai .bubble code { font-family: 'DM Mono', monospace; font-size: 12.5px; background: transparent !important; color: var(--paper-warm) !important; }
+        .code-header button:hover { color: var(--ink); background: var(--rule); }
+        .message.ai .bubble pre { margin: 0 !important; padding: 16px !important; background: transparent !important; overflow-x: auto; }
+        .message.ai .bubble code { font-family: 'DM Mono', monospace; font-size: 12.5px; background: transparent !important; color: var(--ink) !important; }
         .message.ai .bubble pre code { background: transparent !important; }
-        .message.ai .bubble pre[class*="language-"], .message.ai .bubble code[class*="language-"] { background: transparent !important; color: var(--paper-warm) !important; text-shadow: none !important; }
-        .message.ai .bubble .token.comment { color: rgba(248,244,238,0.3) !important; }
-        .message.ai .bubble .token.string, .message.ai .bubble .token.inserted { color: #86efac !important; }
-        .message.ai .bubble .token.number, .message.ai .bubble .token.boolean { color: #fbbf24 !important; }
-        .message.ai .bubble .token.keyword { color: #f9a8d4 !important; }
-        .message.ai .bubble .token.function { color: #93c5fd !important; }
-        .message.ai .bubble .token.operator, .message.ai .bubble .token.punctuation { color: rgba(248,244,238,0.5) !important; }
+        .message.ai .bubble pre[class*="language-"], .message.ai .bubble code[class*="language-"] { background: transparent !important; color: var(--ink) !important; text-shadow: none !important; }
+        /* Light-mode Prism token colors */
+        .message.ai .bubble .token.comment { color: var(--ink-ghost) !important; }
+        .message.ai .bubble .token.string, .message.ai .bubble .token.inserted { color: #2d7a3d !important; }
+        .message.ai .bubble .token.number, .message.ai .bubble .token.boolean { color: #b45309 !important; }
+        .message.ai .bubble .token.keyword { color: #7c3aed !important; }
+        .message.ai .bubble .token.function { color: #1d6fce !important; }
+        .message.ai .bubble .token.operator, .message.ai .bubble .token.punctuation { color: var(--ink-faint) !important; }
+        /* Dark-mode Prism token colors */
+        body.theme-dark .message.ai .bubble .token.comment { color: rgba(245,237,224,0.35) !important; }
+        body.theme-dark .message.ai .bubble .token.string, body.theme-dark .message.ai .bubble .token.inserted { color: #86efac !important; }
+        body.theme-dark .message.ai .bubble .token.number, body.theme-dark .message.ai .bubble .token.boolean { color: #fbbf24 !important; }
+        body.theme-dark .message.ai .bubble .token.keyword { color: #f9a8d4 !important; }
+        body.theme-dark .message.ai .bubble .token.function { color: #93c5fd !important; }
+        body.theme-dark .message.ai .bubble .token.operator, body.theme-dark .message.ai .bubble .token.punctuation { color: rgba(245,237,224,0.5) !important; }
         .message.ai .bubble :not(pre) > code {
             font-family: 'DM Mono', monospace;
             background: var(--paper-aged) !important;
@@ -1712,8 +1723,15 @@
 
                     const lastActiveId = localStorage.getItem(this.LAST_CHAT_KEY);
                     if (lastActiveId) {
-                        const history = this.getHistory();
-                        if (history.find(c => c.id === lastActiveId)) this.loadChat(lastActiveId);
+                        const tryLoad = () => {
+                            if (window.marked) {
+                                const history = this.getHistory();
+                                if (history.find(c => c.id === lastActiveId)) this.loadChat(lastActiveId);
+                            } else {
+                                setTimeout(tryLoad, 100);
+                            }
+                        };
+                        tryLoad();
                     }
                     this.dom.input.focus();
 
@@ -2323,23 +2341,54 @@
                 }
 
                 injectCodeButtons(container) {
+                    const COPY_ICON = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="1"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`;
+                    const CHECK_ICON = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
+                    const DL_ICON = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+                    const EXT_MAP = { javascript:'js', js:'js', typescript:'ts', ts:'ts', python:'py', py:'py', java:'java', c:'c', cpp:'cpp', 'c++':'cpp', ruby:'rb', go:'go', rust:'rs', bash:'sh', sh:'sh', shell:'sh', sql:'sql', json:'json', yaml:'yaml', yml:'yaml', html:'html', css:'css', markdown:'md', md:'md', xml:'xml' };
                     const pres = container.querySelectorAll('pre');
                     pres.forEach(pre => {
                         if (pre.parentElement.classList.contains('code-block-wrapper')) return;
                         const code = pre.querySelector('code');
                         const langMatch = code ? code.className.match(/language-(\w+)/) : null;
-                        const lang = langMatch ? langMatch[1] : 'code';
+                        const lang = langMatch ? langMatch[1].toLowerCase() : 'code';
                         const wrapper = document.createElement('div');
                         wrapper.className = 'code-block-wrapper';
                         const header = document.createElement('div');
                         header.className = 'code-header';
-                        header.innerHTML = `<span>${lang || 'code'}</span><button>Copy</button>`;
-                        const btn = header.querySelector('button');
-                        btn.onclick = () => {
-                            navigator.clipboard.writeText(pre.textContent);
-                            btn.textContent = 'Copied';
-                            setTimeout(() => btn.textContent = 'Copy', 2000);
+                        const langLabel = document.createElement('span');
+                        langLabel.textContent = lang;
+                        const btns = document.createElement('div');
+                        btns.className = 'code-header-btns';
+                        const copyBtn = document.createElement('button');
+                        copyBtn.title = 'Copy';
+                        copyBtn.setAttribute('aria-label', 'Copy code');
+                        copyBtn.innerHTML = COPY_ICON;
+                        copyBtn.onclick = () => {
+                            const text = code ? code.textContent : pre.textContent;
+                            navigator.clipboard.writeText(text).then(() => {
+                                copyBtn.innerHTML = CHECK_ICON;
+                                setTimeout(() => { copyBtn.innerHTML = COPY_ICON; }, 2000);
+                            });
                         };
+                        const dlBtn = document.createElement('button');
+                        dlBtn.title = 'Download';
+                        dlBtn.setAttribute('aria-label', 'Download code');
+                        dlBtn.innerHTML = DL_ICON;
+                        dlBtn.onclick = () => {
+                            const text = code ? code.textContent : pre.textContent;
+                            const ext = EXT_MAP[lang] || 'txt';
+                            const blob = new Blob([text], { type: 'text/plain' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `code.${ext}`;
+                            a.click();
+                            setTimeout(() => URL.revokeObjectURL(url), 200);
+                        };
+                        btns.appendChild(copyBtn);
+                        btns.appendChild(dlBtn);
+                        header.appendChild(langLabel);
+                        header.appendChild(btns);
                         pre.parentNode.insertBefore(wrapper, pre);
                         wrapper.appendChild(header);
                         wrapper.appendChild(pre);
