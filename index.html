@@ -3163,7 +3163,7 @@
                         dotEl.classList.remove('quality-good', 'quality-warn');
                         dotEl.classList.add('quality-bad');
                     }
-                }
+            
                 ping();
                 setInterval(ping, 30000);
             })();
@@ -3171,21 +3171,7 @@
             // Start the app
             window.app = new App();
         })();
-        // --- ESAMZ ANALYTICS ADD-ON ---
-(function() {
-    // Analytics: hook into handleSend to log question rate
-    // (pageview and event tracking requires a real analytics endpoint)
-    const interval = setInterval(() => {
-        if (window.app) {
-            const originalSend = window.app.handleSend.bind(window.app);
-            // BUG-13 FIX: async wrapper so the original promise is properly awaited
-            window.app.handleSend = async () => {
-                return await originalSend();
-            };
-            clearInterval(interval);
-        }
-    }, 500);
-})();
+        
     </script>
 </body>
 </html>
