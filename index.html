@@ -18,7 +18,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
     <link rel="manifest" href="/site.webmanifest">
     <!-- Third-party scripts (deferred) -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js" defer></script>
@@ -1994,7 +1994,9 @@
                     const clientLastActive = Date.now();
 
                     try {
-                        const response = await this.fetchWithRetry("https://backend-for-esamzai.onrender.com/api/chat", {
+                        // BUG-5 FIX: plain fetch, no retry — retrying a POST mid-stream would
+                        // send the message twice and corrupt session history.
+                        const response = await fetch("https://backend-for-esamzai.onrender.com/api/chat", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ 
@@ -2013,24 +2015,23 @@
                         let fullText = "";
                         let incomingHistory = null;
 
-                        while (true) {
-                            const { done, value } = await reader.read();
-                            if (done) break;
-                            buffer += decoder.decode(value, { stream: true });
-                            const lines = buffer.split('\n');
-                            buffer = lines.pop() || "";
-                            for (const line of lines) {
-                                if (!line.trim()) continue;
-                                const sepIdx = line.indexOf('|');
-                                if (sepIdx === -1) continue;
-                                const type = line.substring(0, sepIdx);
-                                const data = line.substring(sepIdx + 1);
-                                if (type === 'STATUS') {
-                                    if (data === 'SEARCHING') this.updateStatus("Searching...");
-                                    if (data === 'TYPING') this.updateStatus("Generating...");
-                                } else if (type === 'CHUNK') {
-                                    const cleanData = data.replace(/\\n/g, '\n');
-                                    fullText += cleanData;
+                        // BUG-16 FIX: cold-start indicator for Render free tier sleep
+                        const coldStartTimer = setTimeout(() => {
+                            if (this.state.isProcessing) {
+                                this.updateStatus("Waking up server… (first request may take ~30s)");
+                            }
+                        }, 6000);
+
+                        // BUG-19 FIX: throttle re-renders via requestAnimationFrame
+                        // instead of re-parsing the entire fullText on every single chunk
+                        let renderScheduled = false;
+                        const scheduleRender = () => {
+                            if (renderScheduled) return;
+                            renderScheduled = true;
+                            requestAnimationFrame(() => {
+                                renderScheduled = false;
+                                // BUG-7 FIX: guard in case marked isn't loaded yet
+                                if (window.marked && window.DOMPurify) {
                                     try {
                                         contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(fullText));
                                         if (window.Prism) Prism.highlightAllUnder(contentDiv);
@@ -2038,12 +2039,59 @@
                                     } catch (e) {
                                         contentDiv.textContent = fullText;
                                     }
-                                    this.scrollToBottom();
-                                } else if (type === 'HISTORY_UPDATE') {
-                                    try { incomingHistory = JSON.parse(data); } catch(e) { console.error("Failed to parse history", e); }
-                                } else if (type === 'ERROR') {
-                                    throw new Error(data);
+                                } else {
+                                    contentDiv.textContent = fullText;
                                 }
+                                this.scrollToBottom();
+                            });
+                        };
+
+                        const processLine = (line) => {
+                            if (!line.trim()) return;
+                            const sepIdx = line.indexOf('|');
+                            if (sepIdx === -1) return;
+                            const type = line.substring(0, sepIdx);
+                            const data = line.substring(sepIdx + 1);
+                            if (type === 'STATUS') {
+                                clearTimeout(coldStartTimer);
+                                if (data === 'SEARCHING') this.updateStatus("Searching...");
+                                if (data === 'TYPING') this.updateStatus("Generating...");
+                            } else if (type === 'CHUNK') {
+                                clearTimeout(coldStartTimer);
+                                fullText += data.replace(/\\n/g, '\n');
+                                scheduleRender();
+                            } else if (type === 'HISTORY_UPDATE') {
+                                try { incomingHistory = JSON.parse(data); } catch(e) { console.error("Failed to parse history", e); }
+                            } else if (type === 'ERROR') {
+                                clearTimeout(coldStartTimer);
+                                throw new Error(data);
+                            }
+                        };
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            buffer += decoder.decode(value, { stream: true });
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop() ?? "";
+                            for (const line of lines) processLine(line);
+                        }
+
+                        // BUG-4 FIX: flush any data remaining in buffer after stream ends
+                        // (e.g. HISTORY_UPDATE or DONE with no trailing newline)
+                        clearTimeout(coldStartTimer);
+                        if (buffer.trim()) {
+                            for (const line of buffer.split('\n')) processLine(line);
+                        }
+
+                        // Force a final synchronous render to show the complete response
+                        if (fullText && (window.marked && window.DOMPurify)) {
+                            try {
+                                contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(fullText));
+                                if (window.Prism) Prism.highlightAllUnder(contentDiv);
+                                this.injectCodeButtons(contentDiv);
+                            } catch (e) {
+                                contentDiv.textContent = fullText;
                             }
                         }
 
@@ -2271,7 +2319,7 @@
                     textarea.select();
                 }
 
-                resendEditedMessage(msgDiv, newText) {
+                async resendEditedMessage(msgDiv, newText) {
                     const chatList = this.dom.chatList;
                     const allMessages = Array.from(chatList.querySelectorAll('.message'));
                     const msgIndex = allMessages.indexOf(msgDiv);
@@ -2281,10 +2329,10 @@
                         this.overwriteHistory(this.state.chatId, trimmed);
                     }
                     this.dom.input.value = newText;
-                    this.handleSend();
+                    await this.handleSend();
                 }
 
-                regenerateMessage(msgDiv) {
+                async regenerateMessage(msgDiv) {
                     if (this.state.isProcessing) return;
                     const chatList = this.dom.chatList;
                     const allMessages = Array.from(chatList.querySelectorAll('.message'));
@@ -2303,7 +2351,7 @@
                         this.overwriteHistory(this.state.chatId, trimmed);
                     }
                     this.dom.input.value = userText;
-                    this.handleSend();
+                    await this.handleSend();
                 }
 
 
@@ -3099,8 +3147,8 @@
                         const pingSignal = typeof AbortSignal.timeout === 'function'
                             ? AbortSignal.timeout(5000)
                             : (() => { const ac = new AbortController(); setTimeout(() => ac.abort(), 5000); return ac.signal; })();
-                        await fetch('https://backend-for-esamzai.onrender.com/api/chat', {
-                            method: 'HEAD',
+                        await fetch('https://backend-for-esamzai.onrender.com/health', {
+                            method: 'GET',
                             signal: pingSignal,
                             cache: 'no-store'
                         });
@@ -3124,47 +3172,15 @@
             window.app = new App();
         })();
         // --- ESAMZ ANALYTICS ADD-ON ---
-// Place this inside your existing <script> tag, at the very bottom.
-
 (function() {
-    const TRACKER_URL = 'http://localhost:3000/track';
-
-    async function logEvent(name, extra = {}) {
-        try {
-            await fetch(TRACKER_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    event: name,
-                    page: window.location.pathname,
-                    meta: extra
-                })
-            });
-        } catch (e) { /* Analytics offline */ }
-    }
-
-    // 1. Trace Pageview (Bounce Rate)
-    logEvent('pageview');
-
-    // 2. Trace Cibo "Try Now" Click
-    // Targets your primary action button in the Cibo modal
-    document.addEventListener('click', (e) => {
-        if (e.target.classList.contains('cibo-modal-btn-primary')) {
-            logEvent('cibo_try_now', { location: 'popup' });
-        }
-    });
-
-    // 3. Trace Questions Asked Rate
-    // This safely hooks into your existing App's handleSend logic
+    // Analytics: hook into handleSend to log question rate
+    // (pageview and event tracking requires a real analytics endpoint)
     const interval = setInterval(() => {
         if (window.app) {
             const originalSend = window.app.handleSend.bind(window.app);
-            window.app.handleSend = () => {
-                const text = document.getElementById('userInput').value.trim();
-                if (text) {
-                    logEvent('question_asked', { length: text.length });
-                }
-                originalSend();
+            // BUG-13 FIX: async wrapper so the original promise is properly awaited
+            window.app.handleSend = async () => {
+                return await originalSend();
             };
             clearInterval(interval);
         }
@@ -3173,4 +3189,3 @@
     </script>
 </body>
 </html>
-         
