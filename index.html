@@ -3170,10 +3170,10 @@
                         dotEl.classList.remove('quality-good', 'quality-warn');
                         dotEl.classList.add('quality-bad');
                     }
-            
-                ping();
-                setInterval(ping, 30000);
-            })();
+            }
+               ping(); // Run once
+                setInterval(ping, 30000); // Then every 30s
+            })(); // Close initConnectionPing IIFE
 
             // Start the app
             window.app = new App();
