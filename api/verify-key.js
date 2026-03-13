@@ -1,7 +1,10 @@
 const jwt = require("jsonwebtoken");
 
 const SECRET         = process.env.ESAMZ_MASTER_SECRET;
-const INTERNAL_TOKEN = process.env.ESAMZ_INTERNAL_TOKEN; // a random string only n8n knows
+
+
+// Plan durations in days
+const PLAN_DURATION = { Plus: 30, Pro: 30, Max: 30 };
 
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -11,7 +14,6 @@ module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
 
-  // Auth check — only n8n can call this
   const auth = req.headers["authorization"];
   if (!auth || auth !== `Bearer ${INTERNAL_TOKEN}`) {
     return res.status(401).json({ success: false, message: "Unauthorized." });
@@ -30,16 +32,24 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ success: false, message: "Invalid tier." });
   }
 
+  const days    = PLAN_DURATION[tier];
+  const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
   const token = jwt.sign(
-    { tier },
+    {
+      tier,
+      expiresAt: expiresAt.toISOString(),   // human readable expiry in token
+      days,
+    },
     SECRET,
-    { expiresIn: "30d" }
+    { expiresIn: `${days}d` }
   );
 
-  return res.status(200).json({ success: true, token });
+  return res.status(200).json({
+    success:    true,
+    token,
+    tier,
+    expiresAt:  expiresAt.toISOString(),
+    days,
+  });
 };
-```
-
-**Then in Vercel env vars, add:**
-```
-ESAMZ_INTERNAL_TOKEN = any_random_string_you_choose e.g. n8n-internal-2026
