@@ -66,17 +66,21 @@ const KV = {
 // ---------------------------------------------------------------------------
 // Input validation
 // ---------------------------------------------------------------------------
-
 function isSafeKey(key) {
-  return typeof key === "string" && /^[A-Za-z0-9\-_=.+/]{10,1024}$/.test(key);
+  // Allows alphanumeric, dots, hyphens, and underscores (standard JWT characters)
+  return typeof key === 'string' && /^[A-Za-z0-9\-_.]+/i.test(key) && key.length > 20;
 }
-
 /** * Allows either a standard UUID or your custom "device_" prefixed random IDs.
  * Blocks any weird characters to prevent injection.
  */
 function isSafeDeviceId(id) {
   return typeof id === 'string' && /^[a-z0-9_\-]{8,64}$/i.test(id);
 }
+
+/** * Allows either a standard UUID or your custom "device_" prefixed random IDs.
+ * Blocks any weird characters to prevent injection.
+ */
+
   );
 }
 
