@@ -1,12 +1,11 @@
 {
   "name": "esamz-api",
   "private": true,
-  "type": "module",
+  "type": "commonjs",
   "engines": {
-    "node": "24.x"
+    "node": "20.x"
   },
- {
   "dependencies": {
-    "jsonwebtoken": "^9.0.0"
+    "jsonwebtoken": "^9.0.2"
   }
 }
