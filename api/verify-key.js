@@ -71,12 +71,12 @@ function isSafeKey(key) {
   return typeof key === "string" && /^[A-Za-z0-9\-_=.+/]{10,1024}$/.test(key);
 }
 
+/** * Allows either a standard UUID or your custom "device_" prefixed random IDs.
+ * Blocks any weird characters to prevent injection.
+ */
 function isSafeDeviceId(id) {
-  return (
-    typeof id === "string" &&
-    /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(
-      id
-    )
+  return typeof id === 'string' && /^[a-z0-9_\-]{8,64}$/i.test(id);
+}
   );
 }
 
