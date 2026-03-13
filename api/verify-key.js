@@ -42,7 +42,7 @@ const KV = {
         : `${KV_URL}/set/${encodedKey}/${encodedVal}`;
 
       await fetch(url, {
-        method:  "POST",                                  // FIX: was GET
+        method:  "POST",                                  
         headers: { Authorization: `Bearer ${KV_TOKEN}` },
       });
     } catch (e) {
@@ -53,19 +53,15 @@ const KV = {
 
 // ---------------------------------------------------------------------------
 //  Input validation
-//  Keep these loose — jwt.verify() does the real format check.
-//  We only want to block null bytes, newlines, and injection characters.
 // ---------------------------------------------------------------------------
 function isSafeKey(key) {
   if (typeof key !== "string") return false;
   if (key.length < 20 || key.length > 2048) return false;
-  // Block control chars and common injection chars; allow everything a JWT needs
   return !/[\x00-\x1F\x7F<>"'`\\]/.test(key);
 }
 
 function isSafeDeviceId(id) {
   if (typeof id !== "string") return false;
-  // UUID v4 and crypto.randomUUID() output — hyphens + hex, 8-64 chars
   return /^[a-zA-Z0-9_\-]{8,64}$/.test(id);
 }
 
@@ -73,7 +69,10 @@ function isSafeDeviceId(id) {
 //  Handler
 // ---------------------------------------------------------------------------
 module.exports = async function handler(req, res) {
-  const origin = process.env.ALLOWED_ORIGIN || "https://esamz.tech";
+  // FIX: Allow requests from esamz.site as well as esamz.tech
+  const allowedOrigins = ["https://esamz.tech", "https://esamz.site", "https://www.esamz.site"];
+  const reqOrigin = req.headers.origin;
+  const origin = allowedOrigins.includes(reqOrigin) ? reqOrigin : "https://esamz.site";
 
   res.setHeader("Access-Control-Allow-Origin",  origin);
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -90,10 +89,6 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ success: false, message: "Server misconfiguration." });
   }
 
-  // -------------------------------------------------------------------------
-  //  Parse body — Vercel can deliver it as a string or object depending on
-  //  how the function runtime is configured
-  // -------------------------------------------------------------------------
   let body = req.body;
   if (typeof body === "string") {
     try { body = JSON.parse(body); } catch { body = {}; }
@@ -105,9 +100,6 @@ module.exports = async function handler(req, res) {
   const rawKey      = body.key;
   const rawDeviceId = body.deviceId;
 
-  // -------------------------------------------------------------------------
-  //  Validate inputs
-  // -------------------------------------------------------------------------
   if (!isSafeKey(rawKey)) {
     return res.status(400).json({ success: false, message: "Invalid activation key format." });
   }
@@ -116,7 +108,6 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ success: false, message: "Invalid device ID." });
   }
 
-  // Do NOT mutate case — JWTs are case-sensitive
   const key      = rawKey.trim();
   const deviceId = rawDeviceId.trim().toLowerCase();
 
@@ -131,15 +122,12 @@ module.exports = async function handler(req, res) {
       err.name === "TokenExpiredError" ? "Your subscription key has expired."
       : err.name === "JsonWebTokenError" ? "Invalid activation key."
       : "Key verification failed.";
-
     console.warn("[JWT]", err.name, err.message);
     return res.status(200).json({ success: false, message: msg });
   }
 
   // =========================================================================
   //  STEP 2 — Validate tier
-  //  n8n sets tier as a string in the payload e.g. { "tier": "Pro" }
-  //  Make sure it is trimmed and correctly cased before checking the Set
   // =========================================================================
   const tier = (typeof decoded.tier === "string" ? decoded.tier.trim() : "");
 
@@ -151,7 +139,7 @@ module.exports = async function handler(req, res) {
   // =========================================================================
   //  STEP 3 — Daily message limit
   // =========================================================================
-  const today    = new Date().toISOString().slice(0, 10);   // "YYYY-MM-DD"
+  const today    = new Date().toISOString().slice(0, 10);   
   const usageKey = `usage:${key}:${today}`;
 
   let used = await KV.get(usageKey);
@@ -171,7 +159,6 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  // Increment usage — expire at end of day (at most 86400s from now)
   await KV.set(usageKey, used + 1, 86400);
 
   // =========================================================================
@@ -197,6 +184,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       success:     true,
       tier,
+      jwt:         key,  // CRITICAL FIX: Pass the token back to the frontend!
       used:        used + 1,
       limit,
       devicesUsed: devices.length,
@@ -221,6 +209,7 @@ module.exports = async function handler(req, res) {
   return res.status(200).json({
     success:     true,
     tier,
+    jwt:         key, // CRITICAL FIX: Pass the token back to the frontend!
     used:        used + 1,
     limit,
     devicesUsed: updated.length,
