@@ -1106,7 +1106,11 @@
                 badge.className = `plan-badge ${plan.toLowerCase()}`;
                 badge.innerHTML = `<span>${ICONS[plan] || '✦'}</span><span>${plan} Plan Active</span>`;
                 badgeEl.appendChild(badge);
-                if (plan === 'Plus') { ragToggle.checked = true; ragToggle.disabled = true; }
+               if (plan === 'Plus') { 
+    ragWrapper.classList.add('visible'); // <-- Add this!
+    ragToggle.checked = true; 
+    ragToggle.disabled = true; 
+}
                 if (plan === 'Pro')  { ragWrapper.classList.add('visible'); ragToggle.disabled = false; }
                 if (plan === 'Max')  { ragWrapper.classList.add('visible'); ragToggle.disabled = false; spe.classList.add('visible'); }
             }
