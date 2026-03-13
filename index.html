@@ -36,7 +36,7 @@
                 "description": "A privacy-first, zero-storage AI chatbot built for deep reasoning and emotional clarity.",
                 "applicationCategory": "UtilitiesApplication, BusinessApplication",
                 "operatingSystem": "Windows, macOS, Android, iOS, Web",
-                "softwareVersion": "v10",
+                "softwareVersion": "v9.4",
                 "inLanguage": ["en", "hi"],
                 "contentRating": "Everyone",
                 "isAccessibleForFree": "True",
@@ -128,7 +128,7 @@
             flex-shrink:0;position:relative;
             transition:width 200ms ease,min-width 200ms ease;
             border-right:1px solid var(--sidebar-border);
-            overflow:hidden; /* FIX: prevent content from poking out during collapse */
+            overflow:hidden;
         }
         .sidebar.collapsed{width:0;min-width:0;}
         .sidebar::after{content:'';position:absolute;top:0;right:0;bottom:0;width:1px;background:var(--sidebar-edge);pointer-events:none;}
@@ -176,7 +176,6 @@
         .btn-new-chat:hover{background:var(--sidebar-new-chat-hover-bg);border-color:var(--sidebar-new-chat-hover-border);color:var(--sidebar-text-bright);}
         .btn-new-chat svg{opacity:0.6;}
 
-        /* FIX: sidebar-nav must flex:1 and contain ALL nav sections including premium */
         .sidebar-nav{flex:1;overflow-y:auto;padding:16px 0;min-height:0;display:flex;flex-direction:column;}
         .nav-section{margin-bottom:24px;}
         .nav-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--sidebar-label);padding:0 22px;margin-bottom:6px;}
@@ -201,7 +200,6 @@
         .footer-link{display:block;font-family:'Source Serif 4',serif;font-size:11px;color:var(--sidebar-footer-link);text-decoration:none;transition:color 120ms;}
         .footer-link:hover{color:var(--sidebar-footer-link-hover);}
 
-        /* FIX: desktop sidebar close button — was hidden via mobile-only block, now always shown */
         .btn-sidebar-close{
             display:flex;align-items:center;justify-content:center;
             width:28px;height:28px;background:none;
@@ -231,12 +229,10 @@
         .theme-toggle:hover{background:var(--crescent-soft);color:var(--ink);border-color:var(--crescent);}
         .theme-toggle .icon-sun,.theme-toggle .icon-moon{position:absolute;transition:opacity 150ms,transform 150ms;}
 
-        /* FIX: theme icon visibility — light mode shows moon icon (to switch to dark), dark mode shows sun icon */
         body.theme-light .theme-toggle .icon-sun{opacity:0;transform:scale(0.6) rotate(30deg);}
         body.theme-light .theme-toggle .icon-moon{opacity:1;transform:scale(1) rotate(0deg);}
         body.theme-dark .theme-toggle .icon-sun{opacity:1;transform:scale(1) rotate(0deg);}
         body.theme-dark .theme-toggle .icon-moon{opacity:0;transform:scale(0.6) rotate(-30deg);}
-        /* FIX: default state before JS applies class — hide both then let JS-applied class show correct one */
         body:not(.theme-light):not(.theme-dark) .theme-toggle .icon-sun{opacity:0;}
         body:not(.theme-light):not(.theme-dark) .theme-toggle .icon-moon{opacity:1;}
 
@@ -303,7 +299,6 @@
         .message.ai .bubble .token.function{color:#1d6fce!important;}
         .message.ai .bubble .token.operator,.message.ai .bubble .token.punctuation{color:var(--ink-faint)!important;}
 
-        /* FIX: dark theme token rules — added missing selectors for .inserted on separate line */
         body.theme-dark .message.ai .bubble .token.comment{color:rgba(245,237,224,0.35)!important;}
         body.theme-dark .message.ai .bubble .token.string{color:#86efac!important;}
         body.theme-dark .message.ai .bubble .token.inserted{color:#86efac!important;}
@@ -345,7 +340,6 @@
         .input-box{background:var(--paper-warm);border:1px solid var(--rule-bold);border-top:2px solid var(--crescent);padding:12px 14px;transition:border-color 150ms;position:relative;}
         .input-box:focus-within{border-top-color:var(--gold);border-color:var(--crescent);}
 
-        /* FIX: file preview hides when empty so it doesn't eat vertical space */
         .file-preview{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
         .file-preview:empty{display:none;}
 
@@ -361,8 +355,6 @@
         textarea::placeholder{color:var(--ink-ghost);font-style:italic;}
         .send-btn{width:34px;height:34px;flex-shrink:0;background:var(--crescent);color:var(--paper);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 120ms;position:relative;z-index:1;}
         .send-btn:hover:not(:disabled){background:var(--vermillion);}
-
-        /* FIX: send button disabled state — only disable when not processing AND nothing to send */
         .send-btn:disabled{opacity:0.3;cursor:not-allowed;}
         .send-btn.stop-mode{background:var(--vermillion)!important;opacity:1!important;cursor:pointer!important;}
 
@@ -526,13 +518,13 @@
         .activation-close-btn:hover{background:var(--ink);color:var(--paper);border-color:var(--ink);}
         .key-input-row{display:flex;gap:0;margin-bottom:16px;}
         #activationKeyInput{
-    flex:1;background:var(--paper-warm);
-    border:1px solid var(--rule-bold);border-right:none;
-    color:var(--ink);font-family:'DM Mono',monospace;
-    font-size:13px;letter-spacing:0.1em;
-    padding:11px 14px;outline:none;min-width:0;
-    transition:border-color 150ms;
-}
+            flex:1;background:var(--paper-warm);
+            border:1px solid var(--rule-bold);border-right:none;
+            color:var(--ink);font-family:'DM Mono',monospace;
+            font-size:13px;letter-spacing:0.1em;
+            padding:11px 14px;outline:none;min-width:0;
+            transition:border-color 150ms;
+        }
         body.theme-dark #activationKeyInput{background:rgba(245,237,224,0.05);}
         #activationKeyInput:focus{border-color:var(--crescent);}
         #activationKeyInput::placeholder{color:var(--ink-ghost);text-transform:none;letter-spacing:0.04em;}
@@ -588,9 +580,8 @@
         .mobile-toggle{display:none;}
         .overlay{display:none;}
 
-        /* FIX: open-sidebar-desktop button — shown only when sidebar is collapsed */
         .btn-open-sidebar-desktop{
-            display:none; /* hidden by default */
+            display:none;
             align-items:center;justify-content:center;
         }
         .sidebar.collapsed ~ .main-content .btn-open-sidebar-desktop{display:flex;}
@@ -604,13 +595,11 @@
                 transition:transform 200ms ease;
                 isolation:isolate;
             }
-            /* FIX: on mobile, collapsed class should not apply the desktop zero-width behavior */
             .sidebar.collapsed{width:var(--sidebar-w);min-width:var(--sidebar-w);}
             .sidebar.active{transform:translateX(0);}
             .overlay{display:block;position:fixed;top:0;left:var(--sidebar-w);right:0;bottom:0;background:rgba(42,31,26,0.5);z-index:99;opacity:0;pointer-events:none;transition:opacity 200ms;}
             .overlay.active{opacity:1;pointer-events:auto;}
             .mobile-toggle{display:flex;position:relative;z-index:1;}
-            /* On mobile the desktop sidebar-close button is less useful, but still functional */
             .btn-open-sidebar-desktop{display:none!important;}
             .suggestions{grid-template-columns:1fr;}
             .chat-wrapper{padding:32px 20px;}
@@ -767,7 +756,6 @@
                         <div class="brand-name">e<span>S</span>AMz</div>
                         <div class="brand-tagline">Understands in 2 messages, not 2 years.</div>
                     </div>
-                    <!-- FIX: sidebar close button is always visible, not hidden by mobile-only CSS -->
                     <button class="btn-sidebar-close" id="btnCloseSidebar" title="Close sidebar" aria-label="Close sidebar">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
                     </button>
@@ -780,7 +768,6 @@
             <div class="search-box">
                 <input class="search-input" id="historySearch" placeholder="Search conversations…" type="text" autocomplete="off">
             </div>
-            <!-- FIX: sidebar-nav contains ALL nav sections so they scroll together properly -->
             <div class="sidebar-nav">
                 <div class="nav-section">
                     <div class="nav-label">Recent</div>
@@ -793,7 +780,6 @@
                         Cibo Cocinar
                     </a>
                 </div>
-                <!-- FIX: Premium section moved INSIDE sidebar-nav so it scrolls with the nav -->
                 <div class="nav-section">
                     <div class="nav-label">Premium</div>
                     <a href="https://esamzai.mojo.page/esamz-ai-subscription/" class="nav-item" target="_blank" rel="noopener">
@@ -825,7 +811,8 @@
             <!-- Footer -->
             <div class="sidebar-footer">
                 <div id="planBadgeContainer"></div>
-                <div class="sidebar-footer-text">eSAMz AI v10 — Made in India</div>
+                <!-- FIX P7: version string matches backend v9.4 -->
+                <div class="sidebar-footer-text">eSAMz AI v9.4 — Made in India</div>
                 <a href="https://esamz.info" class="footer-link" target="_blank" rel="noopener">About eSAMz →</a>
                 <button class="footer-link" id="btnOpenActivationModal" style="margin-top:8px;background:none;border:none;padding:0;text-align:left;cursor:pointer;font-family:'Source Serif 4',serif;font-size:11px;color:var(--sidebar-footer-link);transition:color 120ms;">
                     ✦ Manage subscription →
@@ -841,7 +828,7 @@
                     <button class="icon-btn mobile-toggle" id="openSidebar" aria-label="Open menu">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                     </button>
-                    <!-- Desktop open-sidebar button — only visible when sidebar collapsed -->
+                    <!-- Desktop open-sidebar button -->
                     <button class="icon-btn btn-open-sidebar-desktop" id="btnOpenSidebarDesktop" title="Open sidebar" aria-label="Open sidebar">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                     </button>
@@ -946,7 +933,7 @@
                     <div class="input-footer" style="padding-top:12px;border-top:1px solid var(--rule);margin-top:10px;">
                         <span style="font-family:'DM Mono';font-size:9px;border:1px solid var(--rule-bold);padding:2px 5px;border-radius:3px;margin-right:8px;vertical-align:middle;color:var(--vermillion);background:var(--vermillion-soft);">SGI</span>
                         <span style="font-size:14px;margin-right:4px;vertical-align:middle;">🤖</span>
-                        <span style="vertical-align:middle;">
+                        <span style="vertical-align:middle;" id="disclaimerText">
                             eSAMz AI generates synthetic content and may be inaccurate.
                             By using this service, you agree to our
                             <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" style="font-weight:600;">Privacy Policy</a> &amp;
@@ -1021,9 +1008,12 @@
 
         const VERIFY_KEY_ENDPOINT = 'https://esamz.tech/api/verify-key';
         const BACKEND_CHAT_URL    = 'https://backend-for-esamzai.onrender.com/api/chat';
+        const BACKEND_BASE_URL    = 'https://backend-for-esamzai.onrender.com';
 
         const LS_PLAN      = 'esamz_plan';
         const LS_KEY       = 'esamz_key';
+        // FIX P1: store JWT from verify-key so we can send Authorization header
+        const LS_JWT       = 'esamz_jwt';
         const LS_DEVICE_ID = 'esamz_device_id';
         const LS_STORAGE   = 'esamz_conversations_v9';
         const LS_LAST_CHAT = 'esamz_last_chat_id';
@@ -1137,6 +1127,8 @@
 
                 if (data.success && data.tier) {
                     localStorage.setItem(LS_PLAN, data.tier);
+                    // FIX P3: refresh JWT from re-verify response
+                    if (data.jwt) localStorage.setItem(LS_JWT, data.jwt);
                     applyPlan(data.tier);
                     if (data.lastSlot) {
                         Utils.showToast('You are using your last available device slot for this key.', 'info');
@@ -1144,6 +1136,8 @@
                 } else {
                     localStorage.removeItem(LS_PLAN);
                     localStorage.removeItem(LS_KEY);
+                    // FIX P4a: clear JWT when server rejects the key
+                    localStorage.removeItem(LS_JWT);
                     resetPlanUI();
                     if (data.deviceBlocked) {
                         Utils.showToast('Device limit reached for your key. Open "Manage subscription" to deactivate.', 'error');
@@ -1178,6 +1172,8 @@
                 if (data.success && data.tier) {
                     localStorage.setItem(LS_PLAN, data.tier);
                     localStorage.setItem(LS_KEY,  trimmed);
+                    // FIX P2: store JWT so every /api/chat call sends Authorization: Bearer <jwt>
+                    if (data.jwt) localStorage.setItem(LS_JWT, data.jwt);
                     return {
                         success:  true,
                         tier:     data.tier,
@@ -1219,9 +1215,9 @@
                 this.keyInput.addEventListener('keydown', e => {
                     if (e.key === 'Enter') this._handleActivate();
                 });
-               this.keyInput.addEventListener('input', () => {
-               this._clearStatus();
-              });
+                this.keyInput.addEventListener('input', () => {
+                    this._clearStatus();
+                });
                 this.deactivateBtn.addEventListener('click', () => this._handleDeactivate());
                 const storedKey = localStorage.getItem(LS_KEY);
                 if (storedKey) this.keyInput.value = storedKey;
@@ -1278,17 +1274,18 @@
             },
 
             async _handleDeactivate() {
-                const ok = await Utils.confirm('Remove your current plan activation? You can re-enter your key at any time.', 'Remove Activation');
-                if (!ok) return;
-                localStorage.removeItem(LS_PLAN);
-                localStorage.removeItem(LS_KEY);
-                this.keyInput.value = '';
-                this._clearStatus();
-                checkPermissions();
-                Utils.showToast('Plan removed', 'info');
-            }
-        };
-
+    const ok = await Utils.confirm('Remove activation?', 'Remove Activation');
+    if (!ok) return;
+    
+    localStorage.removeItem('esamz_plan');
+    localStorage.removeItem('esamz_key');
+    localStorage.removeItem('esamz_jwt'); // CRITICAL: Clear the token!
+    
+    this.keyInput.value = '';
+    this._clearStatus();
+    checkPermissions();
+    Utils.showToast('Plan removed', 'info');
+}
         // ====================================================================
         //  SYSTEM PROMPT EDITOR
         // ====================================================================
@@ -1408,7 +1405,6 @@
             }
 
             init() {
-                // FIX: initTheme must run first so CSS class selectors work immediately
                 this.initTheme();
 
                 checkPermissions();
@@ -1454,9 +1450,20 @@
                     this.state.isProcessing ? this.abortGeneration() : this.handleSend();
                 });
                 this.dom.newChatBtn.addEventListener('click',  () => this.newChat());
+
+                // FIX P6: Clear Chat also calls DELETE /api/session to wipe server-side memory
                 this.dom.clearChatBtn.addEventListener('click', async () => {
-                    if (await Utils.confirm('Clear current chat session?', 'Clear Chat')) this.newChat();
+                    if (await Utils.confirm('Clear current chat session?', 'Clear Chat')) {
+                        try {
+                            await fetch(`${BACKEND_BASE_URL}/api/session`, {
+                                method: 'DELETE',
+                                credentials: 'include',
+                            });
+                        } catch (_) { /* offline — local clear still proceeds */ }
+                        this.newChat();
+                    }
                 });
+
                 this.dom.uploadBtn.addEventListener('click', () => this.dom.fileInput.click());
                 this.dom.fileInput.addEventListener('change', e => this.handleFiles(e.target.files));
                 if (this.dom.voiceBtn) this.dom.voiceBtn.addEventListener('click', () => this.toggleVoiceRecording());
@@ -1483,7 +1490,7 @@
                     document.body.style.overflow = '';
                 });
 
-                // FIX: sidebar collapse/expand on desktop
+                // Desktop sidebar collapse/expand
                 this.dom.closeSidebarBtn.addEventListener('click', () => {
                     this.dom.sidebar.classList.add('collapsed');
                 });
@@ -1506,10 +1513,8 @@
                 this.updateButtonState();
             }
 
-            // FIX: updateButtonState — stop mode button must never be disabled
             updateButtonState() {
                 if (this.state.isProcessing) {
-                    // In stop mode: button always enabled and styled as stop
                     this.dom.sendBtn.disabled = false;
                     return;
                 }
@@ -1637,10 +1642,15 @@
                 const speTextarea    = document.getElementById('spe-textarea');
                 const plan           = localStorage.getItem(LS_PLAN);
 
+                // Compute effective RAG flag — matches backend's effective_rag_enabled logic
+                // Free (no plan): omit field entirely so backend defaults to its own gating
+                // Plus: always true (backend enforces this but we align)
+                // Pro/Max: honour the toggle
                 const ragEnabled = plan === 'Plus' ? true
                     : (plan === 'Pro' || plan === 'Max') ? ragToggle.checked
                     : undefined;
 
+                // customSystemPrompt only sent for Max tier
                 const customSystemPrompt = (plan === 'Max' && speTextarea && speTextarea.value.trim())
                     ? speTextarea.value.trim()
                     : undefined;
@@ -1652,15 +1662,31 @@
                         clientHistory,
                         clientLastActive,
                     };
-                    if (ragEnabled !== undefined)      reqBody.ragEnabled        = ragEnabled;
-                    if (customSystemPrompt)            reqBody.customSystemPrompt = customSystemPrompt;
+                    if (ragEnabled !== undefined)   reqBody.ragEnabled         = ragEnabled;
+                    if (customSystemPrompt)         reqBody.customSystemPrompt = customSystemPrompt;
 
-                    const response = await fetch(BACKEND_CHAT_URL, {
-                        method:  'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body:    JSON.stringify(reqBody),
-                        signal:  this.state.abortController.signal,
-                    });
+                    // FIX P5: attach JWT as Bearer token so backend can verify tier
+                   // Inside handleSend() in index.html
+
+// 1. Get the JWT token we saved during activation
+const storedJwt = localStorage.getItem('esamz_jwt'); 
+
+// 2. Prepare headers
+const reqHeaders = { 
+    'Content-Type': 'application/json' 
+};
+
+// 3. Attach the token if it exists
+if (storedJwt) {
+    reqHeaders['Authorization'] = `Bearer ${storedJwt}`;
+}
+
+const response = await fetch(BACKEND_CHAT_URL, {
+    method:  'POST',
+    headers: reqHeaders, // Use the secured headers
+    body:    JSON.stringify(reqBody),
+    signal:  this.state.abortController.signal,
+});
                     if (!response.ok) throw new Error(`API Error: ${response.status}`);
 
                     const reader  = response.body.getReader();
@@ -1748,7 +1774,6 @@
                     }
                 } finally {
                     this.setProcessingState(false);
-                    // FIX: scroll only if user hasn't scrolled up
                     const c = this.dom.chatContainer;
                     const atBottom = c.scrollHeight - c.scrollTop - c.clientHeight < 120;
                     if (atBottom) this.scrollToBottom();
@@ -1760,7 +1785,7 @@
                 if (on) {
                     this.updateStatus('Thinking…');
                     this.dom.sendBtn.classList.add('stop-mode');
-                    this.dom.sendBtn.disabled = false; // FIX: always enabled in stop mode
+                    this.dom.sendBtn.disabled = false;
                     this.dom.sendIcon.classList.add('hidden');
                     this.dom.stopIcon.classList.remove('hidden');
                 } else {
@@ -1769,7 +1794,7 @@
                     this.dom.sendIcon.classList.remove('hidden');
                     this.dom.stopIcon.classList.add('hidden');
                     this.state.abortController = null;
-                    this.updateButtonState(); // recalculate for content
+                    this.updateButtonState();
                 }
             }
 
@@ -2173,7 +2198,6 @@
                 Utils.showToast('Chat exported', 'success');
             }
 
-            // FIX: initTheme sets BOTH classes correctly from the start
             initTheme() {
                 const saved       = localStorage.getItem('esamz_theme');
                 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -2182,7 +2206,6 @@
                 document.body.classList.add(`theme-${theme}`);
             }
 
-            // FIX: toggleTheme removes the old class before adding the new one
             toggleTheme() {
                 const isDark = document.body.classList.contains('theme-dark');
                 document.body.classList.remove('theme-dark', 'theme-light');
@@ -2407,7 +2430,7 @@
         })();
 
         // ====================================================================
-        //  CONNECTION PING
+        //  CONNECTION PING — polls /health endpoint
         // ====================================================================
         (function initConnectionPing() {
             const dotEl      = document.querySelector('.status-dot');
@@ -2423,7 +2446,7 @@
                 const start = Date.now();
                 try {
                     const sig = typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(5000) : (() => { const ac = new AbortController(); setTimeout(() => ac.abort(), 5000); return ac.signal; })();
-                    await fetch('https://backend-for-esamzai.onrender.com/health', { method:'GET', signal:sig, cache:'no-store' });
+                    await fetch(`${BACKEND_BASE_URL}/health`, { method:'GET', signal:sig, cache:'no-store' });
                     const ms = Date.now() - start;
                     latency.textContent = `· ${ms}ms`;
                     dotEl.classList.remove('quality-warn','quality-bad');
@@ -2440,6 +2463,27 @@
         //  BOOT
         // ====================================================================
         window.app = new App();
+
+        // ====================================================================
+        //  FIX P8: Privacy status — fetch /api/privacy-status and show badge
+        // ====================================================================
+        (async function syncPrivacyStatus() {
+            try {
+                const res  = await fetch(`${BACKEND_BASE_URL}/api/privacy-status`, { credentials: 'include' });
+                if (!res.ok) return;
+                const data = await res.json();
+                const disclaimerSpan = document.getElementById('disclaimerText');
+                if (!disclaimerSpan) return;
+                const ragLabel = data.rag        ? ` · RAG: ${data.rag}` : '';
+                const retLabel = data.dataRetentionMinutes
+                    ? ` · Session cleared after ${data.dataRetentionMinutes}m idle`
+                    : '';
+                const badge = document.createElement('span');
+                badge.style.cssText = 'margin-left:10px;font-family:"DM Mono",monospace;font-size:9px;color:var(--ink-ghost);letter-spacing:0.06em;opacity:0.8;';
+                badge.textContent   = `${data.privacyMode ? '🔒 Zero-storage' : '🗄 Session memory'}${ragLabel}${retLabel}`;
+                disclaimerSpan.parentNode.appendChild(badge);
+            } catch (_) { /* backend offline — no badge shown */ }
+        })();
 
     })();
     </script>
