@@ -526,13 +526,13 @@
         .activation-close-btn:hover{background:var(--ink);color:var(--paper);border-color:var(--ink);}
         .key-input-row{display:flex;gap:0;margin-bottom:16px;}
         #activationKeyInput{
-            flex:1;background:var(--paper-warm);
-            border:1px solid var(--rule-bold);border-right:none;
-            color:var(--ink);font-family:'DM Mono',monospace;
-            font-size:13px;letter-spacing:0.1em;text-transform:uppercase;
-            padding:11px 14px;outline:none;min-width:0;
-            transition:border-color 150ms;
-        }
+    flex:1;background:var(--paper-warm);
+    border:1px solid var(--rule-bold);border-right:none;
+    color:var(--ink);font-family:'DM Mono',monospace;
+    font-size:13px;letter-spacing:0.1em;
+    padding:11px 14px;outline:none;min-width:0;
+    transition:border-color 150ms;
+}
         body.theme-dark #activationKeyInput{background:rgba(245,237,224,0.05);}
         #activationKeyInput:focus{border-color:var(--crescent);}
         #activationKeyInput::placeholder{color:var(--ink-ghost);text-transform:none;letter-spacing:0.04em;}
@@ -1219,12 +1219,9 @@
                 this.keyInput.addEventListener('keydown', e => {
                     if (e.key === 'Enter') this._handleActivate();
                 });
-                this.keyInput.addEventListener('input', () => {
-                    const sel = this.keyInput.selectionStart;
-                    this.keyInput.value = this.keyInput.value.toUpperCase();
-                    this.keyInput.setSelectionRange(sel, sel);
-                    this._clearStatus();
-                });
+               this.keyInput.addEventListener('input', () => {
+               this._clearStatus();
+              });
                 this.deactivateBtn.addEventListener('click', () => this._handleDeactivate());
                 const storedKey = localStorage.getItem(LS_KEY);
                 if (storedKey) this.keyInput.value = storedKey;
