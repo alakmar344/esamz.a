@@ -1,4 +1,4 @@
-```javascript
+
 // ============================================================================
 //  eSAMz AI — /api/verify-key
 //  JWT verification + device limit + daily message limits
