@@ -128,9 +128,10 @@
             flex-shrink:0;position:relative;
             transition:width 200ms ease,min-width 200ms ease;
             border-right:1px solid var(--sidebar-border);
+            overflow:hidden; /* FIX: prevent content from poking out during collapse */
         }
-        .sidebar.collapsed{width:0;min-width:0;overflow:hidden;}
-        .sidebar::after{content:'';position:absolute;top:0;right:0;bottom:0;width:1px;background:var(--sidebar-edge);}
+        .sidebar.collapsed{width:0;min-width:0;}
+        .sidebar::after{content:'';position:absolute;top:0;right:0;bottom:0;width:1px;background:var(--sidebar-edge);pointer-events:none;}
 
         /* ----- EID POPUP MODAL ----- */
         .eid-modal-overlay{
@@ -159,7 +160,7 @@
         .eid-modal-dismiss{width:100%;height:40px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;border:1px solid var(--ink);background:var(--ink);color:var(--paper);transition:all 120ms;}
         .eid-modal-dismiss:hover{background:var(--vermillion);border-color:var(--vermillion);}
 
-        .sidebar-header{padding:22px 22px 18px;border-bottom:1px solid var(--sidebar-border);}
+        .sidebar-header{padding:22px 22px 18px;border-bottom:1px solid var(--sidebar-border);flex-shrink:0;}
         .brand{margin-bottom:16px;}
         .brand-eyebrow{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--sidebar-eyebrow);margin-bottom:6px;}
         .brand-name{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:var(--sidebar-text-bright);letter-spacing:-0.02em;line-height:1;}
@@ -174,7 +175,9 @@
         }
         .btn-new-chat:hover{background:var(--sidebar-new-chat-hover-bg);border-color:var(--sidebar-new-chat-hover-border);color:var(--sidebar-text-bright);}
         .btn-new-chat svg{opacity:0.6;}
-        .sidebar-nav{flex:1;overflow-y:auto;padding:16px 0;min-height:0;}
+
+        /* FIX: sidebar-nav must flex:1 and contain ALL nav sections including premium */
+        .sidebar-nav{flex:1;overflow-y:auto;padding:16px 0;min-height:0;display:flex;flex-direction:column;}
         .nav-section{margin-bottom:24px;}
         .nav-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--sidebar-label);padding:0 22px;margin-bottom:6px;}
         .nav-item{
@@ -193,10 +196,19 @@
         .nav-item-row:hover .nav-item-actions{opacity:1;}
         .nav-item-action-btn{width:22px;height:22px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:var(--sidebar-text);cursor:pointer;transition:color 100ms;border-radius:2px;padding:0;}
         .nav-item-action-btn:hover{color:var(--vermillion);}
-        .sidebar-footer{padding:16px 22px;border-top:1px solid var(--sidebar-border);}
+        .sidebar-footer{padding:16px 22px;border-top:1px solid var(--sidebar-border);flex-shrink:0;}
         .sidebar-footer-text{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.12em;color:var(--sidebar-footer-text);text-transform:uppercase;margin-bottom:8px;}
         .footer-link{display:block;font-family:'Source Serif 4',serif;font-size:11px;color:var(--sidebar-footer-link);text-decoration:none;transition:color 120ms;}
         .footer-link:hover{color:var(--sidebar-footer-link-hover);}
+
+        /* FIX: desktop sidebar close button — was hidden via mobile-only block, now always shown */
+        .btn-sidebar-close{
+            display:flex;align-items:center;justify-content:center;
+            width:28px;height:28px;background:none;
+            border:1px solid var(--sidebar-border);color:var(--sidebar-text);
+            cursor:pointer;transition:all 120ms;flex-shrink:0;border-radius:var(--r);
+        }
+        .btn-sidebar-close:hover{background:var(--sidebar-hover-bg);color:var(--sidebar-text-bright);border-color:var(--sidebar-hover-border);}
 
         /* ----- MAIN CONTENT ----- */
         .main-content{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--paper);}
@@ -218,10 +230,15 @@
         .theme-toggle{width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:none;border:1px solid var(--rule-bold);color:var(--ink-faint);cursor:pointer;transition:all 120ms;border-radius:var(--r);flex-shrink:0;position:relative;}
         .theme-toggle:hover{background:var(--crescent-soft);color:var(--ink);border-color:var(--crescent);}
         .theme-toggle .icon-sun,.theme-toggle .icon-moon{position:absolute;transition:opacity 150ms,transform 150ms;}
+
+        /* FIX: theme icon visibility — light mode shows moon icon (to switch to dark), dark mode shows sun icon */
         body.theme-light .theme-toggle .icon-sun{opacity:0;transform:scale(0.6) rotate(30deg);}
         body.theme-light .theme-toggle .icon-moon{opacity:1;transform:scale(1) rotate(0deg);}
         body.theme-dark .theme-toggle .icon-sun{opacity:1;transform:scale(1) rotate(0deg);}
         body.theme-dark .theme-toggle .icon-moon{opacity:0;transform:scale(0.6) rotate(-30deg);}
+        /* FIX: default state before JS applies class — hide both then let JS-applied class show correct one */
+        body:not(.theme-light):not(.theme-dark) .theme-toggle .icon-sun{opacity:0;}
+        body:not(.theme-light):not(.theme-dark) .theme-toggle .icon-moon{opacity:1;}
 
         /* ----- CHAT AREA ----- */
         .chat-container{flex:1;overflow-y:auto;scroll-behavior:smooth;position:relative;}
@@ -285,12 +302,18 @@
         .message.ai .bubble .token.keyword{color:#7c3aed!important;}
         .message.ai .bubble .token.function{color:#1d6fce!important;}
         .message.ai .bubble .token.operator,.message.ai .bubble .token.punctuation{color:var(--ink-faint)!important;}
+
+        /* FIX: dark theme token rules — added missing selectors for .inserted on separate line */
         body.theme-dark .message.ai .bubble .token.comment{color:rgba(245,237,224,0.35)!important;}
-        body.theme-dark .message.ai .bubble .token.string,.message.ai .bubble .token.inserted{color:#86efac!important;}
-        body.theme-dark .message.ai .bubble .token.number,.message.ai .bubble .token.boolean{color:#fbbf24!important;}
+        body.theme-dark .message.ai .bubble .token.string{color:#86efac!important;}
+        body.theme-dark .message.ai .bubble .token.inserted{color:#86efac!important;}
+        body.theme-dark .message.ai .bubble .token.number{color:#fbbf24!important;}
+        body.theme-dark .message.ai .bubble .token.boolean{color:#fbbf24!important;}
         body.theme-dark .message.ai .bubble .token.keyword{color:#f9a8d4!important;}
         body.theme-dark .message.ai .bubble .token.function{color:#93c5fd!important;}
-        body.theme-dark .message.ai .bubble .token.operator,.message.ai .bubble .token.punctuation{color:rgba(245,237,224,0.5)!important;}
+        body.theme-dark .message.ai .bubble .token.operator{color:rgba(245,237,224,0.5)!important;}
+        body.theme-dark .message.ai .bubble .token.punctuation{color:rgba(245,237,224,0.5)!important;}
+
         .message.ai .bubble :not(pre)>code{font-family:'DM Mono',monospace;background:var(--paper-aged)!important;color:var(--vermillion)!important;padding:2px 5px;font-size:12.5px;border-bottom:1px solid var(--rule-bold);}
         .typing-indicator{display:inline-flex;gap:5px;align-items:center;padding:6px 0;}
         .typing-dot{width:4px;height:4px;background:var(--crescent);border-radius:50%;animation:tdot 1.4s infinite ease-in-out both;opacity:0.5;}
@@ -321,7 +344,11 @@
         .input-container{max-width:760px;margin:0 auto;}
         .input-box{background:var(--paper-warm);border:1px solid var(--rule-bold);border-top:2px solid var(--crescent);padding:12px 14px;transition:border-color 150ms;position:relative;}
         .input-box:focus-within{border-top-color:var(--gold);border-color:var(--crescent);}
+
+        /* FIX: file preview hides when empty so it doesn't eat vertical space */
         .file-preview{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
+        .file-preview:empty{display:none;}
+
         .file-chip{background:var(--paper-aged);border:1px solid var(--rule-bold);padding:5px 10px;display:flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:11px;color:var(--ink-faint);}
         .file-chip img{width:18px;height:18px;object-fit:cover;}
         .file-chip button{color:var(--ink-ghost);font-size:14px;cursor:pointer;background:none;border:none;}
@@ -334,18 +361,18 @@
         textarea::placeholder{color:var(--ink-ghost);font-style:italic;}
         .send-btn{width:34px;height:34px;flex-shrink:0;background:var(--crescent);color:var(--paper);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 120ms;position:relative;z-index:1;}
         .send-btn:hover:not(:disabled){background:var(--vermillion);}
+
+        /* FIX: send button disabled state — only disable when not processing AND nothing to send */
         .send-btn:disabled{opacity:0.3;cursor:not-allowed;}
-        .send-btn.stop-mode{background:var(--vermillion);}
+        .send-btn.stop-mode{background:var(--vermillion)!important;opacity:1!important;cursor:pointer!important;}
+
         .input-footer{margin-top:10px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-ghost);text-align:center;}
         .input-footer a{color:var(--ink-faint);text-decoration:underline;text-decoration-color:var(--rule-bold);}
         .input-footer a:hover{color:var(--crescent);}
 
-        /* ============================================================
-           RAG TOGGLE — visible for Pro and Max plans only
-           Hidden by default; checkPermissions() unhides as needed
-           ============================================================ */
+        /* RAG TOGGLE */
         #rag-toggle-wrapper{
-            display:none; /* hidden until Pro/Max confirmed */
+            display:none;
             align-items:center;
             gap:10px;
             padding:8px 14px 4px;
@@ -357,8 +384,7 @@
             text-transform:uppercase;color:var(--ink-faint);cursor:pointer;
             display:flex;align-items:center;gap:8px;user-select:none;
         }
-        /* pill switch */
-        #rag-toggle{display:none;} /* actual <input type="checkbox"> */
+        #rag-toggle{display:none;}
         .toggle-track{
             width:34px;height:18px;background:var(--paper-dark);
             border-radius:9px;position:relative;cursor:pointer;
@@ -379,12 +405,9 @@
             background:var(--crescent-soft);
         }
 
-        /* ============================================================
-           SYSTEM PROMPT EDITOR — visible for Max plan only
-           Hidden by default; checkPermissions() unhides it
-           ============================================================ */
+        /* SYSTEM PROMPT EDITOR */
         #system-prompt-editor{
-            display:none; /* hidden until Max confirmed */
+            display:none;
             flex-direction:column;
             gap:0;
             border-top:1px solid var(--rule);
@@ -449,9 +472,7 @@
         .sync-disconnect-btn{margin-left:auto;background:none;border:none;cursor:pointer;color:var(--ink-ghost);font-size:12px;padding:0 2px;transition:color 100ms;}
         .sync-disconnect-btn:hover{color:var(--vermillion);}
 
-        /* ============================================================
-           PLAN BADGE — shown in sidebar footer when a plan is active
-           ============================================================ */
+        /* PLAN BADGE */
         .plan-badge{
             display:inline-flex;align-items:center;gap:6px;
             font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.12em;
@@ -464,8 +485,8 @@
         .plan-badge svg{flex-shrink:0;}
 
         /* ----- TOAST & DIALOGS ----- */
-        #toast-container{position:fixed;top:24px;right:24px;z-index:1000;display:flex;flex-direction:column;gap:8px;}
-        .toast{background:var(--ink);color:var(--paper-warm);padding:12px 16px;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.05em;display:flex;align-items:center;gap:10px;animation:slideIn 0.25s ease-out;min-width:280px;}
+        #toast-container{position:fixed;top:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;}
+        .toast{background:var(--ink);color:var(--paper-warm);padding:12px 16px;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.05em;display:flex;align-items:center;gap:10px;animation:slideIn 0.25s ease-out;min-width:280px;pointer-events:auto;}
         @keyframes slideIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
         dialog{background:var(--paper);border:2px solid var(--ink);border-radius:0;padding:0;max-width:420px;width:90%;box-shadow:8px 8px 0 var(--ink);color:var(--ink);}
         dialog::backdrop{background:rgba(42,31,26,0.5);backdrop-filter:blur(2px);}
@@ -479,10 +500,7 @@
         .dialog-actions .btn-primary:hover{background:var(--vermillion);border-color:var(--vermillion);}
         .dialog-actions .btn-secondary:hover{background:var(--crescent-soft);color:var(--ink);}
 
-        /* ============================================================
-           KEY ACTIVATION MODAL
-           Same editorial aesthetic as the rest of the UI
-           ============================================================ */
+        /* KEY ACTIVATION MODAL */
         .activation-modal-overlay{
             position:fixed;inset:0;background:rgba(42,31,26,0.75);backdrop-filter:blur(5px);
             display:flex;align-items:center;justify-content:center;z-index:10002;
@@ -506,7 +524,6 @@
         .activation-modal-body{padding:24px 32px 28px;}
         .activation-close-btn{position:absolute;top:12px;right:12px;background:none;border:1px solid var(--rule-bold);color:var(--ink-ghost);width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;transition:all 120ms;}
         .activation-close-btn:hover{background:var(--ink);color:var(--paper);border-color:var(--ink);}
-        /* Key input */
         .key-input-row{display:flex;gap:0;margin-bottom:16px;}
         #activationKeyInput{
             flex:1;background:var(--paper-warm);
@@ -528,7 +545,6 @@
         }
         #btnActivateKey:hover:not(:disabled){background:var(--vermillion);border-color:var(--vermillion);}
         #btnActivateKey:disabled{opacity:0.45;cursor:not-allowed;}
-        /* status message */
         #activationStatus{
             font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.06em;
             min-height:18px;margin-bottom:16px;
@@ -536,7 +552,6 @@
         }
         #activationStatus.error{color:var(--vermillion);}
         #activationStatus.success{color:#22c55e;}
-        /* tier comparison */
         .tier-grid{display:flex;flex-direction:column;gap:8px;}
         .tier-row{
             display:flex;align-items:center;gap:10px;padding:10px 14px;
@@ -549,7 +564,6 @@
         .tier-name{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink);margin-bottom:2px;}
         .tier-features{font-size:11px;color:var(--ink-ghost);font-style:italic;}
         .tier-price{font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-faint);flex-shrink:0;}
-        /* deactivate link */
         .activation-deactivate{display:block;margin-top:18px;text-align:center;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-ghost);cursor:pointer;background:none;border:none;width:100%;transition:color 120ms;}
         .activation-deactivate:hover{color:var(--vermillion);}
 
@@ -573,17 +587,31 @@
         /* ----- MOBILE RESPONSIVE ----- */
         .mobile-toggle{display:none;}
         .overlay{display:none;}
-        .btn-open-sidebar-desktop{display:none;}
-        .sidebar.collapsed + .main-content .btn-open-sidebar-desktop{display:flex;}
+
+        /* FIX: open-sidebar-desktop button — shown only when sidebar is collapsed */
+        .btn-open-sidebar-desktop{
+            display:none; /* hidden by default */
+            align-items:center;justify-content:center;
+        }
+        .sidebar.collapsed ~ .main-content .btn-open-sidebar-desktop{display:flex;}
+
         @media(max-width:768px){
-            .sidebar{position:fixed;top:0;left:0;height:100dvh;width:var(--sidebar-w);min-width:var(--sidebar-w);transform:translateX(-100%);z-index:110;box-shadow:4px 0 24px rgba(0,0,0,0.3);transition:transform 200ms ease;isolation:isolate;overflow:hidden;}
+            .sidebar{
+                position:fixed;top:0;left:0;height:100dvh;
+                width:var(--sidebar-w);min-width:var(--sidebar-w);
+                transform:translateX(-100%);z-index:110;
+                box-shadow:4px 0 24px rgba(0,0,0,0.3);
+                transition:transform 200ms ease;
+                isolation:isolate;
+            }
+            /* FIX: on mobile, collapsed class should not apply the desktop zero-width behavior */
+            .sidebar.collapsed{width:var(--sidebar-w);min-width:var(--sidebar-w);}
             .sidebar.active{transform:translateX(0);}
-            .sidebar.collapsed{width:var(--sidebar-w);min-width:var(--sidebar-w);overflow:hidden;}
             .overlay{display:block;position:fixed;top:0;left:var(--sidebar-w);right:0;bottom:0;background:rgba(42,31,26,0.5);z-index:99;opacity:0;pointer-events:none;transition:opacity 200ms;}
             .overlay.active{opacity:1;pointer-events:auto;}
             .mobile-toggle{display:flex;position:relative;z-index:1;}
+            /* On mobile the desktop sidebar-close button is less useful, but still functional */
             .btn-open-sidebar-desktop{display:none!important;}
-            .btn-sidebar-close{display:none;}
             .suggestions{grid-template-columns:1fr;}
             .chat-wrapper{padding:32px 20px;}
             .input-wrapper{padding:16px 20px 20px;}
@@ -672,9 +700,7 @@
         </div>
     </div>
 
-    <!-- ================================================================
-         KEY ACTIVATION MODAL
-         ================================================================ -->
+    <!-- KEY ACTIVATION MODAL -->
     <div class="activation-modal-overlay hidden" id="activationModal" role="dialog" aria-modal="true" aria-labelledby="activationModalTitle">
         <div class="activation-modal">
             <button class="activation-close-btn" id="activationModalClose" aria-label="Close">✕</button>
@@ -684,7 +710,6 @@
                 <div class="activation-modal-sub">Enter the key from your Instamojo receipt to unlock Plus, Pro, or Max features.</div>
             </div>
             <div class="activation-modal-body">
-                <!-- Input row -->
                 <div class="key-input-row">
                     <input
                         type="text"
@@ -697,10 +722,7 @@
                     >
                     <button id="btnActivateKey">Activate</button>
                 </div>
-                <!-- Status line -->
                 <div id="activationStatus" role="status" aria-live="polite"></div>
-
-                <!-- Tier comparison -->
                 <div class="tier-grid">
                     <div class="tier-row">
                         <div class="tier-icon">⚡</div>
@@ -727,7 +749,6 @@
                         <div class="tier-price">₹499/mo</div>
                     </div>
                 </div>
-
                 <button class="activation-deactivate" id="btnDeactivateKey">Remove current activation</button>
             </div>
         </div>
@@ -746,6 +767,7 @@
                         <div class="brand-name">e<span>S</span>AMz</div>
                         <div class="brand-tagline">Understands in 2 messages, not 2 years.</div>
                     </div>
+                    <!-- FIX: sidebar close button is always visible, not hidden by mobile-only CSS -->
                     <button class="btn-sidebar-close" id="btnCloseSidebar" title="Close sidebar" aria-label="Close sidebar">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
                     </button>
@@ -758,6 +780,7 @@
             <div class="search-box">
                 <input class="search-input" id="historySearch" placeholder="Search conversations…" type="text" autocomplete="off">
             </div>
+            <!-- FIX: sidebar-nav contains ALL nav sections so they scroll together properly -->
             <div class="sidebar-nav">
                 <div class="nav-section">
                     <div class="nav-label">Recent</div>
@@ -770,14 +793,16 @@
                         Cibo Cocinar
                     </a>
                 </div>
-            </div>
-            <div class="nav-section">
-                    <div class="nav-label">premium</div>
+                <!-- FIX: Premium section moved INSIDE sidebar-nav so it scrolls with the nav -->
+                <div class="nav-section">
+                    <div class="nav-label">Premium</div>
                     <a href="https://esamzai.mojo.page/esamz-ai-subscription/" class="nav-item" target="_blank" rel="noopener">
-                      <i class="fas fa-crown"></i>  
-                        upgrade plans
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        Upgrade Plans
                     </a>
+                </div>
             </div>
+
             <!-- Sync Panel -->
             <div class="sync-section" id="syncSection">
                 <div class="sync-label">
@@ -799,7 +824,6 @@
 
             <!-- Footer -->
             <div class="sidebar-footer">
-                <!-- Plan badge — shown when a plan is active -->
                 <div id="planBadgeContainer"></div>
                 <div class="sidebar-footer-text">eSAMz AI v10 — Made in India</div>
                 <a href="https://esamz.info" class="footer-link" target="_blank" rel="noopener">About eSAMz →</a>
@@ -813,9 +837,11 @@
         <main class="main-content">
             <header class="header">
                 <div style="display:flex;align-items:center;gap:14px;">
+                    <!-- Mobile hamburger -->
                     <button class="icon-btn mobile-toggle" id="openSidebar" aria-label="Open menu">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                     </button>
+                    <!-- Desktop open-sidebar button — only visible when sidebar collapsed -->
                     <button class="icon-btn btn-open-sidebar-desktop" id="btnOpenSidebarDesktop" title="Open sidebar" aria-label="Open sidebar">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                     </button>
@@ -888,7 +914,7 @@
                             </button>
                         </div>
 
-                        <!-- RAG TOGGLE — Pro & Max plans only. Hidden by default. -->
+                        <!-- RAG TOGGLE — Pro & Max plans only -->
                         <div id="rag-toggle-wrapper" role="group" aria-label="RAG settings">
                             <label id="rag-toggle-label" for="rag-toggle">
                                 <input type="checkbox" id="rag-toggle" checked>
@@ -898,7 +924,7 @@
                             <span class="rag-pro-badge">PRO</span>
                         </div>
 
-                        <!-- SYSTEM PROMPT EDITOR — Max plan only. Hidden by default. -->
+                        <!-- SYSTEM PROMPT EDITOR — Max plan only -->
                         <div id="system-prompt-editor" role="group" aria-label="Custom system prompt">
                             <div class="spe-header">
                                 <div class="spe-label">
@@ -993,18 +1019,12 @@
     (function () {
         'use strict';
 
-        // ====================================================================
-        //  CONFIG
-        //  Point VERIFY_KEY_ENDPOINT at your Vercel deployment URL.
-        //  In development you can use a local Next/Express server.
-        // ====================================================================
         const VERIFY_KEY_ENDPOINT = 'https://esamz.tech/api/verify-key';
         const BACKEND_CHAT_URL    = 'https://backend-for-esamzai.onrender.com/api/chat';
 
-        // localStorage keys
-        const LS_PLAN      = 'esamz_plan';        // "Plus" | "Pro" | "Max" | null
-        const LS_KEY       = 'esamz_key';          // raw activation key (JWT string)
-        const LS_DEVICE_ID = 'esamz_device_id';    // stable UUID4 per browser
+        const LS_PLAN      = 'esamz_plan';
+        const LS_KEY       = 'esamz_key';
+        const LS_DEVICE_ID = 'esamz_device_id';
         const LS_STORAGE   = 'esamz_conversations_v9';
         const LS_LAST_CHAT = 'esamz_last_chat_id';
 
@@ -1051,7 +1071,7 @@
         };
 
         // ====================================================================
-        //  DEVICE ID — stable UUID4 per browser, stored in localStorage
+        //  DEVICE ID
         // ====================================================================
         function getDeviceId() {
             let id = localStorage.getItem(LS_DEVICE_ID);
@@ -1071,14 +1091,6 @@
         // ====================================================================
         //  SUBSCRIPTION CORE
         // ====================================================================
-
-        /**
-         * checkPermissions()
-         * 1. Applies cached plan to DOM instantly (zero flash on page load).
-         * 2. Silently re-verifies with the server in the background.
-         *    - Catches revoked keys and device-limit violations server-side.
-         *    - On failure: strips plan from localStorage and resets the UI.
-         */
         async function checkPermissions() {
             const storedKey  = localStorage.getItem(LS_KEY);
             const storedPlan = localStorage.getItem(LS_PLAN);
@@ -1109,13 +1121,9 @@
                 if (plan === 'Max')  { ragWrapper.classList.add('visible'); ragToggle.disabled = false; spe.classList.add('visible'); }
             }
 
-            // No key stored → free tier
             if (!storedKey) { resetPlanUI(); return; }
-
-            // Apply cached plan immediately (zero flash)
             if (storedPlan) applyPlan(storedPlan);
 
-            // Background re-verify with deviceId — catches revoked/blocked keys
             try {
                 const deviceId = getDeviceId();
                 const res = await fetch(VERIFY_KEY_ENDPOINT, {
@@ -1123,7 +1131,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body:    JSON.stringify({ key: storedKey, deviceId }),
                 });
-                if (!res.ok) return; // server hiccup — trust cached plan
+                if (!res.ok) return;
 
                 const data = await res.json();
 
@@ -1134,7 +1142,6 @@
                         Utils.showToast('You are using your last available device slot for this key.', 'info');
                     }
                 } else {
-                    // Key revoked, expired, or this device was blocked
                     localStorage.removeItem(LS_PLAN);
                     localStorage.removeItem(LS_KEY);
                     resetPlanUI();
@@ -1145,16 +1152,10 @@
                     }
                 }
             } catch (_) {
-                // Offline / network error — keep cached plan active
+                // Offline — keep cached plan
             }
         }
 
-        /**
-         * activateKey(key)
-         * POSTs key + deviceId to /api/verify-key.
-         * On success: stores tier in localStorage and returns { success, tier, lastSlot }.
-         * On device block: returns { success: false, deviceBlocked: true, message }.
-         */
         async function activateKey(key) {
             const trimmed  = (key || '').trim();
             if (!trimmed) return { success: false, message: 'Please enter an activation key.' };
@@ -1207,35 +1208,24 @@
             deactivateBtn: document.getElementById('btnDeactivateKey'),
 
             init() {
-                // Open triggers
                 document.getElementById('btnOpenActivationModal')
                     .addEventListener('click', () => this.open());
-
-                // Close button
                 document.getElementById('activationModalClose')
                     .addEventListener('click', () => this.close());
                 this.overlay.addEventListener('click', e => {
                     if (e.target === this.overlay) this.close();
                 });
-
-                // Activate button
                 this.activateBtn.addEventListener('click', () => this._handleActivate());
                 this.keyInput.addEventListener('keydown', e => {
                     if (e.key === 'Enter') this._handleActivate();
                 });
-
-                // Keep key uppercase as the user types (cosmetic)
                 this.keyInput.addEventListener('input', () => {
                     const sel = this.keyInput.selectionStart;
                     this.keyInput.value = this.keyInput.value.toUpperCase();
                     this.keyInput.setSelectionRange(sel, sel);
                     this._clearStatus();
                 });
-
-                // Deactivate
                 this.deactivateBtn.addEventListener('click', () => this._handleDeactivate());
-
-                // Pre-fill if a key is already stored
                 const storedKey = localStorage.getItem(LS_KEY);
                 if (storedKey) this.keyInput.value = storedKey;
             },
@@ -1303,7 +1293,7 @@
         };
 
         // ====================================================================
-        //  SYSTEM PROMPT EDITOR — toggle expand / collapse
+        //  SYSTEM PROMPT EDITOR
         // ====================================================================
         (function initSpe() {
             const toggleBtn = document.getElementById('btnToggleSpe');
@@ -1421,9 +1411,9 @@
             }
 
             init() {
+                // FIX: initTheme must run first so CSS class selectors work immediately
                 this.initTheme();
 
-                // Subscription — run before any UI renders so permissions are applied
                 checkPermissions();
                 ActivationModal.init();
 
@@ -1484,6 +1474,7 @@
                     btn.addEventListener('click', e => this.exportChat(e.currentTarget.dataset.exportType));
                 });
 
+                // Mobile sidebar
                 this.dom.openSidebarMobileBtn.addEventListener('click', () => {
                     this.dom.sidebar.classList.add('active');
                     this.dom.overlay.classList.add('active');
@@ -1494,8 +1485,15 @@
                     this.dom.overlay.classList.remove('active');
                     document.body.style.overflow = '';
                 });
-                this.dom.closeSidebarBtn.addEventListener('click', () => this.dom.sidebar.classList.add('collapsed'));
-                this.dom.openSidebarDesktopBtn.addEventListener('click', () => this.dom.sidebar.classList.remove('collapsed'));
+
+                // FIX: sidebar collapse/expand on desktop
+                this.dom.closeSidebarBtn.addEventListener('click', () => {
+                    this.dom.sidebar.classList.add('collapsed');
+                });
+                this.dom.openSidebarDesktopBtn.addEventListener('click', () => {
+                    this.dom.sidebar.classList.remove('collapsed');
+                });
+
                 this.dom.themeToggle.addEventListener('click', () => this.toggleTheme());
 
                 document.querySelectorAll('.suggestion-card').forEach(card => {
@@ -1511,9 +1509,15 @@
                 this.updateButtonState();
             }
 
+            // FIX: updateButtonState — stop mode button must never be disabled
             updateButtonState() {
-                const canSend = (this.dom.input.value.trim().length > 0 || this.state.files.length > 0) && !this.state.isProcessing;
-                this.dom.sendBtn.disabled = !canSend && !this.state.isProcessing;
+                if (this.state.isProcessing) {
+                    // In stop mode: button always enabled and styled as stop
+                    this.dom.sendBtn.disabled = false;
+                    return;
+                }
+                const hasContent = this.dom.input.value.trim().length > 0 || this.state.files.length > 0;
+                this.dom.sendBtn.disabled = !hasContent;
             }
 
             fillInput(text) {
@@ -1591,10 +1595,6 @@
                 return text;
             }
 
-            // ------------------------------------------------------------------
-            //  SEND — reads RAG toggle state and injects custom system prompt
-            //  for Max users before forwarding to the backend
-            // ------------------------------------------------------------------
             async handleSend() {
                 const text = this.dom.input.value.trim();
                 if ((!text && this.state.files.length === 0) || this.state.isProcessing) return;
@@ -1628,7 +1628,6 @@
                 }
 
                 this.setProcessingState(true);
-                this.updateButtonState();
 
                 const aiMsgDiv  = this.appendMessage('ai', '', true);
                 const contentDiv = aiMsgDiv.querySelector('.bubble');
@@ -1637,17 +1636,14 @@
                 const clientHistory    = this.getRawHistory(this.state.chatId);
                 const clientLastActive = Date.now();
 
-                // --- Build extra payload fields from plan features ---
                 const ragToggle      = document.getElementById('rag-toggle');
                 const speTextarea    = document.getElementById('spe-textarea');
                 const plan           = localStorage.getItem(LS_PLAN);
 
-                // ragEnabled: Plus always on; Pro/Max follow the toggle; free = backend default
                 const ragEnabled = plan === 'Plus' ? true
                     : (plan === 'Pro' || plan === 'Max') ? ragToggle.checked
-                    : undefined; // don't send for free users — backend decides
+                    : undefined;
 
-                // customSystemPrompt: Max only, and only if non-empty
                 const customSystemPrompt = (plan === 'Max' && speTextarea && speTextarea.value.trim())
                     ? speTextarea.value.trim()
                     : undefined;
@@ -1755,8 +1751,10 @@
                     }
                 } finally {
                     this.setProcessingState(false);
-                    this.updateButtonState();
-                    this.scrollToBottom();
+                    // FIX: scroll only if user hasn't scrolled up
+                    const c = this.dom.chatContainer;
+                    const atBottom = c.scrollHeight - c.scrollTop - c.clientHeight < 120;
+                    if (atBottom) this.scrollToBottom();
                 }
             }
 
@@ -1765,6 +1763,7 @@
                 if (on) {
                     this.updateStatus('Thinking…');
                     this.dom.sendBtn.classList.add('stop-mode');
+                    this.dom.sendBtn.disabled = false; // FIX: always enabled in stop mode
                     this.dom.sendIcon.classList.add('hidden');
                     this.dom.stopIcon.classList.remove('hidden');
                 } else {
@@ -1773,6 +1772,7 @@
                     this.dom.sendIcon.classList.remove('hidden');
                     this.dom.stopIcon.classList.add('hidden');
                     this.state.abortController = null;
+                    this.updateButtonState(); // recalculate for content
                 }
             }
 
@@ -1987,6 +1987,7 @@
                 this.dom.chatList.appendChild(div);
                 if (role === 'ai'   && !isLoading) this.addCopyButton(div);
                 if (role === 'user' && !isLoading) this.addEditButton(div);
+                this.scrollToBottom();
                 return div;
             }
 
@@ -2145,7 +2146,6 @@
                 this.dom.welcome.classList.remove('hidden');
                 this.dom.input.focus();
                 document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-                // Clear the system prompt editor on new chat (Max plan)
                 const speTa = document.getElementById('spe-textarea');
                 if (speTa) speTa.value = '';
                 this.updateButtonState();
@@ -2176,23 +2176,26 @@
                 Utils.showToast('Chat exported', 'success');
             }
 
+            // FIX: initTheme sets BOTH classes correctly from the start
             initTheme() {
                 const saved       = localStorage.getItem('esamz_theme');
                 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
                 const theme       = saved || (prefersDark ? 'dark' : 'light');
+                document.body.classList.remove('theme-light', 'theme-dark');
                 document.body.classList.add(`theme-${theme}`);
             }
 
+            // FIX: toggleTheme removes the old class before adding the new one
             toggleTheme() {
                 const isDark = document.body.classList.contains('theme-dark');
-                document.body.classList.toggle('theme-dark',  !isDark);
-                document.body.classList.toggle('theme-light', isDark);
+                document.body.classList.remove('theme-dark', 'theme-light');
+                document.body.classList.add(isDark ? 'theme-light' : 'theme-dark');
                 localStorage.setItem('esamz_theme', isDark ? 'light' : 'dark');
             }
         }
 
         // ====================================================================
-        //  SYNC MANAGER (PeerJS — unchanged from v9.4)
+        //  SYNC MANAGER
         // ====================================================================
         class SyncManager {
             constructor(storageKey, onMergeCallback) {
@@ -2369,7 +2372,11 @@
                 if (ctrl && e.key === 'n') { e.preventDefault(); window.app?.newChat(); }
                 if (ctrl && e.key === 'e') { e.preventDefault(); if (window.app?.state?.chatId) document.getElementById('exportDialog')?.showModal(); else Utils.showToast('No chat to export','error'); }
                 if (ctrl && e.shiftKey && e.key === 'D') { e.preventDefault(); window.app?.toggleTheme(); }
-                if (ctrl && e.key === 'b') { e.preventDefault(); const sb = document.getElementById('sidebar'); if (sb) sb.classList.toggle('collapsed'); }
+                if (ctrl && e.key === 'b') {
+                    e.preventDefault();
+                    const sb = document.getElementById('sidebar');
+                    if (sb) sb.classList.toggle('collapsed');
+                }
                 if (ctrl && e.key === 'u') { e.preventDefault(); document.getElementById('activationModal')?.classList.remove('hidden'); }
                 if (ctrl && e.key === '/') { e.preventDefault(); if (modal) modal.classList.toggle('hidden'); }
             });
