@@ -1,10 +1,3 @@
-
-// ============================================================================
-//  eSAMz AI — /api/verify-key
-//  JWT verification + device limit + daily message limits
-//  Storage: Vercel KV
-// ============================================================================
-
 const jwt = require("jsonwebtoken");
 
 const SECRET = process.env.ESAMZ_MASTER_SECRET;
@@ -12,28 +5,19 @@ const KV_URL = process.env.KV_REST_API_URL;
 const KV_TOKEN = process.env.KV_REST_API_TOKEN;
 
 const MAX_DEVICES = 2;
-
 const VALID_TIERS = new Set(["Plus", "Pro", "Max"]);
-
-const DAILY_LIMITS = {
-  Plus: 50,
-  Pro: 100,
-  Max: 1000,
-};
+const DAILY_LIMITS = { Plus: 50, Pro: 100, Max: 1000 };
 
 // ---------------------------------------------------------------------------
 // Vercel KV REST wrapper
 // ---------------------------------------------------------------------------
-
 const KV = {
   async get(key) {
     if (!KV_URL || !KV_TOKEN) return null;
-
     try {
       const res = await fetch(`${KV_URL}/get/${encodeURIComponent(key)}`, {
         headers: { Authorization: `Bearer ${KV_TOKEN}` },
       });
-
       const json = await res.json();
       return json.result ?? null;
     } catch (e) {
@@ -44,17 +28,16 @@ const KV = {
 
   async set(key, value, ttlSeconds) {
     if (!KV_URL || !KV_TOKEN) return;
-
     try {
       const encodedKey = encodeURIComponent(key);
       const encodedVal = encodeURIComponent(value);
-
       const url = ttlSeconds
         ? `${KV_URL}/set/${encodedKey}/${encodedVal}/ex/${ttlSeconds}`
         : `${KV_URL}/set/${encodedKey}/${encodedVal}`;
 
+      // FIX: was method:"GET" — KV REST set requires POST
       await fetch(url, {
-        method: "GET",
+        method: "POST",
         headers: { Authorization: `Bearer ${KV_TOKEN}` },
       });
     } catch (e) {
@@ -66,28 +49,19 @@ const KV = {
 // ---------------------------------------------------------------------------
 // Input validation
 // ---------------------------------------------------------------------------
+
+// FIX: added $ end anchor so the regex actually validates the full string
 function isSafeKey(key) {
-  // Allows alphanumeric, dots, hyphens, and underscores (standard JWT characters)
-  return typeof key === 'string' && /^[A-Za-z0-9\-_.]+/i.test(key) && key.length > 20;
+  return typeof key === "string" && /^[A-Za-z0-9\-_.]+$/i.test(key) && key.length > 20;
 }
-/** * Allows either a standard UUID or your custom "device_" prefixed random IDs.
- * Blocks any weird characters to prevent injection.
- */
+
 function isSafeDeviceId(id) {
-  return typeof id === 'string' && /^[a-z0-9_\-]{8,64}$/i.test(id);
-}
-
-/** * Allows either a standard UUID or your custom "device_" prefixed random IDs.
- * Blocks any weird characters to prevent injection.
- */
-
-  );
+  return typeof id === "string" && /^[a-z0-9_\-]{8,64}$/i.test(id);
 }
 
 // ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
-
 module.exports = async function handler(req, res) {
   const origin = process.env.ALLOWED_ORIGIN || "https://esamz.tech";
 
@@ -96,80 +70,48 @@ module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   if (req.method === "OPTIONS") return res.status(200).end();
-
   if (req.method !== "POST") {
-    return res
-      .status(405)
-      .json({ success: false, message: "Method not allowed." });
+    return res.status(405).json({ success: false, message: "Method not allowed." });
   }
-
   if (!SECRET) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server misconfiguration." });
+    return res.status(500).json({ success: false, message: "Server misconfiguration." });
   }
-
-  // -------------------------------------------------------------------------
-  // Input
-  // -------------------------------------------------------------------------
 
   const rawKey = req.body?.key;
   const rawDeviceId = req.body?.deviceId;
 
   if (!isSafeKey(rawKey)) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Invalid activation key." });
+    return res.status(400).json({ success: false, message: "Invalid activation key." });
   }
-
   if (!isSafeDeviceId(rawDeviceId)) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Invalid device ID." });
+    return res.status(400).json({ success: false, message: "Invalid device ID." });
   }
 
   const key = rawKey.trim();
   const deviceId = rawDeviceId.trim().toLowerCase();
 
-  // =========================================================================
-  // STEP 1 — JWT VERIFY
-  // =========================================================================
-
+  // STEP 1 — JWT verify
   let decoded;
-
   try {
     decoded = jwt.verify(key, SECRET);
   } catch (err) {
     const expired = err.name === "TokenExpiredError";
-
     return res.status(200).json({
       success: false,
-      message: expired
-        ? "Your subscription key expired."
-        : "Invalid activation key.",
+      message: expired ? "Your subscription key expired." : "Invalid activation key.",
     });
   }
 
   const { tier } = decoded;
-
   if (!VALID_TIERS.has(tier)) {
-    return res.status(200).json({
-      success: false,
-      message: "Invalid subscription tier.",
-    });
+    return res.status(200).json({ success: false, message: "Invalid subscription tier." });
   }
 
-  // =========================================================================
-  // STEP 2 — DAILY MESSAGE LIMIT
-  // =========================================================================
-
+  // STEP 2 — Daily message limit
   const today = new Date().toISOString().slice(0, 10);
-
   const usageKey = `usage:${key}:${today}`;
-
   let used = await KV.get(usageKey);
   used = used ? parseInt(used, 10) : 0;
-
   const limit = DAILY_LIMITS[tier];
 
   if (used >= limit) {
@@ -185,27 +127,19 @@ module.exports = async function handler(req, res) {
 
   await KV.set(usageKey, used + 1, 86400);
 
-  // =========================================================================
-  // STEP 3 — DEVICE LIMIT
-  // =========================================================================
-
+  // STEP 3 — Device limit
   const nowSec = Math.floor(Date.now() / 1000);
   const expSec = decoded.exp || nowSec + 60 * 60 * 24 * 365;
-
   const ttlSec = Math.max(expSec - nowSec, 60);
-
   const deviceKey = `devices:${key}`;
-
   const raw = await KV.get(deviceKey);
 
   let devices;
-
   try {
     devices = raw ? JSON.parse(raw) : [];
   } catch {
     devices = [];
   }
-
   if (!Array.isArray(devices)) devices = [];
 
   if (devices.includes(deviceId)) {
@@ -228,7 +162,6 @@ module.exports = async function handler(req, res) {
   }
 
   const updated = [...devices, deviceId];
-
   await KV.set(deviceKey, JSON.stringify(updated), ttlSec);
 
   return res.status(200).json({
@@ -240,4 +173,3 @@ module.exports = async function handler(req, res) {
     maxDevices: MAX_DEVICES,
   });
 };
-```
