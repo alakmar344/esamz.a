@@ -1349,6 +1349,14 @@
             }
         }
 
+        // Shared deactivation logic
+        async function clearActivation() {
+            localStorage.removeItem(LS_PLAN);
+            localStorage.removeItem(LS_KEY);
+            localStorage.removeItem(LS_JWT);
+            checkPermissions();
+        }
+
         // ====================================================================
         //  PLANS PAGE MODAL UI
         // ====================================================================
@@ -1377,9 +1385,12 @@
                 this.keyInput.addEventListener('paste', e => {
                     e.preventDefault();
                     const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-                    // Only allow safe characters
                     const sanitized = text.replace(/[<>"'`\\]/g, '').trim();
-                    document.execCommand('insertText', false, sanitized);
+                    const input = e.target;
+                    const start = input.selectionStart;
+                    const end   = input.selectionEnd;
+                    input.setRangeText(sanitized, start, end, 'end');
+                    input.dispatchEvent(new Event('input'));
                 });
                 const storedKey = localStorage.getItem(LS_KEY);
                 if (storedKey) this.keyInput.value = storedKey;
@@ -1438,13 +1449,9 @@
                 const ok = await Utils.confirm('Remove activation?', 'Remove Activation');
                 if (!ok) return;
 
-                localStorage.removeItem(LS_PLAN);
-                localStorage.removeItem(LS_KEY);
-                localStorage.removeItem(LS_JWT);
-
+                await clearActivation();
                 this.keyInput.value = '';
                 this._clearStatus();
-                checkPermissions();
                 Utils.showToast('Plan removed', 'info');
             }
         };
@@ -1528,13 +1535,9 @@
     const ok = await Utils.confirm('Remove activation?', 'Remove Activation');
     if (!ok) return;
     
-    localStorage.removeItem('esamz_plan');
-    localStorage.removeItem('esamz_key');
-    localStorage.removeItem('esamz_jwt');
-    
+    await clearActivation();
     this.keyInput.value = '';
     this._clearStatus();
-    checkPermissions();
     Utils.showToast('Plan removed', 'info');
 }
         };
