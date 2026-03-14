@@ -1,6 +1,6 @@
 // ============================================================================
 //  eSAMz AI — /api/verify-key
-//  JWT verification + device limit + daily message limits
+//  JWT verification + device limit 
 //  Storage: Vercel KV
 // ============================================================================
 
@@ -12,7 +12,6 @@ const KV_TOKEN  = process.env.KV_REST_API_TOKEN;
 
 const MAX_DEVICES  = 2;
 const VALID_TIERS  = new Set(["Plus", "Pro", "Max"]);
-const DAILY_LIMITS = { Plus: 50, Pro: 100, Max: 1000 };
 
 // ---------------------------------------------------------------------------
 //  Vercel KV REST wrapper
@@ -69,7 +68,6 @@ function isSafeDeviceId(id) {
 //  Handler
 // ---------------------------------------------------------------------------
 module.exports = async function handler(req, res) {
-  // FIX: Allow requests from esamz.site as well as esamz.tech
   const allowedOrigins = ["https://esamz.tech", "https://esamz.site", "https://www.esamz.site"];
   const reqOrigin = req.headers.origin;
   const origin = allowedOrigins.includes(reqOrigin) ? reqOrigin : "https://esamz.site";
@@ -140,37 +138,14 @@ module.exports = async function handler(req, res) {
   }
 
   // =========================================================================
-  //  STEP 3 — Daily message limit
-  // =========================================================================
-  const today    = new Date().toISOString().slice(0, 10);   
-  const usageKey = `usage:${key}:${today}`;
-
-  let used = await KV.get(usageKey);
-  used = used !== null ? parseInt(used, 10) : 0;
-  if (isNaN(used)) used = 0;
-
-  const limit = DAILY_LIMITS[tier];
-
-  if (used >= limit) {
-    return res.status(200).json({
-      success:      false,
-      limitReached: true,
-      tier,
-      used,
-      limit,
-      message: `Daily limit of ${limit} messages reached. Resets at midnight UTC.`,
-    });
-  }
-
-  await KV.set(usageKey, used + 1, 86400);
-
-  // =========================================================================
-  //  STEP 4 — Device limit
+  //  STEP 3 — Device limit
   // =========================================================================
   const nowSec = Math.floor(Date.now() / 1000);
   const expSec = typeof decoded.exp === "number" ? decoded.exp : nowSec + 365 * 24 * 60 * 60;
   const ttlSec = Math.max(expSec - nowSec, 60);
 
+  // Note: we still use the exact JWT string as the key for device limits so it stays tied 
+  // to this specific purchase, avoiding conflicts if they upgrade later.
   const deviceKey = `devices:${key}`;
   const raw       = await KV.get(deviceKey);
 
@@ -187,9 +162,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       success:     true,
       tier,
-      jwt:         key,  // CRITICAL FIX: Pass the token back to the frontend!
-      used:        used + 1,
-      limit,
+      jwt:         key,  
       devicesUsed: devices.length,
       maxDevices:  MAX_DEVICES,
       lastSlot:    devices.length === MAX_DEVICES,
@@ -212,9 +185,7 @@ module.exports = async function handler(req, res) {
   return res.status(200).json({
     success:     true,
     tier,
-    jwt:         key, // CRITICAL FIX: Pass the token back to the frontend!
-    used:        used + 1,
-    limit,
+    jwt:         key, 
     devicesUsed: updated.length,
     maxDevices:  MAX_DEVICES,
     lastSlot:    updated.length === MAX_DEVICES,
