@@ -195,10 +195,10 @@
         .nav-item-row:hover .nav-item-actions{opacity:1;}
         .nav-item-action-btn{width:22px;height:22px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:var(--sidebar-text);cursor:pointer;transition:color 100ms;border-radius:2px;padding:0;}
         .nav-item-action-btn:hover{color:var(--vermillion);}
-        .sidebar-footer{padding:16px 22px;border-top:1px solid var(--sidebar-border);flex-shrink:0;}
-        .sidebar-footer-text{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.12em;color:var(--sidebar-footer-text);text-transform:uppercase;margin-bottom:8px;}
-        .footer-link{display:block;font-family:'Source Serif 4',serif;font-size:11px;color:var(--sidebar-footer-link);text-decoration:none;transition:color 120ms;}
-        .footer-link:hover{color:var(--sidebar-footer-link-hover);}
+        .sidebar-footer{padding:12px 22px;border-top:1px solid var(--sidebar-border);flex-shrink:0;text-align:center;}
+        .sidebar-footer-text{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.08em;color:var(--sidebar-footer-text);text-transform:none;}
+        .sidebar-footer-text a{color:var(--sidebar-footer-link);text-decoration:none;transition:color 120ms;}
+        .sidebar-footer-text a:hover{color:var(--crescent);}
 
         .btn-sidebar-close{
             display:flex;align-items:center;justify-content:center;
@@ -225,8 +225,8 @@
         .header-right{display:flex;align-items:center;gap:12px;}
         .btn-clear{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-faint);background:transparent;border:1px solid var(--rule-bold);padding:6px 14px;cursor:pointer;transition:all 120ms;border-radius:var(--r);}
         .btn-clear:hover{border-color:var(--crescent);color:var(--ink);background:var(--crescent-soft);}
-        .theme-toggle{width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:none;border:1px solid var(--rule-bold);color:var(--ink-faint);cursor:pointer;transition:all 120ms;border-radius:var(--r);flex-shrink:0;position:relative;}
-        .theme-toggle:hover{background:var(--crescent-soft);color:var(--ink);border-color:var(--crescent);}
+        .theme-toggle{width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:var(--ink-faint);cursor:pointer;transition:all 120ms;border-radius:var(--r);flex-shrink:0;position:relative;}
+        .theme-toggle:hover{color:var(--crescent);}
         .theme-toggle .icon-sun,.theme-toggle .icon-moon{position:absolute;transition:opacity 150ms,transform 150ms;}
 
         body.theme-light .theme-toggle .icon-sun{opacity:0;transform:scale(0.6) rotate(30deg);}
@@ -318,11 +318,10 @@
 
         /* ----- MSG ACTION BUTTONS ----- */
         .msg-action-bar{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center;}
-        .msg-copy-btn,.msg-regen-btn,.msg-edit-btn{display:inline-flex;align-items:center;justify-content:center;gap:0;padding:5px 7px;background:var(--paper-warm);border:1px solid var(--rule-bold);cursor:pointer;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-faint);transition:color 120ms,border-color 120ms,background 120ms;border-radius:2px;}
-        body.theme-dark .msg-copy-btn,body.theme-dark .msg-regen-btn,body.theme-dark .msg-edit-btn{background:rgba(245,237,224,0.04);}
-        .msg-copy-btn:hover{color:var(--crescent);border-color:var(--crescent);background:var(--crescent-soft);}
-        .msg-regen-btn:hover{color:var(--vermillion);border-color:var(--vermillion);background:rgba(167,57,57,0.07);}
-        .msg-edit-btn:hover{color:var(--crescent);border-color:var(--crescent);background:var(--crescent-soft);}
+        .msg-copy-btn,.msg-regen-btn,.msg-edit-btn{display:inline-flex;align-items:center;justify-content:center;gap:0;padding:5px;background:none;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-ghost);transition:color 120ms;border-radius:2px;}
+        .msg-copy-btn:hover{color:var(--crescent);}
+        .msg-regen-btn:hover{color:var(--vermillion);}
+        .msg-edit-btn:hover{color:var(--crescent);}
         .msg-copy-btn svg,.msg-regen-btn svg,.msg-edit-btn svg{flex-shrink:0;opacity:0.75;}
         .msg-edit-container{width:100%;}
         .msg-edit-textarea{width:100%;min-height:80px;background:var(--paper-warm);border:1px solid var(--crescent);color:var(--ink);font-family:'Source Serif 4',Georgia,serif;font-size:14px;line-height:1.6;padding:10px 14px;resize:vertical;outline:none;box-shadow:0 0 0 2px var(--crescent-soft);}
@@ -555,6 +554,98 @@
         .activation-deactivate{display:block;margin-top:18px;text-align:center;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-ghost);cursor:pointer;background:none;border:none;width:100%;transition:color 120ms;}
         .activation-deactivate:hover{color:var(--vermillion);}
 
+        /* PLANS PAGE MODAL */
+        .plans-modal-overlay{
+            position:fixed;inset:0;background:rgba(42,31,26,0.75);backdrop-filter:blur(6px);
+            display:flex;align-items:center;justify-content:center;z-index:10003;
+            opacity:1;visibility:visible;
+            transition:opacity 0.2s ease-out,visibility 0s 0s;will-change:opacity;
+        }
+        .plans-modal-overlay.hidden{opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.2s ease-out,visibility 0s 0.2s;}
+        .plans-modal-overlay.hidden .plans-modal{transform:translateY(20px) scale(0.98);opacity:0;}
+        .plans-modal{
+            background:var(--paper);border:1px solid var(--rule-bold);
+            box-shadow:0 8px 40px rgba(0,0,0,0.18);
+            max-width:560px;width:94%;max-height:90vh;overflow-y:auto;position:relative;
+            transform:translateY(0) scale(1);opacity:1;
+            transition:transform 0.2s cubic-bezier(0.34,1.56,0.64,1),opacity 0.2s ease-out;will-change:transform,opacity;
+        }
+        .plans-modal-header{
+            background:var(--paper-warm);border-bottom:1px solid var(--rule);
+            padding:24px 28px 18px;position:relative;
+        }
+        .plans-modal-eyebrow{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:var(--crescent);margin-bottom:6px;display:flex;align-items:center;gap:10px;}
+        .plans-modal-eyebrow::before{content:'';display:block;width:24px;height:1px;background:var(--crescent);opacity:0.6;}
+        .plans-modal-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:var(--ink);letter-spacing:-0.01em;line-height:1.15;margin-bottom:4px;}
+        .plans-modal-sub{font-size:12px;font-style:italic;color:var(--ink-faint);line-height:1.5;}
+        .plans-modal-close{position:absolute;top:14px;right:14px;background:none;border:none;color:var(--ink-ghost);width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;transition:color 120ms;}
+        .plans-modal-close:hover{color:var(--ink);}
+        .plans-modal-body{padding:20px 28px 24px;}
+        .plans-grid{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
+        .plan-card{
+            border:1px solid var(--rule);padding:16px 18px;
+            display:flex;align-items:flex-start;gap:14px;
+            transition:border-color 180ms,background 180ms;cursor:default;
+            position:relative;
+        }
+        .plan-card:hover{border-color:var(--crescent);background:var(--crescent-soft);}
+        .plan-card-icon{font-size:22px;flex-shrink:0;line-height:1;margin-top:2px;}
+        .plan-card-content{flex:1;min-width:0;}
+        .plan-card-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;}
+        .plan-card-name{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:var(--ink);}
+        .plan-card-price{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.06em;color:var(--crescent);font-weight:500;}
+        .plan-card-features{font-size:12px;color:var(--ink-faint);line-height:1.5;}
+        .plan-card-features li{margin-bottom:2px;list-style:none;padding-left:14px;position:relative;}
+        .plan-card-features li::before{content:'✓';position:absolute;left:0;color:var(--crescent);font-size:11px;}
+        .plans-upgrade-btn{
+            display:block;width:100%;padding:12px;background:var(--crescent);color:var(--paper);
+            border:none;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;
+            text-transform:uppercase;cursor:pointer;text-align:center;text-decoration:none;
+            transition:background 150ms;margin-bottom:20px;
+        }
+        .plans-upgrade-btn:hover{background:var(--vermillion);}
+        .plans-divider{height:1px;background:var(--rule);margin:20px 0;position:relative;}
+        .plans-divider::after{content:'✦';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--paper);padding:0 10px;font-size:10px;color:var(--ink-ghost);}
+        .plans-activation-section{}
+        .plans-activation-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px;}
+        .plans-activation-hint{font-size:11px;color:var(--ink-ghost);font-style:italic;margin-bottom:12px;line-height:1.45;}
+        .plans-key-row{display:flex;gap:0;margin-bottom:10px;}
+        .plans-key-input{
+            flex:1;background:var(--paper-warm);
+            border:1px solid var(--rule-bold);border-right:none;
+            color:var(--ink);font-family:'DM Mono',monospace;
+            font-size:12px;letter-spacing:0.08em;
+            padding:10px 12px;outline:none;min-width:0;
+            transition:border-color 150ms;
+        }
+        body.theme-dark .plans-key-input{background:rgba(245,237,224,0.05);}
+        .plans-key-input:focus{border-color:var(--crescent);}
+        .plans-key-input::placeholder{color:var(--ink-ghost);letter-spacing:0.02em;}
+        .plans-activate-btn{
+            padding:10px 16px;background:var(--crescent);color:var(--paper);
+            border:1px solid var(--crescent);
+            font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;
+            text-transform:uppercase;cursor:pointer;transition:background 120ms;
+            white-space:nowrap;flex-shrink:0;
+        }
+        .plans-activate-btn:hover:not(:disabled){background:var(--vermillion);border-color:var(--vermillion);}
+        .plans-activate-btn:disabled{opacity:0.45;cursor:not-allowed;}
+        .plans-status{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.06em;min-height:16px;margin-bottom:8px;transition:color 200ms;}
+        .plans-status.error{color:var(--vermillion);}
+        .plans-status.success{color:#22c55e;}
+        .plans-deactivate{display:block;text-align:center;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-ghost);cursor:pointer;background:none;border:none;width:100%;padding:6px 0;transition:color 120ms;}
+        .plans-deactivate:hover{color:var(--vermillion);}
+
+        /* View Plans sidebar button */
+        .btn-view-plans{
+            width:100%;height:36px;background:transparent;
+            border:1px solid var(--crescent-soft);color:var(--crescent);
+            font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;
+            cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+            transition:all 150ms ease;border-radius:var(--r);margin-top:6px;
+        }
+        .btn-view-plans:hover{background:var(--crescent-soft);border-color:var(--crescent);color:var(--sidebar-text-bright);}
+
         /* Cibo modal */
         .cibo-modal-overlay{position:fixed;inset:0;background:rgba(42,31,26,0.75);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:1;visibility:visible;transition:opacity 0.15s ease-out,visibility 0s 0s;will-change:opacity;}
         .cibo-modal-overlay.hidden{opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.15s ease-out,visibility 0s 0.15s;}
@@ -612,6 +703,9 @@
             .cibo-modal{padding:28px 24px;}
             .activation-modal-top{padding:22px 20px 18px;}
             .activation-modal-body{padding:18px 20px 22px;}
+            .plans-modal{max-width:96%;width:96%;}
+            .plans-modal-header{padding:20px 18px 16px;}
+            .plans-modal-body{padding:16px 18px 20px;}
         }
         .hidden{display:none!important;}
 
@@ -685,8 +779,90 @@
         </div>
     </div>
 
-    <!-- KEY ACTIVATION MODAL -->
-    <div class="activation-modal-overlay hidden" id="activationModal" role="dialog" aria-modal="true" aria-labelledby="activationModalTitle">
+    <!-- PLANS PAGE MODAL -->
+    <div class="plans-modal-overlay hidden" id="plansModal" role="dialog" aria-modal="true" aria-labelledby="plansModalTitle">
+        <div class="plans-modal">
+            <button class="plans-modal-close" id="plansModalClose" aria-label="Close">✕</button>
+            <div class="plans-modal-header">
+                <div class="plans-modal-eyebrow">eSAMz AI — Plans &amp; Pricing</div>
+                <div class="plans-modal-title" id="plansModalTitle">Choose your plan</div>
+                <div class="plans-modal-sub">Unlock advanced features with a premium subscription.</div>
+            </div>
+            <div class="plans-modal-body">
+                <div class="plans-grid">
+                    <div class="plan-card">
+                        <div class="plan-card-icon">⚡</div>
+                        <div class="plan-card-content">
+                            <div class="plan-card-header">
+                                <div class="plan-card-name">Plus</div>
+                                <div class="plan-card-price">₹99/mo</div>
+                            </div>
+                            <ul class="plan-card-features">
+                                <li>RAG always on</li>
+                                <li>Wikipedia + web search</li>
+                                <li>50 messages/day</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="plan-card">
+                        <div class="plan-card-icon">🚀</div>
+                        <div class="plan-card-content">
+                            <div class="plan-card-header">
+                                <div class="plan-card-name">Pro</div>
+                                <div class="plan-card-price">₹199/mo</div>
+                            </div>
+                            <ul class="plan-card-features">
+                                <li>Everything in Plus</li>
+                                <li>RAG on/off toggle</li>
+                                <li>100 messages/day</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="plan-card">
+                        <div class="plan-card-icon">♾️</div>
+                        <div class="plan-card-content">
+                            <div class="plan-card-header">
+                                <div class="plan-card-name">Max</div>
+                                <div class="plan-card-price">₹499/mo</div>
+                            </div>
+                            <ul class="plan-card-features">
+                                <li>Everything in Pro</li>
+                                <li>Custom system prompt editor</li>
+                                <li>1000 messages/day</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <a href="https://esamzai.mojo.page/esamz-ai-subscription/" class="plans-upgrade-btn" target="_blank" rel="noopener">Get a Plan →</a>
+
+                <div class="plans-divider"></div>
+
+                <div class="plans-activation-section">
+                    <div class="plans-activation-label">Already upgraded?</div>
+                    <div class="plans-activation-hint">Paste the activation key from your Instamojo receipt below to unlock your plan.</div>
+                    <div class="plans-key-row">
+                        <input
+                            type="text"
+                            id="plansKeyInput"
+                            class="plans-key-input"
+                            placeholder="Paste your activation key here"
+                            maxlength="512"
+                            autocomplete="off"
+                            spellcheck="false"
+                            aria-label="Activation key"
+                        >
+                        <button class="plans-activate-btn" id="btnPlansActivate">Activate</button>
+                    </div>
+                    <div id="plansStatus" class="plans-status" role="status" aria-live="polite"></div>
+                    <button class="plans-deactivate" id="btnPlansDeactivate">Remove current activation</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KEY ACTIVATION MODAL (hidden, kept for backward compat) -->
+    <div class="activation-modal-overlay hidden" id="activationModal" role="dialog" aria-modal="true" aria-labelledby="activationModalTitle" style="display:none;">
         <div class="activation-modal">
             <button class="activation-close-btn" id="activationModalClose" aria-label="Close">✕</button>
             <div class="activation-modal-top">
@@ -696,15 +872,7 @@
             </div>
             <div class="activation-modal-body">
                 <div class="key-input-row">
-                    <input
-                        type="text"
-                        id="activationKeyInput"
-                        placeholder="Paste your activation key here"
-                        maxlength="512"
-                        autocomplete="off"
-                        spellcheck="false"
-                        aria-label="Activation key"
-                    >
+                    <input type="text" id="activationKeyInput" placeholder="Paste your activation key here" maxlength="512" autocomplete="off" spellcheck="false" aria-label="Activation key">
                     <button id="btnActivateKey">Activate</button>
                 </div>
                 <div id="activationStatus" role="status" aria-live="polite"></div>
@@ -761,9 +929,10 @@
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
                     New Conversation
                 </button>
-            </div>
-            <div class="search-box">
-                <input class="search-input" id="historySearch" placeholder="Search conversations…" type="text" autocomplete="off">
+                <button class="btn-view-plans" id="btnViewPlans">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    View Plans
+                </button>
             </div>
             <div class="sidebar-nav">
                 <div class="nav-section">
@@ -777,39 +946,12 @@
                         Cibo Cocinar
                     </a>
                 </div>
-                <div class="nav-section">
-                    <div class="nav-label">Premium</div>
-                    <a href="https://esamzai.mojo.page/esamz-ai-subscription/" class="nav-item" target="_blank" rel="noopener">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                        Upgrade Plans
-                    </a>
-                </div>
-            </div>
-
-            <!-- Upgrade Section -->
-            <div class="upgrade-section" id="upgradeSection">
-                <div class="upgrade-section-label">Unlock More</div>
-                <div class="upgrade-card">
-                    <div class="upgrade-card-title">✦ Go Premium</div>
-                    <div class="upgrade-tiers">
-                        <div class="upgrade-tier-row"><span class="upgrade-tier-icon">⚡</span><span class="upgrade-tier-info"><span class="upgrade-tier-name">Plus — ₹99/mo</span></span></div>
-                        <div class="upgrade-tier-row"><span class="upgrade-tier-icon">🚀</span><span class="upgrade-tier-info"><span class="upgrade-tier-name">Pro — ₹199/mo</span></span></div>
-                        <div class="upgrade-tier-row"><span class="upgrade-tier-icon">♾️</span><span class="upgrade-tier-info"><span class="upgrade-tier-name">Max — ₹499/mo</span></span></div>
-                    </div>
-                    <div class="upgrade-card-desc">Web search, higher limits &amp; custom prompts.</div>
-                    <a href="https://esamzai.mojo.page/esamz-ai-subscription/" class="upgrade-card-btn" target="_blank" rel="noopener">View Plans →</a>
-                </div>
             </div>
 
             <!-- Footer -->
             <div class="sidebar-footer">
                 <div id="planBadgeContainer"></div>
-                <!-- FIX P7: version string matches backend v9.4 -->
-                <div class="sidebar-footer-text">eSAMz AI v9.4 — Made in India</div>
-                <a href="https://esamz.info" class="footer-link" target="_blank" rel="noopener">About eSAMz →</a>
-                <button class="footer-link" id="btnOpenActivationModal" style="margin-top:8px;background:none;border:none;padding:0;text-align:left;cursor:pointer;font-family:'Source Serif 4',serif;font-size:11px;color:var(--sidebar-footer-link);transition:color 120ms;">
-                    ✦ Manage subscription →
-                </button>
+                <div class="sidebar-footer-text">© <a href="https://esamz.info" target="_blank" rel="noopener">eSAMz AI</a> 2026 All rights reserved</div>
             </div>
         </aside>
 
@@ -1115,6 +1257,17 @@
             }
 
             if (!storedKey) { resetPlanUI(); return; }
+
+            // Security: validate that stored plan matches a valid tier
+            const VALID_PLANS = ['Plus', 'Pro', 'Max'];
+            if (storedPlan && !VALID_PLANS.includes(storedPlan)) {
+                localStorage.removeItem(LS_PLAN);
+                localStorage.removeItem(LS_KEY);
+                localStorage.removeItem(LS_JWT);
+                resetPlanUI();
+                return;
+            }
+
             if (storedPlan) applyPlan(storedPlan);
 
             try {
@@ -1197,7 +1350,107 @@
         }
 
         // ====================================================================
-        //  ACTIVATION MODAL UI
+        //  PLANS PAGE MODAL UI
+        // ====================================================================
+        const PlansModal = {
+            overlay:      document.getElementById('plansModal'),
+            keyInput:     document.getElementById('plansKeyInput'),
+            activateBtn:  document.getElementById('btnPlansActivate'),
+            statusEl:     document.getElementById('plansStatus'),
+            deactivateBtn:document.getElementById('btnPlansDeactivate'),
+
+            init() {
+                document.getElementById('btnViewPlans')
+                    .addEventListener('click', () => this.open());
+                document.getElementById('plansModalClose')
+                    .addEventListener('click', () => this.close());
+                this.overlay.addEventListener('click', e => {
+                    if (e.target === this.overlay) this.close();
+                });
+                this.activateBtn.addEventListener('click', () => this._handleActivate());
+                this.keyInput.addEventListener('keydown', e => {
+                    if (e.key === 'Enter') this._handleActivate();
+                });
+                this.keyInput.addEventListener('input', () => this._clearStatus());
+                this.deactivateBtn.addEventListener('click', () => this._handleDeactivate());
+                // Prevent paste of non-text content / script injection
+                this.keyInput.addEventListener('paste', e => {
+                    e.preventDefault();
+                    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+                    // Only allow safe characters
+                    const sanitized = text.replace(/[<>"'`\\]/g, '').trim();
+                    document.execCommand('insertText', false, sanitized);
+                });
+                const storedKey = localStorage.getItem(LS_KEY);
+                if (storedKey) this.keyInput.value = storedKey;
+            },
+
+            open() {
+                this.overlay.classList.remove('hidden');
+                this._clearStatus();
+            },
+
+            close() {
+                this.overlay.classList.add('hidden');
+                this._clearStatus();
+            },
+
+            _setStatus(msg, isError = false) {
+                this.statusEl.textContent = msg;
+                this.statusEl.className   = 'plans-status ' + (isError ? 'error' : 'success');
+            },
+
+            _clearStatus() {
+                this.statusEl.textContent = '';
+                this.statusEl.className   = 'plans-status';
+            },
+
+            async _handleActivate() {
+                const key = this.keyInput.value.trim();
+                if (!key) {
+                    this._setStatus('Please enter your activation key.', true);
+                    return;
+                }
+
+                this.activateBtn.disabled   = true;
+                this.activateBtn.textContent = 'Checking…';
+                this._clearStatus();
+
+                const result = await activateKey(key);
+
+                this.activateBtn.disabled    = false;
+                this.activateBtn.textContent = 'Activate';
+
+                if (result.success) {
+                    this._setStatus(`✓ ${result.tier} plan activated!`);
+                    checkPermissions();
+                    Utils.showToast(`${result.tier} plan activated`, 'success');
+                    if (result.lastSlot) {
+                        Utils.showToast('Both device slots are now used. A 3rd device will be blocked.', 'info');
+                    }
+                    setTimeout(() => this.close(), 1600);
+                } else {
+                    this._setStatus(result.message || 'Activation failed.', true);
+                }
+            },
+
+            async _handleDeactivate() {
+                const ok = await Utils.confirm('Remove activation?', 'Remove Activation');
+                if (!ok) return;
+
+                localStorage.removeItem(LS_PLAN);
+                localStorage.removeItem(LS_KEY);
+                localStorage.removeItem(LS_JWT);
+
+                this.keyInput.value = '';
+                this._clearStatus();
+                checkPermissions();
+                Utils.showToast('Plan removed', 'info');
+            }
+        };
+
+        // ====================================================================
+        //  LEGACY ACTIVATION MODAL (kept for keyboard shortcut compat)
         // ====================================================================
         const ActivationModal = {
             overlay:    document.getElementById('activationModal'),
@@ -1207,13 +1460,9 @@
             deactivateBtn: document.getElementById('btnDeactivateKey'),
 
             init() {
-                document.getElementById('btnOpenActivationModal')
-                    .addEventListener('click', () => this.open());
+                // Redirect old activation modal trigger to new plans modal
                 document.getElementById('activationModalClose')
                     .addEventListener('click', () => this.close());
-                this.overlay.addEventListener('click', e => {
-                    if (e.target === this.overlay) this.close();
-                });
                 this.activateBtn.addEventListener('click', () => this._handleActivate());
                 this.keyInput.addEventListener('keydown', e => {
                     if (e.key === 'Enter') this._handleActivate();
@@ -1227,9 +1476,8 @@
             },
 
             open() {
-                this.overlay.classList.remove('hidden');
-                this.keyInput.focus();
-                this._clearStatus();
+                // Redirect to new plans modal instead
+                PlansModal.open();
             },
 
             close() {
@@ -1282,7 +1530,7 @@
     
     localStorage.removeItem('esamz_plan');
     localStorage.removeItem('esamz_key');
-    localStorage.removeItem('esamz_jwt'); // CRITICAL: Clear the token!
+    localStorage.removeItem('esamz_jwt');
     
     this.keyInput.value = '';
     this._clearStatus();
@@ -1412,6 +1660,7 @@
                 this.initTheme();
 
                 checkPermissions();
+                PlansModal.init();
                 ActivationModal.init();
 
                 EidModal.init();
