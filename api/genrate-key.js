@@ -11,10 +11,25 @@ const INTERNAL_TOKEN = process.env.ESAMZ_INTERNAL_TOKEN;
 
 const PLAN_DAYS = { Plus: 30, Pro: 30, Max: 30 };
 
+const ALLOWED_ORIGINS = ["https://esamz.tech", "https://esamz.site", "https://www.esamz.site"];
+
 module.exports = async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin",  "*");
+  const reqOrigin = req.headers.origin;
+  const origin = ALLOWED_ORIGINS.includes(reqOrigin) ? reqOrigin : null;
+
+  // Reject browser requests from disallowed origins at the CORS preflight stage.
+  // Server-to-server calls (e.g. n8n) do not send an Origin header, so origin
+  // will be null and they are allowed through (protected by INTERNAL_TOKEN below).
+  if (reqOrigin && !origin) {
+    return res.status(403).json({ success: false, message: "Origin not allowed." });
+  }
+
+  if (origin) res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Vary", "Origin");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
 
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") {
