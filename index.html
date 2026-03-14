@@ -440,29 +440,21 @@
         .spe-hint{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.06em;color:var(--ink-ghost);margin-top:4px;font-style:italic;}
 
         /* ----- SYNC PANEL ----- */
-        .sync-section{padding:12px 22px;border-top:1px solid var(--sidebar-border);flex-shrink:0;}
-        .sync-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--sidebar-label);margin-bottom:10px;display:flex;align-items:center;gap:7px;}
-        .sync-label .sync-status-dot{width:6px;height:6px;border-radius:50%;background:var(--ink-ghost);flex-shrink:0;transition:background 200ms;}
-        .sync-status-dot.connected{background:#22c55e;animation:pulse 2s infinite;}
-        .sync-status-dot.connecting{background:var(--gold);animation:pulse 1s infinite;}
-        .sync-code-display{background:var(--paper-aged);border:1px solid var(--rule-bold);padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
-        body.theme-dark .sync-code-display{background:rgba(245,237,224,0.05);border-color:rgba(245,237,224,0.12);}
-        .sync-code-value{font-family:'DM Mono',monospace;font-size:18px;font-weight:500;letter-spacing:0.18em;color:var(--ink);}
-        .sync-code-copy{background:none;border:none;cursor:pointer;color:var(--ink-ghost);padding:2px;transition:color 120ms;display:flex;align-items:center;}
-        .sync-code-copy:hover{color:var(--crescent);}
-        .sync-input-row{display:flex;gap:6px;margin-bottom:8px;}
-        .sync-input{flex:1;background:var(--paper-warm);border:1px solid var(--rule-bold);color:var(--ink);font-family:'DM Mono',monospace;font-size:13px;letter-spacing:0.12em;padding:7px 10px;outline:none;text-transform:uppercase;min-width:0;}
-        body.theme-dark .sync-input{background:rgba(245,237,224,0.05);border-color:rgba(245,237,224,0.12);}
-        .sync-input:focus{border-color:var(--crescent);}
-        .sync-input::placeholder{color:var(--ink-ghost);letter-spacing:0.05em;text-transform:none;}
-        .sync-btn{padding:7px 12px;background:var(--crescent);color:var(--paper);border:none;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;transition:background 120ms;white-space:nowrap;flex-shrink:0;}
-        .sync-btn:hover{background:var(--vermillion);}
-        .sync-btn:disabled{opacity:0.4;cursor:not-allowed;}
-        .sync-peers-list{display:flex;flex-direction:column;gap:4px;margin-bottom:6px;}
-        .sync-peer-chip{display:flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:10px;color:var(--sidebar-text);padding:4px 0;}
-        .sync-peer-chip .dot{width:5px;height:5px;border-radius:50%;background:#22c55e;flex-shrink:0;}
-        .sync-disconnect-btn{margin-left:auto;background:none;border:none;cursor:pointer;color:var(--ink-ghost);font-size:12px;padding:0 2px;transition:color 100ms;}
-        .sync-disconnect-btn:hover{color:var(--vermillion);}
+        /* ----- UPGRADE SECTION ----- */
+        .upgrade-section{padding:12px 22px;border-top:1px solid var(--sidebar-border);flex-shrink:0;}
+        .upgrade-section-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--sidebar-label);margin-bottom:10px;}
+        .upgrade-card{background:var(--crescent-soft);border:1px solid rgba(95,122,153,0.25);padding:14px;margin-bottom:8px;}
+        body.theme-dark .upgrade-card{background:rgba(125,163,196,0.08);border-color:rgba(125,163,196,0.2);}
+        .upgrade-card-title{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--crescent);margin-bottom:6px;}
+        .upgrade-card-desc{font-size:11px;color:var(--ink-faint);font-style:italic;line-height:1.5;margin-bottom:10px;}
+        .upgrade-card-btn{display:block;width:100%;padding:8px 12px;background:var(--crescent);color:var(--paper);border:none;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;text-align:center;text-decoration:none;transition:background 120ms;box-sizing:border-box;}
+        .upgrade-card-btn:hover{background:var(--vermillion);}
+        .upgrade-tiers{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;}
+        .upgrade-tier-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--rule);}
+        .upgrade-tier-row:last-child{border-bottom:none;}
+        .upgrade-tier-icon{font-size:13px;flex-shrink:0;}
+        .upgrade-tier-info{flex:1;min-width:0;}
+        .upgrade-tier-name{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink);}
 
         /* PLAN BADGE */
         .plan-badge{
@@ -551,6 +543,10 @@
             transition:border-color 120ms,background 120ms;
         }
         .tier-row:hover{border-color:var(--rule-bold);background:var(--crescent-soft);}
+        a.tier-link{text-decoration:none;cursor:pointer;}
+        a.tier-link:hover{border-color:var(--crescent);background:var(--crescent-soft);}
+        .activation-upgrade-link{display:block;margin-top:14px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--crescent);text-decoration:none;border:1px solid var(--crescent);padding:9px;transition:background 120ms,color 120ms;}
+        .activation-upgrade-link:hover{background:var(--crescent);color:var(--paper);}
         .tier-icon{font-size:16px;flex-shrink:0;width:22px;text-align:center;}
         .tier-info{flex:1;min-width:0;}
         .tier-name{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink);margin-bottom:2px;}
@@ -713,31 +709,32 @@
                 </div>
                 <div id="activationStatus" role="status" aria-live="polite"></div>
                 <div class="tier-grid">
-                    <div class="tier-row">
+                    <a class="tier-row tier-link" href="https://esamzai.mojo.page/esamz-ai-subscription/" target="_blank" rel="noopener">
                         <div class="tier-icon">⚡</div>
                         <div class="tier-info">
                             <div class="tier-name">Plus</div>
                             <div class="tier-features">RAG always on · Wikipedia + web search</div>
                         </div>
                         <div class="tier-price">₹99/mo</div>
-                    </div>
-                    <div class="tier-row">
+                    </a>
+                    <a class="tier-row tier-link" href="https://esamzai.mojo.page/esamz-ai-subscription/" target="_blank" rel="noopener">
                         <div class="tier-icon">🚀</div>
                         <div class="tier-info">
                             <div class="tier-name">Pro</div>
                             <div class="tier-features">Plus + RAG on/off toggle</div>
                         </div>
                         <div class="tier-price">₹199/mo</div>
-                    </div>
-                    <div class="tier-row">
+                    </a>
+                    <a class="tier-row tier-link" href="https://esamzai.mojo.page/esamz-ai-subscription/" target="_blank" rel="noopener">
                         <div class="tier-icon">♾️</div>
                         <div class="tier-info">
                             <div class="tier-name">Max</div>
                             <div class="tier-features">Pro + custom system prompt editor</div>
                         </div>
                         <div class="tier-price">₹499/mo</div>
-                    </div>
+                    </a>
                 </div>
+                <a class="activation-upgrade-link" href="https://esamzai.mojo.page/esamz-ai-subscription/" target="_blank" rel="noopener">→ Get a plan &amp; receive your activation key</a>
                 <button class="activation-deactivate" id="btnDeactivateKey">Remove current activation</button>
             </div>
         </div>
@@ -789,22 +786,18 @@
                 </div>
             </div>
 
-            <!-- Sync Panel -->
-            <div class="sync-section" id="syncSection">
-                <div class="sync-label">
-                    <span class="sync-status-dot" id="syncDot"></span>
-                    <span id="syncLabelText">Sync Devices</span>
-                </div>
-                <div class="sync-code-display">
-                    <span class="sync-code-value" id="myPeerCode">——————</span>
-                    <button class="sync-code-copy" id="btnCopyCode" title="Copy code" aria-label="Copy code">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="1"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                    </button>
-                </div>
-                <div class="sync-peers-list" id="syncPeersList"></div>
-                <div class="sync-input-row">
-                    <input class="sync-input" id="syncJoinInput" placeholder="Enter 6-digit code" maxlength="6" inputmode="numeric" pattern="[0-9]*">
-                    <button class="sync-btn" id="btnSyncJoin">Join</button>
+            <!-- Upgrade Section -->
+            <div class="upgrade-section" id="upgradeSection">
+                <div class="upgrade-section-label">Unlock More</div>
+                <div class="upgrade-card">
+                    <div class="upgrade-card-title">✦ Go Premium</div>
+                    <div class="upgrade-tiers">
+                        <div class="upgrade-tier-row"><span class="upgrade-tier-icon">⚡</span><span class="upgrade-tier-info"><span class="upgrade-tier-name">Plus — ₹99/mo</span></span></div>
+                        <div class="upgrade-tier-row"><span class="upgrade-tier-icon">🚀</span><span class="upgrade-tier-info"><span class="upgrade-tier-name">Pro — ₹199/mo</span></span></div>
+                        <div class="upgrade-tier-row"><span class="upgrade-tier-icon">♾️</span><span class="upgrade-tier-info"><span class="upgrade-tier-name">Max — ₹499/mo</span></span></div>
+                    </div>
+                    <div class="upgrade-card-desc">Web search, higher limits &amp; custom prompts.</div>
+                    <a href="https://esamzai.mojo.page/esamz-ai-subscription/" class="upgrade-card-btn" target="_blank" rel="noopener">View Plans →</a>
                 </div>
             </div>
 
@@ -1027,7 +1020,13 @@
                 const t = document.createElement('div');
                 t.className = 'toast';
                 const icon = type === 'error' ? '⚠' : type === 'success' ? '✓' : '·';
-                t.innerHTML = `<span style="font-size:14px;opacity:.6;">${icon}</span><span>${message}</span>`;
+                const iconSpan = document.createElement('span');
+                iconSpan.style.cssText = 'font-size:14px;opacity:.6;';
+                iconSpan.textContent = icon;
+                const msgSpan = document.createElement('span');
+                msgSpan.textContent = message;
+                t.appendChild(iconSpan);
+                t.appendChild(msgSpan);
                 this.toastContainer.appendChild(t);
                 setTimeout(() => {
                     t.style.opacity = '0';
@@ -1435,7 +1434,6 @@
                     tryLoad();
                 }
                 this.dom.input.focus();
-                this.sync = new SyncManager(this.storageKey, () => this._refreshHistoryFromStorage());
             }
 
             getHistory() {
@@ -2066,7 +2064,6 @@ const response = await fetch(BACKEND_CHAT_URL, {
                         if (fu) { all[ci].title = fu.content.slice(0, 30) + '…'; this.renderHistoryItem(chatId, all[ci].title); }
                     }
                     localStorage.setItem(this.storageKey, JSON.stringify(all));
-                    if (this.sync) this.sync.broadcast();
                 }
             }
 
@@ -2125,7 +2122,6 @@ const response = await fetch(BACKEND_CHAT_URL, {
                     row.remove();
                     if (this.state.chatId === id) this.newChat();
                     Utils.showToast('Chat deleted', 'success');
-                    if (this.sync) this.sync.broadcastDelete(id);
                 };
                 actions.appendChild(exportBtn);
                 actions.appendChild(delBtn);
@@ -2160,7 +2156,6 @@ const response = await fetch(BACKEND_CHAT_URL, {
                 h.unshift(chatObj);
                 if (h.length > 50) h = h.slice(0, 50);
                 localStorage.setItem(this.storageKey, JSON.stringify(h));
-                if (this.sync) this.sync.broadcast();
             }
 
             newChat() {
@@ -2216,161 +2211,6 @@ const response = await fetch(BACKEND_CHAT_URL, {
                 document.body.classList.remove('theme-dark', 'theme-light');
                 document.body.classList.add(isDark ? 'theme-light' : 'theme-dark');
                 localStorage.setItem('esamz_theme', isDark ? 'light' : 'dark');
-            }
-        }
-
-        // ====================================================================
-        //  SYNC MANAGER
-        // ====================================================================
-        class SyncManager {
-            constructor(storageKey, onMergeCallback) {
-                this.storageKey  = storageKey;
-                this.onMerge     = onMergeCallback;
-                this.peer        = null;
-                this.connections = {};
-                this.myCode      = null;
-                this._dot        = document.getElementById('syncDot');
-                this._label      = document.getElementById('syncLabelText');
-                this._codeEl     = document.getElementById('myPeerCode');
-                this._peersList  = document.getElementById('syncPeersList');
-                this._joinInput  = document.getElementById('syncJoinInput');
-                this._joinBtn    = document.getElementById('btnSyncJoin');
-                this._copyBtn    = document.getElementById('btnCopyCode');
-                this._broadcastDebounce = null;
-                this.blacklist   = JSON.parse(localStorage.getItem('esamz_blacklist') || '[]');
-                this._joinBtn.addEventListener('click', () => this._joinFromInput());
-                this._copyBtn.addEventListener('click', () => this._copyCode());
-                this._joinInput.addEventListener('keydown', e => { if (e.key === 'Enter') this._joinFromInput(); });
-                this._joinInput.addEventListener('input',   e => { e.target.value = e.target.value.replace(/[^0-9]/g,'').slice(0,6); });
-                this._initPeer();
-            }
-            _generateCode() {
-                let c = localStorage.getItem('esamz_peer_code');
-                if (!c || c.length !== 6) { c = String(Math.floor(100000 + Math.random() * 900000)); localStorage.setItem('esamz_peer_code', c); }
-                return c;
-            }
-            async _initPeer() {
-                try {
-                    if (typeof Peer === 'undefined') {
-                        await new Promise((res, rej) => {
-                            const p = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js';
-                            const f = 'https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js';
-                            const tryLoad = (src, onFail) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = onFail; document.head.appendChild(s); };
-                            tryLoad(p, () => tryLoad(f, rej));
-                        });
-                    }
-                    this.myCode = this._generateCode();
-                    this._codeEl.textContent = this.myCode;
-                    this._setStatus('connecting');
-                    this.peer = new Peer(`esamz-v10-${this.myCode}`, { debug: 0, config: { iceServers: [{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:stun2.l.google.com:19302'},{urls:'stun:stun3.l.google.com:19302'},{urls:'stun:stun4.l.google.com:19302'}] } });
-                    this.peer.on('open', id => { this._setStatus('ready'); this._codeEl.textContent = id.replace('esamz-v10-',''); this._reconnectKnown(); });
-                    this.peer.on('connection', conn => {
-                        if (this.blacklist.includes(conn.peer)) { conn.close(); return; }
-                        let approved = null;
-                        const pending = [];
-                        let pcp = null;
-                        const shortId = conn.peer.replace('esamz-v10-','');
-                        const onLost = () => {
-                            if (approved !== null) return;
-                            approved = false; pending.length = 0;
-                            try { if (pcp) pcp.cancel(); } catch(_) {}
-                            Utils.showToast(`Device ${shortId} disconnected before approval`,'info');
-                            delete this.connections[conn.peer]; this._updatePeersList();
-                            if (!Object.keys(this.connections).length) this._setStatus('ready');
-                        };
-                        conn.on('data', p => { if (approved === null) pending.push(p); else if (approved) this._handlePacket(p); });
-                        conn.on('close', onLost); conn.on('error', onLost);
-                        pcp = Utils.confirm(`Device ${shortId} wants to sync. Allow?`, 'Sync Request');
-                        pcp.then(allow => {
-                            pcp = null;
-                            if (!allow) {
-                                approved = false; pending.length = 0;
-                                try { conn.send({type:'REJECTED'}); } catch(_) {}
-                                conn.close(); delete this.connections[conn.peer]; this._updatePeersList();
-                                if (!Object.keys(this.connections).length) this._setStatus('ready');
-                                return;
-                            }
-                            approved = true;
-                            this.connections[conn.peer] = conn; this._updatePeersList(); this._setStatus('connected'); this._saveKnownPeer(conn.peer);
-                            Utils.showToast('Device connected','success');
-                            const run = () => { this._sendFull(conn); pending.splice(0).forEach(p => this._handlePacket(p)); };
-                            conn.open ? run() : conn.on('open', run);
-                        });
-                    });
-                    this.peer.on('disconnected', () => { this._setStatus('ready'); setTimeout(() => { try { if (this.peer && !this.peer.destroyed) this.peer.reconnect(); } catch(_) {} }, 3000); });
-                } catch(e) { console.error('PeerJS failed:', e); Utils.showToast('Sync disabled: PeerJS failed','error'); document.getElementById('syncSection').style.display = 'none'; }
-            }
-            _setupConn(conn) {
-                const pid = conn.peer;
-                this.connections[pid] = conn;
-                conn.on('open',  () => { this._updatePeersList(); this._setStatus('connected'); this._saveKnownPeer(pid); setTimeout(() => this._sendFull(conn), 500); });
-                conn.on('data',  p => { if (p.type === 'REJECTED') { this._removeKnownPeer(pid); Utils.showToast('Sync declined','info'); return; } this._handlePacket(p); });
-                conn.on('close', () => { delete this.connections[pid]; this._updatePeersList(); if (!Object.keys(this.connections).length) this._setStatus('ready'); });
-                conn.on('error', () => { delete this.connections[pid]; this._updatePeersList(); if (!Object.keys(this.connections).length) this._setStatus('ready'); });
-            }
-            blockPeer(pid) { if (!this.blacklist.includes(pid)) { this.blacklist.push(pid); localStorage.setItem('esamz_blacklist', JSON.stringify(this.blacklist)); } this.disconnect(pid); Utils.showToast(`Device ${pid} blocked`,'info'); }
-            _sendFull(conn) { const c = localStorage.getItem(this.storageKey); conn.send({type:'FULL_SYNC', chats: c ? JSON.parse(c) : []}); }
-            broadcast(immediate = false) {
-                clearTimeout(this._broadcastDebounce);
-                this._broadcastDebounce = setTimeout(() => {
-                    const c = localStorage.getItem(this.storageKey);
-                    const p = {type:'FULL_SYNC', chats: c ? JSON.parse(c) : []};
-                    Object.values(this.connections).forEach(conn => { try { if (conn.open) conn.send(p); } catch(_) {} });
-                }, immediate ? 0 : 600);
-            }
-            broadcastDelete(chatId) { const p = {type:'DELETE_CHAT', chatId}; Object.values(this.connections).forEach(conn => { try { if (conn.open) conn.send(p); } catch(_) {} }); }
-            _handlePacket(p) { if (p.type === 'FULL_SYNC') this._mergeChats(p.chats); else if (p.type === 'DELETE_CHAT') this._deleteChat(p.chatId); }
-            _deleteChat(chatId) { const r = localStorage.getItem(this.storageKey); let c = r ? JSON.parse(r) : []; const b = c.length; c = c.filter(x => x.id !== chatId); if (c.length !== b) { localStorage.setItem(this.storageKey, JSON.stringify(c)); if (this.onMerge) this.onMerge(); Utils.showToast('Chat removed by peer','info'); } }
-            _mergeChats(incoming) {
-                const r = localStorage.getItem(this.storageKey);
-                const local = r ? JSON.parse(r) : [];
-                const merged = {};
-                local.forEach(c => { merged[c.id] = c; });
-                incoming.forEach(inc => {
-                    if (!merged[inc.id]) { merged[inc.id] = inc; }
-                    else {
-                        const loc = merged[inc.id];
-                        const lt = loc.lastUpdated || 0, it = inc.lastUpdated || 0;
-                        if (it > lt) { merged[inc.id] = inc; }
-                        else if (it === lt) {
-                            const lm = loc.messages || [], im = inc.messages || [];
-                            const mm = [];
-                            for (let i = 0; i < Math.max(lm.length, im.length); i++) {
-                                const a = lm[i], b = im[i];
-                                if (a && b) mm.push(a.content.length >= b.content.length ? a : b);
-                                else mm.push(a || b);
-                            }
-                            merged[inc.id] = {...loc, messages: mm, lastUpdated: Date.now()};
-                        }
-                    }
-                });
-                const result = Object.values(merged).sort((a,b) => Number(b.id)-Number(a.id)).slice(0,50);
-                localStorage.setItem(this.storageKey, JSON.stringify(result));
-                if (this.onMerge) this.onMerge();
-                Utils.showToast('Chats synced ✓','success');
-            }
-            _joinFromInput() { const c = this._joinInput.value.trim(); if (c.length !== 6) { Utils.showToast('Enter a 6-digit code','error'); return; } if (c === this.myCode) { Utils.showToast('Cannot connect to yourself','error'); return; } if (this.connections[`esamz-v10-${c}`]) { Utils.showToast('Already connected','info'); return; } this._connect(c); this._joinInput.value = ''; }
-            _connect(pid) { if (!this.peer || this.peer.destroyed) { Utils.showToast('Peer not ready','error'); return; } this._setStatus('connecting'); const conn = this.peer.connect(`esamz-v10-${pid}`, {reliable:true}); this._setupConn(conn); }
-            disconnect(pid) { const c = this.connections[pid]; if (c) { try { c.close(); } catch(_) {} } delete this.connections[pid]; this._removeKnownPeer(pid); this._updatePeersList(); if (!Object.keys(this.connections).length) this._setStatus('ready'); }
-            _reconnectKnown() { this._getKnownPeers().forEach(pid => { if (!this.connections[pid]) this._connect(pid.replace('esamz-v10-','')); }); }
-            _getKnownPeers() { try { return JSON.parse(localStorage.getItem('esamz_known_peers') || '[]'); } catch(_) { return []; } }
-            _saveKnownPeer(pid) { const k = this._getKnownPeers(); if (!k.includes(pid)) { k.push(pid); localStorage.setItem('esamz_known_peers', JSON.stringify(k)); } }
-            _removeKnownPeer(pid) { const k = this._getKnownPeers().filter(p => p !== pid); localStorage.setItem('esamz_known_peers', JSON.stringify(k)); }
-            _copyCode() { navigator.clipboard.writeText(this.myCode).then(() => { Utils.showToast('Code copied!','success'); this._copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`; setTimeout(() => { this._copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="1"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`; }, 2000); }); }
-            _setStatus(s) { this._dot.className = 'sync-status-dot'; if (s === 'connected') { this._dot.classList.add('connected'); this._label.textContent = `Synced (${Object.keys(this.connections).length})`; } else if (s === 'connecting') { this._dot.classList.add('connecting'); this._label.textContent = 'Connecting…'; } else { this._label.textContent = 'Sync Devices'; } }
-            _updatePeersList() {
-                this._peersList.innerHTML = '';
-                Object.keys(this.connections).forEach(pid => {
-                    const chip = document.createElement('div'); chip.className = 'sync-peer-chip';
-                    chip.innerHTML = `<span class="dot"></span><span>Device ${pid.replace('esamz-v10-','')}</span>`;
-                    const acts = document.createElement('div'); acts.style.cssText = 'display:flex;gap:8px;margin-left:auto;';
-                    const disBtn = document.createElement('button'); disBtn.className = 'sync-disconnect-btn'; disBtn.title = 'Disconnect'; disBtn.textContent = '✕'; disBtn.onclick = () => this.disconnect(pid);
-                    const blkBtn = document.createElement('button'); blkBtn.className = 'sync-disconnect-btn'; blkBtn.title = 'Block'; blkBtn.innerHTML = '🚫'; blkBtn.style.fontSize = '10px';
-                    blkBtn.onclick = async () => { const ok = await Utils.confirm(`Block Device ${pid}?`, 'Block Peer'); if (ok) this.blockPeer(pid); };
-                    acts.appendChild(disBtn); acts.appendChild(blkBtn); chip.appendChild(acts); this._peersList.appendChild(chip);
-                });
-                if (Object.keys(this.connections).length > 0) this._setStatus('connected');
-                else this._setStatus('ready');
             }
         }
 
@@ -2467,6 +2307,9 @@ const response = await fetch(BACKEND_CHAT_URL, {
         // ====================================================================
         //  BOOT
         // ====================================================================
+        // Clean up stale PeerJS localStorage keys from previous versions
+        ['esamz_peer_code', 'esamz_known_peers', 'esamz_blacklist'].forEach(k => localStorage.removeItem(k));
+
         window.app = new App();
 
         // ====================================================================
