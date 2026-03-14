@@ -1920,28 +1920,26 @@
                     if (ragEnabled !== undefined)   reqBody.ragEnabled         = ragEnabled;
                     if (customSystemPrompt)         reqBody.customSystemPrompt = customSystemPrompt;
 
-                    // FIX P5: attach JWT as Bearer token so backend can verify tier
-                   // Inside handleSend() in index.html
+                    const storedJwt = localStorage.getItem('esamz_jwt');
+                    const reqHeaders = { 'Content-Type': 'application/json' };
+                    if (storedJwt) {
+                        reqHeaders['Authorization'] = `Bearer ${storedJwt}`;
+                    }
 
-// 1. Get the JWT token we saved during activation
-const storedJwt = localStorage.getItem('esamz_jwt'); 
+                    // Show "waking up server" message if backend takes > 6s to respond.
+                    // Must be started BEFORE the fetch so it fires during cold-start hangs
+                    // (Render.com free tier can take 30-60s to wake up from idle).
+                    const coldStartTimer = setTimeout(() => {
+                        if (this.state.isProcessing) this.updateStatus('Waking up server… (~30s first request)');
+                    }, 6000);
 
-// 2. Prepare headers
-const reqHeaders = { 
-    'Content-Type': 'application/json' 
-};
-
-// 3. Attach the token if it exists
-if (storedJwt) {
-    reqHeaders['Authorization'] = `Bearer ${storedJwt}`;
-}
-
-const response = await fetch(BACKEND_CHAT_URL, {
-    method:  'POST',
-    headers: reqHeaders, // Use the secured headers
-    body:    JSON.stringify(reqBody),
-    signal:  this.state.abortController.signal,
-});
+                    const response = await fetch(BACKEND_CHAT_URL, {
+                        method:  'POST',
+                        headers: reqHeaders,
+                        body:    JSON.stringify(reqBody),
+                        signal:  this.state.abortController.signal,
+                    });
+                    clearTimeout(coldStartTimer);
                     if (!response.ok) throw new Error(`API Error: ${response.status}`);
 
                     const reader  = response.body.getReader();
@@ -1949,10 +1947,6 @@ const response = await fetch(BACKEND_CHAT_URL, {
                     let buffer    = '';
                     let fullText  = '';
                     let incomingHistory = null;
-
-                    const coldStartTimer = setTimeout(() => {
-                        if (this.state.isProcessing) this.updateStatus('Waking up server… (~30s first request)');
-                    }, 6000);
 
                     let renderScheduled = false;
                     const scheduleRender = () => {
