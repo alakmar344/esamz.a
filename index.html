@@ -1926,21 +1926,27 @@
                         reqHeaders['Authorization'] = `Bearer ${storedJwt}`;
                     }
 
-                    // Show "waking up server" message if backend takes > 6s to respond.
-                    // Must be started BEFORE the fetch so it fires during cold-start hangs
-                    // (Render.com free tier can take 30-60s to wake up from idle).
-                    const coldStartTimer = setTimeout(() => {
-                        if (this.state.isProcessing) this.updateStatus('Waking up server… (~30s first request)');
-                    }, 6000);
-
-                    const response = await fetch(BACKEND_CHAT_URL, {
-                        method:  'POST',
-                        headers: reqHeaders,
-                        body:    JSON.stringify(reqBody),
-                        signal:  this.state.abortController.signal,
-                    });
-                    clearTimeout(coldStartTimer);
-                    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                    // Retry up to 2 times on 504 Gateway Timeout (Sarvam API transient errors).
+                    let response;
+                    for (let attempt = 0; attempt <= 2; attempt++) {
+                        if (attempt > 0) {
+                            this.updateStatus(`Retrying… (${attempt}/2)`);
+                            await new Promise(r => setTimeout(r, 2000 * attempt));
+                        }
+                        response = await fetch(BACKEND_CHAT_URL, {
+                            method:  'POST',
+                            headers: reqHeaders,
+                            body:    JSON.stringify(reqBody),
+                            signal:  this.state.abortController.signal,
+                        });
+                        if (response.ok || response.status !== 504) break;
+                    }
+                    if (!response.ok) {
+                        const msg = response.status === 504
+                            ? 'AI service timed out. Please try again in a moment.'
+                            : `API Error: ${response.status}`;
+                        throw new Error(msg);
+                    }
 
                     const reader  = response.body.getReader();
                     const decoder = new TextDecoder('utf-8');
@@ -1969,18 +1975,18 @@
                         const type = line.substring(0, sep);
                         const data = line.substring(sep + 1);
                         if (type === 'STATUS') {
-                            clearTimeout(coldStartTimer);
                             if (data === 'SEARCHING') this.updateStatus('Searching…');
                             if (data === 'TYPING')    this.updateStatus('Generating…');
                         } else if (type === 'CHUNK') {
-                            clearTimeout(coldStartTimer);
                             fullText += data.replace(/\\n/g, '\n');
                             scheduleRender();
                         } else if (type === 'HISTORY_UPDATE') {
                             try { incomingHistory = JSON.parse(data); } catch (_) {}
                         } else if (type === 'ERROR') {
-                            clearTimeout(coldStartTimer);
-                            throw new Error(data);
+                            const errMsg = /504|gateway timeout|timed out/i.test(data)
+                                ? 'AI service timed out. Please try again in a moment.'
+                                : data;
+                            throw new Error(errMsg);
                         }
                     };
 
@@ -1992,7 +1998,6 @@
                         buffer = lines.pop() ?? '';
                         for (const l of lines) processLine(l);
                     }
-                    clearTimeout(coldStartTimer);
                     if (buffer.trim()) for (const l of buffer.split('\n')) processLine(l);
 
                     if (fullText && window.marked && window.DOMPurify) {
