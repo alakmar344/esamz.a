@@ -36,17 +36,23 @@ export async function POST(req: Request) {
 
     const payload = JSON.parse(rawBody);
 
-    // Handle Successful Payment
-    if (payload.event === 'ORDER_PAID') {
-      const { order_id, customer_details } = payload.data;
-      const customerEmail = customer_details.customer_email;
+    // Handle Successful Payment from Cashfree Forms
+    if (payload.type === 'PAYMENT_FORM_ORDER_WEBHOOK' && payload.data?.order?.order_status === 'PAID') {
+      const orderData = payload.data.order;
+      const order_id = orderData.order_id;
+      const order_amount = orderData.order_amount;
+      const customerEmail = orderData.customer_details?.customer_email;
 
       await connectDB();
 
-      // Determine Tier from Order ID (e.g., "PRO_123" or "MAX_456")
+      // Determine Tier based on Amount Paid
+      // Max = ₹499, Pro = ₹199, Plus = anything less
       let newTier = 'plus';
-      if (order_id.includes('PRO')) newTier = 'pro';
-      if (order_id.includes('MAX')) newTier = 'max';
+      if (order_amount >= 499) {
+        newTier = 'max';
+      } else if (order_amount >= 199) {
+        newTier = 'pro';
+      }
 
       await User.findOneAndUpdate(
         { email: customerEmail },
