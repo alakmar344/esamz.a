@@ -23,6 +23,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+    <!-- Clerk authentication -->
+    <script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js" crossorigin="anonymous"></script>
     <!-- Structured Data -->
     <script type="application/ld+json">{
         "@context": "https://schema.org",
@@ -483,77 +485,6 @@
         .dialog-actions .btn-primary:hover{background:var(--vermillion);border-color:var(--vermillion);}
         .dialog-actions .btn-secondary:hover{background:var(--crescent-soft);color:var(--ink);}
 
-        /* KEY ACTIVATION MODAL */
-        .activation-modal-overlay{
-            position:fixed;inset:0;background:rgba(42,31,26,0.75);backdrop-filter:blur(5px);
-            display:flex;align-items:center;justify-content:center;z-index:10002;
-            opacity:1;visibility:visible;
-            transition:opacity 0.15s ease-out,visibility 0s 0s;will-change:opacity;
-        }
-        .activation-modal-overlay.hidden{opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.15s ease-out,visibility 0s 0.15s;}
-        .activation-modal-overlay.hidden .activation-modal{transform:translateY(20px);opacity:0;}
-        .activation-modal{
-            background:var(--paper);border:1px solid var(--rule-bold);
-            box-shadow:0 8px 32px rgba(0,0,0,0.14);border-radius:12px;
-            max-width:440px;width:92%;position:relative;overflow:hidden;
-            transform:translateY(0);opacity:1;
-            transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1),opacity 0.15s ease-out;will-change:transform,opacity;
-        }
-        .activation-modal-top{background:var(--paper-warm);border-bottom:1px solid var(--rule);padding:28px 32px 22px;}
-        .activation-modal-eyebrow{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-ghost);margin-bottom:8px;display:flex;align-items:center;gap:10px;}
-        .activation-modal-eyebrow::before{content:'';display:block;width:24px;height:1px;background:var(--crescent);opacity:0.6;}
-        .activation-modal-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:var(--ink);letter-spacing:-0.01em;line-height:1.1;margin-bottom:6px;}
-        .activation-modal-sub{font-size:13px;font-style:italic;color:var(--ink-faint);line-height:1.55;}
-        .activation-modal-body{padding:24px 32px 28px;}
-        .activation-close-btn{position:absolute;top:12px;right:12px;background:none;border:1px solid var(--rule-bold);border-radius:6px;color:var(--ink-ghost);width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;transition:all 120ms;}
-        .activation-close-btn:hover{background:var(--crescent-soft);color:var(--ink);border-color:var(--crescent);}
-        .key-input-row{display:flex;gap:8px;margin-bottom:16px;}
-        #activationKeyInput{
-            flex:1;background:var(--paper);
-            border:1px solid var(--rule-bold);border-radius:var(--r);
-            color:var(--ink);font-family:'DM Mono',monospace;
-            font-size:13px;letter-spacing:0.1em;
-            padding:11px 14px;outline:none;min-width:0;
-            transition:border-color 150ms;
-        }
-        body.theme-dark #activationKeyInput{background:rgba(245,237,224,0.05);}
-        #activationKeyInput:focus{border-color:var(--crescent);}
-        #activationKeyInput::placeholder{color:var(--ink-ghost);text-transform:none;letter-spacing:0.04em;}
-        #btnActivateKey{
-            padding:11px 18px;background:var(--crescent);color:var(--paper);
-            border:1px solid var(--crescent);border-radius:var(--r);
-            font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;
-            text-transform:uppercase;cursor:pointer;transition:background 120ms;
-            white-space:nowrap;flex-shrink:0;
-        }
-        #btnActivateKey:hover:not(:disabled){background:var(--vermillion);border-color:var(--vermillion);}
-        #btnActivateKey:disabled{opacity:0.45;cursor:not-allowed;}
-        #activationStatus{
-            font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.06em;
-            min-height:18px;margin-bottom:16px;
-            transition:color 200ms;
-        }
-        #activationStatus.error{color:var(--vermillion);}
-        #activationStatus.success{color:#22c55e;}
-        .tier-grid{display:flex;flex-direction:column;gap:8px;}
-        .tier-row{
-            display:flex;align-items:center;gap:10px;padding:10px 14px;
-            border:1px solid var(--rule);border-radius:6px;cursor:default;
-            transition:border-color 120ms,background 120ms;
-        }
-        .tier-row:hover{border-color:var(--rule-bold);background:var(--crescent-soft);}
-        a.tier-link{text-decoration:none;cursor:pointer;}
-        a.tier-link:hover{border-color:var(--crescent);background:var(--crescent-soft);}
-        .activation-upgrade-link{display:block;margin-top:14px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--crescent);text-decoration:none;border:1px solid var(--crescent);padding:9px;transition:background 120ms,color 120ms;}
-        .activation-upgrade-link:hover{background:var(--crescent);color:var(--paper);}
-        .tier-icon{font-size:16px;flex-shrink:0;width:22px;text-align:center;}
-        .tier-info{flex:1;min-width:0;}
-        .tier-name{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink);margin-bottom:2px;}
-        .tier-features{font-size:11px;color:var(--ink-ghost);font-style:italic;}
-        .tier-price{font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-faint);flex-shrink:0;}
-        .activation-deactivate{display:block;margin-top:18px;text-align:center;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-ghost);cursor:pointer;background:none;border:none;width:100%;transition:color 120ms;}
-        .activation-deactivate:hover{color:var(--vermillion);}
-
         /* PLANS PAGE MODAL */
         .plans-modal-overlay{
             position:fixed;inset:0;background:rgba(42,31,26,0.75);backdrop-filter:blur(6px);
@@ -604,37 +535,6 @@
             transition:background 150ms;margin-bottom:20px;
         }
         .plans-upgrade-btn:hover{background:var(--vermillion);}
-        .plans-divider{height:1px;background:var(--rule);margin:20px 0;position:relative;}
-        .plans-divider::after{content:'✦';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--paper);padding:0 10px;font-size:10px;color:var(--ink-ghost);}
-        .plans-activation-section{}
-        .plans-activation-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px;}
-        .plans-activation-hint{font-size:11px;color:var(--ink-ghost);font-style:italic;margin-bottom:12px;line-height:1.45;}
-        .plans-key-row{display:flex;gap:8px;margin-bottom:10px;}
-        .plans-key-input{
-            flex:1;background:var(--paper);
-            border:1px solid var(--rule-bold);border-radius:var(--r);
-            color:var(--ink);font-family:'DM Mono',monospace;
-            font-size:12px;letter-spacing:0.08em;
-            padding:10px 12px;outline:none;min-width:0;
-            transition:border-color 150ms;
-        }
-        body.theme-dark .plans-key-input{background:rgba(245,237,224,0.05);}
-        .plans-key-input:focus{border-color:var(--crescent);}
-        .plans-key-input::placeholder{color:var(--ink-ghost);letter-spacing:0.02em;}
-        .plans-activate-btn{
-            padding:10px 16px;background:var(--crescent);color:var(--paper);
-            border:1px solid var(--crescent);border-radius:var(--r);
-            font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;
-            text-transform:uppercase;cursor:pointer;transition:background 120ms;
-            white-space:nowrap;flex-shrink:0;
-        }
-        .plans-activate-btn:hover:not(:disabled){background:var(--vermillion);border-color:var(--vermillion);}
-        .plans-activate-btn:disabled{opacity:0.45;cursor:not-allowed;}
-        .plans-status{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.06em;min-height:16px;margin-bottom:8px;transition:color 200ms;}
-        .plans-status.error{color:var(--vermillion);}
-        .plans-status.success{color:#22c55e;}
-        .plans-deactivate{display:block;text-align:center;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-ghost);cursor:pointer;background:none;border:none;width:100%;padding:6px 0;transition:color 120ms;}
-        .plans-deactivate:hover{color:var(--vermillion);}
 
         /* View Plans sidebar button */
         .btn-view-plans{
@@ -834,76 +734,7 @@
                     </div>
                 </div>
 
-                <a href="https://esamzai.mojo.page/esamz-ai-subscription/" class="plans-upgrade-btn" target="_blank" rel="noopener">Get a Plan →</a>
-
-                <div class="plans-divider"></div>
-
-                <div class="plans-activation-section">
-                    <div class="plans-activation-label">Already upgraded?</div>
-                    <div class="plans-activation-hint">Paste the activation key from your Instamojo receipt below to unlock your plan.</div>
-                    <div class="plans-key-row">
-                        <input
-                            type="text"
-                            id="plansKeyInput"
-                            class="plans-key-input"
-                            placeholder="Paste your activation key here"
-                            maxlength="512"
-                            autocomplete="off"
-                            spellcheck="false"
-                            aria-label="Activation key"
-                        >
-                        <button class="plans-activate-btn" id="btnPlansActivate">Activate</button>
-                    </div>
-                    <div id="plansStatus" class="plans-status" role="status" aria-live="polite"></div>
-                    <button class="plans-deactivate" id="btnPlansDeactivate">Remove current activation</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- KEY ACTIVATION MODAL (hidden, kept for backward compat) -->
-    <div class="activation-modal-overlay hidden" id="activationModal" role="dialog" aria-modal="true" aria-labelledby="activationModalTitle" style="display:none;">
-        <div class="activation-modal">
-            <button class="activation-close-btn" id="activationModalClose" aria-label="Close">✕</button>
-            <div class="activation-modal-top">
-                <div class="activation-modal-eyebrow">eSAMz AI — Unlock Plan</div>
-                <div class="activation-modal-title" id="activationModalTitle">Activate your key</div>
-                <div class="activation-modal-sub">Enter the key from your Instamojo receipt to unlock Plus, Pro, or Max features.</div>
-            </div>
-            <div class="activation-modal-body">
-                <div class="key-input-row">
-                    <input type="text" id="activationKeyInput" placeholder="Paste your activation key here" maxlength="512" autocomplete="off" spellcheck="false" aria-label="Activation key">
-                    <button id="btnActivateKey">Activate</button>
-                </div>
-                <div id="activationStatus" role="status" aria-live="polite"></div>
-                <div class="tier-grid">
-                    <a class="tier-row tier-link" href="https://esamzai.mojo.page/esamz-ai-subscription/" target="_blank" rel="noopener">
-                        <div class="tier-icon">⚡</div>
-                        <div class="tier-info">
-                            <div class="tier-name">Plus</div>
-                            <div class="tier-features">RAG always on · Wikipedia + web search</div>
-                        </div>
-                        <div class="tier-price">₹99/mo</div>
-                    </a>
-                    <a class="tier-row tier-link" href="https://esamzai.mojo.page/esamz-ai-subscription/" target="_blank" rel="noopener">
-                        <div class="tier-icon">🚀</div>
-                        <div class="tier-info">
-                            <div class="tier-name">Pro</div>
-                            <div class="tier-features">Plus + RAG on/off toggle</div>
-                        </div>
-                        <div class="tier-price">₹199/mo</div>
-                    </a>
-                    <a class="tier-row tier-link" href="https://esamzai.mojo.page/esamz-ai-subscription/" target="_blank" rel="noopener">
-                        <div class="tier-icon">♾️</div>
-                        <div class="tier-info">
-                            <div class="tier-name">Max</div>
-                            <div class="tier-features">Pro + custom system prompt editor</div>
-                        </div>
-                        <div class="tier-price">₹499/mo</div>
-                    </a>
-                </div>
-                <a class="activation-upgrade-link" href="https://esamzai.mojo.page/esamz-ai-subscription/" target="_blank" rel="noopener">→ Get a plan &amp; receive your activation key</a>
-                <button class="activation-deactivate" id="btnDeactivateKey">Remove current activation</button>
+                <a href="https://payments.cashfree.com/forms/esamz-ai" class="plans-upgrade-btn" target="_blank" rel="noopener">Get a Plan →</a>
             </div>
         </div>
     </div>
@@ -973,6 +804,7 @@
                     </div>
                 </div>
                 <div class="header-right">
+                    <div id="clerkUserButton" style="display:flex;align-items:center;"></div>
                     <button class="theme-toggle" id="btnThemeToggle" title="Toggle theme" aria-label="Toggle theme">
                         <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
                         <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
@@ -1141,15 +973,11 @@
     (function () {
         'use strict';
 
-        const VERIFY_KEY_ENDPOINT = 'https://esamz.tech/api/verify-key';
+        const CLERK_PUBLISHABLE_KEY = 'pk_test_Z2VudWluZS1tYXJtb3NldC0yMS5jbGVyay5hY2NvdW50cy5kZXYk';
         const BACKEND_CHAT_URL    = 'https://backend-for-esamzai.onrender.com/api/chat';
         const BACKEND_BASE_URL    = 'https://backend-for-esamzai.onrender.com';
 
         const LS_PLAN      = 'esamz_plan';
-        const LS_KEY       = 'esamz_key';
-        // FIX P1: store JWT from verify-key so we can send Authorization header
-        const LS_JWT       = 'esamz_jwt';
-        const LS_DEVICE_ID = 'esamz_device_id';
         const LS_STORAGE   = 'esamz_conversations_v9';
         const LS_LAST_CHAT = 'esamz_last_chat_id';
 
@@ -1202,28 +1030,45 @@
         };
 
         // ====================================================================
-        //  DEVICE ID
+        //  CLERK AUTHENTICATION
         // ====================================================================
-        function getDeviceId() {
-            let id = localStorage.getItem(LS_DEVICE_ID);
-            if (id) return id;
-            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-                id = crypto.randomUUID();
-            } else {
-                id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-                    const r = (Math.random() * 16) | 0;
-                    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
-                });
+        let clerk = null;
+
+        async function initClerk() {
+            try {
+                if (typeof window.Clerk === 'undefined') return;
+                clerk = new window.Clerk(CLERK_PUBLISHABLE_KEY);
+                await clerk.load();
+                const userButtonEl = document.getElementById('clerkUserButton');
+                if (userButtonEl) {
+                    if (clerk.user) {
+                        clerk.mountUserButton(userButtonEl);
+                    }
+                    clerk.addListener(({ user }) => {
+                        if (user) {
+                            userButtonEl.innerHTML = '';
+                            clerk.mountUserButton(userButtonEl);
+                        } else {
+                            userButtonEl.innerHTML = '';
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error('[Clerk] Failed to initialize:', e);
             }
-            localStorage.setItem(LS_DEVICE_ID, id);
-            return id;
+        }
+
+        function requireSignIn() {
+            if (!clerk) return true; // Clerk not loaded, allow usage
+            if (clerk.user) return true;
+            clerk.openSignIn();
+            return false;
         }
 
         // ====================================================================
-        //  SUBSCRIPTION CORE
+        //  SUBSCRIPTION CORE (plan UI only)
         // ====================================================================
-        async function checkPermissions() {
-            const storedKey  = localStorage.getItem(LS_KEY);
+        function checkPermissions() {
             const storedPlan = localStorage.getItem(LS_PLAN);
 
             const ragWrapper = document.getElementById('rag-toggle-wrapper');
@@ -1247,125 +1092,28 @@
                 badge.className = `plan-badge ${plan.toLowerCase()}`;
                 badge.innerHTML = `<span>${ICONS[plan] || '✦'}</span><span>${plan} Plan Active</span>`;
                 badgeEl.appendChild(badge);
-               if (plan === 'Plus') { 
-    ragWrapper.classList.add('visible'); // <-- Add this!
-    ragToggle.checked = true; 
-    ragToggle.disabled = true; 
-}
+                if (plan === 'Plus') {
+                    ragWrapper.classList.add('visible');
+                    ragToggle.checked = true;
+                    ragToggle.disabled = true;
+                }
                 if (plan === 'Pro')  { ragWrapper.classList.add('visible'); ragToggle.disabled = false; }
                 if (plan === 'Max')  { ragWrapper.classList.add('visible'); ragToggle.disabled = false; spe.classList.add('visible'); }
             }
 
-            if (!storedKey) { resetPlanUI(); return; }
-
-            // Security: validate that stored plan matches a valid tier
             const VALID_PLANS = ['Plus', 'Pro', 'Max'];
-            if (storedPlan && !VALID_PLANS.includes(storedPlan)) {
-                localStorage.removeItem(LS_PLAN);
-                localStorage.removeItem(LS_KEY);
-                localStorage.removeItem(LS_JWT);
+            if (storedPlan && VALID_PLANS.includes(storedPlan)) {
+                applyPlan(storedPlan);
+            } else {
                 resetPlanUI();
-                return;
             }
-
-            if (storedPlan) applyPlan(storedPlan);
-
-            try {
-                const deviceId = getDeviceId();
-                const res = await fetch(VERIFY_KEY_ENDPOINT, {
-                    method:  'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body:    JSON.stringify({ key: storedKey, deviceId }),
-                });
-                if (!res.ok) return;
-
-                const data = await res.json();
-
-                if (data.success && data.tier) {
-                    localStorage.setItem(LS_PLAN, data.tier);
-                    // FIX P3: refresh JWT from re-verify response
-                    if (data.jwt) localStorage.setItem(LS_JWT, data.jwt);
-                    applyPlan(data.tier);
-                    if (data.lastSlot) {
-                        Utils.showToast('You are using your last available device slot for this key.', 'info');
-                    }
-                } else {
-                    localStorage.removeItem(LS_PLAN);
-                    localStorage.removeItem(LS_KEY);
-                    // FIX P4a: clear JWT when server rejects the key
-                    localStorage.removeItem(LS_JWT);
-                    resetPlanUI();
-                    if (data.deviceBlocked) {
-                        Utils.showToast('Device limit reached for your key. Open "Manage subscription" to deactivate.', 'error');
-                    } else if (storedPlan) {
-                        Utils.showToast(`Your ${storedPlan} plan could not be verified. Please re-enter your key.`, 'error');
-                    }
-                }
-            } catch (_) {
-                // Offline — keep cached plan
-            }
-        }
-
-        async function activateKey(key) {
-            const trimmed  = (key || '').trim();
-            if (!trimmed) return { success: false, message: 'Please enter an activation key.' };
-
-            const deviceId = getDeviceId();
-
-            try {
-                const response = await fetch(VERIFY_KEY_ENDPOINT, {
-                    method:  'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body:    JSON.stringify({ key: trimmed, deviceId }),
-                });
-
-                if (!response.ok) {
-                    return { success: false, message: `Server error (${response.status}). Please try again.` };
-                }
-
-                const data = await response.json();
-
-                if (data.success && data.tier) {
-                    localStorage.setItem(LS_PLAN, data.tier);
-                    localStorage.setItem(LS_KEY,  trimmed);
-                    // FIX P2: store JWT so every /api/chat call sends Authorization: Bearer <jwt>
-                    if (data.jwt) localStorage.setItem(LS_JWT, data.jwt);
-                    return {
-                        success:  true,
-                        tier:     data.tier,
-                        lastSlot: !!(data.lastSlot || (data.devicesUsed >= data.maxDevices)),
-                    };
-                }
-
-                return {
-                    success:       false,
-                    deviceBlocked: !!data.deviceBlocked,
-                    message:       data.message || 'Invalid or expired key.',
-                };
-
-            } catch (err) {
-                console.error('[activateKey]', err);
-                return { success: false, message: 'Network error. Check your connection and try again.' };
-            }
-        }
-
-        // Shared deactivation logic
-        async function clearActivation() {
-            localStorage.removeItem(LS_PLAN);
-            localStorage.removeItem(LS_KEY);
-            localStorage.removeItem(LS_JWT);
-            checkPermissions();
         }
 
         // ====================================================================
         //  PLANS PAGE MODAL UI
         // ====================================================================
         const PlansModal = {
-            overlay:      document.getElementById('plansModal'),
-            keyInput:     document.getElementById('plansKeyInput'),
-            activateBtn:  document.getElementById('btnPlansActivate'),
-            statusEl:     document.getElementById('plansStatus'),
-            deactivateBtn:document.getElementById('btnPlansDeactivate'),
+            overlay: document.getElementById('plansModal'),
 
             init() {
                 document.getElementById('btnViewPlans')
@@ -1375,172 +1123,17 @@
                 this.overlay.addEventListener('click', e => {
                     if (e.target === this.overlay) this.close();
                 });
-                this.activateBtn.addEventListener('click', () => this._handleActivate());
-                this.keyInput.addEventListener('keydown', e => {
-                    if (e.key === 'Enter') this._handleActivate();
-                });
-                this.keyInput.addEventListener('input', () => this._clearStatus());
-                this.deactivateBtn.addEventListener('click', () => this._handleDeactivate());
-                // Prevent paste of non-text content / script injection
-                this.keyInput.addEventListener('paste', e => {
-                    e.preventDefault();
-                    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-                    const sanitized = text.replace(/[<>"'`\\]/g, '').trim();
-                    const input = e.target;
-                    const start = input.selectionStart;
-                    const end   = input.selectionEnd;
-                    input.setRangeText(sanitized, start, end, 'end');
-                    input.dispatchEvent(new Event('input'));
-                });
-                const storedKey = localStorage.getItem(LS_KEY);
-                if (storedKey) this.keyInput.value = storedKey;
             },
 
             open() {
                 this.overlay.classList.remove('hidden');
-                this._clearStatus();
             },
 
             close() {
                 this.overlay.classList.add('hidden');
-                this._clearStatus();
-            },
-
-            _setStatus(msg, isError = false) {
-                this.statusEl.textContent = msg;
-                this.statusEl.className   = 'plans-status ' + (isError ? 'error' : 'success');
-            },
-
-            _clearStatus() {
-                this.statusEl.textContent = '';
-                this.statusEl.className   = 'plans-status';
-            },
-
-            async _handleActivate() {
-                const key = this.keyInput.value.trim();
-                if (!key) {
-                    this._setStatus('Please enter your activation key.', true);
-                    return;
-                }
-
-                this.activateBtn.disabled   = true;
-                this.activateBtn.textContent = 'Checking…';
-                this._clearStatus();
-
-                const result = await activateKey(key);
-
-                this.activateBtn.disabled    = false;
-                this.activateBtn.textContent = 'Activate';
-
-                if (result.success) {
-                    this._setStatus(`✓ ${result.tier} plan activated!`);
-                    checkPermissions();
-                    Utils.showToast(`${result.tier} plan activated`, 'success');
-                    if (result.lastSlot) {
-                        Utils.showToast('Both device slots are now used. A 3rd device will be blocked.', 'info');
-                    }
-                    setTimeout(() => this.close(), 1600);
-                } else {
-                    this._setStatus(result.message || 'Activation failed.', true);
-                }
-            },
-
-            async _handleDeactivate() {
-                const ok = await Utils.confirm('Remove activation?', 'Remove Activation');
-                if (!ok) return;
-
-                await clearActivation();
-                this.keyInput.value = '';
-                this._clearStatus();
-                Utils.showToast('Plan removed', 'info');
             }
         };
 
-        // ====================================================================
-        //  LEGACY ACTIVATION MODAL (kept for keyboard shortcut compat)
-        // ====================================================================
-        const ActivationModal = {
-            overlay:    document.getElementById('activationModal'),
-            keyInput:   document.getElementById('activationKeyInput'),
-            activateBtn:document.getElementById('btnActivateKey'),
-            statusEl:   document.getElementById('activationStatus'),
-            deactivateBtn: document.getElementById('btnDeactivateKey'),
-
-            init() {
-                // Redirect old activation modal trigger to new plans modal
-                document.getElementById('activationModalClose')
-                    .addEventListener('click', () => this.close());
-                this.activateBtn.addEventListener('click', () => this._handleActivate());
-                this.keyInput.addEventListener('keydown', e => {
-                    if (e.key === 'Enter') this._handleActivate();
-                });
-                this.keyInput.addEventListener('input', () => {
-                    this._clearStatus();
-                });
-                this.deactivateBtn.addEventListener('click', () => this._handleDeactivate());
-                const storedKey = localStorage.getItem(LS_KEY);
-                if (storedKey) this.keyInput.value = storedKey;
-            },
-
-            open() {
-                // Redirect to new plans modal instead
-                PlansModal.open();
-            },
-
-            close() {
-                this.overlay.classList.add('hidden');
-                this._clearStatus();
-            },
-
-            _setStatus(msg, isError = false) {
-                this.statusEl.textContent = msg;
-                this.statusEl.className   = isError ? 'error' : 'success';
-            },
-
-            _clearStatus() {
-                this.statusEl.textContent = '';
-                this.statusEl.className   = '';
-            },
-
-            async _handleActivate() {
-                const key = this.keyInput.value.trim();
-                if (!key) {
-                    this._setStatus('Please enter your activation key.', true);
-                    return;
-                }
-
-                this.activateBtn.disabled   = true;
-                this.activateBtn.textContent = 'Checking…';
-                this._clearStatus();
-
-                const result = await activateKey(key);
-
-                this.activateBtn.disabled    = false;
-                this.activateBtn.textContent = 'Activate';
-
-                if (result.success) {
-                    this._setStatus(`✓ ${result.tier} plan activated!`);
-                    checkPermissions();
-                    Utils.showToast(`${result.tier} plan activated`, 'success');
-                    if (result.lastSlot) {
-                        Utils.showToast('Both device slots are now used. A 3rd device will be blocked.', 'info');
-                    }
-                    setTimeout(() => this.close(), 1600);
-                } else {
-                    this._setStatus(result.message || 'Activation failed.', true);
-                }
-            },
-
-            async _handleDeactivate() {
-    const ok = await Utils.confirm('Remove activation?', 'Remove Activation');
-    if (!ok) return;
-    
-    await clearActivation();
-    this.keyInput.value = '';
-    this._clearStatus();
-    Utils.showToast('Plan removed', 'info');
-}
-        };
         // ====================================================================
         //  SYSTEM PROMPT EDITOR
         // ====================================================================
@@ -1664,7 +1257,7 @@
 
                 checkPermissions();
                 PlansModal.init();
-                ActivationModal.init();
+                initClerk();
 
                 EidModal.init();
                 CiboModal.init();
@@ -1694,6 +1287,11 @@
             }
 
             setupEventListeners() {
+                this.dom.input.addEventListener('focus', () => {
+                    if (!requireSignIn()) {
+                        this.dom.input.blur();
+                    }
+                });
                 this.dom.input.addEventListener('input', () => this.handleInput());
                 this.dom.input.addEventListener('keydown', e => {
                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -1853,6 +1451,7 @@
             }
 
             async handleSend() {
+                if (!requireSignIn()) return;
                 const text = this.dom.input.value.trim();
                 if ((!text && this.state.files.length === 0) || this.state.isProcessing) return;
 
@@ -1920,10 +1519,12 @@
                     if (ragEnabled !== undefined)   reqBody.ragEnabled         = ragEnabled;
                     if (customSystemPrompt)         reqBody.customSystemPrompt = customSystemPrompt;
 
-                    const storedJwt = localStorage.getItem('esamz_jwt');
                     const reqHeaders = { 'Content-Type': 'application/json' };
-                    if (storedJwt) {
-                        reqHeaders['Authorization'] = `Bearer ${storedJwt}`;
+                    if (clerk && clerk.session) {
+                        try {
+                            const token = await clerk.session.getToken();
+                            if (token) reqHeaders['Authorization'] = `Bearer ${token}`;
+                        } catch (_) {}
                     }
 
                     // Retry up to 2 times on 504 Gateway Timeout (Sarvam API transient errors).
@@ -2477,8 +2078,6 @@
                 const ctrl = e.ctrlKey || e.metaKey;
                 if (e.key === 'Escape') {
                     if (modal && !modal.classList.contains('hidden'))                           { modal.classList.add('hidden'); e.preventDefault(); return; }
-                    const am = document.getElementById('activationModal');
-                    if (am && !am.classList.contains('hidden'))                                 { am.classList.add('hidden'); e.preventDefault(); return; }
                     const ed = document.getElementById('exportDialog');
                     const cd = document.getElementById('confirmDialog');
                     if (ed && ed.open) { ed.close(); e.preventDefault(); return; }
@@ -2493,7 +2092,6 @@
                     const sb = document.getElementById('sidebar');
                     if (sb) sb.classList.toggle('collapsed');
                 }
-                if (ctrl && e.key === 'u') { e.preventDefault(); document.getElementById('activationModal')?.classList.remove('hidden'); }
                 if (ctrl && e.key === '/') { e.preventDefault(); if (modal) modal.classList.toggle('hidden'); }
             });
         })();
