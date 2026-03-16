@@ -42,7 +42,11 @@ export async function POST(req: Request) {
     const payload = JSON.parse(rawBody);
 
     // Handle Successful Payment from Cashfree Forms
-    if (payload.type === 'PAYMENT_FORM_ORDER_WEBHOOK' && payload.data?.order?.order_status === 'PAID') {
+  const successTypes = ['PAYMENT_FORM_ORDER_WEBHOOK', 'PAYMENT_SUCCESS_WEBHOOK', 'ORDER_PAID'];
+
+if (successTypes.includes(payload.type) && payload.data?.order?.order_status === 'PAID') {
+    // ... rest of your code
+}
       const orderData = payload.data.order;
       const order_id = orderData.order_id;
       const order_amount = orderData.order_amount;
