@@ -11,6 +11,7 @@ declare global {
       openSignIn: () => void
       getToken: () => Promise<string | null>
     }
+    __syncTierFromServer?: () => void
     app: any
     marked: any
     DOMPurify: any
@@ -38,7 +39,13 @@ function ClerkBridge() {
   const getTokenRef = useRef<() => Promise<string | null>>(() => Promise.resolve(null))
   const openSignInRef = useRef<() => void>(() => {})
 
-  useEffect(() => { isSignedInRef.current = !!isSignedIn }, [isSignedIn])
+  useEffect(() => {
+    isSignedInRef.current = !!isSignedIn
+    // Sync tier from server whenever the user becomes signed in
+    if (isSignedIn) {
+      window.__syncTierFromServer?.()
+    }
+  }, [isSignedIn])
   useEffect(() => { openSignInRef.current = () => openSignIn() }, [openSignIn])
   useEffect(() => { getTokenRef.current = getToken }, [getToken])
 
@@ -78,7 +85,8 @@ export default function ChatPage() {
 
     ;(function () {
         'use strict';
-        const BACKEND_CHAT_URL    = 'https://backend-for-esamzai.onrender.com/api/chat';
+        const BACKEND_CHAT_URL    = '/api/chat/proxy';
+        const BACKEND_CHAT_URL_ANON = 'https://backend-for-esamzai.onrender.com/api/chat';
         const BACKEND_BASE_URL    = 'https://backend-for-esamzai.onrender.com';
 
         const LS_PLAN      = 'esamz_plan';
@@ -599,7 +607,11 @@ export default function ChatPage() {
                     if (customSystemPrompt)         reqBody.customSystemPrompt = customSystemPrompt;
 
                     const reqHeaders = { 'Content-Type': 'application/json' };
-                    if (window.__clerk?.isSignedIn) {
+                    // Use the authenticated proxy when signed in (it fetches tier from MongoDB).
+                    // Fall back to direct backend call for anonymous users.
+                    const chatUrl = window.__clerk?.isSignedIn ? BACKEND_CHAT_URL : BACKEND_CHAT_URL_ANON;
+                    if (!window.__clerk?.isSignedIn) {
+                        // Anonymous path: pass Clerk token if available (backend treats absent token as free)
                         try {
                             const token = await window.__clerk?.getToken();
                             if (token) reqHeaders['Authorization'] = `Bearer ${token}`;
@@ -615,7 +627,7 @@ export default function ChatPage() {
                             this.updateStatus(`Retrying… (${attempt}/2)`);
                             await new Promise(r => setTimeout(r, 2000 * attempt));
                         }
-                        response = await fetch(BACKEND_CHAT_URL, {
+                        response = await fetch(chatUrl, {
                             method:  'POST',
                             headers: reqHeaders,
                             body:    JSON.stringify(reqBody),
@@ -1241,6 +1253,31 @@ export default function ChatPage() {
         ['esamz_peer_code', 'esamz_known_peers', 'esamz_blacklist'].forEach(k => localStorage.removeItem(k));
 
         window.app = new App();
+
+        // ====================================================================
+        //  TIER SYNC — fetch real tier from MongoDB via /api/user/tier
+        // ====================================================================
+        async function syncTierFromServer() {
+            if (!window.__clerk?.isSignedIn) return;
+            try {
+                const res = await fetch('/api/user/tier');
+                if (!res.ok) return;
+                const data = await res.json();
+                const VALID_PLANS = ['Plus', 'Pro', 'Max'];
+                if (data.tier && VALID_PLANS.includes(data.tier)) {
+                    localStorage.setItem(LS_PLAN, data.tier);
+                } else {
+                    localStorage.removeItem(LS_PLAN);
+                }
+                checkPermissions();
+            } catch (_) { /* server offline — keep existing localStorage value */ }
+        }
+
+        // Expose so ClerkBridge can trigger sync on sign-in
+        window.__syncTierFromServer = syncTierFromServer;
+
+        // Sync immediately if user is already signed in on page load
+        syncTierFromServer();
 
         // ====================================================================
         //  FIX P8: Privacy status — fetch /api/privacy-status and show badge
