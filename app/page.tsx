@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 declare global {
@@ -55,6 +55,10 @@ function ClerkBridge() {
 
 export default function ChatPage() {
   const appInitialized = useRef(false)
+  const [mounted, setMounted] = useState(false)
+
+  // Only render Clerk hooks after mount to avoid prerender errors
+  useEffect(() => { setMounted(true) }, [])
 
   // Set up a default (unauthenticated) Clerk bridge when Clerk is not available
   useEffect(() => {
@@ -1264,7 +1268,7 @@ export default function ChatPage() {
 
   return (
     <>
-    {hasClerk && <ClerkBridge />}
+    {hasClerk && mounted && <ClerkBridge />}
     
     <div className="eid-modal-overlay hidden" id="eidModal">
         <div className="eid-modal">

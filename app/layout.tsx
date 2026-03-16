@@ -3,6 +3,8 @@ import type { Metadata } from 'next'
 import Script from 'next/script'
 import './globals.css'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'eSAMz AI — Strategic Artificial Mind',
   description: 'Deep reasoning with emotional clarity — for complex problems that demand more than a quick answer.',
