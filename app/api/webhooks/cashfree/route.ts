@@ -18,10 +18,15 @@ const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema(
 
 export async function POST(req: Request) {
   try {
+    const secretKey = process.env.CASHFREE_SECRET_KEY;
+    if (!secretKey) {
+      console.error('Webhook Error: CASHFREE_SECRET_KEY environment variable is not set');
+      return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 });
+    }
+
     const rawBody = await req.text();
     const signature = req.headers.get('x-webhook-signature');
     const timestamp = req.headers.get('x-webhook-timestamp');
-    const secretKey = process.env.CASHFREE_SECRET_KEY!;
 
     // Verify the signature to ensure this actually came from Cashfree
     const signatureString = timestamp + rawBody;
@@ -42,6 +47,10 @@ export async function POST(req: Request) {
       const order_id = orderData.order_id;
       const order_amount = orderData.order_amount;
       const customerEmail = orderData.customer_details?.customer_email;
+      if (!customerEmail) {
+        console.error('Webhook Error: customer_email missing in payload');
+        return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+      }
 
       await connectDB();
 
