@@ -1059,7 +1059,10 @@
         }
 
         function requireSignIn() {
-            if (!clerk) return true; // Clerk not loaded, allow usage
+            if (!clerk) {
+                Utils.showToast('Authentication service is unavailable. Please refresh the page.', 'error');
+                return false;
+            }
             if (clerk.user) return true;
             clerk.openSignIn();
             return false;
@@ -1524,7 +1527,9 @@
                         try {
                             const token = await clerk.session.getToken();
                             if (token) reqHeaders['Authorization'] = `Bearer ${token}`;
-                        } catch (_) {}
+                        } catch (e) {
+                            console.error('[Clerk] Failed to retrieve session token:', e);
+                        }
                     }
 
                     // Retry up to 2 times on 504 Gateway Timeout (Sarvam API transient errors).
