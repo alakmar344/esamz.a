@@ -1,0 +1,15 @@
+# Next.js build artifacts
+.next/
+out/
+
+# Dependencies
+node_modules/
+
+# Environment
+.env*.local
+
+# Debug
+npm-debug.log*
+
+# Vercel
+.vercel
