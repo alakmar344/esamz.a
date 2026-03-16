@@ -599,7 +599,7 @@ export default function ChatPage() {
                     if (customSystemPrompt)         reqBody.customSystemPrompt = customSystemPrompt;
 
                     const reqHeaders = { 'Content-Type': 'application/json' };
-                    if (clerk && clerk.session) {
+                    if (window.__clerk?.isSignedIn) {
                         try {
                             const token = await window.__clerk?.getToken();
                             if (token) reqHeaders['Authorization'] = `Bearer ${token}`;
