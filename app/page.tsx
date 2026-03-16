@@ -2,7 +2,6 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { useAuth, useClerk, UserButton } from '@clerk/nextjs'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 declare global {
@@ -21,11 +20,20 @@ declare global {
   }
 }
 
-export default function ChatPage() {
+const hasClerk = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+
+let useAuth: any, useClerk: any, UserButton: any
+if (hasClerk) {
+  const clerk = require('@clerk/nextjs')
+  useAuth = clerk.useAuth
+  useClerk = clerk.useClerk
+  UserButton = clerk.UserButton
+}
+
+function ClerkBridge() {
   const { isSignedIn, getToken } = useAuth()
   const { openSignIn } = useClerk()
 
-  const appInitialized = useRef(false)
   const isSignedInRef = useRef<boolean>(false)
   const getTokenRef = useRef<() => Promise<string | null>>(() => Promise.resolve(null))
   const openSignInRef = useRef<() => void>(() => {})
@@ -34,12 +42,28 @@ export default function ChatPage() {
   useEffect(() => { openSignInRef.current = () => openSignIn() }, [openSignIn])
   useEffect(() => { getTokenRef.current = getToken }, [getToken])
 
-  // Set up Clerk bridge once on mount so vanilla JS can access auth state
   useEffect(() => {
     window.__clerk = {
       get isSignedIn() { return isSignedInRef.current },
       openSignIn: () => openSignInRef.current(),
       getToken: () => getTokenRef.current(),
+    }
+  }, [])
+
+  return null
+}
+
+export default function ChatPage() {
+  const appInitialized = useRef(false)
+
+  // Set up a default (unauthenticated) Clerk bridge when Clerk is not available
+  useEffect(() => {
+    if (!hasClerk) {
+      window.__clerk = {
+        isSignedIn: false,
+        openSignIn: () => {},
+        getToken: () => Promise.resolve(null),
+      }
     }
   }, [])
 
@@ -1240,6 +1264,7 @@ export default function ChatPage() {
 
   return (
     <>
+    {hasClerk && <ClerkBridge />}
     
     <div className="eid-modal-overlay hidden" id="eidModal">
         <div className="eid-modal">
@@ -1395,7 +1420,7 @@ export default function ChatPage() {
                     </div>
                 </div>
                 <div className="header-right">
-                    <div id="clerkUserButton" style={{display:"flex",alignItems:"center"}}><UserButton /></div>
+                    <div id="clerkUserButton" style={{display:"flex",alignItems:"center"}}>{hasClerk && UserButton && <UserButton />}</div>
                     <button className="theme-toggle" id="btnThemeToggle" title="Toggle theme" aria-label="Toggle theme">
                         <svg className="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
                         <svg className="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
