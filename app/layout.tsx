@@ -1,4 +1,3 @@
-import { ClerkProvider, SignInButton, SignUpButton, Show, UserButton } from '@clerk/nextjs'
 import type { Metadata } from 'next'
 import Script from 'next/script'
 import './globals.css'
@@ -20,6 +19,17 @@ export const metadata: Metadata = {
 }
 
 const clerkPubKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+
+/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any */
+let ClerkProvider: any, SignInButton: any, SignUpButton: any, Show: any, UserButton: any
+if (clerkPubKey) {
+  const clerk = require('@clerk/nextjs')
+  ClerkProvider = clerk.ClerkProvider
+  SignInButton = clerk.SignInButton
+  SignUpButton = clerk.SignUpButton
+  Show = clerk.Show
+  UserButton = clerk.UserButton
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
