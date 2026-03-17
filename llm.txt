@@ -1,0 +1,21 @@
+# eSAMz AI
+
+> A privacy-first, zero-storage AI chatbot designed for students and creators and everyone who values privacy.
+
+## About eSAMz
+eSAMz AI is a high-speed, secure chatbot built with a strict "zero-storage" privacy architecture. User conversations are not stored, harvested, or used for training models. It provides instant answers and live web search in a clean, distraction-free environment.
+
+## Key Features
+- **Zero-Storage Architecture**: Maximum privacy and security for user data.
+- **Fast & Pro Modes**: Coming in v10, allowing users to choose their optimal speed and capability.
+- **Live Web Search**: Accurate, up-to-date information retrieval.
+
+## Technical Stack
+- **Backend**: Engineered in Rust using Axum and Tokio for hyper-fast, asynchronous performance.
+- **Frontend**: Built with React, JavaScript, HTML, and CSS.
+
+## Creator
+eSAMz AI is founded and developed by Alakmar Teenwala, a software developer, UI/UX designer, and author of 'Web Wizardry'.
+
+## Ecosystem 
+- **CiboCocinar**: An associated AI-powered voice cooking assistant.
