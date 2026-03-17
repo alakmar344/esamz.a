@@ -1,0 +1,19 @@
+# robots.txt for eSAMz AI
+# Allows search engines to crawl public pages for AEO/SEO
+# Blocks bots from hitting API and authentication routes
+
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /llms.txt
+
+# Keep bots out of your backend and user areas
+Disallow: /api/
+Disallow: /login
+Disallow: /signup
+Disallow: /dashboard/
+Disallow: /admin/
+Disallow: /*?* # Blocks bots from crawling complex URL parameters
+
+# Specify your sitemap so Google knows exactly what to index
+Sitemap: https://yourdomain.com/sitemap.xml
