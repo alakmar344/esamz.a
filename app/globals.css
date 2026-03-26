@@ -198,6 +198,8 @@
         .suggestions{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;width:100%;}
         .suggestion-card{background:var(--paper-warm);padding:20px 22px;cursor:pointer;transition:background 120ms,border-color 120ms;text-align:left;border:1px solid var(--rule);display:block;border-radius:var(--r);}
         .suggestion-card:hover{background:var(--crescent-soft);border-color:var(--crescent);}
+        .suggestion-card:focus{outline:2px solid var(--crescent);outline-offset:2px;background:var(--crescent-soft);border-color:var(--crescent);}
+        .suggestion-card:focus:not(:focus-visible){outline:none;}
         .suggestion-card:hover .suggestion-arrow{opacity:1;transform:translateX(0);}
         .suggestion-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
         .suggestion-kicker{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--ink-faint);}
@@ -589,3 +591,9 @@
         /* ----- DRAFT INDICATOR ----- */
         .draft-indicator{position:absolute;bottom:2px;right:6px;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.1em;color:var(--ink-ghost);opacity:0;transition:opacity 0.3s;pointer-events:none;}
         .draft-indicator.visible{opacity:1;}
+
+        /* ----- CHAR COUNT ----- */
+        .char-count{float:right;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.06em;color:var(--ink-ghost);opacity:0.7;margin-left:8px;vertical-align:middle;}
+
+        /* ----- EMPTY HISTORY STATE ----- */
+        #historyList:empty::after{content:'No conversations yet';display:block;padding:16px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.06em;color:var(--sidebar-text);font-style:italic;text-align:center;opacity:0.6;}
