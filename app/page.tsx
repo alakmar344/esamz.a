@@ -90,7 +90,7 @@ export default function ChatPage() {
         const BACKEND_BASE_URL    = 'https://backend-for-esamzai.onrender.com';
 
         const LS_PLAN      = 'esamz_plan';
-        const LS_STORAGE   = 'esamz_conversations_v11';
+        const LS_STORAGE   = 'esamz_conversations_v9';
         const LS_LAST_CHAT = 'esamz_last_chat_id';
 
         // ====================================================================
@@ -767,7 +767,7 @@ export default function ChatPage() {
             }
 
             initDraft() {
-                const KEY = 'esamz_draft_v11';
+                const KEY = 'esamz_draft_v9';
                 const saved = localStorage.getItem(KEY);
                 if (saved && saved.trim()) { this.dom.input.value = saved; this.handleInput(); }
                 let timer;
