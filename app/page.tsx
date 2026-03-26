@@ -110,11 +110,12 @@ export default function ChatPage() {
                 t.appendChild(iconSpan);
                 t.appendChild(msgSpan);
                 this.toastContainer.appendChild(t);
+                const duration = type === 'error' ? 5500 : 3000;
                 setTimeout(() => {
                     t.style.opacity = '0';
                     t.style.transition = 'opacity 0.3s';
                     setTimeout(() => t.remove(), 300);
-                }, 3000);
+                }, duration);
             },
             confirm(message, title = 'Confirm') {
                 let _cancel = null;
@@ -441,8 +442,18 @@ export default function ChatPage() {
                 this.dom.themeToggle.addEventListener('click', () => this.toggleTheme());
 
                 document.querySelectorAll('.suggestion-card').forEach(card => {
+                    card.setAttribute('role', 'button');
+                    card.setAttribute('tabindex', '0');
                     card.addEventListener('click', () => {
                         if (card.dataset.prompt) this.fillInput(card.dataset.prompt);
+                    });
+                    card.addEventListener('keydown', e => {
+                        if (e.key === 'Enter') {
+                            if (card.dataset.prompt) this.fillInput(card.dataset.prompt);
+                        } else if (e.key === ' ') {
+                            e.preventDefault();
+                            if (card.dataset.prompt) this.fillInput(card.dataset.prompt);
+                        }
                     });
                 });
             }
@@ -451,6 +462,14 @@ export default function ChatPage() {
                 this.dom.input.style.height = 'auto';
                 this.dom.input.style.height = Math.min(this.dom.input.scrollHeight, 200) + 'px';
                 this.updateButtonState();
+                this.updateCharCount();
+            }
+
+            updateCharCount() {
+                const charCount = document.getElementById('charCount');
+                if (!charCount) return;
+                const len = this.dom.input.value.length;
+                charCount.textContent = len > 0 ? `${len.toLocaleString()} char${len !== 1 ? 's' : ''}` : '';
             }
 
             updateButtonState() {
@@ -544,6 +563,7 @@ export default function ChatPage() {
 
                 this.dom.input.value = '';
                 this.dom.input.style.height = 'auto';
+                this.updateCharCount();
                 this.state.files.forEach(f => { if (f.url) URL.revokeObjectURL(f.url); });
                 const attachedFiles = [...this.state.files];
                 this.state.files    = [];
@@ -1122,7 +1142,8 @@ export default function ChatPage() {
                 const msgs = Array.from(document.querySelectorAll('.message'));
                 if (!msgs.length) return Utils.showToast('Nothing to export', 'error');
                 const content = msgs.map(m => `### ${m.classList.contains('user') ? 'User' : 'eSAMz AI'}\n${m.querySelector('.bubble').innerText}`).join('\n\n---\n\n');
-                const blob = new Blob([content], { type: 'text/plain' });
+                const mimeType = type === 'md' ? 'text/markdown' : 'text/plain';
+                const blob = new Blob([content], { type: mimeType });
                 const url  = URL.createObjectURL(blob);
                 const a    = document.createElement('a');
                 a.href = url; a.download = `esamz-chat-${Date.now()}.${type}`; a.click();
@@ -1185,6 +1206,7 @@ export default function ChatPage() {
                     const sb = document.getElementById('sidebar');
                     if (sb) sb.classList.toggle('collapsed');
                 }
+                if (ctrl && e.key === 'u') { e.preventDefault(); document.getElementById('plansModal')?.classList.remove('hidden'); }
                 if (ctrl && e.key === '/') { e.preventDefault(); if (modal) modal.classList.toggle('hidden'); }
             });
         })();
@@ -1423,6 +1445,9 @@ export default function ChatPage() {
                 </button>
             </div>
             <div className="sidebar-nav">
+                <div className="search-box">
+                    <input type="search" id="historySearch" className="search-input" placeholder="Search conversations…" aria-label="Search conversations" autoComplete="off" />
+                </div>
                 <div className="nav-section">
                     <div className="nav-label">Recent</div>
                     <div id="historyList"></div>
@@ -1563,6 +1588,7 @@ export default function ChatPage() {
                             <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" style={{fontWeight:600}}>Privacy Policy</a> &amp;
                             <a href="https://esamz.info/termsofservice" target="_blank" rel="noopener" style={{fontWeight:600}}>Terms</a>.
                         </span>
+                        <span id="charCount" className="char-count"></span>
                     </div>
                 </div>
             </div>
