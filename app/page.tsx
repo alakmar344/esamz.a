@@ -249,25 +249,6 @@ export default function ChatPage() {
         })();
 
         // ====================================================================
-        //  EID MODAL
-        // ====================================================================
-        const EidModal = {
-            modal: document.getElementById('eidModal'),
-            init() {
-                if (localStorage.getItem('esamz_eid_shown') === '1') return;
-                requestAnimationFrame(() => this.modal.classList.remove('hidden'));
-                document.getElementById('eidModalClose').addEventListener('click',   () => this.dismiss());
-                document.getElementById('eidModalDismiss').addEventListener('click', () => this.dismiss());
-                this.modal.addEventListener('click', e => { if (e.target === this.modal) this.dismiss(); });
-            },
-            dismiss() {
-                this.modal.classList.add('hidden');
-                localStorage.setItem('esamz_eid_shown', '1');
-                CiboModal.show();
-            }
-        };
-
-        // ====================================================================
         //  CIBO MODAL
         // ====================================================================
         const CiboModal = {
@@ -283,11 +264,10 @@ export default function ChatPage() {
             init() {
                 if (localStorage.getItem('esamz_cibo_shown') === '1') return;
                 this._bind();
-                if (localStorage.getItem('esamz_eid_shown') === '1') {
-                    setTimeout(() => {
-                        if (localStorage.getItem('esamz_cibo_shown') !== '1') this.modal.classList.remove('hidden');
-                    }, 150);
-                }
+                // Delay 800ms so the modal doesn't compete with page load
+                setTimeout(() => {
+                    if (localStorage.getItem('esamz_cibo_shown') !== '1') this.modal.classList.remove('hidden');
+                }, 800);
             },
             show() {
                 if (localStorage.getItem('esamz_cibo_shown') === '1') return;
@@ -347,7 +327,6 @@ export default function ChatPage() {
                 checkPermissions();
                 PlansModal.init();
 
-                EidModal.init();
                 CiboModal.init();
                 this.loadHistory();
                 this.setupEventListeners();
@@ -1329,21 +1308,6 @@ export default function ChatPage() {
     <>
     {hasClerk && mounted && <ClerkBridge />}
     
-    <div className="eid-modal-overlay hidden" id="eidModal">
-        <div className="eid-modal">
-            <button className="eid-modal-close-btn" id="eidModalClose" aria-label="Close">✕</button>
-            <div className="eid-modal-top">
-                <span className="eid-modal-moon">✦</span>
-                <div className="eid-modal-title">What do you want to build today?</div>
-                <div className="eid-modal-arabic">— From eSAMz AI —</div>
-            </div>
-            <div className="eid-modal-body">
-                <p>Deep reasoning with emotional clarity — for complex problems that demand more than a quick answer.</p>
-                <button className="eid-modal-dismiss" id="eidModalDismiss">Start Building</button>
-            </div>
-        </div>
-    </div>
-
     
     <div className="cibo-modal-overlay hidden" id="ciboModal">
         <div className="cibo-modal">
