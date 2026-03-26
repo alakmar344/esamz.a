@@ -301,7 +301,6 @@ export default function ChatPage() {
                     sendIcon:    document.querySelector('.send-icon'),
                     stopIcon:    document.querySelector('.stop-icon'),
                     chatContainer: document.getElementById('chatContainer'),
-                    voiceBtn:    document.getElementById('btnVoice'),
                     uploadBtn:   document.getElementById('btnUpload'),
                     fileInput:   document.getElementById('fileInput'),
                     newChatBtn:  document.getElementById('btnNewChat'),
@@ -314,7 +313,7 @@ export default function ChatPage() {
                 };
                 this.state = {
                     chatId: null, files: [],
-                    isProcessing: false, isRecording: false, abortController: null
+                    isProcessing: false, abortController: null
                 };
                 this.storageKey  = LS_STORAGE;
                 this.LAST_CHAT_KEY = LS_LAST_CHAT;
@@ -386,7 +385,6 @@ export default function ChatPage() {
 
                 this.dom.uploadBtn.addEventListener('click', () => this.dom.fileInput.click());
                 this.dom.fileInput.addEventListener('change', e => this.handleFiles(e.target.files));
-                if (this.dom.voiceBtn) this.dom.voiceBtn.addEventListener('click', () => this.toggleVoiceRecording());
 
                 const exportDialog = document.getElementById('exportDialog');
                 document.getElementById('closeDialog').addEventListener('click', () => exportDialog.close());
@@ -470,22 +468,6 @@ export default function ChatPage() {
                 this.dom.statusText.textContent = text;
                 if (text === 'Ready') this.dom.statusIndicator.classList.remove('processing');
                 else this.dom.statusIndicator.classList.add('processing');
-            }
-
-            toggleVoiceRecording() {
-                if (!this.recognition) {
-                    if (!('webkitSpeechRecognition' in window)) { Utils.showToast('Voice input not supported', 'error'); return; }
-                    const SR = window.webkitSpeechRecognition;
-                    this.recognition = new SR();
-                    this.recognition.continuous      = false;
-                    this.recognition.lang             = 'en-US';
-                    this.recognition.interimResults   = false;
-                    this.recognition.onstart = () => { this.state.isRecording = true; this.dom.voiceBtn.classList.add('recording'); this.updateStatus('Listening…'); };
-                    this.recognition.onend   = () => { this.state.isRecording = false; this.dom.voiceBtn.classList.remove('recording'); if (!this.state.isProcessing) this.updateStatus('Ready'); };
-                    this.recognition.onerror = e => { this.state.isRecording = false; this.dom.voiceBtn.classList.remove('recording'); if (!this.state.isProcessing) this.updateStatus('Ready'); if (e.error !== 'aborted') Utils.showToast(`Voice error: ${e.error}`, 'error'); };
-                    this.recognition.onresult = e => { const t = e.results[0][0].transcript; this.dom.input.value += (this.dom.input.value ? ' ' : '') + t; this.dom.input.dispatchEvent(new Event('input')); this.dom.input.focus(); };
-                }
-                this.state.isRecording ? this.recognition.stop() : this.recognition.start();
             }
 
             async handleFiles(fileList) {
@@ -619,7 +601,7 @@ export default function ChatPage() {
                         }
                     }
 
-                    // Retry up to 2 times on 504 Gateway Timeout (Sarvam API transient errors).
+                    // Retry up to 2 times on 504 Gateway Timeout (transient AI service errors).
                     let response;
                     for (let attempt = 0; attempt <= 2; attempt++) {
                         if (attempt > 0) {
@@ -637,7 +619,7 @@ export default function ChatPage() {
                     if (!response.ok) {
                         const msg = response.status === 504
                             ? 'AI service timed out. Please try again in a moment.'
-                            : `API Error: ${response.status}`;
+                            : 'Something went wrong. Please try again.';
                         throw new Error(msg);
                     }
 
@@ -678,7 +660,9 @@ export default function ChatPage() {
                         } else if (type === 'ERROR') {
                             const errMsg = /504|gateway timeout|timed out/i.test(data)
                                 ? 'AI service timed out. Please try again in a moment.'
-                                : data;
+                                : /sarvam/i.test(data)
+                                    ? 'Something went wrong with the AI service. Please try again.'
+                                    : data;
                             throw new Error(errMsg);
                         }
                     };
@@ -1503,9 +1487,6 @@ export default function ChatPage() {
                         <div className="input-row">
                             <button className="icon-btn" id="btnUpload" title="Attach file" aria-label="Attach file">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
-                            </button>
-                            <button className="icon-btn" id="btnVoice" title="Voice input" aria-label="Voice input">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
                             </button>
                             <textarea id="userInput" rows="1" placeholder="Message eSAMz…"></textarea>
                             <button className="send-btn" id="btnSend" disabled aria-label="Send message">

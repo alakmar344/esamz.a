@@ -1,6 +1,6 @@
 /* ----- RESET & BASE ----- */
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-        html,body{height:100dvh;width:100%;overflow:hidden;}
+        html,body{height:100dvh;width:100%;overflow:hidden;max-width:100%;}
         body{
             background:var(--paper);color:var(--ink);
             font-family:'Source Serif 4',Georgia,serif;
@@ -60,7 +60,7 @@
         ::-webkit-scrollbar-thumb:hover{background:var(--ink-ghost);}
 
         /* ----- LAYOUT ----- */
-        .app-container{display:flex;width:100%;height:100dvh;position:relative;z-index:2;overflow:hidden;}
+        .app-container{display:flex;width:100%;max-width:100%;height:100dvh;position:relative;z-index:2;overflow:hidden;}
 
         /* ----- SIDEBAR ----- */
         .sidebar{
@@ -140,7 +140,7 @@
         .btn-sidebar-close:hover{background:var(--sidebar-hover-bg);color:var(--sidebar-text-bright);border-color:var(--sidebar-hover-border);}
 
         /* ----- MAIN CONTENT ----- */
-        .main-content{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--paper);}
+        .main-content{flex:1;display:flex;flex-direction:column;min-width:0;max-width:100%;overflow:hidden;background:var(--paper);}
 
         /* ----- HEADER ----- */
         .header{
@@ -569,6 +569,16 @@
             .plans-modal{max-width:96%;width:96%;}
             .plans-modal-header{padding:20px 20px 16px;}
             .plans-modal-body{padding:18px 20px 22px;}
+        }
+        @media(max-width:480px){
+            .chat-wrapper{padding:24px 12px;}
+            .input-wrapper{padding:10px 12px 14px;}
+            .header{padding:0 10px;}
+            .message.user .bubble{max-width:95%;}
+            .welcome-headline{font-size:clamp(28px,8vw,48px);}
+            .suggestions{gap:8px;}
+            .suggestion-card{padding:14px 16px;}
+            .input-row{gap:4px;}
         }
         .hidden{display:none!important;}
 
