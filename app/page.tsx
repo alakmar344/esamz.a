@@ -1448,29 +1448,29 @@ export default function ChatPage() {
                 <div className="chat-wrapper">
                     <div className="welcome" id="welcomeScreen">
                         <div className="welcome-dateline">eSAMz AI · Strategic Artificial Mind</div>
-                        <h1 className="welcome-headline" id="welcomeHeadline">What do you want<br />to <em>build</em> today?</h1>
+                        <h1 className="welcome-headline" id="welcomeHeadline">Ask anything.<br />Think <em>deeper</em>.</h1>
                         <p className="welcome-deck">Deep reasoning with emotional clarity — for complex problems that demand more than a quick answer.</p>
                         <div className="welcome-rule"></div>
                         <div className="suggestions">
                             <div className="suggestion-card" data-prompt="Write a Python script for data analysis">
-                                <div className="suggestion-header"><span className="suggestion-kicker">Code</span><span className="suggestion-arrow">→</span></div>
+                                <div className="suggestion-header"><span className="suggestion-kicker"><span className="suggestion-kicker-icon">🐍</span>Code</span><span className="suggestion-arrow">→</span></div>
                                 <div className="suggestion-title">Python Data Analysis</div>
-                                <div className="suggestion-desc">Generate efficient scripts & logic</div>
+                                <div className="suggestion-desc">Generate efficient scripts &amp; logic</div>
                             </div>
                             <div className="suggestion-card" data-prompt="Explain quantum computing concepts">
-                                <div className="suggestion-header"><span className="suggestion-kicker">Learn</span><span className="suggestion-arrow">→</span></div>
+                                <div className="suggestion-header"><span className="suggestion-kicker"><span className="suggestion-kicker-icon">🧠</span>Learn</span><span className="suggestion-arrow">→</span></div>
                                 <div className="suggestion-title">Deep Explanations</div>
-                                <div className="suggestion-desc">Complex topics made clear</div>
+                                <div className="suggestion-desc">Complex topics made crystal clear</div>
                             </div>
                             <div className="suggestion-card" data-prompt="Draft a professional business proposal">
-                                <div className="suggestion-header"><span className="suggestion-kicker">Write</span><span className="suggestion-arrow">→</span></div>
+                                <div className="suggestion-header"><span className="suggestion-kicker"><span className="suggestion-kicker-icon">✍️</span>Write</span><span className="suggestion-arrow">→</span></div>
                                 <div className="suggestion-title">Professional Writing</div>
-                                <div className="suggestion-desc">Proposals, emails, reports</div>
+                                <div className="suggestion-desc">Proposals, emails, reports &amp; more</div>
                             </div>
                             <div className="suggestion-card" data-prompt="Research latest AI developments">
-                                <div className="suggestion-header"><span className="suggestion-kicker">Research</span><span className="suggestion-arrow">→</span></div>
+                                <div className="suggestion-header"><span className="suggestion-kicker"><span className="suggestion-kicker-icon">🔬</span>Research</span><span className="suggestion-arrow">→</span></div>
                                 <div className="suggestion-title">Current Trends</div>
-                                <div className="suggestion-desc">Insights backed by reasoning</div>
+                                <div className="suggestion-desc">Insights backed by deep reasoning</div>
                             </div>
                         </div>
                     </div>
@@ -1488,7 +1488,7 @@ export default function ChatPage() {
                             <button className="icon-btn" id="btnUpload" title="Attach file" aria-label="Attach file">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
                             </button>
-                            <textarea id="userInput" rows="1" placeholder="Message eSAMz…"></textarea>
+                            <textarea id="userInput" rows="1" placeholder="Ask eSAMz anything…"></textarea>
                             <button className="send-btn" id="btnSend" disabled aria-label="Send message">
                                 <svg className="send-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                                 <svg className="stop-icon hidden" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
@@ -1525,7 +1525,7 @@ export default function ChatPage() {
                         </div>
                     </div>
                     <div className="input-footer">
-                        <span style={{fontFamily:"'DM Mono'",fontSize:"9px",border:"1px solid var(--rule-bold)",padding:"2px 5px",borderRadius:"5px",marginRight:"8px",verticalAlign:"middle",color:"var(--vermillion)",background:"var(--vermillion-soft)"}}>SGI</span>
+                        <span style={{fontFamily:"'DM Mono'",fontSize:"9px",border:"1.5px solid var(--vermillion-soft)",padding:"2px 6px",borderRadius:"6px",marginRight:"8px",verticalAlign:"middle",color:"var(--vermillion)",background:"var(--vermillion-soft)"}}>SGI</span>
                         <span style={{fontSize:"14px",marginRight:"4px",verticalAlign:"middle"}}>🤖</span>
                         <span style={{verticalAlign:"middle"}} id="disclaimerText">
                             eSAMz AI generates synthetic content and may be inaccurate.
@@ -1534,6 +1534,10 @@ export default function ChatPage() {
                             <a href="https://esamz.info/termsofservice" target="_blank" rel="noopener" style={{fontWeight:600}}>Terms</a>.
                         </span>
                         <span id="charCount" className="char-count"></span>
+                        <span style={{display:"inline-block",marginLeft:"10px",verticalAlign:"middle",fontFamily:"'DM Mono'",fontSize:"9px",color:"var(--ink-ghost)",opacity:0.6}}>
+                            <kbd style={{background:"var(--paper-aged)",border:"1.5px solid var(--rule-bold)",borderBottomWidth:"3px",padding:"1px 5px",borderRadius:"4px",fontFamily:"'DM Mono'",fontSize:"9px"}}>Ctrl</kbd>
+                            {' '}<kbd style={{background:"var(--paper-aged)",border:"1.5px solid var(--rule-bold)",borderBottomWidth:"3px",padding:"1px 5px",borderRadius:"4px",fontFamily:"'DM Mono'",fontSize:"9px"}}>/</kbd> shortcuts
+                        </span>
                     </div>
                 </div>
             </div>
