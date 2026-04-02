@@ -1272,8 +1272,8 @@ export default function ChatPage() {
                 const res  = await fetch(`${BACKEND_BASE_URL}/api/privacy-status`, { credentials: 'include' });
                 if (!res.ok) return;
                 const data = await res.json();
-                const disclaimerSpan = document.getElementById('policyLinksText');
-                if (!disclaimerSpan) return;
+                const policyLinksSpan = document.getElementById('policyLinksText');
+                if (!policyLinksSpan) return;
                 const ragLabel = data.rag        ? ` · RAG: ${data.rag}` : '';
                 const retLabel = data.dataRetentionMinutes
                     ? ` · Session cleared after ${data.dataRetentionMinutes}m idle`
@@ -1281,7 +1281,7 @@ export default function ChatPage() {
                 const badge = document.createElement('span');
                 badge.style.cssText = 'margin-left:10px;font-family:"DM Mono",monospace;font-size:9px;color:var(--ink-ghost);letter-spacing:0.06em;opacity:0.8;';
                 badge.textContent   = `${data.privacyMode ? '🔒 Zero-storage' : '🗄 Session memory'}${ragLabel}${retLabel}`;
-                disclaimerSpan.parentNode.appendChild(badge);
+                policyLinksSpan.parentNode.appendChild(badge);
             } catch (_) { /* backend offline — no badge shown */ }
         })();
 
