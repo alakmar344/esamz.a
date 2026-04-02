@@ -311,9 +311,27 @@
         .send-btn:disabled{opacity:0.30;cursor:not-allowed;}
         .send-btn.stop-mode{background:var(--vermillion)!important;opacity:1!important;cursor:pointer!important;}
 
-        .input-footer{margin-top:10px;padding-top:8px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-ghost);text-align:center;}
+        .input-footer{
+            margin-top:10px;
+            padding-top:8px;
+            font-family:'DM Mono',monospace;
+            font-size:9px;
+            letter-spacing:0.08em;
+            text-transform:uppercase;
+            color:var(--ink-ghost);
+            text-align:center;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            flex-wrap:wrap;
+            column-gap:10px;
+            row-gap:6px;
+        }
         .input-footer a{color:var(--ink-faint);text-decoration:underline;text-decoration-color:var(--rule-bold);}
         .input-footer a:hover{color:var(--crescent);}
+        #policyLinksText{display:inline-block;max-width:min(100%,720px);}
+        #charCount{display:inline-block;white-space:nowrap;min-width:0.1px;}
+        #footerShortcuts{display:inline-block;white-space:nowrap;}
 
         /* RAG TOGGLE */
         #rag-toggle-wrapper{
