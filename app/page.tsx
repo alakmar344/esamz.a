@@ -1236,14 +1236,13 @@ export default function ChatPage() {
         (function initPolicyFooterGuard() {
             const policyEl = document.getElementById('policyLinksText');
             if (!policyEl) return;
-
-            const EXPECTED_TEXT = 'AI output may be inaccurate. By using this service, you agree to our Privacy Policy and Terms.';
             const LINKS = [
                 { href: 'https://esamz.info/privacypolicy', label: 'Privacy Policy' },
                 { href: 'https://esamz.info/termsofservice', label: 'Terms' },
             ];
 
             let repairing = false;
+            const normalized = s => (s || '').replace(/\s+/g, ' ').trim();
 
             const rebuild = () => {
                 if (repairing) return;
@@ -1276,8 +1275,10 @@ export default function ChatPage() {
                 }
             };
 
+            const EXPECTED_TEXT = normalized(policyEl.textContent);
+
             const hasExpectedStructure = () => {
-                const text = (policyEl.textContent || '').replace(/\s+/g, ' ').trim();
+                const text = normalized(policyEl.textContent);
                 if (text !== EXPECTED_TEXT) return false;
                 const links = Array.from(policyEl.querySelectorAll('a'));
                 if (links.length !== 2) return false;
@@ -1293,7 +1294,6 @@ export default function ChatPage() {
 
             observer.observe(policyEl, {
                 childList: true,
-                subtree: true,
                 characterData: true,
                 attributes: true,
             });
