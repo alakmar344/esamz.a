@@ -102,6 +102,12 @@ export default function ChatPage() {
             mediumChunk: 3,
             slowChunk: 2,
         };
+        const getTypewriterChunkSize = remaining => {
+            if (remaining > TYPEWRITER_SPEED_STEPS.veryFastThreshold) return TYPEWRITER_SPEED_STEPS.veryFastChunk;
+            if (remaining > TYPEWRITER_SPEED_STEPS.fastThreshold) return TYPEWRITER_SPEED_STEPS.fastChunk;
+            if (remaining > TYPEWRITER_SPEED_STEPS.mediumThreshold) return TYPEWRITER_SPEED_STEPS.mediumChunk;
+            return TYPEWRITER_SPEED_STEPS.slowChunk;
+        };
 
         // ====================================================================
         //  UTILITIES
@@ -652,13 +658,7 @@ export default function ChatPage() {
                         const step = () => {
                             if (displayedText.length < fullText.length) {
                                 const remaining = fullText.length - displayedText.length;
-                                const add = remaining > TYPEWRITER_SPEED_STEPS.veryFastThreshold
-                                    ? TYPEWRITER_SPEED_STEPS.veryFastChunk
-                                    : remaining > TYPEWRITER_SPEED_STEPS.fastThreshold
-                                        ? TYPEWRITER_SPEED_STEPS.fastChunk
-                                        : remaining > TYPEWRITER_SPEED_STEPS.mediumThreshold
-                                            ? TYPEWRITER_SPEED_STEPS.mediumChunk
-                                            : TYPEWRITER_SPEED_STEPS.slowChunk;
+                                const add = getTypewriterChunkSize(remaining);
                                 displayedText = fullText.slice(0, displayedText.length + add);
                                 renderDisplayed(true);
                                 typingTimer = setTimeout(step, TYPEWRITER_INTERVAL_MS);
@@ -722,7 +722,10 @@ export default function ChatPage() {
                     this.addRegenButton(aiMsgDiv);
 
                 } catch (error) {
-                    if (typingTimer) { clearTimeout(typingTimer); typingTimer = null; }
+                    if (typingTimer) {
+                        clearTimeout(typingTimer);
+                        typingTimer = null;
+                    }
                     if (error.name === 'AbortError') {
                         contentDiv.innerHTML += '<p style="font-style:italic;color:var(--ink-ghost);margin-top:10px;">[Stopped by user]</p>';
                         const msgs = Array.from(this.dom.chatList.querySelectorAll('.message')).map(m => ({ role: m.classList.contains('user') ? 'user' : 'assistant', content: m.querySelector('.bubble').innerText }));
@@ -1522,8 +1525,8 @@ export default function ChatPage() {
                         <span style={{fontFamily:"'DM Mono'",fontSize:"9px",border:"1.5px solid var(--vermillion-soft)",padding:"2px 6px",borderRadius:"6px",marginRight:"8px",verticalAlign:"middle",color:"var(--vermillion)",background:"var(--vermillion-soft)"}}>SGI</span>
                         <span style={{fontSize:"14px",marginRight:"4px",verticalAlign:"middle"}}>🤖</span>
                         <span style={{verticalAlign:"middle"}} id="policyLinksText">
-                            eSAMz AI generates synthetic content and may be inaccurate. By using this service, you agree to our{' '}
-                            <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" style={{fontWeight:600}}>Privacy Policy</a>{' '}and{' '}
+                            eSAMz AI generates synthetic content and may be inaccurate. By using this service, you agree to our{" "}
+                            <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" style={{fontWeight:600}}>Privacy Policy</a> and{" "}
                             <a href="https://esamz.info/termsofservice" target="_blank" rel="noopener" style={{fontWeight:600}}>Terms</a>.
                         </span>
                         <span id="charCount" className="char-count"></span>
