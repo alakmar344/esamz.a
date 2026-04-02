@@ -1528,8 +1528,6 @@ export default function ChatPage() {
                         <span style={{fontFamily:"'DM Mono'",fontSize:"9px",border:"1.5px solid var(--vermillion-soft)",padding:"2px 6px",borderRadius:"6px",marginRight:"8px",verticalAlign:"middle",color:"var(--vermillion)",background:"var(--vermillion-soft)"}}>SGI</span>
                         <span style={{fontSize:"14px",marginRight:"4px",verticalAlign:"middle"}}>🤖</span>
                         <span style={{verticalAlign:"middle"}} id="disclaimerText">
-                            eSAMz AI generates synthetic content and may be inaccurate.
-                            By using this service, you agree to our
                             <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" style={{fontWeight:600}}>Privacy Policy</a> &amp;
                             <a href="https://esamz.info/termsofservice" target="_blank" rel="noopener" style={{fontWeight:600}}>Terms</a>.
                         </span>
