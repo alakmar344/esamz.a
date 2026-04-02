@@ -295,8 +295,6 @@ export default function ChatPage() {
                     filePreview: document.getElementById('filePreview'),
                     sidebar:     document.getElementById('sidebar'),
                     overlay:     document.getElementById('overlay'),
-                    statusText:  document.getElementById('statusText'),
-                    statusIndicator: document.getElementById('statusIndicator'),
                     sendBtn:     document.getElementById('btnSend'),
                     sendIcon:    document.querySelector('.send-icon'),
                     stopIcon:    document.querySelector('.stop-icon'),
@@ -464,12 +462,6 @@ export default function ChatPage() {
                 this.dom.input.focus();
             }
 
-            updateStatus(text) {
-                this.dom.statusText.textContent = text;
-                if (text === 'Ready') this.dom.statusIndicator.classList.remove('processing');
-                else this.dom.statusIndicator.classList.add('processing');
-            }
-
             async handleFiles(fileList) {
                 if (!fileList.length) return;
                 for (const file of fileList) {
@@ -604,10 +596,7 @@ export default function ChatPage() {
                     // Retry up to 2 times on 504 Gateway Timeout (transient AI service errors).
                     let response;
                     for (let attempt = 0; attempt <= 2; attempt++) {
-                        if (attempt > 0) {
-                            this.updateStatus(`Retrying… (${attempt}/2)`);
-                            await new Promise(r => setTimeout(r, 2000 * attempt));
-                        }
+                        if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt));
                         response = await fetch(chatUrl, {
                             method:  'POST',
                             headers: reqHeaders,
@@ -625,22 +614,44 @@ export default function ChatPage() {
 
                     const reader  = response.body.getReader();
                     const decoder = new TextDecoder('utf-8');
-                    let buffer    = '';
-                    let fullText  = '';
+                    let buffer       = '';
+                    let fullText     = '';
+                    let displayedText = '';
                     let incomingHistory = null;
+                    let typingTimer = null;
+                    let streamDone = false;
 
-                    let renderScheduled = false;
-                    const scheduleRender = () => {
-                        if (renderScheduled) return;
-                        renderScheduled = true;
-                        requestAnimationFrame(() => {
-                            renderScheduled = false;
-                            if (window.marked && window.DOMPurify) {
-                                try { contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(fullText)); if (window.Prism) Prism.highlightAllUnder(contentDiv); this.injectCodeButtons(contentDiv); }
-                                catch (_) { contentDiv.textContent = fullText; }
-                            } else { contentDiv.textContent = fullText; }
-                            this.scrollToBottom();
-                        });
+                    const renderDisplayed = (showCursor = true) => {
+                        if (window.marked && window.DOMPurify) {
+                            try {
+                                contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(displayedText));
+                                if (showCursor && displayedText.length < fullText.length) {
+                                    const cursor = document.createElement('span');
+                                    cursor.className = 'streaming-cursor';
+                                    contentDiv.appendChild(cursor);
+                                }
+                                if (window.Prism) Prism.highlightAllUnder(contentDiv);
+                                this.injectCodeButtons(contentDiv);
+                            } catch (_) { contentDiv.textContent = displayedText; }
+                        } else { contentDiv.textContent = displayedText; }
+                        this.scrollToBottom();
+                    };
+
+                    const startTypewriter = () => {
+                        if (typingTimer) return;
+                        const step = () => {
+                            if (displayedText.length < fullText.length) {
+                                const remaining = fullText.length - displayedText.length;
+                                const add = remaining > 160 ? 10 : remaining > 80 ? 6 : remaining > 30 ? 3 : 2;
+                                displayedText = fullText.slice(0, displayedText.length + add);
+                                renderDisplayed(true);
+                                typingTimer = setTimeout(step, 18);
+                                return;
+                            }
+                            typingTimer = null;
+                            if (streamDone) renderDisplayed(false);
+                        };
+                        step();
                     };
 
                     const processLine = line => {
@@ -650,11 +661,13 @@ export default function ChatPage() {
                         const type = line.substring(0, sep);
                         const data = line.substring(sep + 1);
                         if (type === 'STATUS') {
-                            if (data === 'SEARCHING') this.updateStatus('Searching…');
-                            if (data === 'TYPING')    this.updateStatus('Generating…');
+                            const loader = contentDiv.querySelector('.thinking-loader');
+                            if (!loader) return;
+                            if (data === 'SEARCHING') loader.textContent = 'Thinking…';
+                            if (data === 'TYPING')    loader.textContent = 'Writing…';
                         } else if (type === 'CHUNK') {
                             fullText += data.replace(/\\n/g, '\n');
-                            scheduleRender();
+                            startTypewriter();
                         } else if (type === 'HISTORY_UPDATE') {
                             try { incomingHistory = JSON.parse(data); } catch (_) {}
                         } else if (type === 'ERROR') {
@@ -677,10 +690,8 @@ export default function ChatPage() {
                     }
                     if (buffer.trim()) for (const l of buffer.split('\n')) processLine(l);
 
-                    if (fullText && window.marked && window.DOMPurify) {
-                        try { contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(fullText)); if (window.Prism) Prism.highlightAllUnder(contentDiv); this.injectCodeButtons(contentDiv); }
-                        catch (_) { contentDiv.textContent = fullText; }
-                    }
+                    streamDone = true;
+                    if (!typingTimer) renderDisplayed(false);
 
                     if (incomingHistory) {
                         this.overwriteHistory(this.state.chatId, incomingHistory);
@@ -695,6 +706,7 @@ export default function ChatPage() {
                     this.addRegenButton(aiMsgDiv);
 
                 } catch (error) {
+                    if (typingTimer) { clearTimeout(typingTimer); typingTimer = null; }
                     if (error.name === 'AbortError') {
                         contentDiv.innerHTML += '<p style="font-style:italic;color:var(--ink-ghost);margin-top:10px;">[Stopped by user]</p>';
                         const msgs = Array.from(this.dom.chatList.querySelectorAll('.message')).map(m => ({ role: m.classList.contains('user') ? 'user' : 'assistant', content: m.querySelector('.bubble').innerText }));
@@ -714,13 +726,11 @@ export default function ChatPage() {
             setProcessingState(on) {
                 this.state.isProcessing = on;
                 if (on) {
-                    this.updateStatus('Thinking…');
                     this.dom.sendBtn.classList.add('stop-mode');
                     this.dom.sendBtn.disabled = false;
                     this.dom.sendIcon.classList.add('hidden');
                     this.dom.stopIcon.classList.remove('hidden');
                 } else {
-                    this.updateStatus('Ready');
                     this.dom.sendBtn.classList.remove('stop-mode');
                     this.dom.sendIcon.classList.remove('hidden');
                     this.dom.stopIcon.classList.add('hidden');
@@ -925,7 +935,7 @@ export default function ChatPage() {
                 const bubble  = document.createElement('div');
                 bubble.className  = 'bubble';
                 if (isLoading) {
-                    bubble.innerHTML = `<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+                    bubble.innerHTML = `<div class="thinking-loader">Thinking…</div>`;
                 } else {
                     try {
                         bubble.innerHTML = DOMPurify.sanitize(marked.parse(text));
@@ -1202,36 +1212,6 @@ export default function ChatPage() {
         })();
 
         // ====================================================================
-        //  CONNECTION PING — polls /health endpoint
-        // ====================================================================
-        (function initConnectionPing() {
-            const dotEl      = document.querySelector('.status-dot');
-            const statusText = document.getElementById('statusText');
-            if (!dotEl || !statusText) return;
-            const latency = document.createElement('span');
-            latency.className = 'status-latency';
-            latency.id        = 'statusLatency';
-            dotEl.parentNode.appendChild(latency);
-            async function ping() {
-                if (document.getElementById('statusIndicator')?.classList.contains('processing')) return;
-                const G = 200, W = 500;
-                const start = Date.now();
-                try {
-                    const sig = typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(5000) : (() => { const ac = new AbortController(); setTimeout(() => ac.abort(), 5000); return ac.signal; })();
-                    await fetch(`${BACKEND_BASE_URL}/health`, { method:'GET', signal:sig, cache:'no-store' });
-                    const ms = Date.now() - start;
-                    latency.textContent = `· ${ms}ms`;
-                    dotEl.classList.remove('quality-warn','quality-bad');
-                    if (ms < G) dotEl.classList.add('quality-good');
-                    else if (ms < W) { dotEl.classList.remove('quality-good'); dotEl.classList.add('quality-warn'); }
-                    else { dotEl.classList.remove('quality-good'); dotEl.classList.add('quality-bad'); }
-                } catch(_) { latency.textContent = '· Offline'; dotEl.classList.remove('quality-good','quality-warn'); dotEl.classList.add('quality-bad'); }
-            }
-            ping();
-            setInterval(ping, 30000);
-        })();
-
-        // ====================================================================
         //  BOOT
         // ====================================================================
         // Clean up stale PeerJS localStorage keys from previous versions
@@ -1342,6 +1322,7 @@ export default function ChatPage() {
                                 <li>Everything in Plus</li>
                                 <li>RAG on/off toggle</li>
                                 <li>100 messages/day</li>
+                                <li>Faster and deeper responses</li>
                             </ul>
                         </div>
                     </div>
@@ -1356,12 +1337,13 @@ export default function ChatPage() {
                                 <li>Everything in Pro</li>
                                 <li>Custom system prompt editor</li>
                                 <li>1000 messages/day</li>
+                                <li>Priority generation quality</li>
                             </ul>
                         </div>
                     </div>
                 </div>
 
-                <a href="https://payments.cashfree.com/forms/esamz-ai" className="plans-upgrade-btn" target="_blank" rel="noopener">Get a Plan →</a>
+                <a href="https://payments.cashfree.com/forms/esamz-ai" className="plans-upgrade-btn" target="_blank" rel="noopener">Upgrade Now — Unlock Pro Features →</a>
             </div>
         </div>
     </div>
@@ -1389,7 +1371,7 @@ export default function ChatPage() {
                 </button>
                 <button className="btn-view-plans" id="btnViewPlans">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                    View Plans
+                    View Plans &amp; Upgrade
                 </button>
             </div>
             <div className="sidebar-nav">
@@ -1428,10 +1410,6 @@ export default function ChatPage() {
                     <button className="icon-btn btn-open-sidebar-desktop" id="btnOpenSidebarDesktop" title="Open sidebar" aria-label="Open sidebar">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                     </button>
-                    <div className="status-pill" id="statusIndicator">
-                        <div className="status-dot"></div>
-                        <span id="statusText">Ready</span>
-                    </div>
                 </div>
                 <div className="header-right">
                     <div id="clerkUserButton" style={{display:"flex",alignItems:"center"}}>{hasClerk && UserButton && <UserButton />}</div>
@@ -1528,8 +1506,9 @@ export default function ChatPage() {
                         <span style={{fontFamily:"'DM Mono'",fontSize:"9px",border:"1.5px solid var(--vermillion-soft)",padding:"2px 6px",borderRadius:"6px",marginRight:"8px",verticalAlign:"middle",color:"var(--vermillion)",background:"var(--vermillion-soft)"}}>SGI</span>
                         <span style={{fontSize:"14px",marginRight:"4px",verticalAlign:"middle"}}>🤖</span>
                         <span style={{verticalAlign:"middle"}} id="policyLinksText">
-                            <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" style={{fontWeight:600}}>Privacy Policy</a> &amp;
-                            <a href="https://esamz.info/termsofservice" target="_blank" rel="noopener" style={{fontWeight:600}}>Terms</a>.
+                            eSAMz AI generates synthetic content and may be inaccurate. By using this service, you agree to our{' '}
+                            <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" style={{fontWeight:600}}>Privacy Policy</a>{' '}and{' '}
+                            <a href="https://esamz.info/termsofservice" target="_blank" rel="noopener" style={{fontWeight:600}}>Terms of Service</a>.
                         </span>
                         <span id="charCount" className="char-count"></span>
                         <span style={{display:"inline-block",marginLeft:"10px",verticalAlign:"middle",fontFamily:"'DM Mono'",fontSize:"9px",color:"var(--ink-ghost)",opacity:0.6}}>
