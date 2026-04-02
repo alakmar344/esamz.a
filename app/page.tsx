@@ -432,21 +432,6 @@ export default function ChatPage() {
 
                 this.dom.themeToggle.addEventListener('click', () => this.toggleTheme());
 
-                document.querySelectorAll('.suggestion-card').forEach(card => {
-                    card.setAttribute('role', 'button');
-                    card.setAttribute('tabindex', '0');
-                    card.addEventListener('click', () => {
-                        if (card.dataset.prompt) this.fillInput(card.dataset.prompt);
-                    });
-                    card.addEventListener('keydown', e => {
-                        if (e.key === 'Enter') {
-                            if (card.dataset.prompt) this.fillInput(card.dataset.prompt);
-                        } else if (e.key === ' ') {
-                            e.preventDefault();
-                            if (card.dataset.prompt) this.fillInput(card.dataset.prompt);
-                        }
-                    });
-                });
             }
 
             handleInput() {
@@ -1481,27 +1466,19 @@ export default function ChatPage() {
                         <h1 className="welcome-headline" id="welcomeHeadline">Ask anything.<br />Think <em>deeper</em>.</h1>
                         <p className="welcome-deck">Deep reasoning with emotional clarity — for complex problems that demand more than a quick answer.</p>
                         <div className="welcome-rule"></div>
-                        <div className="suggestions">
-                            <div className="suggestion-card" data-prompt="Write a Python script for data analysis">
-                                <div className="suggestion-header"><span className="suggestion-kicker"><span className="suggestion-kicker-icon">🐍</span>Code</span><span className="suggestion-arrow">→</span></div>
-                                <div className="suggestion-title">Python Data Analysis</div>
-                                <div className="suggestion-desc">Generate efficient scripts &amp; logic</div>
-                            </div>
-                            <div className="suggestion-card" data-prompt="Explain quantum computing concepts">
-                                <div className="suggestion-header"><span className="suggestion-kicker"><span className="suggestion-kicker-icon">🧠</span>Learn</span><span className="suggestion-arrow">→</span></div>
-                                <div className="suggestion-title">Deep Explanations</div>
-                                <div className="suggestion-desc">Complex topics made crystal clear</div>
-                            </div>
-                            <div className="suggestion-card" data-prompt="Draft a professional business proposal">
-                                <div className="suggestion-header"><span className="suggestion-kicker"><span className="suggestion-kicker-icon">✍️</span>Write</span><span className="suggestion-arrow">→</span></div>
-                                <div className="suggestion-title">Professional Writing</div>
-                                <div className="suggestion-desc">Proposals, emails, reports &amp; more</div>
-                            </div>
-                            <div className="suggestion-card" data-prompt="Research latest AI developments">
-                                <div className="suggestion-header"><span className="suggestion-kicker"><span className="suggestion-kicker-icon">🔬</span>Research</span><span className="suggestion-arrow">→</span></div>
-                                <div className="suggestion-title">Current Trends</div>
-                                <div className="suggestion-desc">Insights backed by deep reasoning</div>
-                            </div>
+                        <div className="welcome-highlights" aria-label="Capabilities">
+                            <span className="welcome-pill">Deep reasoning</span>
+                            <span className="welcome-pill">Multi-step analysis</span>
+                            <span className="welcome-pill">Clean, structured answers</span>
+                            <span className="welcome-pill">Code, research &amp; writing</span>
+                        </div>
+                        <p className="welcome-hint">Start with a goal, a draft, or a rough idea — eSAMz will shape it with you.</p>
+                        <div className="welcome-actions" aria-hidden="true">
+                            <span className="welcome-action">Ask</span>
+                            <span className="welcome-action-sep">·</span>
+                            <span className="welcome-action">Refine</span>
+                            <span className="welcome-action-sep">·</span>
+                            <span className="welcome-action">Execute</span>
                         </div>
                     </div>
                     <div id="chatList"></div>
