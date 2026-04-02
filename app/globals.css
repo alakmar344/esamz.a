@@ -178,27 +178,19 @@
         .welcome-dateline::before{content:'';display:block;width:24px;height:1px;background:var(--ink-ghost);opacity:0.5;}
         .welcome-headline{font-family:'Inter',system-ui,sans-serif;font-size:clamp(34px,5vw,54px);font-weight:700;line-height:1.1;letter-spacing:-0.025em;color:var(--ink);margin-bottom:18px;}
         .welcome-headline em{font-style:italic;color:var(--crescent);}
-        .welcome-deck{font-size:15px;color:var(--ink-faint);margin-bottom:44px;max-width:520px;line-height:1.65;}
-        .welcome-rule{width:100%;height:1px;background:var(--rule-bold);margin-bottom:32px;position:relative;}
+        .welcome-deck{font-size:15px;color:var(--ink-faint);margin-bottom:30px;max-width:520px;line-height:1.65;}
+        .welcome-rule{width:100%;height:1px;background:var(--rule-bold);margin-bottom:24px;position:relative;}
         .welcome-rule::after{content:none;}
-        .suggestions{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;width:100%;}
-        .suggestion-card{
-            background:var(--paper-warm);padding:20px 22px;cursor:pointer;
-            transition:border-color 180ms ease,box-shadow 180ms ease;
-            text-align:left;border:1px solid var(--rule-bold);display:block;border-radius:10px;
+        .welcome-highlights{display:flex;flex-wrap:wrap;gap:10px;max-width:640px;margin-bottom:18px;}
+        .welcome-pill{
+            display:inline-flex;align-items:center;padding:8px 12px;border-radius:999px;
+            border:1px solid var(--rule-bold);background:var(--paper-warm);
+            color:var(--ink-faint);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.07em;text-transform:uppercase;
         }
-        .suggestion-card::before{content:none;}
-        .suggestion-card::after{content:none;}
-        .suggestion-card:hover{border-color:var(--crescent);box-shadow:0 4px 14px rgba(0,0,0,0.08);}
-        .suggestion-card:focus{outline:2px solid var(--crescent);outline-offset:2px;}
-        .suggestion-card:focus:not(:focus-visible){outline:none;}
-        .suggestion-card:hover .suggestion-arrow{opacity:1;transform:translateX(0);}
-        .suggestion-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-        .suggestion-kicker{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--crescent);display:flex;align-items:center;gap:6px;}
-        .suggestion-kicker-icon{font-size:14px;line-height:1;}
-        .suggestion-arrow{font-size:16px;color:var(--crescent);opacity:0;transform:translateX(-8px);transition:all 200ms;}
-        .suggestion-title{font-family:'Inter',system-ui,sans-serif;font-size:14px;font-weight:600;color:var(--ink);line-height:1.3;margin-bottom:5px;}
-        .suggestion-desc{font-size:12px;color:var(--ink-ghost);line-height:1.5;}
+        .welcome-hint{font-size:13px;line-height:1.65;color:var(--ink-ghost);max-width:560px;margin-bottom:16px;}
+        .welcome-actions{display:flex;align-items:center;gap:8px;color:var(--ink-ghost);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;}
+        .welcome-action{color:var(--crescent);}
+        .welcome-action-sep{opacity:0.55;}
 
         /* ----- MESSAGES ----- */
         .message{display:flex;gap:14px;margin-bottom:40px;animation:fadeUp 0.3s ease-out both;}
@@ -562,7 +554,6 @@
             .overlay.active{opacity:1;pointer-events:auto;}
             .mobile-toggle{display:flex;position:relative;z-index:1;}
             .btn-open-sidebar-desktop{display:none!important;}
-            .suggestions{grid-template-columns:1fr;}
             .chat-wrapper{padding:32px 20px;}
             .input-wrapper{padding:14px 20px 18px;}
             .cibo-modal-actions{flex-direction:column;}
@@ -584,8 +575,8 @@
             .header{padding:0 10px;}
             .message.user .bubble{max-width:95%;}
             .welcome-headline{font-size:clamp(28px,8vw,48px);}
-            .suggestions{gap:8px;}
-            .suggestion-card{padding:14px 16px;}
+            .welcome-highlights{gap:8px;}
+            .welcome-pill{padding:7px 10px;font-size:9px;}
             .input-row{gap:4px;}
         }
         .hidden{display:none!important;}
