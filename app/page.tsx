@@ -1272,7 +1272,7 @@ export default function ChatPage() {
                 const res  = await fetch(`${BACKEND_BASE_URL}/api/privacy-status`, { credentials: 'include' });
                 if (!res.ok) return;
                 const data = await res.json();
-                const disclaimerSpan = document.getElementById('disclaimerText');
+                const disclaimerSpan = document.getElementById('policyLinksText');
                 if (!disclaimerSpan) return;
                 const ragLabel = data.rag        ? ` · RAG: ${data.rag}` : '';
                 const retLabel = data.dataRetentionMinutes
@@ -1527,7 +1527,7 @@ export default function ChatPage() {
                     <div className="input-footer">
                         <span style={{fontFamily:"'DM Mono'",fontSize:"9px",border:"1.5px solid var(--vermillion-soft)",padding:"2px 6px",borderRadius:"6px",marginRight:"8px",verticalAlign:"middle",color:"var(--vermillion)",background:"var(--vermillion-soft)"}}>SGI</span>
                         <span style={{fontSize:"14px",marginRight:"4px",verticalAlign:"middle"}}>🤖</span>
-                        <span style={{verticalAlign:"middle"}} id="disclaimerText">
+                        <span style={{verticalAlign:"middle"}} id="policyLinksText">
                             <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" style={{fontWeight:600}}>Privacy Policy</a> &amp;
                             <a href="https://esamz.info/termsofservice" target="_blank" rel="noopener" style={{fontWeight:600}}>Terms</a>.
                         </span>
