@@ -1231,6 +1231,75 @@ export default function ChatPage() {
         })();
 
         // ====================================================================
+        //  POLICY DISCLAIMER INTEGRITY GUARD
+        // ====================================================================
+        (function initPolicyFooterGuard() {
+            const policyEl = document.getElementById('policyLinksText');
+            if (!policyEl) return;
+
+            const EXPECTED_TEXT = 'AI output may be inaccurate. By using this service, you agree to our Privacy Policy and Terms.';
+            const LINKS = [
+                { href: 'https://esamz.info/privacypolicy', label: 'Privacy Policy' },
+                { href: 'https://esamz.info/termsofservice', label: 'Terms' },
+            ];
+
+            let repairing = false;
+
+            const rebuild = () => {
+                if (repairing) return;
+                repairing = true;
+                try {
+                    policyEl.innerHTML = '';
+                    policyEl.appendChild(document.createTextNode('AI output may be inaccurate. By using this service, you agree to our '));
+
+                    const privacy = document.createElement('a');
+                    privacy.href = LINKS[0].href;
+                    privacy.target = '_blank';
+                    privacy.rel = 'noopener';
+                    privacy.style.fontWeight = '600';
+                    privacy.textContent = LINKS[0].label;
+                    policyEl.appendChild(privacy);
+
+                    policyEl.appendChild(document.createTextNode(' and '));
+
+                    const terms = document.createElement('a');
+                    terms.href = LINKS[1].href;
+                    terms.target = '_blank';
+                    terms.rel = 'noopener';
+                    terms.style.fontWeight = '600';
+                    terms.textContent = LINKS[1].label;
+                    policyEl.appendChild(terms);
+
+                    policyEl.appendChild(document.createTextNode('.'));
+                } finally {
+                    repairing = false;
+                }
+            };
+
+            const hasExpectedStructure = () => {
+                const text = (policyEl.textContent || '').replace(/\s+/g, ' ').trim();
+                if (text !== EXPECTED_TEXT) return false;
+                const links = Array.from(policyEl.querySelectorAll('a'));
+                if (links.length !== 2) return false;
+                return links[0].href === LINKS[0].href && links[1].href === LINKS[1].href;
+            };
+
+            rebuild();
+
+            const observer = new MutationObserver(() => {
+                if (repairing) return;
+                if (!hasExpectedStructure()) rebuild();
+            });
+
+            observer.observe(policyEl, {
+                childList: true,
+                subtree: true,
+                characterData: true,
+                attributes: true,
+            });
+        })();
+
+        // ====================================================================
         //  BOOT
         // ====================================================================
         // Clean up stale PeerJS localStorage keys from previous versions
@@ -1501,15 +1570,15 @@ export default function ChatPage() {
                         </div>
                     </div>
                     <div className="input-footer">
-                        <span style={{fontFamily:"'DM Mono'",fontSize:"9px",border:"1.5px solid var(--vermillion-soft)",padding:"2px 6px",borderRadius:"6px",marginRight:"8px",verticalAlign:"middle",color:"var(--vermillion)",background:"var(--vermillion-soft)"}}>SGI</span>
-                        <span style={{fontSize:"14px",marginRight:"4px",verticalAlign:"middle"}}>🤖</span>
+                        <span className="footer-sgi-badge" style={{fontFamily:"'DM Mono'",fontSize:"9px",border:"1.5px solid var(--vermillion-soft)",padding:"2px 6px",borderRadius:"6px",marginRight:"8px",verticalAlign:"middle",color:"var(--vermillion)",background:"var(--vermillion-soft)"}}>SGI</span>
+                        <span className="footer-robot-icon" style={{fontSize:"14px",marginRight:"4px",verticalAlign:"middle"}}>🤖</span>
                         <span style={{verticalAlign:"middle"}} id="policyLinksText">
                             AI output may be inaccurate. By using this service, you agree to our{" "}
                             <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" style={{fontWeight:600}}>Privacy Policy</a> and{" "}
                             <a href="https://esamz.info/termsofservice" target="_blank" rel="noopener" style={{fontWeight:600}}>Terms</a>.
                         </span>
                         <span id="charCount" className="char-count"></span>
-                        <span style={{display:"inline-block",marginLeft:"10px",verticalAlign:"middle",fontFamily:"'DM Mono'",fontSize:"9px",color:"var(--ink-ghost)",opacity:0.6}}>
+                        <span id="footerShortcuts" style={{display:"inline-block",marginLeft:"10px",verticalAlign:"middle",fontFamily:"'DM Mono'",fontSize:"9px",color:"var(--ink-ghost)",opacity:0.6}}>
                             <kbd style={{background:"var(--paper-aged)",border:"1.5px solid var(--rule-bold)",borderBottomWidth:"3px",padding:"1px 5px",borderRadius:"4px",fontFamily:"'DM Mono'",fontSize:"9px"}}>Ctrl</kbd>
                             {' '}<kbd style={{background:"var(--paper-aged)",border:"1.5px solid var(--rule-bold)",borderBottomWidth:"3px",padding:"1px 5px",borderRadius:"4px",fontFamily:"'DM Mono'",fontSize:"9px"}}>/</kbd> shortcuts
                         </span>
