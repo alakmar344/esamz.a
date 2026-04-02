@@ -92,6 +92,16 @@ export default function ChatPage() {
         const LS_PLAN      = 'esamz_plan';
         const LS_STORAGE   = 'esamz_conversations_v9';
         const LS_LAST_CHAT = 'esamz_last_chat_id';
+        const TYPEWRITER_INTERVAL_MS = 18;
+        const TYPEWRITER_SPEED_STEPS = {
+            veryFastThreshold: 160,
+            fastThreshold: 80,
+            mediumThreshold: 30,
+            veryFastChunk: 10,
+            fastChunk: 6,
+            mediumChunk: 3,
+            slowChunk: 2,
+        };
 
         // ====================================================================
         //  UTILITIES
@@ -642,10 +652,16 @@ export default function ChatPage() {
                         const step = () => {
                             if (displayedText.length < fullText.length) {
                                 const remaining = fullText.length - displayedText.length;
-                                const add = remaining > 160 ? 10 : remaining > 80 ? 6 : remaining > 30 ? 3 : 2;
+                                const add = remaining > TYPEWRITER_SPEED_STEPS.veryFastThreshold
+                                    ? TYPEWRITER_SPEED_STEPS.veryFastChunk
+                                    : remaining > TYPEWRITER_SPEED_STEPS.fastThreshold
+                                        ? TYPEWRITER_SPEED_STEPS.fastChunk
+                                        : remaining > TYPEWRITER_SPEED_STEPS.mediumThreshold
+                                            ? TYPEWRITER_SPEED_STEPS.mediumChunk
+                                            : TYPEWRITER_SPEED_STEPS.slowChunk;
                                 displayedText = fullText.slice(0, displayedText.length + add);
                                 renderDisplayed(true);
-                                typingTimer = setTimeout(step, 18);
+                                typingTimer = setTimeout(step, TYPEWRITER_INTERVAL_MS);
                                 return;
                             }
                             typingTimer = null;
@@ -1508,7 +1524,7 @@ export default function ChatPage() {
                         <span style={{verticalAlign:"middle"}} id="policyLinksText">
                             eSAMz AI generates synthetic content and may be inaccurate. By using this service, you agree to our{' '}
                             <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" style={{fontWeight:600}}>Privacy Policy</a>{' '}and{' '}
-                            <a href="https://esamz.info/termsofservice" target="_blank" rel="noopener" style={{fontWeight:600}}>Terms of Service</a>.
+                            <a href="https://esamz.info/termsofservice" target="_blank" rel="noopener" style={{fontWeight:600}}>Terms</a>.
                         </span>
                         <span id="charCount" className="char-count"></span>
                         <span style={{display:"inline-block",marginLeft:"10px",verticalAlign:"middle",fontFamily:"'DM Mono'",fontSize:"9px",color:"var(--ink-ghost)",opacity:0.6}}>

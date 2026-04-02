@@ -258,6 +258,7 @@
             text-transform:uppercase;
             color:var(--crescent);
             opacity:0.9;
+            display:inline-block;
             animation:thinkingPulse 1s ease-in-out infinite;
         }
         @keyframes thinkingPulse{0%,100%{opacity:0.45}50%{opacity:1}}
@@ -633,9 +634,6 @@
         .code-header-btns{display:flex;gap:4px;}
         .code-header button{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;background:transparent;border:none;color:var(--ink-ghost);cursor:pointer;border-radius:6px;transition:color 150ms,background 150ms;}
         .code-header button:hover{color:var(--crescent);background:var(--crescent-soft);}
-
-        /* ----- THINKING LOADER ----- */
-        .thinking-loader{display:inline-block;}
 
         /* ----- PLAN BADGE ENHANCED ----- */
         .plan-badge{
