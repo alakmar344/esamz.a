@@ -1242,6 +1242,7 @@ export default function ChatPage() {
             ];
 
             let repairing = false;
+            let EXPECTED_TEXT = '';
             const normalized = s => (s || '').replace(/\s+/g, ' ').trim();
 
             const rebuild = () => {
@@ -1275,8 +1276,6 @@ export default function ChatPage() {
                 }
             };
 
-            const EXPECTED_TEXT = normalized(policyEl.textContent);
-
             const hasExpectedStructure = () => {
                 const text = normalized(policyEl.textContent);
                 if (text !== EXPECTED_TEXT) return false;
@@ -1286,6 +1285,7 @@ export default function ChatPage() {
             };
 
             rebuild();
+            EXPECTED_TEXT = normalized(policyEl.textContent);
 
             const observer = new MutationObserver(() => {
                 if (repairing) return;
@@ -1295,7 +1295,6 @@ export default function ChatPage() {
             observer.observe(policyEl, {
                 childList: true,
                 characterData: true,
-                attributes: true,
             });
         })();
 
