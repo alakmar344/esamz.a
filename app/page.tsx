@@ -1466,20 +1466,6 @@ export default function ChatPage() {
                         <h1 className="welcome-headline" id="welcomeHeadline">Ask anything.<br />Think <em>deeper</em>.</h1>
                         <p className="welcome-deck">Deep reasoning with emotional clarity — for complex problems that demand more than a quick answer.</p>
                         <div className="welcome-rule"></div>
-                        <div className="welcome-highlights" aria-label="Capabilities">
-                            <span className="welcome-pill">Deep reasoning</span>
-                            <span className="welcome-pill">Multi-step analysis</span>
-                            <span className="welcome-pill">Clean, structured answers</span>
-                            <span className="welcome-pill">Code, research &amp; writing</span>
-                        </div>
-                        <p className="welcome-hint">Start with a goal, a draft, or a rough idea — eSAMz will shape it with you.</p>
-                        <div className="welcome-actions" aria-hidden="true">
-                            <span className="welcome-action">Ask</span>
-                            <span className="welcome-action-sep">·</span>
-                            <span className="welcome-action">Refine</span>
-                            <span className="welcome-action-sep">·</span>
-                            <span className="welcome-action">Execute</span>
-                        </div>
                     </div>
                     <div id="chatList"></div>
                 </div>
