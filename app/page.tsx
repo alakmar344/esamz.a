@@ -324,6 +324,10 @@ export default function ChatPage() {
                     closeSidebarBtn:        document.getElementById('btnCloseSidebar'),
                     openSidebarDesktopBtn:  document.getElementById('btnOpenSidebarDesktop'),
                     openSidebarMobileBtn:   document.getElementById('openSidebar'),
+                    mobileActionsToggle:    document.getElementById('mobileActionsToggle'),
+                    mobileActionsMenu:      document.getElementById('mobileActionsMenu'),
+                    mobileExportBtn:        document.getElementById('mobileExportBtn'),
+                    mobileClearBtn:         document.getElementById('mobileClearBtn'),
                 };
                 this.state = {
                     chatId: null, files: [],
@@ -385,7 +389,7 @@ export default function ChatPage() {
                 this.dom.newChatBtn.addEventListener('click',  () => this.newChat());
 
                 // FIX P6: Clear Chat also calls DELETE /api/session to wipe server-side memory
-                this.dom.clearChatBtn.addEventListener('click', async () => {
+                const clearChatAction = async () => {
                     if (await Utils.confirm('Clear current chat session?', 'Clear Chat')) {
                         try {
                             await fetch(`${BACKEND_BASE_URL}/api/session`, {
@@ -395,19 +399,40 @@ export default function ChatPage() {
                         } catch (_) { /* offline — local clear still proceeds */ }
                         this.newChat();
                     }
-                });
+                };
+                this.dom.clearChatBtn.addEventListener('click', clearChatAction);
 
                 this.dom.uploadBtn.addEventListener('click', () => this.dom.fileInput.click());
                 this.dom.fileInput.addEventListener('change', e => this.handleFiles(e.target.files));
 
                 const exportDialog = document.getElementById('exportDialog');
                 document.getElementById('closeDialog').addEventListener('click', () => exportDialog.close());
-                this.dom.exportBtn.addEventListener('click', () => {
+                const openExportDialog = () => {
                     if (this.state.chatId) exportDialog.showModal();
                     else Utils.showToast('No chat to export', 'error');
-                });
+                };
+                this.dom.exportBtn.addEventListener('click', openExportDialog);
                 document.querySelectorAll('[data-export-type]').forEach(btn => {
                     btn.addEventListener('click', e => this.exportChat(e.currentTarget.dataset.exportType));
+                });
+                if (this.dom.mobileExportBtn) this.dom.mobileExportBtn.addEventListener('click', () => {
+                    openExportDialog();
+                    this.dom.mobileActionsMenu?.classList.remove('open');
+                });
+                if (this.dom.mobileClearBtn) this.dom.mobileClearBtn.addEventListener('click', async () => {
+                    this.dom.mobileActionsMenu?.classList.remove('open');
+                    await clearChatAction();
+                });
+                if (this.dom.mobileActionsToggle) {
+                    this.dom.mobileActionsToggle.addEventListener('click', e => {
+                        e.stopPropagation();
+                        this.dom.mobileActionsMenu?.classList.toggle('open');
+                    });
+                }
+                document.addEventListener('click', e => {
+                    if (!this.dom.mobileActionsMenu?.classList.contains('open')) return;
+                    if (this.dom.mobileActionsMenu.contains(e.target) || this.dom.mobileActionsToggle?.contains(e.target)) return;
+                    this.dom.mobileActionsMenu.classList.remove('open');
                 });
 
                 // Mobile sidebar
@@ -431,6 +456,13 @@ export default function ChatPage() {
                 });
 
                 this.dom.themeToggle.addEventListener('click', () => this.toggleTheme());
+                document.querySelectorAll('.welcome-suggestion-card').forEach(card => {
+                    card.addEventListener('click', () => this.fillInput(card.getAttribute('data-prompt') || ''));
+                });
+                if (window.matchMedia('(hover: none), (pointer: coarse)').matches) {
+                    const shortcutHint = document.getElementById('footerShortcuts');
+                    if (shortcutHint) shortcutHint.style.display = 'none';
+                }
 
             }
 
@@ -445,7 +477,23 @@ export default function ChatPage() {
                 const charCount = document.getElementById('charCount');
                 if (!charCount) return;
                 const len = this.dom.input.value.length;
-                charCount.textContent = len > 0 ? `${len.toLocaleString()} char${len !== 1 ? 's' : ''}` : '';
+                const showThreshold = 3200;
+                charCount.textContent = len >= showThreshold ? `${len.toLocaleString()} chars` : '';
+            }
+
+            generateConversationTitle(text) {
+                const words = (text || '')
+                    .replace(/\s+/g, ' ')
+                    .trim()
+                    .replace(/[^\p{L}\p{N}\s'-]/gu, '')
+                    .split(' ')
+                    .filter(Boolean);
+
+                if (!words.length) return 'New AI conversation topic';
+                if (words.length >= 4) return words.slice(0, 6).join(' ');
+                if (words.length === 3) return `Question about ${words.join(' ')}`;
+                if (words.length === 2) return `Question about ${words[0]} ${words[1]}`;
+                return `Discussion about ${words[0]} topic`;
             }
 
             updateButtonState() {
@@ -526,7 +574,7 @@ export default function ChatPage() {
 
                 if (!this.state.chatId) {
                     this.state.chatId = Date.now().toString();
-                    const title = text.slice(0, 30) || 'Untitled Chat';
+                    const title = this.generateConversationTitle(text);
                     this.saveToHistory({ id: this.state.chatId, title, messages: [], lastUpdated: Date.now() });
                     this.renderHistoryItem(this.state.chatId, title);
                     localStorage.setItem(this.LAST_CHAT_KEY, this.state.chatId);
@@ -933,7 +981,7 @@ export default function ChatPage() {
                 div.className = `message ${role}`;
                 const avatar  = document.createElement('div');
                 avatar.className  = 'avatar';
-                avatar.textContent = role === 'user' ? 'U' : 'eS';
+                avatar.textContent = role === 'user' ? 'U' : 'AI';
                 const content = document.createElement('div');
                 content.className = 'message-content';
                 const bubble  = document.createElement('div');
@@ -1001,9 +1049,15 @@ export default function ChatPage() {
                 if (ci !== -1) {
                     all[ci].messages    = newMessages;
                     all[ci].lastUpdated = Date.now();
-                    if (all[ci].title === 'Untitled Chat' && newMessages.length > 0) {
+                    if (newMessages.length > 0) {
                         const fu = newMessages.find(m => m.role === 'user');
-                        if (fu) { all[ci].title = fu.content.slice(0, 30) + '…'; this.renderHistoryItem(chatId, all[ci].title); }
+                        if (fu) {
+                            const nextTitle = this.generateConversationTitle(fu.content);
+                            if (nextTitle && nextTitle !== all[ci].title) {
+                                all[ci].title = nextTitle;
+                                this.renderHistoryItem(chatId, all[ci].title);
+                            }
+                        }
                     }
                     localStorage.setItem(this.storageKey, JSON.stringify(all));
                 }
@@ -1210,8 +1264,20 @@ export default function ChatPage() {
         (function initScrollTop() {
             const btn       = document.getElementById('scrollTopBtn');
             const container = document.getElementById('chatContainer');
+            const progress = document.getElementById('chatScrollProgressBar');
             if (!btn || !container) return;
-            container.addEventListener('scroll', () => btn.classList.toggle('visible', container.scrollTop > 300));
+            const update = () => {
+                const max = container.scrollHeight - container.clientHeight;
+                const ratio = max > 0 ? (container.scrollTop / max) * 100 : 0;
+                btn.classList.toggle('visible', container.scrollTop > 300);
+                if (progress) {
+                    progress.style.width = `${ratio}%`;
+                    progress.parentElement?.classList.toggle('visible', max > 300);
+                }
+            };
+            container.addEventListener('scroll', update);
+            window.addEventListener('resize', update);
+            update();
             btn.addEventListener('click', () => container.scrollTo({ top: 0, behavior: 'smooth' }));
         })();
 
@@ -1454,18 +1520,46 @@ export default function ChatPage() {
                         <svg className="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
                         <svg className="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
                     </button>
-                    <button className="btn-clear" id="btnExportChat" title="Export chat">Export</button>
-                    <button className="btn-clear" id="btnClearChat">Clear Chat</button>
+                    <button className="btn-clear desktop-only-action" id="btnExportChat" title="Export chat">Export</button>
+                    <button className="btn-clear desktop-only-action" id="btnClearChat">Clear Chat</button>
+                    <div className="mobile-actions-wrap">
+                        <button className="icon-btn mobile-actions-toggle" id="mobileActionsToggle" aria-label="More actions" title="More actions">⋮</button>
+                        <div className="mobile-actions-menu" id="mobileActionsMenu">
+                            <button id="mobileExportBtn" className="mobile-actions-item">Export chat</button>
+                            <button id="mobileClearBtn" className="mobile-actions-item">Clear chat</button>
+                        </div>
+                    </div>
                 </div>
             </header>
 
             <div className="chat-container" id="chatContainer">
+                <div className="chat-scroll-progress" id="chatScrollProgress"><span id="chatScrollProgressBar"></span></div>
                 <div className="chat-wrapper">
                     <div className="welcome" id="welcomeScreen">
-                        <div className="welcome-dateline">eSAMz AI · Strategic Artificial Mind</div>
+                        <div className="welcome-dateline">eSAMz AI</div>
                         <h1 className="welcome-headline" id="welcomeHeadline">Ask anything.<br />Think <em>deeper</em>.</h1>
                         <p className="welcome-deck">Deep reasoning with emotional clarity — for complex problems that demand more than a quick answer.</p>
-                        <div className="welcome-rule"></div>
+                        <div className="welcome-suggestions-wrap">
+                            <div className="welcome-suggestions" id="welcomeSuggestions">
+                                <button className="welcome-suggestion-card" data-prompt="Build me a practical Python data analysis workflow for messy CSV data.">
+                                    <span className="welcome-suggestion-title">Python Data Analysis</span>
+                                    <span className="welcome-suggestion-copy">Practical workflow for real data</span>
+                                </button>
+                                <button className="welcome-suggestion-card" data-prompt="Give me a deep explanation of transformers with simple analogies and examples.">
+                                    <span className="welcome-suggestion-title">Deep Explanations</span>
+                                    <span className="welcome-suggestion-copy">Complex topics made clear</span>
+                                </button>
+                                <button className="welcome-suggestion-card" data-prompt="Help me design a 30-day learning plan for mastering system design interviews.">
+                                    <span className="welcome-suggestion-title">30-Day Learning Plan</span>
+                                    <span className="welcome-suggestion-copy">Step-by-step with milestones</span>
+                                </button>
+                                <button className="welcome-suggestion-card" data-prompt="Review this startup idea and give risks, opportunities, and a go-to-market strategy.">
+                                    <span className="welcome-suggestion-title">Startup Strategy Review</span>
+                                    <span className="welcome-suggestion-copy">Risks, opportunities, execution</span>
+                                </button>
+                            </div>
+                            <div className="welcome-suggestions-hint">Swipe for more ideas →</div>
+                        </div>
                     </div>
                     <div id="chatList"></div>
                 </div>
@@ -1518,8 +1612,8 @@ export default function ChatPage() {
                         </div>
                     </div>
                     <div className="input-footer">
-                        <span className="footer-sgi-badge" style={{fontFamily:"'DM Mono'",fontSize:"9px",border:"1.5px solid var(--vermillion-soft)",padding:"2px 6px",borderRadius:"6px",marginRight:"8px",verticalAlign:"middle",color:"var(--vermillion)",background:"var(--vermillion-soft)"}}>SGI</span>
-                        <span className="footer-robot-icon" style={{fontSize:"14px",marginRight:"4px",verticalAlign:"middle"}}>🤖</span>
+                        <span className="footer-sgi-badge" title="SGI: Strategic Guidance Intelligence" aria-label="SGI means Strategic Guidance Intelligence" style={{fontFamily:"'DM Mono'",fontSize:"9px",border:"1.5px solid var(--vermillion-soft)",padding:"2px 6px",borderRadius:"6px",marginRight:"8px",verticalAlign:"middle",color:"var(--vermillion)",background:"var(--vermillion-soft)"}}>SGI</span>
+                        <span className="footer-robot-icon" title="AI assistant indicator" aria-label="AI assistant indicator" style={{fontSize:"14px",marginRight:"4px",verticalAlign:"middle"}}>🤖</span>
                         <span style={{verticalAlign:"middle"}} id="policyLinksText">
                             AI output may be inaccurate. By using this service, you agree to our{" "}
                             <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" style={{fontWeight:600}}>Privacy Policy</a> and{" "}
