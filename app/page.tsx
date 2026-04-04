@@ -92,6 +92,7 @@ export default function ChatPage() {
         const LS_PLAN      = 'esamz_plan';
         const LS_STORAGE   = 'esamz_conversations_v9';
         const LS_LAST_CHAT = 'esamz_last_chat_id';
+        const CHAR_COUNT_DISPLAY_THRESHOLD = 3200;
         const TYPEWRITER_INTERVAL_MS = 18;
         const TYPEWRITER_SPEED_STEPS = {
             veryFastThreshold: 160,
@@ -459,7 +460,14 @@ export default function ChatPage() {
                 document.querySelectorAll('.welcome-suggestion-card').forEach(card => {
                     card.addEventListener('click', () => this.fillInput(card.getAttribute('data-prompt') || ''));
                 });
-                if (window.matchMedia('(hover: none), (pointer: coarse)').matches) {
+                const suggestions = document.getElementById('welcomeSuggestions');
+                if (suggestions) {
+                    suggestions.addEventListener('keydown', e => {
+                        if (e.key === 'ArrowRight') suggestions.scrollBy({ left: 180, behavior: 'smooth' });
+                        if (e.key === 'ArrowLeft') suggestions.scrollBy({ left: -180, behavior: 'smooth' });
+                    });
+                }
+                if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) {
                     const shortcutHint = document.getElementById('footerShortcuts');
                     if (shortcutHint) shortcutHint.style.display = 'none';
                 }
@@ -477,8 +485,7 @@ export default function ChatPage() {
                 const charCount = document.getElementById('charCount');
                 if (!charCount) return;
                 const len = this.dom.input.value.length;
-                const showThreshold = 3200;
-                charCount.textContent = len >= showThreshold ? `${len.toLocaleString()} chars` : '';
+                charCount.textContent = len >= CHAR_COUNT_DISPLAY_THRESHOLD ? `${len.toLocaleString()} char${len !== 1 ? 's' : ''}` : '';
             }
 
             generateConversationTitle(text) {
@@ -489,7 +496,7 @@ export default function ChatPage() {
                     .split(' ')
                     .filter(Boolean);
 
-                if (!words.length) return 'New AI conversation topic';
+                if (!words.length) return 'New Conversation';
                 if (words.length >= 4) return words.slice(0, 6).join(' ');
                 if (words.length === 3) return `Question about ${words.join(' ')}`;
                 if (words.length === 2) return `Question about ${words[0]} ${words[1]}`;
@@ -981,7 +988,8 @@ export default function ChatPage() {
                 div.className = `message ${role}`;
                 const avatar  = document.createElement('div');
                 avatar.className  = 'avatar';
-                avatar.textContent = role === 'user' ? 'U' : 'AI';
+                avatar.textContent = role === 'user' ? 'U' : 'eS';
+                avatar.setAttribute('aria-label', role === 'user' ? 'User avatar' : 'AI assistant avatar');
                 const content = document.createElement('div');
                 content.className = 'message-content';
                 const bubble  = document.createElement('div');
@@ -1536,11 +1544,11 @@ export default function ChatPage() {
                 <div className="chat-scroll-progress" id="chatScrollProgress"><span id="chatScrollProgressBar"></span></div>
                 <div className="chat-wrapper">
                     <div className="welcome" id="welcomeScreen">
-                        <div className="welcome-dateline">eSAMz AI</div>
+                        <div className="welcome-dateline" aria-label="eSAMz AI branding">eSAMz AI</div>
                         <h1 className="welcome-headline" id="welcomeHeadline">Ask anything.<br />Think <em>deeper</em>.</h1>
                         <p className="welcome-deck">Deep reasoning with emotional clarity — for complex problems that demand more than a quick answer.</p>
                         <div className="welcome-suggestions-wrap">
-                            <div className="welcome-suggestions" id="welcomeSuggestions">
+                            <div className="welcome-suggestions" id="welcomeSuggestions" tabIndex={0} aria-label="Suggested prompts">
                                 <button className="welcome-suggestion-card" data-prompt="Build me a practical Python data analysis workflow for messy CSV data.">
                                     <span className="welcome-suggestion-title">Python Data Analysis</span>
                                     <span className="welcome-suggestion-copy">Practical workflow for real data</span>
@@ -1612,15 +1620,15 @@ export default function ChatPage() {
                         </div>
                     </div>
                     <div className="input-footer">
-                        <span className="footer-sgi-badge" title="SGI: Strategic Guidance Intelligence" aria-label="SGI means Strategic Guidance Intelligence" style={{fontFamily:"'DM Mono'",fontSize:"9px",border:"1.5px solid var(--vermillion-soft)",padding:"2px 6px",borderRadius:"6px",marginRight:"8px",verticalAlign:"middle",color:"var(--vermillion)",background:"var(--vermillion-soft)"}}>SGI</span>
-                        <span className="footer-robot-icon" title="AI assistant indicator" aria-label="AI assistant indicator" style={{fontSize:"14px",marginRight:"4px",verticalAlign:"middle"}}>🤖</span>
+                        <span className="footer-sgi-badge" title="SGI: Strategic Guidance Intelligence" aria-label="SGI: Strategic Guidance Intelligence">SGI</span>
+                        <span className="footer-robot-icon" title="AI assistant indicator" aria-label="AI assistant indicator">🤖</span>
                         <span style={{verticalAlign:"middle"}} id="policyLinksText">
                             AI output may be inaccurate. By using this service, you agree to our{" "}
                             <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" style={{fontWeight:600}}>Privacy Policy</a> and{" "}
                             <a href="https://esamz.info/termsofservice" target="_blank" rel="noopener" style={{fontWeight:600}}>Terms</a>.
                         </span>
                         <span id="charCount" className="char-count"></span>
-                        <span id="footerShortcuts" style={{display:"inline-block",marginLeft:"10px",verticalAlign:"middle",fontFamily:"'DM Mono'",fontSize:"9px",color:"var(--ink-ghost)",opacity:0.6}}>
+                        <span id="footerShortcuts">
                             <kbd style={{background:"var(--paper-aged)",border:"1.5px solid var(--rule-bold)",borderBottomWidth:"3px",padding:"1px 5px",borderRadius:"4px",fontFamily:"'DM Mono'",fontSize:"9px"}}>Ctrl</kbd>
                             {' '}<kbd style={{background:"var(--paper-aged)",border:"1.5px solid var(--rule-bold)",borderBottomWidth:"3px",padding:"1px 5px",borderRadius:"4px",fontFamily:"'DM Mono'",fontSize:"9px"}}>/</kbd> shortcuts
                         </span>
