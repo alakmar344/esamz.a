@@ -13,3 +13,7 @@ npm-debug.log*
 
 # Vercel
 .vercel
+
+# Cloudflare / OpenNext build artifacts
+.open-next/
+.wrangler/
