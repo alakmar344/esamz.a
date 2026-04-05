@@ -7,7 +7,7 @@ This project is also compatible with Vercel.
 ### Build Command
 
 ```bash
-npm run build:vercel
+npm run build
 ```
 
 ### Output Directory
