@@ -9,6 +9,8 @@
     "dev": "next dev",
     "build": "next build",
     "deploy": "npm run cf:deploy",
+    "build:vercel": "next build",
+    "deploy:vercel": "npx vercel --prod",
     "start": "next start",
     "lint": "next lint",
     "cf:build": "opennextjs-cloudflare build",
