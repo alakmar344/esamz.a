@@ -8,13 +8,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "deploy": "npm run cf:deploy",
-    "deploy:vercel": "npx vercel --prod",
+    "deploy": "npx vercel --prod",
     "start": "next start",
-    "lint": "next lint",
-    "cf:build": "opennextjs-cloudflare build",
-    "cf:preview": "opennextjs-cloudflare preview",
-    "cf:deploy": "opennextjs-cloudflare deploy"
+    "lint": "next lint"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.0.4",
@@ -25,12 +21,10 @@
     "react-dom": "^19.2.4"
   },
   "devDependencies": {
-    "@opennextjs/cloudflare": "^1.8.4",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "typescript": "^5",
-    "wrangler": "^4.9.1"
+    "typescript": "^5"
   }
 }
