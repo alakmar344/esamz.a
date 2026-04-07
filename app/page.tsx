@@ -1402,23 +1402,39 @@ export default function ChatPage() {
         <div className="plans-modal">
             <button className="plans-modal-close" id="plansModalClose" aria-label="Close">✕</button>
             <div className="plans-modal-header">
-                <div className="plans-modal-eyebrow">eSAMz AI — Plans &amp; Pricing</div>
-                <div className="plans-modal-title" id="plansModalTitle">Choose your plan</div>
-                <div className="plans-modal-sub">Unlock advanced features with a premium subscription.</div>
+                <div className="plans-modal-eyebrow">💎 eSAMz AI Membership Plans</div>
+                <div className="plans-modal-title" id="plansModalTitle">Your conversations never leave the room.</div>
+                <div className="plans-modal-sub">Every major AI trains its next model on chats. eSAMz doesn&apos;t. Not a single message is stored. Not a single word trains a future model. Just you and the AI.</div>
             </div>
             <div className="plans-modal-body">
                 <div className="plans-grid">
                     <div className="plan-card">
+                        <div className="plan-card-icon">🆓</div>
+                        <div className="plan-card-content">
+                            <div className="plan-card-header">
+                                <div className="plan-card-name">Free — Try It Yourself</div>
+                                <div className="plan-card-price">₹0 forever</div>
+                            </div>
+                            <ul className="plan-card-features">
+                                <li>20 messages per day</li>
+                                <li>No card required</li>
+                                <li>See the difference privacy makes</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div className="plan-card">
                         <div className="plan-card-icon">⚡</div>
                         <div className="plan-card-content">
                             <div className="plan-card-header">
-                                <div className="plan-card-name">Plus</div>
-                                <div className="plan-card-price">₹99/mo</div>
+                                <div className="plan-card-name">Plus — The Research Student</div>
+                                <div className="plan-card-price">₹99 / month</div>
                             </div>
                             <ul className="plan-card-features">
-                                <li>RAG always on</li>
-                                <li>Wikipedia + web search</li>
-                                <li>50 messages/day</li>
+                                <li>50 chats per day</li>
+                                <li>Always-On Web Verification (RAG) — cannot be disabled, by design</li>
+                                <li>Zero-retention encryption — your data is never stored</li>
+                                <li>2 active devices simultaneously</li>
+                                <li>Delivered to your inbox instantly after payment</li>
                             </ul>
                         </div>
                     </div>
@@ -1426,14 +1442,15 @@ export default function ChatPage() {
                         <div className="plan-card-icon">🚀</div>
                         <div className="plan-card-content">
                             <div className="plan-card-header">
-                                <div className="plan-card-name">Pro</div>
-                                <div className="plan-card-price">₹199/mo</div>
+                                <div className="plan-card-name">Pro — The Power Creator</div>
+                                <div className="plan-card-price">₹199 / month</div>
                             </div>
                             <ul className="plan-card-features">
-                                <li>Everything in Plus</li>
+                                <li>100 chats per day</li>
                                 <li>RAG on/off toggle</li>
-                                <li>100 messages/day</li>
-                                <li>Faster and deeper responses</li>
+                                <li>Priority speed routing</li>
+                                <li>Zero-retention encryption</li>
+                                <li>2 active devices simultaneously</li>
                             </ul>
                         </div>
                     </div>
@@ -1441,20 +1458,34 @@ export default function ChatPage() {
                         <div className="plan-card-icon">♾️</div>
                         <div className="plan-card-content">
                             <div className="plan-card-header">
-                                <div className="plan-card-name">Max</div>
-                                <div className="plan-card-price">₹499/mo</div>
+                                <div className="plan-card-name">Max — The Developer &amp; Founder</div>
+                                <div className="plan-card-price">₹499 / month</div>
                             </div>
                             <ul className="plan-card-features">
-                                <li>Everything in Pro</li>
-                                <li>Custom system prompt editor</li>
-                                <li>1000 messages/day</li>
-                                <li>Priority generation quality</li>
+                                <li>1000 chats per day</li>
+                                <li>Custom System Prompt — define exactly how the AI behaves</li>
+                                <li>Full RAG toggle</li>
+                                <li>Priority speed routing</li>
+                                <li>Zero-retention encryption</li>
+                                <li>2 active devices simultaneously</li>
+                                <li>Direct feedback channel — your feature requests go to the front of the queue for v11</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div className="plan-card">
+                        <div className="plan-card-icon">🛡️</div>
+                        <div className="plan-card-content">
+                            <div className="plan-card-header">
+                                <div className="plan-card-name">Every Paid Plan Includes</div>
+                            </div>
+                            <ul className="plan-card-features">
+                                <li>Zero Training Guarantee — your conversations are never used to train any AI model, ever. Not ours. Not anyone&apos;s.</li>
                             </ul>
                         </div>
                     </div>
                 </div>
 
-                <a href="https://payments.cashfree.com/forms/esamz-ai" className="plans-upgrade-btn" target="_blank" rel="noopener">Upgrade Now — Unlock Pro Features →</a>
+                <a href="https://payments.cashfree.com/forms/esamz-ai" className="plans-upgrade-btn" target="_blank" rel="noopener">Get a Plan →</a>
             </div>
         </div>
     </div>
