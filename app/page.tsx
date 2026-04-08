@@ -444,10 +444,6 @@ export default function ChatPage() {
                     if (this.dom.headerActionsMenu.contains(e.target) || this.dom.headerActionsToggle?.contains(e.target)) return;
                     this.dom.headerActionsMenu.classList.remove('open');
                 });
-                document.addEventListener('keydown', e => {
-                    if (e.key === 'Escape') this.dom.headerActionsMenu?.classList.remove('open');
-                });
-
                 // Mobile sidebar
                 this.dom.openSidebarMobileBtn.addEventListener('click', () => {
                     this.dom.sidebar.classList.add('active');
@@ -1201,7 +1197,7 @@ export default function ChatPage() {
             }
 
             setActiveHistoryItem(id) {
-                this.dom.historyList.querySelectorAll('.nav-item[data-id]').forEach(b => b.classList.remove('active'));
+                this.dom.historyList.querySelectorAll('.nav-item[data-id]').forEach(navItem => navItem.classList.remove('active'));
                 if (!id) return;
                 const activeBtn = this.dom.historyList.querySelector(`.nav-item[data-id="${id}"]`);
                 if (activeBtn) activeBtn.classList.add('active');
@@ -1223,15 +1219,18 @@ export default function ChatPage() {
                 URL.revokeObjectURL(url);
             }
 
-            exportChats(scope, format) {
-                const allChats = this.getHistory();
-                const safeNow = new Date().toISOString().replace(/[:.]/g, '-');
-                const normalizeChat = chat => ({
+            normalizeChatForExport(chat) {
+                return {
                     id: chat.id,
                     title: chat.title || 'Untitled',
                     lastUpdated: chat.lastUpdated || null,
                     messages: (chat.messages || []).map(m => ({ role: m.role, content: m.content ?? '' })),
-                });
+                };
+            }
+
+            exportChats(scope, format) {
+                const allChats = this.getHistory();
+                const safeDateTime = new Date().toISOString().replace(/[:.]/g, '-');
 
                 if (scope === 'current') {
                     const chat = allChats.find(c => c.id === this.state.chatId);
@@ -1239,17 +1238,17 @@ export default function ChatPage() {
                         Utils.showToast('No current chat to export', 'error');
                         return;
                     }
-                    const normalized = normalizeChat(chat);
+                    const normalized = this.normalizeChatForExport(chat);
                     if (format === 'json') {
                         const payload = JSON.stringify({
                             scope: 'current',
                             exportedAt: new Date().toISOString(),
                             chat: normalized,
                         }, null, 2);
-                        this.downloadFile(payload, `esamz-current-chat-${safeNow}.json`, 'application/json;charset=utf-8');
+                        this.downloadFile(payload, `esamz-current-chat-${safeDateTime}.json`, 'application/json;charset=utf-8');
                     } else {
                         const content = `# ${normalized.title}\n\n${this.toMarkdown(normalized.messages)}\n`;
-                        this.downloadFile(content, `esamz-current-chat-${safeNow}.md`, 'text/markdown;charset=utf-8');
+                        this.downloadFile(content, `esamz-current-chat-${safeDateTime}.md`, 'text/markdown;charset=utf-8');
                     }
                     Utils.showToast('Current chat exported', 'success');
                     return;
@@ -1259,19 +1258,19 @@ export default function ChatPage() {
                     Utils.showToast('No chats found to export', 'error');
                     return;
                 }
-                const normalizedAll = allChats.map(normalizeChat);
+                const normalizedAll = allChats.map(chat => this.normalizeChatForExport(chat));
                 if (format === 'json') {
                     const payload = JSON.stringify({
                         scope: 'all',
                         exportedAt: new Date().toISOString(),
                         chats: normalizedAll,
                     }, null, 2);
-                    this.downloadFile(payload, `esamz-all-chats-${safeNow}.json`, 'application/json;charset=utf-8');
+                    this.downloadFile(payload, `esamz-all-chats-${safeDateTime}.json`, 'application/json;charset=utf-8');
                 } else {
                     const content = normalizedAll
                         .map(chat => `# ${chat.title}\n\n${this.toMarkdown(chat.messages)}`)
                         .join('\n\n\n');
-                    this.downloadFile(content, `esamz-all-chats-${safeNow}.md`, 'text/markdown;charset=utf-8');
+                    this.downloadFile(content, `esamz-all-chats-${safeDateTime}.md`, 'text/markdown;charset=utf-8');
                 }
                 Utils.showToast('All chats exported', 'success');
             }
@@ -1303,6 +1302,7 @@ export default function ChatPage() {
             document.addEventListener('keydown', function (e) {
                 const ctrl = e.ctrlKey || e.metaKey;
                 if (e.key === 'Escape') {
+                    document.getElementById('headerActionsMenu')?.classList.remove('open');
                     if (modal && !modal.classList.contains('hidden'))                           { modal.classList.add('hidden'); e.preventDefault(); return; }
                     const cd = document.getElementById('confirmDialog');
                     if (cd && cd.open) { cd.close(); e.preventDefault(); return; }
