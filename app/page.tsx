@@ -320,15 +320,18 @@ export default function ChatPage() {
                     fileInput:   document.getElementById('fileInput'),
                     newChatBtn:  document.getElementById('btnNewChat'),
                     clearChatBtn:document.getElementById('btnClearChat'),
-                    exportBtn:   document.getElementById('btnExportChat'),
                     themeToggle: document.getElementById('btnThemeToggle'),
                     closeSidebarBtn:        document.getElementById('btnCloseSidebar'),
                     openSidebarDesktopBtn:  document.getElementById('btnOpenSidebarDesktop'),
                     openSidebarMobileBtn:   document.getElementById('openSidebar'),
-                    mobileActionsToggle:    document.getElementById('mobileActionsToggle'),
-                    mobileActionsMenu:      document.getElementById('mobileActionsMenu'),
-                    mobileExportBtn:        document.getElementById('mobileExportBtn'),
-                    mobileClearBtn:         document.getElementById('mobileClearBtn'),
+                    headerActionsToggle:    document.getElementById('headerActionsToggle'),
+                    headerActionsMenu:      document.getElementById('headerActionsMenu'),
+                    menuNewChatBtn:         document.getElementById('menuNewChatBtn'),
+                    menuExportCurrentJsonBtn: document.getElementById('menuExportCurrentJsonBtn'),
+                    menuExportCurrentMdBtn: document.getElementById('menuExportCurrentMdBtn'),
+                    menuExportAllJsonBtn:   document.getElementById('menuExportAllJsonBtn'),
+                    menuExportAllMdBtn:     document.getElementById('menuExportAllMdBtn'),
+                    menuClearChatBtn:       document.getElementById('menuClearChatBtn'),
                 };
                 this.state = {
                     chatId: null, files: [],
@@ -406,34 +409,43 @@ export default function ChatPage() {
                 this.dom.uploadBtn.addEventListener('click', () => this.dom.fileInput.click());
                 this.dom.fileInput.addEventListener('change', e => this.handleFiles(e.target.files));
 
-                const exportDialog = document.getElementById('exportDialog');
-                document.getElementById('closeDialog').addEventListener('click', () => exportDialog.close());
-                const openExportDialog = () => {
-                    if (this.state.chatId) exportDialog.showModal();
-                    else Utils.showToast('No chat to export', 'error');
-                };
-                this.dom.exportBtn.addEventListener('click', openExportDialog);
-                document.querySelectorAll('[data-export-type]').forEach(btn => {
-                    btn.addEventListener('click', e => this.exportChat(e.currentTarget.dataset.exportType));
+                if (this.dom.menuNewChatBtn) this.dom.menuNewChatBtn.addEventListener('click', () => {
+                    this.newChat();
+                    this.dom.headerActionsMenu?.classList.remove('open');
                 });
-                if (this.dom.mobileExportBtn) this.dom.mobileExportBtn.addEventListener('click', () => {
-                    openExportDialog();
-                    this.dom.mobileActionsMenu?.classList.remove('open');
+                if (this.dom.menuExportCurrentJsonBtn) this.dom.menuExportCurrentJsonBtn.addEventListener('click', () => {
+                    this.exportChats('current', 'json');
+                    this.dom.headerActionsMenu?.classList.remove('open');
                 });
-                if (this.dom.mobileClearBtn) this.dom.mobileClearBtn.addEventListener('click', async () => {
-                    this.dom.mobileActionsMenu?.classList.remove('open');
+                if (this.dom.menuExportCurrentMdBtn) this.dom.menuExportCurrentMdBtn.addEventListener('click', () => {
+                    this.exportChats('current', 'md');
+                    this.dom.headerActionsMenu?.classList.remove('open');
+                });
+                if (this.dom.menuExportAllJsonBtn) this.dom.menuExportAllJsonBtn.addEventListener('click', () => {
+                    this.exportChats('all', 'json');
+                    this.dom.headerActionsMenu?.classList.remove('open');
+                });
+                if (this.dom.menuExportAllMdBtn) this.dom.menuExportAllMdBtn.addEventListener('click', () => {
+                    this.exportChats('all', 'md');
+                    this.dom.headerActionsMenu?.classList.remove('open');
+                });
+                if (this.dom.menuClearChatBtn) this.dom.menuClearChatBtn.addEventListener('click', async () => {
+                    this.dom.headerActionsMenu?.classList.remove('open');
                     await clearChatAction();
                 });
-                if (this.dom.mobileActionsToggle) {
-                    this.dom.mobileActionsToggle.addEventListener('click', e => {
+                if (this.dom.headerActionsToggle) {
+                    this.dom.headerActionsToggle.addEventListener('click', e => {
                         e.stopPropagation();
-                        this.dom.mobileActionsMenu?.classList.toggle('open');
+                        this.dom.headerActionsMenu?.classList.toggle('open');
                     });
                 }
                 document.addEventListener('click', e => {
-                    if (!this.dom.mobileActionsMenu?.classList.contains('open')) return;
-                    if (this.dom.mobileActionsMenu.contains(e.target) || this.dom.mobileActionsToggle?.contains(e.target)) return;
-                    this.dom.mobileActionsMenu.classList.remove('open');
+                    if (!this.dom.headerActionsMenu?.classList.contains('open')) return;
+                    if (this.dom.headerActionsMenu.contains(e.target) || this.dom.headerActionsToggle?.contains(e.target)) return;
+                    this.dom.headerActionsMenu.classList.remove('open');
+                });
+                document.addEventListener('keydown', e => {
+                    if (e.key === 'Escape') this.dom.headerActionsMenu?.classList.remove('open');
                 });
 
                 // Mobile sidebar
@@ -1139,9 +1151,7 @@ export default function ChatPage() {
                 this.state.chatId = id;
                 this.dom.welcome.classList.add('hidden');
                 this.dom.chatList.innerHTML = '';
-                document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-                const ab = document.querySelector(`button[data-id="${id}"]`);
-                if (ab) ab.classList.add('active');
+                this.setActiveHistoryItem(id);
                 const h = this.getHistory();
                 const c = h.find(x => x.id === id);
                 if (c && c.messages) c.messages.forEach(m => this.appendMessage(m.role, m.content));
@@ -1171,23 +1181,10 @@ export default function ChatPage() {
                 this.dom.chatList.innerHTML    = '';
                 this.dom.welcome.classList.remove('hidden');
                 this.dom.input.focus();
-                document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+                this.setActiveHistoryItem(null);
                 const speTa = document.getElementById('spe-textarea');
                 if (speTa) speTa.value = '';
                 this.updateButtonState();
-            }
-
-            exportChat(type) {
-                const msgs = Array.from(document.querySelectorAll('.message'));
-                if (!msgs.length) return Utils.showToast('Nothing to export', 'error');
-                const content = msgs.map(m => `### ${m.classList.contains('user') ? 'User' : 'eSAMz AI'}\n${m.querySelector('.bubble').innerText}`).join('\n\n---\n\n');
-                const mimeType = type === 'md' ? 'text/markdown' : 'text/plain';
-                const blob = new Blob([content], { type: mimeType });
-                const url  = URL.createObjectURL(blob);
-                const a    = document.createElement('a');
-                a.href = url; a.download = `esamz-chat-${Date.now()}.${type}`; a.click();
-                URL.revokeObjectURL(url);
-                document.getElementById('exportDialog').close();
             }
 
             exportSingleChat(chatId, title) {
@@ -1201,6 +1198,82 @@ export default function ChatPage() {
                 a.href = url; a.download = `esamz-${title.slice(0,20).replace(/\s+/g,'-')}-${chatId}.txt`; a.click();
                 URL.revokeObjectURL(url);
                 Utils.showToast('Chat exported', 'success');
+            }
+
+            setActiveHistoryItem(id) {
+                this.dom.historyList.querySelectorAll('.nav-item[data-id]').forEach(b => b.classList.remove('active'));
+                if (!id) return;
+                const activeBtn = this.dom.historyList.querySelector(`.nav-item[data-id="${id}"]`);
+                if (activeBtn) activeBtn.classList.add('active');
+            }
+
+            toMarkdown(messages = []) {
+                return messages
+                    .map(m => `### ${m.role === 'user' ? 'User' : 'eSAMz AI'}\n${m.content ?? ''}`)
+                    .join('\n\n---\n\n');
+            }
+
+            downloadFile(content, fileName, mimeType) {
+                const blob = new Blob([content], { type: mimeType });
+                const url  = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            exportChats(scope, format) {
+                const allChats = this.getHistory();
+                const safeNow = new Date().toISOString().replace(/[:.]/g, '-');
+                const normalizeChat = chat => ({
+                    id: chat.id,
+                    title: chat.title || 'Untitled',
+                    lastUpdated: chat.lastUpdated || null,
+                    messages: (chat.messages || []).map(m => ({ role: m.role, content: m.content ?? '' })),
+                });
+
+                if (scope === 'current') {
+                    const chat = allChats.find(c => c.id === this.state.chatId);
+                    if (!chat || !chat.messages?.length) {
+                        Utils.showToast('No current chat to export', 'error');
+                        return;
+                    }
+                    const normalized = normalizeChat(chat);
+                    if (format === 'json') {
+                        const payload = JSON.stringify({
+                            scope: 'current',
+                            exportedAt: new Date().toISOString(),
+                            chat: normalized,
+                        }, null, 2);
+                        this.downloadFile(payload, `esamz-current-chat-${safeNow}.json`, 'application/json;charset=utf-8');
+                    } else {
+                        const content = `# ${normalized.title}\n\n${this.toMarkdown(normalized.messages)}\n`;
+                        this.downloadFile(content, `esamz-current-chat-${safeNow}.md`, 'text/markdown;charset=utf-8');
+                    }
+                    Utils.showToast('Current chat exported', 'success');
+                    return;
+                }
+
+                if (!allChats.length) {
+                    Utils.showToast('No chats found to export', 'error');
+                    return;
+                }
+                const normalizedAll = allChats.map(normalizeChat);
+                if (format === 'json') {
+                    const payload = JSON.stringify({
+                        scope: 'all',
+                        exportedAt: new Date().toISOString(),
+                        chats: normalizedAll,
+                    }, null, 2);
+                    this.downloadFile(payload, `esamz-all-chats-${safeNow}.json`, 'application/json;charset=utf-8');
+                } else {
+                    const content = normalizedAll
+                        .map(chat => `# ${chat.title}\n\n${this.toMarkdown(chat.messages)}`)
+                        .join('\n\n\n');
+                    this.downloadFile(content, `esamz-all-chats-${safeNow}.md`, 'text/markdown;charset=utf-8');
+                }
+                Utils.showToast('All chats exported', 'success');
             }
 
             initTheme() {
@@ -1231,14 +1304,12 @@ export default function ChatPage() {
                 const ctrl = e.ctrlKey || e.metaKey;
                 if (e.key === 'Escape') {
                     if (modal && !modal.classList.contains('hidden'))                           { modal.classList.add('hidden'); e.preventDefault(); return; }
-                    const ed = document.getElementById('exportDialog');
                     const cd = document.getElementById('confirmDialog');
-                    if (ed && ed.open) { ed.close(); e.preventDefault(); return; }
                     if (cd && cd.open) { cd.close(); e.preventDefault(); return; }
                 }
                 if (ctrl && e.key === 'k') { e.preventDefault(); document.getElementById('userInput')?.focus(); }
                 if (ctrl && e.key === 'n') { e.preventDefault(); window.app?.newChat(); }
-                if (ctrl && e.key === 'e') { e.preventDefault(); if (window.app?.state?.chatId) document.getElementById('exportDialog')?.showModal(); else Utils.showToast('No chat to export','error'); }
+                if (ctrl && e.key === 'e') { e.preventDefault(); window.app?.exportChats('current', 'md'); }
                 if (ctrl && e.shiftKey && e.key === 'D') { e.preventDefault(); window.app?.toggleTheme(); }
                 if (ctrl && e.key === 'b') {
                     e.preventDefault();
@@ -1552,6 +1623,10 @@ export default function ChatPage() {
                     <button className="icon-btn btn-open-sidebar-desktop" id="btnOpenSidebarDesktop" title="Open sidebar" aria-label="Open sidebar">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                     </button>
+                    <div className="header-context">
+                        <span className="header-context-dot"></span>
+                        <span>eSAMz Chat</span>
+                    </div>
                 </div>
                 <div className="header-right">
                     <div id="clerkUserButton" style={{display:"flex",alignItems:"center"}}>{hasClerk && UserButton && <UserButton />}</div>
@@ -1559,13 +1634,24 @@ export default function ChatPage() {
                         <svg className="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
                         <svg className="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
                     </button>
-                    <button className="btn-clear desktop-only-action" id="btnExportChat" title="Export chat">Export</button>
                     <button className="btn-clear desktop-only-action" id="btnClearChat">Clear Chat</button>
-                    <div className="mobile-actions-wrap">
-                        <button className="icon-btn mobile-actions-toggle" id="mobileActionsToggle" aria-label="More actions" title="More actions">⋮</button>
-                        <div className="mobile-actions-menu" id="mobileActionsMenu">
-                            <button id="mobileExportBtn" className="mobile-actions-item">Export chat</button>
-                            <button id="mobileClearBtn" className="mobile-actions-item">Clear chat</button>
+                    <div className="header-actions-wrap">
+                        <button className="icon-btn header-actions-toggle" id="headerActionsToggle" aria-label="More actions" title="More actions">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <circle cx="12" cy="5" r="1.8"></circle>
+                                <circle cx="12" cy="12" r="1.8"></circle>
+                                <circle cx="12" cy="19" r="1.8"></circle>
+                            </svg>
+                        </button>
+                        <div className="header-actions-menu" id="headerActionsMenu">
+                            <button id="menuNewChatBtn" className="header-actions-item">New chat</button>
+                            <div className="header-actions-divider"></div>
+                            <button id="menuExportCurrentJsonBtn" className="header-actions-item">Export this chat (.json)</button>
+                            <button id="menuExportCurrentMdBtn" className="header-actions-item">Export this chat (.md)</button>
+                            <button id="menuExportAllJsonBtn" className="header-actions-item">Export all chats (.json)</button>
+                            <button id="menuExportAllMdBtn" className="header-actions-item">Export all chats (.md)</button>
+                            <div className="header-actions-divider"></div>
+                            <button id="menuClearChatBtn" className="header-actions-item danger">Clear chat</button>
                         </div>
                     </div>
                 </div>
@@ -1696,23 +1782,6 @@ export default function ChatPage() {
     </div>
 
     
-    <dialog id="exportDialog">
-        <div className="dialog-header">
-            <span>Export Conversation</span>
-            <button className="icon-btn" id="closeDialog" aria-label="Close dialog" style={{color:"var(--ink-faint)"}}>✕</button>
-        </div>
-        <div className="dialog-body">
-            <button className="dialog-option" data-export-type="txt">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                Plain Text (.txt)
-            </button>
-            <button className="dialog-option" data-export-type="md">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                Markdown (.md)
-            </button>
-        </div>
-    </dialog>
-
     <dialog id="confirmDialog">
         <div className="dialog-header">
             <span id="confirmTitle">Confirm</span>
