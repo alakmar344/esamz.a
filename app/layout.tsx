@@ -40,14 +40,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" /> 
         <meta name="breachme-verify" content="breachme-verify=470293f7483ae0b2f999b84c29c1942a" />
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-WRJ3NWVP5B"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-WRJ3NWVP5B');
-</script>
       </head>
       <body>
         {clerkPubKey ? (
