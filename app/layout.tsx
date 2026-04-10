@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Script from 'next/script'
+import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
 export const dynamic = 'force-dynamic'
@@ -77,6 +78,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           gtag('js', new Date());
           gtag('config', 'G-WRJ3NWVP5B');
         `}</Script>
+
+        {/* Vercel Web Analytics */}
+        <Analytics />
       </body>
     </html>
   )
