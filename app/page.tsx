@@ -780,16 +780,60 @@ export default function ChatPage() {
                         step();
                     };
 
+                    const appendTextChunk = text => {
+                        if (!text) return;
+                        fullText += text.replace(/\\n/g, '\n');
+                        startTypewriter();
+                    };
+
+                    const tryProcessJsonLine = raw => {
+                        if (!raw || (raw[0] !== '{' && raw[0] !== '[')) return false;
+                        try {
+                            const parsed = JSON.parse(raw);
+                            const maybeText =
+                                typeof parsed === 'string' ? parsed :
+                                typeof parsed?.content === 'string' ? parsed.content :
+                                typeof parsed?.text === 'string' ? parsed.text :
+                                typeof parsed?.response === 'string' ? parsed.response :
+                                typeof parsed?.answer === 'string' ? parsed.answer :
+                                typeof parsed?.message === 'string' ? parsed.message :
+                                typeof parsed?.data?.text === 'string' ? parsed.data.text :
+                                '';
+                            if (maybeText) {
+                                appendTextChunk(maybeText);
+                                return true;
+                            }
+                        } catch (e) {
+                            if (DEBUG_CHAT_STREAM_LOGS) console.warn('[ChatStream] Failed to parse JSON line:', e, raw);
+                        }
+                        return false;
+                    };
+
                     const processLine = line => {
                         if (!line.trim()) return;
                         if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] Raw line from backend:', line);
-                        const sep  = line.indexOf('|');
-                        if (sep === -1) {
-                            if (DEBUG_CHAT_STREAM_LOGS) console.warn('[ChatStream] Ignoring malformed line (missing separator):', line);
+
+                        let normalizedLine = line.trim();
+                        if (normalizedLine.startsWith('data:')) normalizedLine = normalizedLine.slice(5).trimStart();
+                        if (!normalizedLine) return;
+                        if (normalizedLine === '[DONE]') {
+                            streamDone = true;
                             return;
                         }
-                        const type = line.substring(0, sep);
-                        const data = line.substring(sep + 1);
+                        if (normalizedLine.startsWith('event:') || normalizedLine.startsWith('id:') || normalizedLine.startsWith('retry:')) {
+                            return;
+                        }
+
+                        const sep  = normalizedLine.indexOf('|');
+
+                        if (sep === -1) {
+                            if (tryProcessJsonLine(normalizedLine)) return;
+                            appendTextChunk(normalizedLine);
+                            return;
+                        }
+
+                        const type = normalizedLine.substring(0, sep);
+                        const data = normalizedLine.substring(sep + 1);
                         if (type === 'STATUS') {
                             if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] STATUS:', data);
                             const loader = contentDiv.querySelector('.thinking-loader');
