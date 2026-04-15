@@ -307,6 +307,28 @@
         .send-btn:disabled{opacity:0.30;cursor:not-allowed;}
         .send-btn.stop-mode{background:var(--vermillion)!important;opacity:1!important;cursor:pointer!important;}
 
+        /* ----- SLASH COMMAND MENU ----- */
+        .slash-cmd-menu{
+            position:absolute;bottom:100%;left:0;right:0;
+            background:var(--paper);border:1px solid var(--rule-bold);
+            border-radius:var(--r);box-shadow:0 4px 16px rgba(0,0,0,0.10);
+            padding:4px;z-index:20;margin-bottom:6px;
+        }
+        .slash-cmd-menu.hidden{display:none;}
+        .slash-cmd-item{
+            display:flex;align-items:center;gap:10px;
+            width:100%;padding:8px 12px;border:none;background:none;
+            border-radius:6px;cursor:pointer;text-align:left;
+            color:var(--ink);font-family:'Inter',system-ui,sans-serif;
+            transition:background 120ms;
+        }
+        .slash-cmd-item:hover{background:var(--crescent-soft);}
+        .slash-cmd-name{
+            font-family:'DM Mono',monospace;font-size:13px;font-weight:500;
+            color:var(--crescent);white-space:nowrap;
+        }
+        .slash-cmd-desc{font-size:12px;color:var(--ink-faint);}
+
         .input-footer{
             margin-top:10px;
             padding-top:8px;
