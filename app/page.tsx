@@ -816,7 +816,13 @@ export default function ChatPage() {
                                     : data;
                             throw new Error(errMsg);
                         } else {
-                            if (DEBUG_CHAT_STREAM_LOGS) console.warn('[ChatStream] Unknown event type from backend:', { type, data });
+                            if (DEBUG_CHAT_STREAM_LOGS) {
+                                console.warn('[ChatStream] Unknown event type from backend:', {
+                                    type,
+                                    dataLength: data.length,
+                                    dataPreview: data.slice(0, 120),
+                                });
+                            }
                         }
                     };
 
