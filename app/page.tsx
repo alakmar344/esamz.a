@@ -480,6 +480,20 @@ export default function ChatPage() {
                     if (shortcutHint) shortcutHint.style.display = 'none';
                 }
 
+                // Slash command menu click handlers
+                document.querySelectorAll('.slash-cmd-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const cmd = item.getAttribute('data-cmd');
+                        if (cmd) {
+                            this.dom.input.value = cmd;
+                            this.dom.input.dispatchEvent(new Event('input'));
+                            this.dom.input.focus();
+                            const menu = document.getElementById('slashCmdMenu');
+                            if (menu) menu.classList.add('hidden');
+                        }
+                    });
+                });
+
             }
 
             handleInput() {
@@ -487,6 +501,27 @@ export default function ChatPage() {
                 this.dom.input.style.height = Math.min(this.dom.input.scrollHeight, 200) + 'px';
                 this.updateButtonState();
                 this.updateCharCount();
+                this.updateSlashMenu();
+            }
+
+            updateSlashMenu() {
+                const menu = document.getElementById('slashCmdMenu');
+                if (!menu) return;
+                const val = this.dom.input.value;
+                if (val.startsWith('/') && !val.includes(' ') && val.length < 10) {
+                    const q = val.toLowerCase();
+                    const items = menu.querySelectorAll('.slash-cmd-item');
+                    let anyVisible = false;
+                    items.forEach(item => {
+                        const cmd = item.getAttribute('data-cmd');
+                        const match = cmd.startsWith(q);
+                        item.style.display = match ? '' : 'none';
+                        if (match) anyVisible = true;
+                    });
+                    menu.classList.toggle('hidden', !anyVisible);
+                } else {
+                    menu.classList.add('hidden');
+                }
             }
 
             updateCharCount() {
@@ -578,6 +613,10 @@ export default function ChatPage() {
                 const text = this.dom.input.value.trim();
                 if ((!text && this.state.files.length === 0) || this.state.isProcessing) return;
 
+                // Hide slash command menu
+                const slashMenu = document.getElementById('slashCmdMenu');
+                if (slashMenu) slashMenu.classList.add('hidden');
+
                 this.dom.input.value = '';
                 this.dom.input.style.height = 'auto';
                 this.updateCharCount();
@@ -659,14 +698,18 @@ export default function ChatPage() {
 
                     // Retry up to 2 times on 504 Gateway Timeout (transient AI service errors).
                     let response;
+                    // Include credentials for cross-origin anonymous requests so the
+                    // backend's esamz_sid HTTP-only cookie is sent/received properly.
+                    const fetchOpts = {
+                        method:  'POST',
+                        headers: reqHeaders,
+                        body:    JSON.stringify(reqBody),
+                        signal:  this.state.abortController.signal,
+                        credentials: window.__clerk?.isSignedIn ? 'same-origin' : 'include',
+                    };
                     for (let attempt = 0; attempt <= 2; attempt++) {
                         if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt));
-                        response = await fetch(chatUrl, {
-                            method:  'POST',
-                            headers: reqHeaders,
-                            body:    JSON.stringify(reqBody),
-                            signal:  this.state.abortController.signal,
-                        });
+                        response = await fetch(chatUrl, fetchOpts);
                         if (response.ok || response.status !== 504) break;
                     }
                     if (!response.ok) {
@@ -734,6 +777,9 @@ export default function ChatPage() {
                             startTypewriter();
                         } else if (type === 'HISTORY_UPDATE') {
                             try { incomingHistory = JSON.parse(data); } catch (_) {}
+                        } else if (type === 'DONE') {
+                            // Stream complete signal from backend; data = session_id
+                            streamDone = true;
                         } else if (type === 'ERROR') {
                             const errMsg = /504|gateway timeout|timed out/i.test(data)
                                 ? 'AI service timed out. Please try again in a moment.'
@@ -1707,6 +1753,22 @@ export default function ChatPage() {
                             <button className="send-btn" id="btnSend" disabled aria-label="Send message">
                                 <svg className="send-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                                 <svg className="stop-icon hidden" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                            </button>
+                        </div>
+
+                        {/* Slash command autocomplete menu */}
+                        <div className="slash-cmd-menu hidden" id="slashCmdMenu">
+                            <button className="slash-cmd-item" data-cmd="/help">
+                                <span className="slash-cmd-name">/help</span>
+                                <span className="slash-cmd-desc">Show available commands</span>
+                            </button>
+                            <button className="slash-cmd-item" data-cmd="/clear">
+                                <span className="slash-cmd-name">/clear</span>
+                                <span className="slash-cmd-desc">Clear session memory</span>
+                            </button>
+                            <button className="slash-cmd-item" data-cmd="/search">
+                                <span className="slash-cmd-name">/search</span>
+                                <span className="slash-cmd-desc">Search the web</span>
                             </button>
                         </div>
 
