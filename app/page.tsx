@@ -712,7 +712,13 @@ export default function ChatPage() {
                     };
                     for (let attempt = 0; attempt <= 2; attempt++) {
                         if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt));
+                        console.debug('[ChatStream] Sending request', { attempt: attempt + 1, chatUrl, reqBody });
                         response = await fetch(chatUrl, fetchOpts);
+                        console.debug('[ChatStream] Response received', {
+                            status: response.status,
+                            statusText: response.statusText,
+                            contentType: response.headers.get('content-type'),
+                        });
                         if (response.ok || response.status !== 504) break;
                     }
                     if (!response.ok) {
@@ -766,41 +772,55 @@ export default function ChatPage() {
 
                     const processLine = line => {
                         if (!line.trim()) return;
+                        console.debug('[ChatStream] Raw line from backend:', line);
                         const sep  = line.indexOf('|');
-                        if (sep === -1) return;
+                        if (sep === -1) {
+                            console.warn('[ChatStream] Ignoring malformed line (missing separator):', line);
+                            return;
+                        }
                         const type = line.substring(0, sep);
                         const data = line.substring(sep + 1);
                         if (type === 'STATUS') {
+                            console.debug('[ChatStream] STATUS:', data);
                             const loader = contentDiv.querySelector('.thinking-loader');
                             if (!loader) return;
                             if (data === 'SEARCHING') loader.textContent = 'Thinking…';
                             if (data === 'TYPING')    loader.textContent = 'Writing…';
                         } else if (type === 'CHUNK') {
+                            console.debug('[ChatStream] CHUNK length:', data.length);
                             fullText += data.replace(/\\n/g, '\n');
                             startTypewriter();
                         } else if (type === 'HISTORY_UPDATE') {
+                            console.debug('[ChatStream] HISTORY_UPDATE received');
                             try { incomingHistory = JSON.parse(data); } catch (_) {}
                         } else if (type === 'DONE') {
                             // Stream complete signal from backend; data = session_id
+                            console.debug('[ChatStream] DONE received:', data);
                             streamDone = true;
                         } else if (type === 'ERROR') {
+                            console.error('[ChatStream] ERROR received:', data);
                             const errMsg = /504|gateway timeout|timed out/i.test(data)
                                 ? 'AI service timed out. Please try again in a moment.'
                                 : /sarvam/i.test(data)
                                     ? 'Something went wrong with the AI service. Please try again.'
                                     : data;
                             throw new Error(errMsg);
+                        } else {
+                            console.warn('[ChatStream] Unknown event type from backend:', { type, data });
                         }
                     };
 
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
-                        buffer += decoder.decode(value, { stream: true });
+                        const chunkText = decoder.decode(value, { stream: true });
+                        console.debug('[ChatStream] Raw chunk:', chunkText);
+                        buffer += chunkText;
                         const lines = buffer.split('\n');
                         buffer = lines.pop() ?? '';
                         for (const l of lines) processLine(l);
                     }
+                    console.debug('[ChatStream] Stream ended by backend');
                     if (buffer.trim()) for (const l of buffer.split('\n')) processLine(l);
 
                     streamDone = true;
