@@ -108,20 +108,17 @@ export async function POST(req: Request) {
         try {
           const reader = logStream.getReader();
           const decoder = new TextDecoder('utf-8');
-          let fullBackendPayload = '';
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
             const chunkText = decoder.decode(value, { stream: true });
-            fullBackendPayload += chunkText;
             console.log('[Proxy] Backend stream chunk:', chunkText);
           }
-          fullBackendPayload += decoder.decode();
+          decoder.decode();
           console.log('[Proxy] Backend stream completed', {
             status: rustResponse.status,
             statusText: rustResponse.statusText,
             contentType: rustResponse.headers.get('Content-Type'),
-            payload: fullBackendPayload,
           });
         } catch (streamErr) {
           console.error('[Proxy] Failed while logging backend stream', streamErr);
