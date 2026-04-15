@@ -755,6 +755,9 @@ export default function ChatPage() {
                     if (buffer.trim()) for (const l of buffer.split('\n')) processLine(l);
 
                     streamDone = true;
+                    if (!fullText.trim()) {
+                        throw new Error('AI did not return a response. Please try again.');
+                    }
                     if (!typingTimer) renderDisplayed(false);
 
                     if (incomingHistory) {
