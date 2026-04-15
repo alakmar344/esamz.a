@@ -60,6 +60,12 @@ export async function POST(req: Request) {
   // 5. Forward to Rust Backend
   try {
     const body = await req.json();
+    console.log('[Proxy] Forwarding chat request to backend', {
+      sessionId: body.sessionId,
+      ragEnabled: body.ragEnabled,
+      hasCustomSystemPrompt: Boolean(body.customSystemPrompt),
+      hasClientHistory: Array.isArray(body.clientHistory),
+    });
     const rustResponse = await fetch(RUST_BACKEND_URL, {
       method: "POST",
       headers: {
@@ -78,6 +84,11 @@ export async function POST(req: Request) {
 
     if (!rustResponse.ok) {
       const errorText = await rustResponse.text();
+      console.error('[Proxy] Backend returned error response', {
+        status: rustResponse.status,
+        statusText: rustResponse.statusText,
+        body: errorText,
+      });
       return NextResponse.json(
         { error: errorText || `AI backend request failed with status ${rustResponse.status}` },
         { status: rustResponse.status }
@@ -88,8 +99,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Empty response from AI backend" }, { status: 502 });
     }
 
+    const [clientStream, logStream] = rustResponse.body.tee();
+    void (async () => {
+      try {
+        const reader = logStream.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let fullBackendPayload = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunkText = decoder.decode(value, { stream: true });
+          fullBackendPayload += chunkText;
+          console.log('[Proxy] Backend stream chunk:', chunkText);
+        }
+        fullBackendPayload += decoder.decode();
+        console.log('[Proxy] Backend stream completed', {
+          status: rustResponse.status,
+          statusText: rustResponse.statusText,
+          contentType: rustResponse.headers.get('Content-Type'),
+          payload: fullBackendPayload,
+        });
+      } catch (streamErr) {
+        console.error('[Proxy] Failed while logging backend stream', streamErr);
+      }
+    })();
+
     // Stream the Rust response back to the frontend with original status
-    return new Response(rustResponse.body, {
+    return new Response(clientStream, {
       status: rustResponse.status,
       statusText: rustResponse.statusText,
       headers: {
@@ -97,6 +133,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (error) {
+    console.error('[Proxy] Backend request failed', error);
     return NextResponse.json({ error: "Backend unreachable" }, { status: 500 });
   }
 }
