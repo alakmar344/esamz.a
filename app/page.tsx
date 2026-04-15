@@ -508,12 +508,13 @@ export default function ChatPage() {
                 const menu = document.getElementById('slashCmdMenu');
                 if (!menu) return;
                 const val = this.dom.input.value;
+                // Show menu while typing a potential slash command (longest is "/search" = 7 chars)
                 if (val.startsWith('/') && !val.includes(' ') && val.length < 10) {
                     const q = val.toLowerCase();
                     const items = menu.querySelectorAll('.slash-cmd-item');
                     let anyVisible = false;
                     items.forEach(item => {
-                        const cmd = item.getAttribute('data-cmd');
+                        const cmd = item.getAttribute('data-cmd') || '';
                         const match = cmd.startsWith(q);
                         item.style.display = match ? '' : 'none';
                         if (match) anyVisible = true;
@@ -698,8 +699,10 @@ export default function ChatPage() {
 
                     // Retry up to 2 times on 504 Gateway Timeout (transient AI service errors).
                     let response;
-                    // Include credentials for cross-origin anonymous requests so the
-                    // backend's esamz_sid HTTP-only cookie is sent/received properly.
+                    // Signed-in users hit the same-origin proxy (/api/chat/proxy) — cookies
+                    // are sent automatically with 'same-origin'. Anonymous users call the
+                    // cross-origin Render backend directly and need 'include' so the
+                    // backend's esamz_sid HTTP-only session cookie is sent/received.
                     const fetchOpts = {
                         method:  'POST',
                         headers: reqHeaders,
