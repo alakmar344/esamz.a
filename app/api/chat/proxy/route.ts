@@ -76,9 +76,25 @@ export async function POST(req: Request) {
       }),
     });
 
-    // Stream the Rust response back to the frontend
+    if (!rustResponse.ok) {
+      const errorText = await rustResponse.text();
+      return NextResponse.json(
+        { error: errorText || "AI backend request failed" },
+        { status: rustResponse.status }
+      );
+    }
+
+    if (!rustResponse.body) {
+      return NextResponse.json({ error: "Empty response from AI backend" }, { status: 502 });
+    }
+
+    // Stream the Rust response back to the frontend with original status
     return new Response(rustResponse.body, {
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
+      status: rustResponse.status,
+      statusText: rustResponse.statusText,
+      headers: {
+        "Content-Type": rustResponse.headers.get("Content-Type") ?? "text/plain; charset=utf-8",
+      },
     });
   } catch (error) {
     return NextResponse.json({ error: "Backend unreachable" }, { status: 500 });
