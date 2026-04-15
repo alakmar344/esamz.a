@@ -61,12 +61,14 @@ export async function POST(req: Request) {
   // 5. Forward to Rust Backend
   try {
     const body = await req.json();
-    console.log('[Proxy] Forwarding chat request to backend', {
-      sessionId: body.sessionId,
-      ragEnabled: body.ragEnabled,
-      hasCustomSystemPrompt: Boolean(body.customSystemPrompt),
-      hasClientHistory: Array.isArray(body.clientHistory),
-    });
+    if (ENABLE_VERBOSE_BACKEND_LOGS) {
+      console.log('[Proxy] Forwarding chat request to backend', {
+        sessionId: body.sessionId,
+        ragEnabled: body.ragEnabled,
+        hasCustomSystemPrompt: Boolean(body.customSystemPrompt),
+        hasClientHistory: Array.isArray(body.clientHistory),
+      });
+    }
     const rustResponse = await fetch(RUST_BACKEND_URL, {
       method: "POST",
       headers: {
@@ -114,7 +116,6 @@ export async function POST(req: Request) {
             const chunkText = decoder.decode(value, { stream: true });
             console.log('[Proxy] Backend stream chunk:', chunkText);
           }
-          decoder.decode();
           console.log('[Proxy] Backend stream completed', {
             status: rustResponse.status,
             statusText: rustResponse.statusText,
