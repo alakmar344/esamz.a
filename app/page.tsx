@@ -22,6 +22,7 @@ declare global {
 }
 
 const hasClerk = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+const DEBUG_CHAT_STREAM_LOGS = process.env.NEXT_PUBLIC_DEBUG_CHAT_STREAM === 'true'
 
 let useAuth: any, useClerk: any, UserButton: any
 if (hasClerk) {
@@ -712,13 +713,22 @@ export default function ChatPage() {
                     };
                     for (let attempt = 0; attempt <= 2; attempt++) {
                         if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt));
-                        console.debug('[ChatStream] Sending request', { attempt: attempt + 1, chatUrl, reqBody });
+                        if (DEBUG_CHAT_STREAM_LOGS) {
+                            console.debug('[ChatStream] Sending request', {
+                                attempt: attempt + 1,
+                                chatUrl,
+                                sessionId: this.state.chatId,
+                                messageLength: finalPayload.length,
+                            });
+                        }
                         response = await fetch(chatUrl, fetchOpts);
-                        console.debug('[ChatStream] Response received', {
-                            status: response.status,
-                            statusText: response.statusText,
-                            contentType: response.headers.get('content-type'),
-                        });
+                        if (DEBUG_CHAT_STREAM_LOGS) {
+                            console.debug('[ChatStream] Response received', {
+                                status: response.status,
+                                statusText: response.statusText,
+                                contentType: response.headers.get('content-type'),
+                            });
+                        }
                         if (response.ok || response.status !== 504) break;
                     }
                     if (!response.ok) {
@@ -772,33 +782,33 @@ export default function ChatPage() {
 
                     const processLine = line => {
                         if (!line.trim()) return;
-                        console.debug('[ChatStream] Raw line from backend:', line);
+                        if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] Raw line from backend:', line);
                         const sep  = line.indexOf('|');
                         if (sep === -1) {
-                            console.warn('[ChatStream] Ignoring malformed line (missing separator):', line);
+                            if (DEBUG_CHAT_STREAM_LOGS) console.warn('[ChatStream] Ignoring malformed line (missing separator):', line);
                             return;
                         }
                         const type = line.substring(0, sep);
                         const data = line.substring(sep + 1);
                         if (type === 'STATUS') {
-                            console.debug('[ChatStream] STATUS:', data);
+                            if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] STATUS:', data);
                             const loader = contentDiv.querySelector('.thinking-loader');
                             if (!loader) return;
                             if (data === 'SEARCHING') loader.textContent = 'Thinking…';
                             if (data === 'TYPING')    loader.textContent = 'Writing…';
                         } else if (type === 'CHUNK') {
-                            console.debug('[ChatStream] CHUNK length:', data.length);
+                            if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] CHUNK length:', data.length);
                             fullText += data.replace(/\\n/g, '\n');
                             startTypewriter();
                         } else if (type === 'HISTORY_UPDATE') {
-                            console.debug('[ChatStream] HISTORY_UPDATE received');
+                            if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] HISTORY_UPDATE received');
                             try { incomingHistory = JSON.parse(data); } catch (_) {}
                         } else if (type === 'DONE') {
                             // Stream complete signal from backend; data = session_id
-                            console.debug('[ChatStream] DONE received:', data);
+                            if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] DONE received:', data);
                             streamDone = true;
                         } else if (type === 'ERROR') {
-                            console.error('[ChatStream] ERROR received:', data);
+                            if (DEBUG_CHAT_STREAM_LOGS) console.error('[ChatStream] ERROR received:', data);
                             const errMsg = /504|gateway timeout|timed out/i.test(data)
                                 ? 'AI service timed out. Please try again in a moment.'
                                 : /sarvam/i.test(data)
@@ -806,7 +816,7 @@ export default function ChatPage() {
                                     : data;
                             throw new Error(errMsg);
                         } else {
-                            console.warn('[ChatStream] Unknown event type from backend:', { type, data });
+                            if (DEBUG_CHAT_STREAM_LOGS) console.warn('[ChatStream] Unknown event type from backend:', { type, data });
                         }
                     };
 
@@ -814,13 +824,13 @@ export default function ChatPage() {
                         const { done, value } = await reader.read();
                         if (done) break;
                         const chunkText = decoder.decode(value, { stream: true });
-                        console.debug('[ChatStream] Raw chunk:', chunkText);
+                        if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] Raw chunk:', chunkText);
                         buffer += chunkText;
                         const lines = buffer.split('\n');
                         buffer = lines.pop() ?? '';
                         for (const l of lines) processLine(l);
                     }
-                    console.debug('[ChatStream] Stream ended by backend');
+                    if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] Stream ended by backend');
                     if (buffer.trim()) for (const l of buffer.split('\n')) processLine(l);
 
                     streamDone = true;
