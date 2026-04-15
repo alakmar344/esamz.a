@@ -102,29 +102,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Empty response from AI backend" }, { status: 502 });
     }
 
-    let responseBody = rustResponse.body;
+    let responseBody: ReadableStream = rustResponse.body;
     if (ENABLE_VERBOSE_BACKEND_LOGS) {
-      const [clientStream, logStream] = rustResponse.body.tee();
-      responseBody = clientStream;
-      void (async () => {
-        try {
-          const reader = logStream.getReader();
-          const decoder = new TextDecoder('utf-8');
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            const chunkText = decoder.decode(value, { stream: true });
-            console.log('[Proxy] Backend stream chunk:', chunkText);
-          }
+      const decoder = new TextDecoder('utf-8');
+      responseBody = rustResponse.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
+        transform(chunk, controller) {
+          const chunkText = decoder.decode(chunk, { stream: true });
+          console.log('[Proxy] Backend stream chunk:', chunkText);
+          controller.enqueue(chunk);
+        },
+        flush() {
+          const finalChunk = decoder.decode();
+          if (finalChunk) console.log('[Proxy] Backend stream chunk:', finalChunk);
           console.log('[Proxy] Backend stream completed', {
             status: rustResponse.status,
             statusText: rustResponse.statusText,
             contentType: rustResponse.headers.get('Content-Type'),
           });
-        } catch (streamErr) {
-          console.error('[Proxy] Failed while logging backend stream', streamErr);
-        }
-      })();
+        },
+      }));
     }
 
     // Stream the Rust response back to the frontend with original status
