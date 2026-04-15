@@ -79,7 +79,7 @@ export async function POST(req: Request) {
     if (!rustResponse.ok) {
       const errorText = await rustResponse.text();
       return NextResponse.json(
-        { error: errorText || "AI backend request failed" },
+        { error: errorText || `AI backend request failed with status ${rustResponse.status}` },
         { status: rustResponse.status }
       );
     }

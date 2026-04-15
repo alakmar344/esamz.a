@@ -756,7 +756,7 @@ export default function ChatPage() {
 
                     streamDone = true;
                     if (!fullText.trim()) {
-                        throw new Error('AI did not return a response. Please try again.');
+                        throw new Error('AI returned no content (possible timeout or backend failure). Please try again.');
                     }
                     if (!typingTimer) renderDisplayed(false);
 
