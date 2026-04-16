@@ -730,6 +730,22 @@
 button:focus-visible,a:focus-visible{outline:2px solid var(--crescent);outline-offset:3px;}
 
 /* ===== COMPLETE DESIGN SYSTEM OVERRIDES ===== */
+:root{
+  --bg-primary:var(--paper);
+  --bg-secondary:var(--sidebar-bg);
+  --bg-tertiary:var(--paper-aged);
+  --bg-elevated:var(--paper);
+  --text-primary:var(--ink);
+  --text-secondary:var(--ink-light);
+  --text-tertiary:var(--ink-faint);
+  --accent-primary:var(--crescent);
+  --accent-secondary:var(--gold);
+  --accent-teal:var(--crescent);
+  --privacy-green:#1A8A52;
+  --destructive:var(--vermillion);
+  --border:var(--sidebar-border);
+}
+
 :root[data-theme="light"]{
   --bg-primary:#F7F5F0;
   --bg-secondary:#EDEAE3;
@@ -815,6 +831,7 @@ body::after{
   min-width:260px;
   background:var(--bg-secondary, #EDEAE3);
   border-right:1px solid var(--border, rgba(0,0,0,0.16));
+  color:var(--text-secondary, var(--sidebar-text-bright));
 }
 :root[data-theme="dark"] .sidebar{border-right-color:#1E2534;}
 .sidebar-header{padding:32px 16px 16px;}
@@ -885,8 +902,9 @@ body::after{
   width:100%;
   border-radius:4px;
   padding:8px 16px;
-  color:var(--text-secondary);
+  color:var(--text-secondary, var(--sidebar-text-bright));
 }
+.nav-item svg{opacity:0.85;}
 .nav-item:hover{
   background:var(--bg-tertiary);
   color:var(--text-primary);
