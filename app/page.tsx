@@ -1411,15 +1411,18 @@ export default function ChatPage() {
                 const saved       = localStorage.getItem('esamz_theme');
                 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
                 const theme       = saved || (prefersDark ? 'dark' : 'light');
+                document.documentElement.setAttribute('data-theme', theme);
                 document.body.classList.remove('theme-light', 'theme-dark');
                 document.body.classList.add(`theme-${theme}`);
             }
 
             toggleTheme() {
                 const isDark = document.body.classList.contains('theme-dark');
+                const nextTheme = isDark ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', nextTheme);
                 document.body.classList.remove('theme-dark', 'theme-light');
-                document.body.classList.add(isDark ? 'theme-light' : 'theme-dark');
-                localStorage.setItem('esamz_theme', isDark ? 'light' : 'dark');
+                document.body.classList.add(`theme-${nextTheme}`);
+                localStorage.setItem('esamz_theme', nextTheme);
             }
         }
 
@@ -1703,7 +1706,7 @@ export default function ChatPage() {
                 <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:"14px"}}>
                     <div className="brand" style={{marginBottom:0}}>
                         <div className="brand-eyebrow">Strategic Mind</div>
-                        <div className="brand-name">e<span>S</span>AMz</div>
+                        <div className="brand-name">eSAM<span className="brand-z">z</span></div>
                         <div className="brand-tagline">Understands in 2 messages, not 2 years.</div>
                     </div>
                     <button className="btn-sidebar-close" id="btnCloseSidebar" title="Close sidebar" aria-label="Close sidebar">
@@ -1739,6 +1742,7 @@ export default function ChatPage() {
             
             <div className="sidebar-footer">
                 <div id="planBadgeContainer"></div>
+                <div className="privacy-pill">Zero Storage.</div>
                 <div className="sidebar-footer-text">© <a href="https://esamz.info" target="_blank" rel="noopener">eSAMz AI</a> 2026 All rights reserved</div>
             </div>
         </aside>
@@ -1757,7 +1761,7 @@ export default function ChatPage() {
                     </button>
                     <div className="header-context">
                         <span className="header-context-dot"></span>
-                        <span>eSAMz Chat</span>
+                        <span>Sarvam 105B · Web Search On.</span>
                     </div>
                 </div>
                 <div className="header-right">
