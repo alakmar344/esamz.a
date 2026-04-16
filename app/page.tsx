@@ -320,6 +320,8 @@ export default function ChatPage() {
                     uploadBtn:   document.getElementById('btnUpload'),
                     fileInput:   document.getElementById('fileInput'),
                     newChatBtn:  document.getElementById('btnNewChat'),
+                    mobileNewChatBtn: document.getElementById('mobileNewChatBtn'),
+                    mobileUpgradeBtn: document.getElementById('mobileUpgradeBtn'),
                     clearChatBtn:document.getElementById('btnClearChat'),
                     themeToggle: document.getElementById('btnThemeToggle'),
                     closeSidebarBtn:        document.getElementById('btnCloseSidebar'),
@@ -457,6 +459,15 @@ export default function ChatPage() {
                     document.body.style.overflow = 'hidden';
                 });
                 this.dom.overlay.addEventListener('click', closeMobileSidebar);
+                if (this.dom.mobileNewChatBtn) {
+                    this.dom.mobileNewChatBtn.addEventListener('click', () => {
+                        this.newChat();
+                        closeMobileSidebar();
+                    });
+                }
+                if (this.dom.mobileUpgradeBtn) {
+                    this.dom.mobileUpgradeBtn.addEventListener('click', () => closeMobileSidebar());
+                }
 
                 // Desktop sidebar collapse/expand
                 this.dom.closeSidebarBtn.addEventListener('click', () => {
@@ -1707,6 +1718,23 @@ export default function ChatPage() {
         <div className="overlay" id="overlay"></div>
         
         <aside className="sidebar" id="sidebar">
+            <div className="mobile-bottom-bar">
+                <div className="mobile-bottom-handle" aria-hidden="true"></div>
+                <div className="mobile-bottom-actions">
+                    <button className="mobile-bottom-cta mobile-bottom-cta-new" id="mobileNewChatBtn">
+                        ✨ New Chat
+                    </button>
+                    <a
+                        className="mobile-bottom-cta mobile-bottom-cta-upgrade"
+                        id="mobileUpgradeBtn"
+                        href="https://payments.cashfree.com/forms/esamz-ai"
+                        target="_blank"
+                        rel="noopener"
+                    >
+                        🚀 Upgrade Now
+                    </a>
+                </div>
+            </div>
             <div className="sidebar-header">
                 <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:"14px"}}>
                     <div className="brand" style={{marginBottom:0}}>

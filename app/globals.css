@@ -955,6 +955,8 @@ body::after{
 :root[data-theme="dark"] .theme-toggle .icon-sun{opacity:0;transform:translateX(20px);}
 :root[data-theme="dark"] .theme-toggle .icon-moon{opacity:1;transform:translateX(20px);background:#4D8EFF;color:#fff;}
 
+.mobile-bottom-bar{display:none;}
+
 .chat-container{
   background:var(--bg-primary);
   background-image:repeating-linear-gradient(to bottom, transparent 0 23px, rgba(0,0,0,0.04) 23px 24px);
@@ -1072,21 +1074,60 @@ dialog::backdrop{background:rgba(0,0,0,0.4);backdrop-filter:blur(8px);}
   .sidebar{
     width:100%;
     min-width:100%;
-    height:60px;
+    max-width:100%;
+    height:min(50dvh,460px);
     top:auto;
     bottom:0;
-    transform:translateY(100%);
-    box-shadow:none;
+    transform:translateY(calc(100% - 72px));
+    box-shadow:0 -12px 30px rgba(0,0,0,0.18);
     border-right:0;
     border-top:1px solid var(--border);
+    border-radius:14px 14px 0 0;
   }
   .sidebar.active{transform:translateY(0);}
-  /* In bottom-bar mode the overlay should cover the content above the bar, not a right-side strip */
-  .overlay{left:0;right:0;bottom:60px;}
+  .overlay{left:0;right:0;bottom:0;}
+  .mobile-bottom-bar{
+    display:block;
+    padding:8px 12px 10px;
+    border-bottom:1px solid var(--border);
+    background:var(--bg-secondary);
+  }
+  .mobile-bottom-handle{
+    width:40px;
+    height:4px;
+    border-radius:999px;
+    background:var(--text-tertiary);
+    opacity:0.5;
+    margin:0 auto 8px;
+  }
+  .mobile-bottom-actions{display:flex;gap:8px;}
+  .mobile-bottom-cta{
+    flex:1;
+    min-height:42px;
+    border-radius:10px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-decoration:none;
+    font:600 12px/1 "IBM Plex Sans",system-ui,sans-serif;
+    letter-spacing:0.02em;
+    border:none;
+    cursor:pointer;
+    transition:transform 120ms var(--ease-standard),opacity 120ms var(--ease-standard);
+  }
+  .mobile-bottom-cta:active{transform:translateY(1px);}
+  .mobile-bottom-cta-new{background:var(--accent-primary);color:#fff;}
+  .mobile-bottom-cta-upgrade{
+    background:linear-gradient(135deg,#ff7a45 0%, #ff4d67 100%);
+    color:#fff;
+    box-shadow:0 4px 14px rgba(255,77,103,0.35);
+  }
   .sidebar-header,.search-box,.nav-label,.sidebar-footer,.upgrade-section{display:none;}
-  .sidebar-nav{padding:0;flex-direction:row;overflow:hidden;}
-  .nav-section{display:flex;flex:1;margin:0;}
-  .nav-item{justify-content:center;padding:16px 8px;}
+  .sidebar-nav{padding:8px 12px 14px;display:block;overflow-y:auto;overflow-x:hidden;}
+  .nav-section{display:block;margin:0 0 10px;}
+  .nav-item{justify-content:flex-start;padding:10px 12px;}
+  #historyList{overflow-y:auto;padding-bottom:2px;}
+  #historyList .nav-item-row{margin:1px 0;width:100%;}
   .chat-wrapper{padding:24px 16px 80px;}
   .input-wrapper{padding:8px 16px 76px;}
   .welcome-headline{font-size:30px;}
