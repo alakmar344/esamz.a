@@ -674,6 +674,7 @@ export default function ChatPage() {
                     ? speTextarea.value.trim()
                     : undefined;
 
+                let typingTimer = null;
                 try {
                     const reqBody = {
                         message:         finalPayload,
@@ -744,7 +745,6 @@ export default function ChatPage() {
                     let fullText     = '';
                     let displayedText = '';
                     let incomingHistory = null;
-                    let typingTimer = null;
                     let streamDone = false;
 
                     const renderDisplayed = (showCursor = true) => {
