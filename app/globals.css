@@ -813,8 +813,8 @@ body::after{
 .sidebar{
   width:260px;
   min-width:260px;
-  background:var(--bg-secondary);
-  border-right:1px solid var(--border);
+  background:var(--bg-secondary, var(--sidebar-bg));
+  border-right:1px solid var(--border, var(--sidebar-border));
 }
 :root[data-theme="dark"] .sidebar{border-right-color:#1E2534;}
 .sidebar-header{padding:32px 16px 16px;}
