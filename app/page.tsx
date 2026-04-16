@@ -1729,7 +1729,7 @@ export default function ChatPage() {
                         id="mobileUpgradeBtn"
                         href="https://payments.cashfree.com/forms/esamz-ai"
                         target="_blank"
-                        rel="noopener"
+                        rel="noopener noreferrer"
                     >
                         🚀 Upgrade Now
                     </a>
