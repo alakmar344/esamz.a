@@ -746,22 +746,6 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--crescent);outline-o
   --border:#D5D2CB;
 }
 
-:root[data-theme="light"]{
-  --bg-primary:#F7F5F0;
-  --bg-secondary:#EDEAE3;
-  --bg-tertiary:#E0DDD6;
-  --bg-elevated:#FFFFFF;
-  --text-primary:#0F0E0C;
-  --text-secondary:#4A4744;
-  --text-tertiary:#9B9592;
-  --accent-primary:#1B4FE8;
-  --accent-secondary:#E8920A;
-  --accent-teal:#00B89E;
-  --privacy-green:#1A8A52;
-  --destructive:#C0392B;
-  --border:#D5D2CB;
-}
-
 :root[data-theme="dark"]{
   --bg-primary:#0D0F14;
   --bg-secondary:#141820;
@@ -831,7 +815,7 @@ body::after{
   min-width:260px;
   background:var(--bg-secondary, #EDEAE3);
   border-right:1px solid var(--border, rgba(0,0,0,0.16));
-  color:var(--text-secondary, #0F0E0C);
+  color:var(--text-secondary, #4A4744);
 }
 :root[data-theme="dark"] .sidebar{border-right-color:#1E2534;}
 .sidebar-header{padding:32px 16px 16px;}
@@ -902,7 +886,7 @@ body::after{
   width:100%;
   border-radius:4px;
   padding:8px 16px;
-  color:var(--text-secondary, #0F0E0C);
+  color:var(--text-secondary, #4A4744);
 }
 .nav-item svg{opacity:0.85;}
 .nav-item:hover{
