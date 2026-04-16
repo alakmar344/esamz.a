@@ -773,6 +773,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--crescent);outline-o
   --dur-xslow:500ms;
   --sidebar-w:260px;
   --head-h:64px;
+  --crescent:var(--accent-primary);
 }
 
 html,body{background:var(--bg-primary);color:var(--text-primary);}
