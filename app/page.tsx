@@ -1702,9 +1702,9 @@ export default function ChatPage() {
     </div>
 
     <div id="toast-container"></div>
-    <div className="overlay" id="overlay"></div>
 
     <div className="app-container">
+        <div className="overlay" id="overlay"></div>
         
         <aside className="sidebar" id="sidebar">
             <div className="sidebar-header">
