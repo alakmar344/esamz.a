@@ -118,7 +118,7 @@
         }
         .nav-item:hover{color:var(--sidebar-text-bright);background:var(--sidebar-hover-bg);}
         .nav-item.active{color:var(--sidebar-text-bright);background:var(--sidebar-active-bg);}
-        .nav-item svg{width:14px;height:14px;flex-shrink:0;opacity:0.55;}
+        .nav-item svg{width:14px;height:14px;flex-shrink:0;opacity:1;}
         .nav-item-row{display:flex;align-items:center;position:relative;margin:1px 8px;width:calc(100% - 16px);}
         .nav-item-row .nav-item{flex:1;min-width:0;padding-right:8px;margin:0;width:auto;}
         .nav-item-row .nav-item-actions{display:flex;gap:2px;opacity:0;transition:opacity 140ms;padding-right:8px;flex-shrink:0;}
@@ -291,7 +291,7 @@
         .file-chip button{color:var(--ink-ghost);font-size:14px;cursor:pointer;background:none;border:none;}
         .file-chip button:hover{color:var(--vermillion);}
         .input-row{display:flex;align-items:flex-end;gap:8px;}
-        .icon-btn{width:34px;height:34px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--ink-ghost);background:none;border:none;cursor:pointer;transition:all 150ms;position:relative;z-index:1;}
+        .icon-btn{width:34px;height:34px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--ink-faint);background:none;border:none;cursor:pointer;transition:all 150ms;position:relative;z-index:1;}
         .icon-btn:hover{color:var(--crescent);background:var(--crescent-soft);}
         .icon-btn.recording{color:var(--vermillion);}
         textarea{flex:1;background:transparent;border:none;color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:15px;resize:none;max-height:200px;outline:none;line-height:1.65;}
@@ -730,10 +730,11 @@
 button:focus-visible,a:focus-visible{outline:2px solid var(--crescent);outline-offset:3px;}
 
 /* ===== COMPLETE DESIGN SYSTEM OVERRIDES ===== */
+/* Light theme tokens (explicit [data-theme] selector for correct specificity) */
 :root[data-theme="light"]{
   --bg-primary:#F7F5F0;
-  --bg-secondary:#EDEAE3;
-  --bg-tertiary:#E0DDD6;
+  --bg-secondary:#FFFFFF;
+  --bg-tertiary:#F0EDE6;
   --bg-elevated:#FFFFFF;
   --text-primary:#0F0E0C;
   --text-secondary:#4A4744;
@@ -743,13 +744,15 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--crescent);outline-o
   --accent-teal:#00B89E;
   --privacy-green:#1A8A52;
   --destructive:#C0392B;
-  --border:#D5D2CB;
+  --border:#D0CEC8;
+  --sidebar-border-color:#D0CEC8;
 }
 
+/* Dark theme tokens */
 :root[data-theme="dark"]{
   --bg-primary:#0D0F14;
-  --bg-secondary:#141820;
-  --bg-tertiary:#1C2230;
+  --bg-secondary:#1C2230;
+  --bg-tertiary:#222A3A;
   --bg-elevated:#222A3A;
   --text-primary:#EAE8E4;
   --text-secondary:#9AA0B0;
@@ -760,6 +763,25 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--crescent);outline-o
   --privacy-green:#22C174;
   --destructive:#FF5252;
   --border:#1E2534;
+  --sidebar-border-color:#283148;
+}
+
+/* Fallback/default tokens (when no data-theme is set yet – matches light values) */
+:root{
+  --bg-primary:#F7F5F0;
+  --bg-secondary:#FFFFFF;
+  --bg-tertiary:#F0EDE6;
+  --bg-elevated:#FFFFFF;
+  --text-primary:#0F0E0C;
+  --text-secondary:#4A4744;
+  --text-tertiary:#9B9592;
+  --accent-primary:#1B4FE8;
+  --accent-secondary:#E8920A;
+  --accent-teal:#00B89E;
+  --privacy-green:#1A8A52;
+  --destructive:#C0392B;
+  --border:#D0CEC8;
+  --sidebar-border-color:#D0CEC8;
 }
 
 :root{
@@ -809,14 +831,64 @@ body::after{
   pointer-events:none;
 }
 
-.app-container,.main-content,.header,.input-wrapper{position:relative;z-index:2;}
-.sidebar{
-  width:260px;
-  min-width:260px;
-  background:var(--bg-secondary, #EDEAE3);
-  border-right:1px solid var(--border, rgba(0,0,0,0.16));
+/* ---- LAYOUT: fully self-contained so the cascade never breaks the structure ---- */
+.app-container{
+  display:flex;
+  width:100%;
+  max-width:100%;
+  height:100dvh;
+  position:relative;
+  overflow:hidden;
 }
-:root[data-theme="dark"] .sidebar{border-right-color:#1E2534;}
+.main-content{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  max-width:100%;
+  overflow:hidden;
+  background:var(--bg-primary);
+}
+.chat-container{
+  flex:1;
+  overflow-y:auto;
+  scroll-behavior:smooth;
+  position:relative;
+}
+
+/* ---- SIDEBAR: fully self-contained rule so it never appears transparent ---- */
+.sidebar{
+  /* Layout */
+  display:flex;
+  flex-direction:column;
+  height:100%;
+  flex-shrink:0;
+  overflow:hidden;
+  position:relative;
+  width:var(--sidebar-w, 260px);
+  min-width:var(--sidebar-w, 260px);
+  /* Visuals – white sidebar clearly stands out against the parchment page */
+  background:#FFFFFF;
+  border-right:2px solid #D0CEC8;
+  color:#4A4744;
+  transition:width 220ms cubic-bezier(0.4,0,0.2,1),min-width 220ms cubic-bezier(0.4,0,0.2,1);
+}
+/* Light mode: use design tokens with white fallback */
+:root[data-theme="light"] .sidebar{
+  background:var(--bg-secondary, #FFFFFF);
+  border-right:2px solid var(--sidebar-border-color, #D0CEC8);
+  color:var(--text-secondary, #4A4744);
+}
+/* Dark mode: noticeably lighter than the #0D0F14 page background */
+:root[data-theme="dark"] .sidebar{
+  background:var(--bg-secondary, #1C2230);
+  border-right:2px solid var(--sidebar-border-color, #283148);
+  color:var(--text-secondary, #9AA0B0);
+  box-shadow:2px 0 12px rgba(0,0,0,0.5);
+}
+
+/* Ensure all SVG icons inside the sidebar inherit the text color and are fully visible */
+.sidebar svg{color:inherit;opacity:1;}
 .sidebar-header{padding:32px 16px 16px;}
 .brand{position:relative;padding-left:48px;}
 .brand::before{
@@ -885,8 +957,9 @@ body::after{
   width:100%;
   border-radius:4px;
   padding:8px 16px;
-  color:var(--text-secondary);
+  color:var(--text-secondary, #4A4744);
 }
+.nav-item svg{opacity:1;}
 .nav-item:hover{
   background:var(--bg-tertiary);
   color:var(--text-primary);
