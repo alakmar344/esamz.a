@@ -446,19 +446,24 @@ export default function ChatPage() {
                     this.dom.headerActionsMenu.classList.remove('open');
                 });
                 // Mobile sidebar
+                const closeMobileSidebar = () => {
+                    this.dom.sidebar.classList.remove('active');
+                    this.dom.overlay.classList.remove('active');
+                    document.body.style.overflow = '';
+                };
                 this.dom.openSidebarMobileBtn.addEventListener('click', () => {
                     this.dom.sidebar.classList.add('active');
                     this.dom.overlay.classList.add('active');
                     document.body.style.overflow = 'hidden';
                 });
-                this.dom.overlay.addEventListener('click', () => {
-                    this.dom.sidebar.classList.remove('active');
-                    this.dom.overlay.classList.remove('active');
-                    document.body.style.overflow = '';
-                });
+                this.dom.overlay.addEventListener('click', closeMobileSidebar);
 
                 // Desktop sidebar collapse/expand
                 this.dom.closeSidebarBtn.addEventListener('click', () => {
+                    if (window.matchMedia('(max-width: 768px)').matches) {
+                        closeMobileSidebar();
+                        return;
+                    }
                     this.dom.sidebar.classList.add('collapsed');
                 });
                 this.dom.openSidebarDesktopBtn.addEventListener('click', () => {
