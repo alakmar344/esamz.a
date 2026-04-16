@@ -1081,6 +1081,8 @@ dialog::backdrop{background:rgba(0,0,0,0.4);backdrop-filter:blur(8px);}
     border-top:1px solid var(--border);
   }
   .sidebar.active{transform:translateY(0);}
+  /* In bottom-bar mode the overlay should cover the content above the bar, not a right-side strip */
+  .overlay{left:0;right:0;bottom:60px;}
   .sidebar-header,.search-box,.nav-label,.sidebar-footer,.upgrade-section{display:none;}
   .sidebar-nav{padding:0;flex-direction:row;overflow:hidden;}
   .nav-section{display:flex;flex:1;margin:0;}
