@@ -87,8 +87,8 @@ export default function ChatPage() {
     ;(function () {
         'use strict';
         const BACKEND_CHAT_URL    = '/api/chat/proxy';
-        const BACKEND_CHAT_URL_ANON = 'https://backend-for-esamzai.onrender.com/api/chat';
-        const BACKEND_BASE_URL    = 'https://backend-for-esamzai.onrender.com';
+        const BACKEND_CHAT_URL_ANON = 'https://backend.esamz.site/api/chat';
+        const BACKEND_BASE_URL    = 'https://backend.esamz.site';
 
         const LS_PLAN      = 'esamz_plan';
         const LS_STORAGE   = 'esamz_conversations_v9';

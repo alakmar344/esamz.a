@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 
-const RUST_BACKEND_URL = 'https://backend-for-esamzai.onrender.com/api/chat';
+const RUST_BACKEND_URL = 'https://backend.esamz.site/api/chat';
 const ENABLE_VERBOSE_BACKEND_LOGS = process.env.ESAMZ_DEBUG_BACKEND_STREAM === 'true';
 
 // Database connection helper (shared connection pool)
