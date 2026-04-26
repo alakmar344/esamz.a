@@ -327,6 +327,7 @@ export default function ChatPage() {
                     closeSidebarBtn:        document.getElementById('btnCloseSidebar'),
                     openSidebarDesktopBtn:  document.getElementById('btnOpenSidebarDesktop'),
                     openSidebarMobileBtn:   document.getElementById('openSidebar'),
+                    openSidebarBottomBtn:   document.getElementById('openSidebarBottom'),
                     headerActionsToggle:    document.getElementById('headerActionsToggle'),
                     headerActionsMenu:      document.getElementById('headerActionsMenu'),
                     menuNewChatBtn:         document.getElementById('menuNewChatBtn'),
@@ -448,16 +449,26 @@ export default function ChatPage() {
                     this.dom.headerActionsMenu.classList.remove('open');
                 });
                 // Mobile sidebar
+                const openMobileSidebar = () => {
+                    this.dom.sidebar.classList.add('active');
+                    this.dom.overlay.classList.add('active');
+                    this.dom.openSidebarBottomBtn?.classList.add('is-hidden');
+                    this.dom.sidebar.style.removeProperty('transform');
+                    this.dom.sidebar.style.removeProperty('transition');
+                    this.dom.overlay.style.removeProperty('opacity');
+                    document.body.style.overflow = 'hidden';
+                };
                 const closeMobileSidebar = () => {
                     this.dom.sidebar.classList.remove('active');
                     this.dom.overlay.classList.remove('active');
+                    this.dom.openSidebarBottomBtn?.classList.remove('is-hidden');
+                    this.dom.sidebar.style.removeProperty('transform');
+                    this.dom.sidebar.style.removeProperty('transition');
+                    this.dom.overlay.style.removeProperty('opacity');
                     document.body.style.overflow = '';
                 };
-                this.dom.openSidebarMobileBtn.addEventListener('click', () => {
-                    this.dom.sidebar.classList.add('active');
-                    this.dom.overlay.classList.add('active');
-                    document.body.style.overflow = 'hidden';
-                });
+                if (this.dom.openSidebarMobileBtn) this.dom.openSidebarMobileBtn.addEventListener('click', openMobileSidebar);
+                if (this.dom.openSidebarBottomBtn) this.dom.openSidebarBottomBtn.addEventListener('click', openMobileSidebar);
                 this.dom.overlay.addEventListener('click', closeMobileSidebar);
                 if (this.dom.mobileNewChatBtn) {
                     this.dom.mobileNewChatBtn.addEventListener('click', () => {
@@ -467,6 +478,57 @@ export default function ChatPage() {
                 }
                 if (this.dom.mobileUpgradeBtn) {
                     this.dom.mobileUpgradeBtn.addEventListener('click', () => closeMobileSidebar());
+                }
+                const mobileBottomBar = this.dom.sidebar?.querySelector('.mobile-bottom-bar');
+                if (mobileBottomBar && window.matchMedia('(max-width: 640px)').matches) {
+                    const visiblePeek = 72;
+                    let dragging = false;
+                    let pointerId = null;
+                    let startY = 0;
+                    let startOffset = 0;
+                    let currentOffset = 0;
+                    let hiddenOffset = 0;
+                    const applyOffset = offset => {
+                        this.dom.sidebar.style.transform = `translateY(${offset}px)`;
+                        if (hiddenOffset > 0) {
+                            const ratio = Math.max(0, Math.min(1, 1 - (offset / hiddenOffset)));
+                            this.dom.overlay.style.opacity = `${ratio}`;
+                        }
+                    };
+                    const onPointerMove = e => {
+                        if (!dragging || e.pointerId !== pointerId) return;
+                        const delta = e.clientY - startY;
+                        currentOffset = Math.max(0, Math.min(hiddenOffset, startOffset + delta));
+                        applyOffset(currentOffset);
+                    };
+                    const onPointerEnd = e => {
+                        if (!dragging || e.pointerId !== pointerId) return;
+                        dragging = false;
+                        pointerId = null;
+                        this.dom.sidebar.style.removeProperty('transition');
+                        this.dom.overlay.style.removeProperty('opacity');
+                        if (currentOffset > hiddenOffset * 0.5) closeMobileSidebar();
+                        else openMobileSidebar();
+                    };
+                    mobileBottomBar.addEventListener('pointerdown', e => {
+                        if (e.pointerType === 'mouse' && e.button !== 0) return;
+                        hiddenOffset = Math.max(this.dom.sidebar.getBoundingClientRect().height - visiblePeek, 0);
+                        startOffset = this.dom.sidebar.classList.contains('active') ? 0 : hiddenOffset;
+                        currentOffset = startOffset;
+                        startY = e.clientY;
+                        pointerId = e.pointerId;
+                        dragging = true;
+                        this.dom.sidebar.classList.add('active');
+                        this.dom.overlay.classList.add('active');
+                        this.dom.sidebar.style.transition = 'none';
+                        applyOffset(startOffset);
+                        document.body.style.overflow = 'hidden';
+                        if (mobileBottomBar.setPointerCapture) mobileBottomBar.setPointerCapture(pointerId);
+                        e.preventDefault();
+                    });
+                    window.addEventListener('pointermove', onPointerMove);
+                    window.addEventListener('pointerup', onPointerEnd);
+                    window.addEventListener('pointercancel', onPointerEnd);
                 }
 
                 // Desktop sidebar collapse/expand
@@ -1495,11 +1557,18 @@ export default function ChatPage() {
             const btn       = document.getElementById('scrollTopBtn');
             const container = document.getElementById('chatContainer');
             const progress = document.getElementById('chatScrollProgressBar');
+            const iconPath = btn?.querySelector('polyline');
             if (!btn || !container) return;
             const update = () => {
                 const max = container.scrollHeight - container.clientHeight;
                 const ratio = max > 0 ? (container.scrollTop / max) * 100 : 0;
-                btn.classList.toggle('visible', container.scrollTop > 300);
+                const show = max > 320;
+                const goDown = max - container.scrollTop > 220;
+                btn.classList.toggle('visible', show);
+                btn.dataset.direction = goDown ? 'down' : 'up';
+                btn.title = goDown ? 'Scroll to latest' : 'Scroll to top';
+                btn.setAttribute('aria-label', goDown ? 'Scroll to latest' : 'Scroll to top');
+                if (iconPath) iconPath.setAttribute('points', goDown ? '6 9 12 15 18 9' : '18 15 12 9 6 15');
                 if (progress) {
                     progress.style.width = `${ratio}%`;
                     progress.parentElement?.classList.toggle('visible', max > 300);
@@ -1508,7 +1577,10 @@ export default function ChatPage() {
             container.addEventListener('scroll', update);
             window.addEventListener('resize', update);
             update();
-            btn.addEventListener('click', () => container.scrollTo({ top: 0, behavior: 'smooth' }));
+            btn.addEventListener('click', () => {
+                const direction = btn.dataset.direction || 'up';
+                container.scrollTo({ top: direction === 'down' ? container.scrollHeight : 0, behavior: 'smooth' });
+            });
         })();
 
         // ====================================================================
@@ -1784,11 +1856,6 @@ export default function ChatPage() {
         <main className="main-content">
             <header className="header">
                 <div style={{display:"flex",alignItems:"center",gap:"14px"}}>
-                    
-                    <button className="icon-btn mobile-toggle" id="openSidebar" aria-label="Open menu">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-                    </button>
-                    
                     <button className="icon-btn btn-open-sidebar-desktop" id="btnOpenSidebarDesktop" title="Open sidebar" aria-label="Open sidebar">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                     </button>
@@ -1944,6 +2011,9 @@ export default function ChatPage() {
 
     <button className="scroll-top-btn" id="scrollTopBtn" title="Scroll to top" aria-label="Scroll to top">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+    </button>
+    <button className="mobile-bottom-open-btn" id="openSidebarBottom" title="Open menu" aria-label="Open menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15"/></svg>
     </button>
 
     
