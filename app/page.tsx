@@ -379,6 +379,8 @@ export default function ChatPage() {
             }
 
             setupEventListeners() {
+                const SIDEBAR_VISIBLE_PEEK_HEIGHT = 72;
+                const DRAG_CLOSE_THRESHOLD = 0.5;
                 this.dom.input.addEventListener('focus', () => {
                     if (!requireSignIn()) {
                         this.dom.input.blur();
@@ -481,7 +483,6 @@ export default function ChatPage() {
                 }
                 const mobileBottomBar = this.dom.sidebar?.querySelector('.mobile-bottom-bar');
                 if (mobileBottomBar && window.matchMedia('(max-width: 640px)').matches) {
-                    const visiblePeek = 72;
                     let dragging = false;
                     let pointerId = null;
                     let startY = 0;
@@ -507,12 +508,12 @@ export default function ChatPage() {
                         pointerId = null;
                         this.dom.sidebar.style.removeProperty('transition');
                         this.dom.overlay.style.removeProperty('opacity');
-                        if (currentOffset > hiddenOffset * 0.5) closeMobileSidebar();
+                        if (currentOffset > hiddenOffset * DRAG_CLOSE_THRESHOLD) closeMobileSidebar();
                         else openMobileSidebar();
                     };
                     mobileBottomBar.addEventListener('pointerdown', e => {
                         if (e.pointerType === 'mouse' && e.button !== 0) return;
-                        hiddenOffset = Math.max(this.dom.sidebar.getBoundingClientRect().height - visiblePeek, 0);
+                        hiddenOffset = Math.max(this.dom.sidebar.getBoundingClientRect().height - SIDEBAR_VISIBLE_PEEK_HEIGHT, 0);
                         startOffset = this.dom.sidebar.classList.contains('active') ? 0 : hiddenOffset;
                         currentOffset = startOffset;
                         startY = e.clientY;
@@ -1558,12 +1559,14 @@ export default function ChatPage() {
             const container = document.getElementById('chatContainer');
             const progress = document.getElementById('chatScrollProgressBar');
             const iconPath = btn?.querySelector('polyline');
+            const MIN_SCROLL_HEIGHT_FOR_BUTTON = 320;
+            const SCROLL_BOTTOM_THRESHOLD = 220;
             if (!btn || !container) return;
             const update = () => {
                 const max = container.scrollHeight - container.clientHeight;
                 const ratio = max > 0 ? (container.scrollTop / max) * 100 : 0;
-                const show = max > 320;
-                const goDown = max - container.scrollTop > 220;
+                const show = max > MIN_SCROLL_HEIGHT_FOR_BUTTON;
+                const goDown = max - container.scrollTop > SCROLL_BOTTOM_THRESHOLD;
                 btn.classList.toggle('visible', show);
                 btn.dataset.direction = goDown ? 'down' : 'up';
                 btn.title = goDown ? 'Scroll to latest' : 'Scroll to top';
