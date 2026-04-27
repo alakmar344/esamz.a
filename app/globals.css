@@ -1160,3 +1160,519 @@ dialog::backdrop{background:rgba(0,0,0,0.4);backdrop-filter:blur(8px);}
   .mobile-bottom-open-btn{display:flex;}
   .welcome-headline{font-size:30px;}
 }
+
+/* ===================================================================
+   FUN UI OVERRIDES — vibrant colors, animations, and delight
+   =================================================================== */
+
+/* Fun color palette */
+:root {
+  --fun-purple:#7c3aed;
+  --fun-pink:#ec4899;
+  --fun-orange:#f59e0b;
+  --fun-teal:#06b6d4;
+  --fun-green:#10b981;
+  --grad-magic:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+  --grad-fire:linear-gradient(135deg,#fa709a 0%,#fee140 100%);
+  --grad-ocean:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);
+  --grad-forest:linear-gradient(135deg,#43e97b 0%,#38f9d7 100%);
+  --grad-candy:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);
+  --grad-aurora:linear-gradient(135deg,#667eea 0%,#764ba2 33%,#ec4899 66%,#f59e0b 100%);
+}
+
+/* ---- Animated gradient welcome headline ---- */
+.welcome-headline {
+  background:linear-gradient(135deg,#667eea,#764ba2,#ec4899,#f59e0b,#10b981,#667eea);
+  background-size:300% 300%;
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent!important;
+  animation:headlineGradient 8s ease-in-out infinite;
+}
+@keyframes headlineGradient {
+  0%,100%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+}
+
+/* Dark mode headline stays vibrant */
+body.theme-dark .welcome-headline,
+:root[data-theme="dark"] .welcome-headline {
+  background:linear-gradient(135deg,#818cf8,#a78bfa,#f472b6,#fbbf24,#34d399,#818cf8);
+  background-size:300% 300%;
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent!important;
+  animation:headlineGradient 8s ease-in-out infinite;
+}
+
+/* ---- Bouncy welcome screen entrance ---- */
+.welcome {
+  animation:welcomeBounce 0.7s cubic-bezier(0.34,1.56,0.64,1) both!important;
+}
+@keyframes welcomeBounce {
+  from{opacity:0;transform:translateY(28px) scale(0.96)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+
+/* ---- Message slide-in with spring ---- */
+.message {
+  animation:msgSpring 0.35s cubic-bezier(0.34,1.4,0.64,1) both!important;
+}
+@keyframes msgSpring {
+  from{opacity:0;transform:translateY(14px) scale(0.97)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+
+/* ---- Shimmer on New Chat button ---- */
+.btn-new-chat {
+  background:var(--grad-magic)!important;
+  position:relative;
+  overflow:hidden;
+}
+.btn-new-chat::after {
+  content:'';
+  position:absolute;
+  top:-50%;
+  left:-80%;
+  width:50%;
+  height:200%;
+  background:rgba(255,255,255,0.22);
+  transform:skewX(-20deg);
+  animation:shimmerSlide 2.8s ease-in-out infinite;
+}
+@keyframes shimmerSlide {
+  0%{left:-80%}
+  100%{left:140%}
+}
+.btn-new-chat:hover {
+  filter:brightness(1.12)!important;
+  transform:translateY(-2px)!important;
+  box-shadow:0 10px 28px rgba(102,126,234,0.42)!important;
+}
+
+/* ---- Send button — gradient + glow ---- */
+.send-btn:not(:disabled) {
+  background:linear-gradient(135deg,#43e97b 0%,#38f9d7 100%)!important;
+  box-shadow:0 4px 14px rgba(56,249,215,0.35);
+  color:#0f766e!important;
+}
+.send-btn:not(:disabled):hover {
+  transform:scale(1.1)!important;
+  box-shadow:0 8px 24px rgba(56,249,215,0.55)!important;
+  filter:brightness(1.06)!important;
+}
+.send-btn.stop-mode {
+  background:linear-gradient(135deg,#f43f5e 0%,#fb923c 100%)!important;
+  color:#fff!important;
+  box-shadow:0 4px 14px rgba(244,63,94,0.35)!important;
+}
+
+/* ---- AI avatar — gradient + glow ---- */
+.message.ai .avatar {
+  background:linear-gradient(135deg,#667eea 0%,#764ba2 50%,#ec4899 100%)!important;
+  box-shadow:0 4px 12px rgba(118,75,162,0.38);
+}
+
+/* ---- User bubble — gradient tint ---- */
+.message.user .bubble {
+  background:linear-gradient(135deg,rgba(102,126,234,0.10),rgba(118,75,162,0.07))!important;
+  border-color:rgba(102,126,234,0.28)!important;
+}
+:root[data-theme="dark"] .message.user .bubble,
+body.theme-dark .message.user .bubble {
+  background:linear-gradient(135deg,rgba(129,140,248,0.12),rgba(167,139,250,0.08))!important;
+  border-color:rgba(129,140,248,0.25)!important;
+}
+
+/* ---- Colorful suggestion cards ---- */
+.welcome-suggestion-card {
+  border-radius:12px!important;
+  transition:border-color 160ms,background 160ms,transform 200ms cubic-bezier(0.34,1.4,0.64,1),box-shadow 200ms!important;
+}
+.welcome-suggestion-card:nth-child(1) {
+  border-top:3px solid #667eea!important;
+  border-top-left-radius:12px!important;
+  border-top-right-radius:12px!important;
+}
+.welcome-suggestion-card:nth-child(2) {
+  border-top:3px solid #ec4899!important;
+}
+.welcome-suggestion-card:nth-child(3) {
+  border-top:3px solid #10b981!important;
+}
+.welcome-suggestion-card:nth-child(4) {
+  border-top:3px solid #f59e0b!important;
+}
+.welcome-suggestion-card:nth-child(5) {
+  border-top:3px solid #06b6d4!important;
+}
+.welcome-suggestion-card:nth-child(6) {
+  border-top:3px solid #8b5cf6!important;
+}
+.welcome-suggestion-card:nth-child(1):hover {
+  background:rgba(102,126,234,0.08)!important;
+  border-color:rgba(102,126,234,0.35)!important;
+  border-top-color:#667eea!important;
+  transform:translateY(-5px) scale(1.02)!important;
+  box-shadow:0 8px 24px rgba(102,126,234,0.18)!important;
+}
+.welcome-suggestion-card:nth-child(2):hover {
+  background:rgba(236,72,153,0.07)!important;
+  border-color:rgba(236,72,153,0.28)!important;
+  border-top-color:#ec4899!important;
+  transform:translateY(-5px) scale(1.02)!important;
+  box-shadow:0 8px 24px rgba(236,72,153,0.15)!important;
+}
+.welcome-suggestion-card:nth-child(3):hover {
+  background:rgba(16,185,129,0.07)!important;
+  border-color:rgba(16,185,129,0.28)!important;
+  border-top-color:#10b981!important;
+  transform:translateY(-5px) scale(1.02)!important;
+  box-shadow:0 8px 24px rgba(16,185,129,0.15)!important;
+}
+.welcome-suggestion-card:nth-child(4):hover {
+  background:rgba(245,158,11,0.07)!important;
+  border-color:rgba(245,158,11,0.28)!important;
+  border-top-color:#f59e0b!important;
+  transform:translateY(-5px) scale(1.02)!important;
+  box-shadow:0 8px 24px rgba(245,158,11,0.15)!important;
+}
+.welcome-suggestion-card:nth-child(5):hover {
+  background:rgba(6,182,212,0.07)!important;
+  border-color:rgba(6,182,212,0.28)!important;
+  border-top-color:#06b6d4!important;
+  transform:translateY(-5px) scale(1.02)!important;
+  box-shadow:0 8px 24px rgba(6,182,212,0.15)!important;
+}
+.welcome-suggestion-card:nth-child(6):hover {
+  background:rgba(139,92,246,0.07)!important;
+  border-color:rgba(139,92,246,0.28)!important;
+  border-top-color:#8b5cf6!important;
+  transform:translateY(-5px) scale(1.02)!important;
+  box-shadow:0 8px 24px rgba(139,92,246,0.15)!important;
+}
+
+/* Emoji icon on suggestion cards */
+.welcome-suggestion-icon {
+  display:block;
+  font-size:22px;
+  margin-bottom:6px;
+  line-height:1;
+}
+.welcome-suggestion-title {
+  font-size:14px!important;
+  font-weight:700!important;
+}
+
+/* ---- Pulsing status dot ---- */
+.header-context-dot {
+  background:#10b981!important;
+  box-shadow:0 0 0 5px rgba(16,185,129,0.15)!important;
+  animation:statusPulse 2.2s ease-in-out infinite!important;
+}
+@keyframes statusPulse {
+  0%,100%{box-shadow:0 0 0 4px rgba(16,185,129,0.14)}
+  50%{box-shadow:0 0 0 8px rgba(16,185,129,0.07)}
+}
+
+/* ---- Rainbow scroll progress bar ---- */
+.chat-scroll-progress span {
+  background:linear-gradient(90deg,#667eea,#764ba2,#ec4899,#f59e0b)!important;
+  background-size:200% 100%!important;
+  animation:rainbowScroll 3s linear infinite!important;
+}
+@keyframes rainbowScroll {
+  0%{background-position:0% 0%}
+  100%{background-position:200% 0%}
+}
+
+/* ---- Colorful thinking loader ---- */
+.thinking-loader {
+  font-size:0!important;
+}
+.thinking-loader::before,
+.thinking-loader::after {
+  width:6px!important;
+  height:6px!important;
+}
+.thinking-loader::before {
+  background:linear-gradient(135deg,#667eea,#ec4899)!important;
+}
+.thinking-loader::after {
+  background:linear-gradient(135deg,#10b981,#06b6d4)!important;
+  animation-delay:200ms!important;
+}
+
+/* ---- Streaming cursor ---- */
+.streaming-cursor {
+  width:2px!important;
+  background:linear-gradient(180deg,#667eea,#ec4899)!important;
+}
+
+/* ---- Header gradient accent ---- */
+.header {
+  position:relative;
+}
+.header::after {
+  content:'';
+  position:absolute;
+  bottom:0;
+  left:0;
+  right:0;
+  height:2px;
+  background:linear-gradient(90deg,transparent 0%,#667eea 30%,#ec4899 60%,transparent 100%);
+  opacity:0.5;
+  z-index:1;
+  pointer-events:none;
+}
+
+/* ---- Code block fun ---- */
+.code-header {
+  color:var(--fun-teal)!important;
+  background:rgba(6,182,212,0.06)!important;
+}
+.code-header button:hover {
+  color:#667eea!important;
+  background:rgba(102,126,234,0.1)!important;
+}
+
+/* ---- Animated brand-z color ---- */
+.brand-z {
+  color:#ec4899!important;
+  display:inline-block;
+  animation:brandZColor 5s ease-in-out infinite;
+}
+@keyframes brandZColor {
+  0%,100%{color:#ec4899}
+  25%{color:#f59e0b}
+  50%{color:#10b981}
+  75%{color:#667eea}
+}
+
+/* ---- Colorful welcome dateline ---- */
+.welcome-dateline {
+  color:#667eea!important;
+  font-weight:700!important;
+}
+.welcome-deck {
+  color:var(--text-secondary)!important;
+  font-size:17px!important;
+}
+
+/* ---- Colorful welcome suggestions hint ---- */
+.welcome-suggestions-hint {
+  color:#667eea!important;
+  font-weight:600!important;
+  letter-spacing:0.08em!important;
+}
+
+/* ---- Fun nav item hover ---- */
+.nav-item:hover {
+  background:linear-gradient(90deg,rgba(102,126,234,0.1),transparent)!important;
+  border-left:2px solid #667eea!important;
+  padding-left:20px!important;
+}
+
+/* ---- Privacy pill glow ---- */
+.privacy-pill {
+  box-shadow:0 0 10px rgba(16,185,129,0.22);
+}
+
+/* ---- View Plans button — gradient on hover ---- */
+.btn-view-plans:hover {
+  background:var(--grad-magic)!important;
+  border-color:transparent!important;
+  color:#fff!important;
+  box-shadow:0 8px 22px rgba(102,126,234,0.35)!important;
+}
+
+/* ---- Input box glowing focus ---- */
+.input-box:focus-within {
+  border-color:#667eea!important;
+  box-shadow:0 0 0 3px rgba(102,126,234,0.16),0 4px 16px rgba(102,126,234,0.08)!important;
+}
+
+/* ---- Plan card hover lift ---- */
+.plan-card:hover {
+  border-color:#667eea!important;
+  box-shadow:0 8px 24px rgba(102,126,234,0.14)!important;
+  transform:translateY(-2px);
+  transition:border-color 180ms,box-shadow 180ms,transform 180ms cubic-bezier(0.34,1.4,0.64,1);
+}
+
+/* ---- Primary dialog button gradient ---- */
+.dialog-actions .btn-primary,
+.msg-edit-save-btn,
+.plans-upgrade-btn {
+  background:var(--grad-magic)!important;
+}
+.plans-upgrade-btn {
+  box-shadow:0 6px 20px rgba(102,126,234,0.35)!important;
+}
+.plans-upgrade-btn:hover {
+  box-shadow:0 12px 28px rgba(102,126,234,0.48)!important;
+  transform:translateY(-2px)!important;
+}
+
+/* ---- Scroll to top — gradient ---- */
+.scroll-top-btn {
+  background:var(--grad-magic)!important;
+  box-shadow:0 4px 14px rgba(102,126,234,0.35)!important;
+}
+.scroll-top-btn:hover {
+  transform:scale(1.12)!important;
+  box-shadow:0 8px 20px rgba(102,126,234,0.48)!important;
+}
+
+/* ---- Mobile new chat gradient ---- */
+.mobile-bottom-cta-new {
+  background:var(--grad-magic)!important;
+}
+
+/* ---- Header actions hover fun ---- */
+.header-actions-item:hover {
+  background:rgba(102,126,234,0.1)!important;
+  color:#667eea!important;
+}
+.header-actions-item.danger:hover {
+  background:rgba(244,63,94,0.1)!important;
+  color:#f43f5e!important;
+}
+
+/* ---- Msg action buttons ---- */
+.msg-copy-btn:hover {
+  color:#667eea!important;
+  background:rgba(102,126,234,0.1)!important;
+  border-color:rgba(102,126,234,0.28)!important;
+}
+.msg-regen-btn:hover {
+  color:#ec4899!important;
+  background:rgba(236,72,153,0.08)!important;
+  border-color:rgba(236,72,153,0.22)!important;
+}
+.msg-edit-btn:hover {
+  color:#10b981!important;
+  background:rgba(16,185,129,0.08)!important;
+  border-color:rgba(16,185,129,0.22)!important;
+}
+
+/* ---- Toast fun ---- */
+.toast {
+  background:linear-gradient(135deg,#1a1a2e,#16213e)!important;
+  border-left:3px solid #667eea!important;
+}
+
+/* ---- kbd keys fun ---- */
+kbd {
+  background:linear-gradient(180deg,var(--bg-elevated,#fff),var(--bg-secondary,#f0f0f0))!important;
+  border-color:rgba(102,126,234,0.2) rgba(102,126,234,0.2) rgba(102,126,234,0.4)!important;
+  color:#667eea!important;
+}
+
+/* ---- Plan badges colorful ---- */
+.plan-badge.plus,.plan-badge.max {
+  background:linear-gradient(135deg,rgba(102,126,234,0.12),rgba(118,75,162,0.08))!important;
+  border-color:rgba(102,126,234,0.3)!important;
+  color:#667eea!important;
+}
+.plan-badge.pro {
+  background:linear-gradient(135deg,rgba(236,72,153,0.1),rgba(245,158,11,0.07))!important;
+  border-color:rgba(236,72,153,0.28)!important;
+  color:#ec4899!important;
+}
+
+/* ---- Sidebar search focus ---- */
+.search-input:focus {
+  border-color:#667eea!important;
+  box-shadow:0 0 0 3px rgba(102,126,234,0.14)!important;
+}
+
+/* ---- Focus ring global ---- */
+:focus-visible {
+  outline-color:#667eea!important;
+}
+
+/* ---- Cibo modal btn-primary ---- */
+.cibo-modal-btn-primary,.upgrade-card-btn {
+  background:var(--grad-magic)!important;
+  box-shadow:0 4px 14px rgba(102,126,234,0.3)!important;
+}
+
+/* ---- Icon button hover ---- */
+.icon-btn:hover {
+  color:#667eea!important;
+  background:rgba(102,126,234,0.1)!important;
+}
+
+/* ---- Slash command menu ---- */
+.slash-cmd-item:hover {
+  background:rgba(102,126,234,0.08)!important;
+}
+.slash-cmd-name {
+  color:#667eea!important;
+}
+
+/* ---- Nav item active ---- */
+.nav-item.active {
+  border-left-color:#667eea!important;
+  background:rgba(102,126,234,0.08)!important;
+  color:var(--text-primary)!important;
+}
+
+/* ---- Blockquote fun ---- */
+.message.ai .bubble blockquote {
+  border-left-color:#667eea!important;
+  background:rgba(102,126,234,0.05)!important;
+}
+
+/* ---- Dialog glassmorphism ---- */
+dialog::backdrop {
+  backdrop-filter:blur(10px);
+  background:rgba(0,0,0,0.48)!important;
+}
+
+/* ---- Plans modal header gradient ---- */
+.plans-modal-header {
+  background:linear-gradient(135deg,rgba(102,126,234,0.06) 0%,rgba(118,75,162,0.04) 100%)!important;
+}
+.plans-modal-eyebrow {
+  color:#667eea!important;
+}
+
+/* ---- Thinking loader text ---- */
+@keyframes thinkingDot {
+  0%,100%{transform:scale(1);opacity:0.7}
+  50%{transform:scale(1.5);opacity:1}
+}
+
+/* ---- Hover on btn-sidebar-close ---- */
+.btn-sidebar-close:hover {
+  background:rgba(102,126,234,0.1)!important;
+  color:#667eea!important;
+  border-color:rgba(102,126,234,0.3)!important;
+}
+
+/* ---- Upgrade card btn ---- */
+.upgrade-card {
+  background:linear-gradient(135deg,rgba(102,126,234,0.07),rgba(118,75,162,0.04))!important;
+  border-color:rgba(102,126,234,0.2)!important;
+}
+
+/* ---- Smooth theme toggle ---- */
+.theme-toggle {
+  transition:background 250ms ease!important;
+}
+
+/* ---- Search highlight ---- */
+.search-input::placeholder {
+  color:var(--text-tertiary);
+  font-style:italic;
+}
+
+/* ---- Reduced motion: keep animations off ---- */
+@media(prefers-reduced-motion:reduce){
+  .welcome,.message,.btn-new-chat::after,.brand-z,.welcome-headline{animation:none!important;}
+  .welcome-headline{color:var(--accent-primary)!important;background:none!important;-webkit-background-clip:unset!important;background-clip:unset!important;}
+  .welcome-suggestion-card:hover,.plan-card:hover,.btn-new-chat:hover,.send-btn:not(:disabled):hover,.scroll-top-btn:hover,.btn-view-plans:hover{transform:none!important;}
+  *{transition-duration:0.01ms!important;}
+}
