@@ -1684,7 +1684,6 @@ dialog::backdrop {
 /* --- Premium design tokens --- */
 :root {
   --grad-premium:linear-gradient(90deg,#7C5CFF,#FF7EDB);
-  --grad-premium-135:linear-gradient(135deg,#7C5CFF,#FF7EDB);
   --color-premium:#7C5CFF;
   --color-premium-soft:rgba(124,92,255,0.12);
   --color-highlight:#FF6B6B;
@@ -1788,11 +1787,11 @@ dialog::backdrop {
 .plan-card:active{transform:scale(0.97)!important;}
 
 /* ---- Ripple effect on main CTA buttons ---- */
-.btn-new-chat,.mobile-bottom-cta,.plans-upgrade-btn,.cibo-modal-btn-primary{
+.btn-new-chat,.mobile-bottom-cta-new,.mobile-bottom-cta-upgrade,.plans-upgrade-btn,.cibo-modal-btn-primary{
   position:relative;
   overflow:hidden;
 }
-.btn-new-chat::before,.mobile-bottom-cta::before,.plans-upgrade-btn::before,.cibo-modal-btn-primary::before{
+.btn-new-chat::before,.mobile-bottom-cta-new::before,.mobile-bottom-cta-upgrade::before,.plans-upgrade-btn::before,.cibo-modal-btn-primary::before{
   content:"";
   position:absolute;
   width:300%;
@@ -1806,7 +1805,7 @@ dialog::backdrop {
   pointer-events:none;
   z-index:0;
 }
-.btn-new-chat:active::before,.mobile-bottom-cta:active::before,.plans-upgrade-btn:active::before,.cibo-modal-btn-primary:active::before{
+.btn-new-chat:active::before,.mobile-bottom-cta-new:active::before,.mobile-bottom-cta-upgrade:active::before,.plans-upgrade-btn:active::before,.cibo-modal-btn-primary:active::before{
   transform:translate(-50%,-50%) scale(1);
   opacity:0;
   transition:transform 0.5s cubic-bezier(0.22,1,0.36,1),opacity 0.3s 0.2s;
@@ -2056,7 +2055,7 @@ body.mode-writer .header::after,body.mode-writer .chat-scroll-progress span{
 
 /* ---- Elite: reduced motion compliance ---- */
 @media(prefers-reduced-motion:reduce){
-  .btn-new-chat::before,.mobile-bottom-cta::before,.plans-upgrade-btn::before,.cibo-modal-btn-primary::before{animation:none!important;}
+  .btn-new-chat::before,.mobile-bottom-cta-new::before,.mobile-bottom-cta-upgrade::before,.plans-upgrade-btn::before,.cibo-modal-btn-primary::before{animation:none!important;}
   .floating-arrow{animation:none!important;}
   .header-context-dot{animation:none!important;}
   .welcome-suggestion-card:active,.plan-card:active{transform:none!important;}

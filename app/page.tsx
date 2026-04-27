@@ -550,7 +550,8 @@ export default function ChatPage() {
                         this.fillInput(card.getAttribute('data-prompt') || '');
                         const mode = card.getAttribute('data-mode');
                         if (mode) {
-                            document.body.className = document.body.className.replace(/\bmode-\w+/g, '').trim();
+                            const MODES = ['mode-analyst','mode-thinker','mode-planner','mode-strategist','mode-builder','mode-writer'];
+                            document.body.classList.remove(...MODES);
                             document.body.classList.add(mode);
                         }
                     });
