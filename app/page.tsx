@@ -1388,18 +1388,30 @@ export default function ChatPage() {
             }
 
             newChat() {
-                localStorage.removeItem(this.LAST_CHAT_KEY);
-                this.state.chatId = null;
-                this.state.files.forEach(f => { if (f.url) URL.revokeObjectURL(f.url); });
-                this.state.files = [];
-                this.dom.filePreview.innerHTML = '';
-                this.dom.chatList.innerHTML    = '';
-                this.dom.welcome.classList.remove('hidden');
-                this.dom.input.focus();
-                this.setActiveHistoryItem(null);
-                const speTa = document.getElementById('spe-textarea');
-                if (speTa) speTa.value = '';
-                this.updateButtonState();
+                const doReset = () => {
+                    localStorage.removeItem(this.LAST_CHAT_KEY);
+                    this.state.chatId = null;
+                    this.state.files.forEach(f => { if (f.url) URL.revokeObjectURL(f.url); });
+                    this.state.files = [];
+                    this.dom.filePreview.innerHTML = '';
+                    this.dom.chatList.innerHTML    = '';
+                    this.dom.welcome.classList.remove('hidden');
+                    this.dom.input.focus();
+                    this.setActiveHistoryItem(null);
+                    const speTa = document.getElementById('spe-textarea');
+                    if (speTa) speTa.value = '';
+                    this.updateButtonState();
+                };
+                const mainEl = document.querySelector('.main-content');
+                if (mainEl && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                    mainEl.classList.add('new-chat-exit');
+                    setTimeout(() => {
+                        mainEl.classList.remove('new-chat-exit');
+                        doReset();
+                    }, 260);
+                } else {
+                    doReset();
+                }
             }
 
             exportSingleChat(chatId, title) {
