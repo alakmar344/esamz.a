@@ -1900,29 +1900,43 @@ export default function ChatPage() {
                 <div className="chat-scroll-progress" id="chatScrollProgress"><span id="chatScrollProgressBar"></span></div>
                 <div className="chat-wrapper">
                     <div className="welcome" id="welcomeScreen">
-                        <div className="welcome-dateline" aria-label="eSAMz AI branding">eSAMz AI</div>
+                        <div className="welcome-dateline" aria-label="eSAMz AI branding">✦ eSAMz AI</div>
                         <h1 className="welcome-headline" id="welcomeHeadline">Ask anything.<br />Think <em>deeper</em>.</h1>
                         <p className="welcome-deck">Deep reasoning with emotional clarity — for complex problems that demand more than a quick answer.</p>
                         <div className="welcome-suggestions-wrap">
                             <div className="welcome-suggestions" id="welcomeSuggestions" tabIndex={0} aria-label="Suggested prompts">
                                 <button className="welcome-suggestion-card" data-prompt="Build me a practical Python data analysis workflow for messy CSV data.">
+                                    <span className="welcome-suggestion-icon">🐍</span>
                                     <span className="welcome-suggestion-title">Python Data Analysis</span>
                                     <span className="welcome-suggestion-copy">Practical workflow for real data</span>
                                 </button>
                                 <button className="welcome-suggestion-card" data-prompt="Give me a deep explanation of transformers with simple analogies and examples.">
+                                    <span className="welcome-suggestion-icon">🧠</span>
                                     <span className="welcome-suggestion-title">Deep Explanations</span>
-                                    <span className="welcome-suggestion-copy">Complex topics made clear</span>
+                                    <span className="welcome-suggestion-copy">Complex topics made crystal clear</span>
                                 </button>
                                 <button className="welcome-suggestion-card" data-prompt="Help me design a 30-day learning plan for mastering system design interviews.">
+                                    <span className="welcome-suggestion-icon">🗓️</span>
                                     <span className="welcome-suggestion-title">30-Day Learning Plan</span>
                                     <span className="welcome-suggestion-copy">Step-by-step with milestones</span>
                                 </button>
                                 <button className="welcome-suggestion-card" data-prompt="Review this startup idea and give risks, opportunities, and a go-to-market strategy.">
+                                    <span className="welcome-suggestion-icon">🚀</span>
                                     <span className="welcome-suggestion-title">Startup Strategy Review</span>
                                     <span className="welcome-suggestion-copy">Risks, opportunities, execution</span>
                                 </button>
+                                <button className="welcome-suggestion-card" data-prompt="Write a clean, production-ready REST API in Node.js with authentication and error handling.">
+                                    <span className="welcome-suggestion-icon">⚡</span>
+                                    <span className="welcome-suggestion-title">REST API Blueprint</span>
+                                    <span className="welcome-suggestion-copy">Auth, errors, production-ready</span>
+                                </button>
+                                <button className="welcome-suggestion-card" data-prompt="Help me write a compelling cold email sequence to land my first 10 clients as a freelancer.">
+                                    <span className="welcome-suggestion-icon">✉️</span>
+                                    <span className="welcome-suggestion-title">Cold Email Sequence</span>
+                                    <span className="welcome-suggestion-copy">Land your first 10 clients</span>
+                                </button>
                             </div>
-                            <div className="welcome-suggestions-hint">Swipe for more ideas →</div>
+                            <div className="welcome-suggestions-hint">✨ Swipe for more ideas →</div>
                         </div>
                     </div>
                     <div id="chatList"></div>
@@ -1939,7 +1953,7 @@ export default function ChatPage() {
                             <button className="icon-btn" id="btnUpload" title="Attach file" aria-label="Attach file">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
                             </button>
-                            <textarea id="userInput" rows="1" placeholder="Ask eSAMz anything…"></textarea>
+                            <textarea id="userInput" rows="1" placeholder="Ask anything — I love a challenge…"></textarea>
                             <button className="send-btn" id="btnSend" disabled aria-label="Send message">
                                 <svg className="send-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                                 <svg className="stop-icon hidden" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
