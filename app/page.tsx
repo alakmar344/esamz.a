@@ -546,7 +546,14 @@ export default function ChatPage() {
 
                 this.dom.themeToggle.addEventListener('click', () => this.toggleTheme());
                 document.querySelectorAll('.welcome-suggestion-card').forEach(card => {
-                    card.addEventListener('click', () => this.fillInput(card.getAttribute('data-prompt') || ''));
+                    card.addEventListener('click', () => {
+                        this.fillInput(card.getAttribute('data-prompt') || '');
+                        const mode = card.getAttribute('data-mode');
+                        if (mode) {
+                            document.body.className = document.body.className.replace(/\bmode-\w+/g, '').trim();
+                            document.body.classList.add(mode);
+                        }
+                    });
                 });
                 const suggestions = document.getElementById('welcomeSuggestions');
                 if (suggestions) {
@@ -1905,38 +1912,38 @@ export default function ChatPage() {
                         <p className="welcome-deck">Deep reasoning with emotional clarity — for complex problems that demand more than a quick answer.</p>
                         <div className="welcome-suggestions-wrap">
                             <div className="welcome-suggestions" id="welcomeSuggestions" tabIndex={0} aria-label="Suggested prompts">
-                                <button className="welcome-suggestion-card" data-prompt="Build me a practical Python data analysis workflow for messy CSV data.">
+                                <button className="welcome-suggestion-card" data-prompt="Build me a practical Python data analysis workflow for messy CSV data." data-mode="mode-analyst">
                                     <span className="welcome-suggestion-icon">🐍</span>
                                     <span className="welcome-suggestion-title">Python Data Analysis</span>
                                     <span className="welcome-suggestion-copy">Practical workflow for real data</span>
                                 </button>
-                                <button className="welcome-suggestion-card" data-prompt="Give me a deep explanation of transformers with simple analogies and examples.">
+                                <button className="welcome-suggestion-card" data-prompt="Give me a deep explanation of transformers with simple analogies and examples." data-mode="mode-thinker">
                                     <span className="welcome-suggestion-icon">🧠</span>
                                     <span className="welcome-suggestion-title">Deep Explanations</span>
                                     <span className="welcome-suggestion-copy">Complex topics made crystal clear</span>
                                 </button>
-                                <button className="welcome-suggestion-card" data-prompt="Help me design a 30-day learning plan for mastering system design interviews.">
+                                <button className="welcome-suggestion-card" data-prompt="Help me design a 30-day learning plan for mastering system design interviews." data-mode="mode-planner">
                                     <span className="welcome-suggestion-icon">🗓️</span>
                                     <span className="welcome-suggestion-title">30-Day Learning Plan</span>
                                     <span className="welcome-suggestion-copy">Step-by-step with milestones</span>
                                 </button>
-                                <button className="welcome-suggestion-card" data-prompt="Review this startup idea and give risks, opportunities, and a go-to-market strategy.">
+                                <button className="welcome-suggestion-card" data-prompt="Review this startup idea and give risks, opportunities, and a go-to-market strategy." data-mode="mode-strategist">
                                     <span className="welcome-suggestion-icon">🚀</span>
                                     <span className="welcome-suggestion-title">Startup Strategy Review</span>
                                     <span className="welcome-suggestion-copy">Risks, opportunities, execution</span>
                                 </button>
-                                <button className="welcome-suggestion-card" data-prompt="Write a clean, production-ready REST API in Node.js with authentication and error handling.">
+                                <button className="welcome-suggestion-card" data-prompt="Write a clean, production-ready REST API in Node.js with authentication and error handling." data-mode="mode-builder">
                                     <span className="welcome-suggestion-icon">⚡</span>
                                     <span className="welcome-suggestion-title">REST API Blueprint</span>
                                     <span className="welcome-suggestion-copy">Auth, errors, production-ready</span>
                                 </button>
-                                <button className="welcome-suggestion-card" data-prompt="Help me write a compelling cold email sequence to land my first 10 clients as a freelancer.">
+                                <button className="welcome-suggestion-card" data-prompt="Help me write a compelling cold email sequence to land my first 10 clients as a freelancer." data-mode="mode-writer">
                                     <span className="welcome-suggestion-icon">✉️</span>
                                     <span className="welcome-suggestion-title">Cold Email Sequence</span>
                                     <span className="welcome-suggestion-copy">Land your first 10 clients</span>
                                 </button>
                             </div>
-                            <div className="welcome-suggestions-hint">✨ Swipe for more ideas →</div>
+                            <div className="welcome-suggestions-hint">✨ Swipe for more ideas <span className="floating-arrow">→</span></div>
                         </div>
                     </div>
                     <div id="chatList"></div>
