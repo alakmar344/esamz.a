@@ -544,6 +544,36 @@ export default function ChatPage() {
                     this.dom.sidebar.classList.remove('collapsed');
                 });
 
+                // Desktop: drag from left edge to open collapsed sidebar
+                {
+                    const DRAG_THRESHOLD = 40; // px right to trigger open
+                    let edgeDragActive = false;
+                    let edgeDragStartX = 0;
+                    const dragStrip = document.querySelector('.sidebar-drag-strip');
+                    const startEdgeDrag = (clientX) => {
+                        if (window.matchMedia('(max-width: 768px)').matches) return;
+                        if (!this.dom.sidebar.classList.contains('collapsed')) return;
+                        edgeDragActive = true;
+                        edgeDragStartX = clientX;
+                    };
+                    const moveEdgeDrag = (clientX) => {
+                        if (!edgeDragActive) return;
+                        if (clientX - edgeDragStartX >= DRAG_THRESHOLD) {
+                            this.dom.sidebar.classList.remove('collapsed');
+                            edgeDragActive = false;
+                        }
+                    };
+                    const endEdgeDrag = () => { edgeDragActive = false; };
+                    if (dragStrip) {
+                        dragStrip.addEventListener('mousedown', e => startEdgeDrag(e.clientX));
+                        dragStrip.addEventListener('touchstart', e => { if (e.touches[0]) startEdgeDrag(e.touches[0].clientX); }, { passive: true });
+                    }
+                    document.addEventListener('mousemove', e => moveEdgeDrag(e.clientX));
+                    document.addEventListener('touchmove', e => { if (e.touches[0]) moveEdgeDrag(e.touches[0].clientX); }, { passive: true });
+                    document.addEventListener('mouseup', endEdgeDrag);
+                    document.addEventListener('touchend', endEdgeDrag);
+                }
+
                 this.dom.themeToggle.addEventListener('click', () => this.toggleTheme());
                 document.querySelectorAll('.welcome-suggestion-card').forEach(card => {
                     card.addEventListener('click', () => {
@@ -1877,6 +1907,8 @@ export default function ChatPage() {
 
         
         <main className="main-content">
+            {/* Drag strip – left-edge drag to reopen collapsed sidebar on desktop */}
+            <div className="sidebar-drag-strip" aria-hidden="true"></div>
             <header className="header">
                 <div style={{display:"flex",alignItems:"center",gap:"14px"}}>
                     <button className="icon-btn btn-open-sidebar-desktop" id="btnOpenSidebarDesktop" title="Open sidebar" aria-label="Open sidebar">
@@ -2079,7 +2111,7 @@ export default function ChatPage() {
             <span id="confirmTitle">Confirm</span>
         </div>
         <div className="dialog-body">
-            <p id="confirmMessage" style={{color:"var(--ink-faint)",marginBottom:0,fontStyle:"italic",fontSize:"14px"}}></p>
+            <p id="confirmMessage" style={{marginBottom:0,fontStyle:"italic",fontSize:"14px"}}></p>
             <div className="dialog-actions">
                 <button className="btn-secondary" id="confirmCancel">Cancel</button>
                 <button className="btn-primary" id="confirmOk">Confirm</button>
