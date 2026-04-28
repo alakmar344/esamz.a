@@ -1127,6 +1127,7 @@ dialog::backdrop{background:rgba(0,0,0,0.4);backdrop-filter:blur(8px);}
   }
   .mobile-bottom-actions{display:flex;gap:8px;}
   .sidebar:not(.active) .mobile-bottom-actions{display:none;}
+  .sidebar:not(.active) .sidebar-nav{pointer-events:none;user-select:none;}
   .mobile-bottom-cta{
     flex:1;
     min-height:42px;

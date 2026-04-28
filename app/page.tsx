@@ -508,11 +508,19 @@ export default function ChatPage() {
                         pointerId = null;
                         this.dom.sidebar.style.removeProperty('transition');
                         this.dom.overlay.style.removeProperty('opacity');
-                        if (currentOffset > hiddenOffset * DRAG_CLOSE_THRESHOLD) closeMobileSidebar();
-                        else openMobileSidebar();
+                        const moved = Math.abs(e.clientY - startY);
+                        if (moved < 8) {
+                            openMobileSidebar();
+                        } else if (currentOffset > hiddenOffset * DRAG_CLOSE_THRESHOLD) {
+                            closeMobileSidebar();
+                        } else {
+                            openMobileSidebar();
+                        }
                     };
-                    mobileBottomBar.addEventListener('pointerdown', e => {
+                    this.dom.sidebar.addEventListener('pointerdown', e => {
                         if (e.pointerType === 'mouse' && e.button !== 0) return;
+                        // When active, only allow drag-to-close via the bottom handle bar
+                        if (this.dom.sidebar.classList.contains('active') && !mobileBottomBar.contains(e.target)) return;
                         hiddenOffset = Math.max(this.dom.sidebar.getBoundingClientRect().height - SIDEBAR_VISIBLE_PEEK_HEIGHT, 0);
                         startOffset = this.dom.sidebar.classList.contains('active') ? 0 : hiddenOffset;
                         currentOffset = startOffset;
@@ -524,7 +532,7 @@ export default function ChatPage() {
                         this.dom.sidebar.style.transition = 'none';
                         applyOffset(startOffset);
                         document.body.style.overflow = 'hidden';
-                        if (mobileBottomBar.setPointerCapture) mobileBottomBar.setPointerCapture(pointerId);
+                        if (this.dom.sidebar.setPointerCapture) this.dom.sidebar.setPointerCapture(pointerId);
                         e.preventDefault();
                     });
                     window.addEventListener('pointermove', onPointerMove);
