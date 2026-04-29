@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Script from 'next/script'
 import { Analytics } from '@vercel/analytics/next'
+import PwaInit from './components/PwaInit'
 import './globals.css'
 
 export const dynamic = 'force-dynamic'
@@ -8,6 +9,15 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: 'eSAMz AI — Strategic Artificial Mind',
   description: 'Deep reasoning with emotional clarity — for complex problems that demand more than a quick answer.',
+  manifest: '/site.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'eSAMz AI',
+  },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
     icon: [
       { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
@@ -16,7 +26,6 @@ export const metadata: Metadata = {
     apple: '/apple-touch-icon.png',
     shortcut: '/favicon.ico',
   },
-  manifest: '/site.webmanifest',
 }
 
 const clerkPubKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
@@ -36,6 +45,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" data-theme="light">
       <head>
+        <meta name="theme-color" content="#ffffff" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -81,6 +92,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         {/* Vercel Web Analytics */}
         <Analytics />
+
+        {/* PWA service worker registration */}
+        <PwaInit />
       </body>
     </html>
   )
