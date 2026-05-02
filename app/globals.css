@@ -83,17 +83,12 @@
         .sidebar.collapsed{width:0;min-width:0;}
         .sidebar::after{content:none;}
 
-        .sidebar-header{padding:28px 22px 16px;flex-shrink:0;}
-        .brand{margin-bottom:18px;}
-        .brand-eyebrow{
-            font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.18em;text-transform:uppercase;
-            color:var(--sidebar-eyebrow);margin-bottom:8px;
-            display:flex;align-items:center;gap:8px;
+        .sidebar-header{padding:20px 16px 12px;flex-shrink:0;}
+        .sidebar-brand-heading{
+            font-family:'Inter',system-ui,sans-serif;font-size:17px;font-weight:700;
+            color:var(--sidebar-text-bright);letter-spacing:-0.01em;line-height:1;
         }
-        .brand-eyebrow::before{content:'';display:block;width:16px;height:1px;background:var(--ink-ghost);opacity:0.5;}
-        .brand-name{font-family:'Inter',system-ui,sans-serif;font-size:24px;font-weight:700;color:var(--sidebar-text-bright);letter-spacing:-0.02em;line-height:1;}
-        .brand-name span{color:var(--crescent);}
-        .brand-tagline{font-family:'Inter',system-ui,sans-serif;font-style:italic;font-size:11px;color:var(--sidebar-tagline);margin-top:5px;line-height:1.4;}
+        .sidebar-brand-heading .brand-z{color:var(--crescent);}
         .btn-new-chat{
             width:100%;height:40px;
             background:var(--grad-primary);
@@ -824,43 +819,17 @@ body::after{
   border-right:1px solid var(--border, rgba(0,0,0,0.16));
 }
 :root[data-theme="dark"] .sidebar{border-right-color:#1E2534;}
-.sidebar-header{padding:32px 16px 16px;}
-.brand{position:relative;padding-left:48px;}
-.brand::before{
-  content:"";
-  position:absolute;
-  left:0;
-  top:2px;
-  width:32px;
-  height:32px;
-  border-radius:24%;
-  background:var(--bg-elevated);
-  border:1px solid var(--border);
-}
-:root[data-theme="dark"] .brand::before{
-  background:#141820;
-  border-color:rgba(27,79,232,0.4);
-}
-.brand::after{
-  content:"";
-  position:absolute;
-  left:8px;
-  top:10px;
-  width:16px;
-  height:14px;
-  border:2px solid var(--accent-primary);
-  border-right:none;
-  border-radius:10px 0 0 10px;
-  box-shadow:8px 0 0 -2px var(--bg-elevated) inset;
-  opacity:0.95;
-}
+.sidebar-header{padding:20px 16px 12px;}
+.brand{position:relative;}
+.brand::before,.brand::after{content:none;}
 .brand-eyebrow,.nav-label,.sidebar-footer-text,.header-context,.input-footer,.footer-sgi-badge,#footerShortcuts,kbd,.plan-badge,.rag-pro-badge,.spe-label,.spe-max-badge,.spe-toggle-btn,.char-count{
   font-family:"IBM Plex Mono",ui-monospace,monospace;
 }
 .brand-name{
-  font-family:"DM Serif Display",serif;
-  font-size:48px;
-  letter-spacing:-0.03em;
+  font-family:"Inter",system-ui,sans-serif;
+  font-size:17px;
+  font-weight:700;
+  letter-spacing:-0.01em;
   color:var(--text-primary);
   line-height:1;
 }

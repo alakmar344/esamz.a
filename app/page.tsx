@@ -1820,33 +1820,18 @@ export default function ChatPage() {
                 </div>
             </div>
             <div className="sidebar-header">
-                <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:"14px"}}>
-                    <div className="brand" style={{marginBottom:0}}>
-                        <div className="brand-eyebrow">Strategic Mind</div>
-                        <div className="brand-name">eSAM<span className="brand-z">z</span></div>
-                        <div className="brand-tagline">Understands in 2 messages, not 2 years.</div>
-                    </div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"16px"}}>
+                    <div className="sidebar-brand-heading">eSAMz <span className="brand-z">AI</span></div>
                     <button className="btn-sidebar-close" id="btnCloseSidebar" title="Close sidebar" aria-label="Close sidebar">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 18l-6-6 6-6"/></svg>
                     </button>
                 </div>
                 <button className="btn-new-chat" id="btnNewChat">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
-                    New Conversation
-                </button>
-                <button className="btn-view-plans" id="btnViewPlans">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                    View Plans & Upgrade
+                    New Chat
                 </button>
             </div>
             <div className="sidebar-nav">
-                <div className="search-box">
-                    <input type="search" id="historySearch" className="search-input" placeholder="Search conversations…" aria-label="Search conversations" autoComplete="off" />
-                </div>
-                <div className="nav-section">
-                    <div className="nav-label">Recent</div>
-                    <div id="historyList"></div>
-                </div>
                 <div className="nav-section">
                     <div className="nav-label">Tools</div>
                     <a href="https://me.esamz.site" className="nav-item" target="_blank" rel="noopener">
@@ -1858,14 +1843,13 @@ export default function ChatPage() {
                         <span>Hisaab</span>
                     </a>
                 </div>
-
+                <div className="nav-section" style={{flex:1}}>
+                    <div className="nav-label">Chats</div>
+                    <div id="historyList"></div>
+                </div>
             </div>
-
-            
             <div className="sidebar-footer">
                 <div id="planBadgeContainer"></div>
-                <div className="privacy-pill">Zero Storage.</div>
-                <div className="sidebar-footer-text">© <a href="https://esamz.info" target="_blank" rel="noopener">eSAMz AI</a> 2026 All rights reserved</div>
             </div>
         </aside>
 
