@@ -1324,7 +1324,7 @@ export default function ChatPage() {
                 const existing = document.querySelector(`[data-row-id="${id}"]`);
                 if (existing) {
                     const nb = existing.querySelector('.nav-item');
-                    if (nb) { nb.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>${title}`; nb.onclick = () => this.loadChat(id); }
+                    if (nb) { nb.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>${title}</span>`; nb.onclick = () => this.loadChat(id); }
                     return;
                 }
                 const row = document.createElement('div');
@@ -1333,7 +1333,7 @@ export default function ChatPage() {
                 const btn = document.createElement('button');
                 btn.className = 'nav-item';
                 btn.setAttribute('data-id', id);
-                btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>${title}`;
+                btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>${title}</span>`;
                 btn.onclick = () => this.loadChat(id);
                 const actions = document.createElement('div');
                 actions.className = 'nav-item-actions';
@@ -1851,11 +1851,11 @@ export default function ChatPage() {
                     <div className="nav-label">Tools</div>
                     <a href="https://me.esamz.site" className="nav-item" target="_blank" rel="noopener">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                        MindEase
+                        <span>MindEase</span>
                     </a>
                     <a href="https://hisaab.esamz.site" className="nav-item" target="_blank" rel="noopener">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-                        Hisaab
+                        <span>Hisaab</span>
                     </a>
                 </div>
 
