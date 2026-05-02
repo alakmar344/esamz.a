@@ -267,40 +267,6 @@ export default function ChatPage() {
         })();
 
         // ====================================================================
-        //  CIBO MODAL
-        // ====================================================================
-        const CiboModal = {
-            modal: document.getElementById('ciboModal'),
-            _bound: false,
-            _bind() {
-                if (this._bound) return;
-                this._bound = true;
-                document.getElementById('ciboModalClose').addEventListener('click',   () => this.dismiss());
-                document.getElementById('ciboModalDismiss').addEventListener('click', () => this.dismiss());
-                this.modal.addEventListener('click', e => { if (e.target === this.modal) this.dismiss(); });
-            },
-            init() {
-                if (localStorage.getItem('esamz_cibo_shown') === '1') return;
-                this._bind();
-                // Delay 800ms so the modal doesn't compete with page load
-                setTimeout(() => {
-                    if (localStorage.getItem('esamz_cibo_shown') !== '1') this.modal.classList.remove('hidden');
-                }, 800);
-            },
-            show() {
-                if (localStorage.getItem('esamz_cibo_shown') === '1') return;
-                this._bind();
-                setTimeout(() => {
-                    if (localStorage.getItem('esamz_cibo_shown') !== '1') this.modal.classList.remove('hidden');
-                }, 300);
-            },
-            dismiss() {
-                this.modal.classList.add('hidden');
-                localStorage.setItem('esamz_cibo_shown', '1');
-            }
-        };
-
-        // ====================================================================
         //  MAIN APP CLASS
         // ====================================================================
         class App {
@@ -352,7 +318,6 @@ export default function ChatPage() {
                 checkPermissions();
                 PlansModal.init();
 
-                CiboModal.init();
                 this.loadHistory();
                 this.setupEventListeners();
                 this.updateButtonState();
@@ -1739,20 +1704,6 @@ export default function ChatPage() {
     {hasClerk && mounted && <ClerkBridge />}
     
     
-    <div className="cibo-modal-overlay hidden" id="ciboModal">
-        <div className="cibo-modal">
-            <button className="cibo-modal-close" id="ciboModalClose" aria-label="Close">✕</button>
-            <div className="cibo-modal-emoji">🍳</div>
-            <h2>Try Cibo Cocinar</h2>
-            <p>Voice-powered AI cooking assistance — step-by-step guidance, recipes, and culinary wisdom, entirely hands-free.</p>
-            <div className="cibo-modal-actions">
-                <a href="https://cibo.esamz.site" target="_blank" rel="noopener" className="cibo-modal-btn cibo-modal-btn-primary">Try Cibo Now</a>
-                <button className="cibo-modal-btn cibo-modal-btn-secondary" id="ciboModalDismiss">Maybe Later</button>
-            </div>
-        </div>
-    </div>
-
-    
     <div className="plans-modal-overlay hidden" id="plansModal" role="dialog" aria-modal="true" aria-labelledby="plansModalTitle">
         <div className="plans-modal">
             <button className="plans-modal-close" id="plansModalClose" aria-label="Close">✕</button>
@@ -1895,6 +1846,17 @@ export default function ChatPage() {
                 <div className="nav-section">
                     <div className="nav-label">Recent</div>
                     <div id="historyList"></div>
+                </div>
+                <div className="nav-section">
+                    <div className="nav-label">Tools</div>
+                    <a href="https://me.esamz.site" className="nav-item" target="_blank" rel="noopener">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                        MindEase
+                    </a>
+                    <a href="https://hisaab.esamz.site" className="nav-item" target="_blank" rel="noopener">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                        Hisaab
+                    </a>
                 </div>
 
             </div>

@@ -540,23 +540,6 @@
         }
         .btn-view-plans:hover{background:var(--grad-primary);border-color:transparent;color:#fff;box-shadow:0 4px 14px rgba(240,82,52,0.28);}
 
-        /* Cibo modal */
-        .cibo-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.52);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:1;visibility:visible;transition:opacity 0.18s ease-out,visibility 0s 0s;will-change:opacity;}
-        .cibo-modal-overlay.hidden{opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.18s ease-out,visibility 0s 0.18s;}
-        .cibo-modal-overlay.hidden .cibo-modal{transform:translateY(24px);opacity:0;}
-        .cibo-modal{background:var(--paper);border:1px solid var(--rule-bold);box-shadow:0 12px 48px rgba(0,0,0,0.12);border-radius:14px;padding:40px 36px;max-width:460px;width:90%;position:relative;text-align:center;transform:translateY(0);opacity:1;transition:transform 0.18s ease,opacity 0.18s ease;will-change:transform,opacity;}
-        .cibo-modal-close{position:absolute;top:14px;right:14px;background:none;border:1px solid var(--rule-bold);border-radius:8px;color:var(--ink-ghost);width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;transition:all 150ms;}
-        .cibo-modal-close:hover{background:var(--crescent-soft);color:var(--crescent);border-color:var(--crescent-border);}
-        .cibo-modal-emoji{font-size:48px;margin-bottom:18px;}
-        .cibo-modal h2{font-family:'Inter',system-ui,sans-serif;font-size:22px;font-weight:600;color:var(--ink);margin-bottom:10px;}
-        .cibo-modal p{font-size:14px;color:var(--ink-faint);line-height:1.60;margin-bottom:26px;}
-        .cibo-modal-actions{display:flex;gap:10px;justify-content:center;}
-        .cibo-modal-btn{padding:11px 24px;border-radius:8px;font-family:'Inter',system-ui,sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all 160ms;text-decoration:none;border:1px solid;}
-        .cibo-modal-btn-primary{background:var(--grad-primary);color:#fff;border-color:transparent;}
-        .cibo-modal-btn-primary:hover{opacity:0.88;}
-        .cibo-modal-btn-secondary{background:transparent;color:var(--ink-faint);border-color:var(--rule-bold);}
-        .cibo-modal-btn-secondary:hover{background:var(--crescent-soft);color:var(--ink);border-color:var(--crescent-border);}
-
         /* ----- MOBILE RESPONSIVE ----- */
         .mobile-toggle{display:none;}
         .mobile-bottom-open-btn{display:none;}
@@ -585,8 +568,6 @@
             .btn-open-sidebar-desktop{display:none!important;}
             .chat-wrapper{padding:32px 20px;}
             .input-wrapper{padding:14px 20px 18px;}
-            .cibo-modal-actions{flex-direction:column;}
-            .cibo-modal-btn{width:100%;text-align:center;}
             .header{padding:0 16px;}
             .header-right{gap:6px;}
             .header-context{display:none;}
@@ -598,7 +579,6 @@
             .welcome{min-height:36vh;}
             .welcome-suggestions-hint{display:block;}
             .scroll-top-btn{bottom:108px;right:18px;}
-            .cibo-modal{padding:30px 24px;}
             .activation-modal-top{padding:22px 20px 18px;}
             .activation-modal-body{padding:18px 20px 22px;}
             .plans-modal{max-width:96%;width:96%;}
@@ -915,8 +895,7 @@ body::after{
 .nav-item:hover{
   background:var(--bg-tertiary);
   color:var(--text-primary);
-  padding-left:22px;
-  transition:background 120ms var(--ease-standard),padding-left 120ms var(--ease-standard),color 120ms var(--ease-standard);
+  transition:background 120ms var(--ease-standard),color 120ms var(--ease-standard);
 }
 .nav-item.active{
   border-left:2px solid var(--accent-primary);
@@ -1089,8 +1068,8 @@ dialog{
 }
 dialog::backdrop{background:rgba(0,0,0,0.4);backdrop-filter:blur(8px);}
 
-.dialog-header,.plans-modal-title,.cibo-modal h2{font-size:22px;line-height:1.4;font-weight:600;}
-.dialog-body,.cibo-modal p{font-size:15px;color:var(--text-secondary);}
+.dialog-header,.plans-modal-title{font-size:22px;line-height:1.4;font-weight:600;}
+.dialog-body{font-size:15px;color:var(--text-secondary);}
 
 @media (max-width:1024px){
   :root{--sidebar-w:220px;}
@@ -1471,7 +1450,7 @@ body.theme-dark .message.user .bubble {
 .nav-item:hover {
   background:linear-gradient(90deg,rgba(37,99,235,0.1),transparent)!important;
   border-left:2px solid #2563eb!important;
-  padding-left:20px!important;
+  padding-left:14px!important;
 }
 
 /* ---- Privacy pill glow ---- */
@@ -1593,8 +1572,8 @@ kbd {
   outline-color:#2563eb!important;
 }
 
-/* ---- Cibo modal btn-primary ---- */
-.cibo-modal-btn-primary,.upgrade-card-btn {
+/* ---- Upgrade card btn-primary ---- */
+.upgrade-card-btn {
   background:var(--grad-magic)!important;
   box-shadow:0 4px 14px rgba(37,99,235,0.3)!important;
 }
@@ -1788,11 +1767,11 @@ dialog::backdrop {
 .plan-card:active{transform:scale(0.97)!important;}
 
 /* ---- Ripple effect on main CTA buttons ---- */
-.btn-new-chat,.mobile-bottom-cta-new,.mobile-bottom-cta-upgrade,.plans-upgrade-btn,.cibo-modal-btn-primary{
+.btn-new-chat,.mobile-bottom-cta-new,.mobile-bottom-cta-upgrade,.plans-upgrade-btn{
   position:relative;
   overflow:hidden;
 }
-.btn-new-chat::before,.mobile-bottom-cta-new::before,.mobile-bottom-cta-upgrade::before,.plans-upgrade-btn::before,.cibo-modal-btn-primary::before{
+.btn-new-chat::before,.mobile-bottom-cta-new::before,.mobile-bottom-cta-upgrade::before,.plans-upgrade-btn::before{
   content:"";
   position:absolute;
   width:300%;
@@ -1806,7 +1785,7 @@ dialog::backdrop {
   pointer-events:none;
   z-index:0;
 }
-.btn-new-chat:active::before,.mobile-bottom-cta-new:active::before,.mobile-bottom-cta-upgrade:active::before,.plans-upgrade-btn:active::before,.cibo-modal-btn-primary:active::before{
+.btn-new-chat:active::before,.mobile-bottom-cta-new:active::before,.mobile-bottom-cta-upgrade:active::before,.plans-upgrade-btn:active::before{
   transform:translate(-50%,-50%) scale(1);
   opacity:0;
   transition:transform 0.5s cubic-bezier(0.22,1,0.36,1),opacity 0.3s 0.2s;
@@ -1969,7 +1948,7 @@ dialog::backdrop {
 }
 .plans-upgrade-btn:hover{box-shadow:0 12px 28px rgba(37,99,235,0.5)!important;}
 .dialog-actions .btn-primary,.msg-edit-save-btn{background:var(--grad-premium)!important;}
-.cibo-modal-btn-primary,.upgrade-card-btn{
+.upgrade-card-btn{
   background:var(--grad-premium)!important;
   box-shadow:0 4px 14px rgba(37,99,235,0.3)!important;
 }
@@ -2066,7 +2045,7 @@ body.mode-writer .header::after,body.mode-writer .chat-scroll-progress span{
 
 /* ---- Elite: reduced motion compliance ---- */
 @media(prefers-reduced-motion:reduce){
-  .btn-new-chat::before,.mobile-bottom-cta-new::before,.mobile-bottom-cta-upgrade::before,.plans-upgrade-btn::before,.cibo-modal-btn-primary::before{animation:none!important;}
+  .btn-new-chat::before,.mobile-bottom-cta-new::before,.mobile-bottom-cta-upgrade::before,.plans-upgrade-btn::before{animation:none!important;}
   .floating-arrow{animation:none!important;}
   .header-context-dot{animation:none!important;}
   .welcome-suggestion-card:active,.plan-card:active{transform:none!important;}
@@ -2139,8 +2118,6 @@ body.theme-dark .dialog-header {
 body.theme-dark .dialog-body {
   color:#d1d5db!important;
 }
-:root[data-theme="dark"] .cibo-modal,
-body.theme-dark .cibo-modal,
 :root[data-theme="dark"] .plans-modal,
 body.theme-dark .plans-modal,
 :root[data-theme="dark"] .shortcuts-modal,
@@ -2149,16 +2126,12 @@ body.theme-dark .shortcuts-modal {
   color:#f3f4f6!important;
   border-color:rgba(255,255,255,0.1)!important;
 }
-:root[data-theme="dark"] .cibo-modal h2,
-body.theme-dark .cibo-modal h2,
 :root[data-theme="dark"] .plans-modal-title,
 body.theme-dark .plans-modal-title,
 :root[data-theme="dark"] .shortcuts-modal-header,
 body.theme-dark .shortcuts-modal-header {
   color:#f3f4f6!important;
 }
-:root[data-theme="dark"] .cibo-modal p,
-body.theme-dark .cibo-modal p,
 :root[data-theme="dark"] .plans-modal-sub,
 body.theme-dark .plans-modal-sub,
 :root[data-theme="dark"] .plan-card-features,
