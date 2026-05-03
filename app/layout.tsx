@@ -3,8 +3,7 @@ import Script from 'next/script'
 import { Analytics } from '@vercel/analytics/next'
 import PwaInit from './components/PwaInit'
 import './globals.css'
-
-export const dynamic = 'force-dynamic'
+import ClerkWrapper from "./components/ClerkWrapper"
 
 export const metadata: Metadata = {
   title: 'eSAMz AI — Strategic Artificial Mind',
@@ -31,15 +30,6 @@ export const metadata: Metadata = {
 const clerkPubKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any */
-let ClerkProvider: any, SignInButton: any, SignUpButton: any, Show: any, UserButton: any
-if (clerkPubKey) {
-  const clerk = require('@clerk/nextjs')
-  ClerkProvider = clerk.ClerkProvider
-  SignInButton = clerk.SignInButton
-  SignUpButton = clerk.SignUpButton
-  Show = clerk.Show
-  UserButton = clerk.UserButton
-}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -53,23 +43,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" /> 
         <meta name="breachme-verify" content="breachme-verify=470293f7483ae0b2f999b84c29c1942a" />
       </head>
-      <body>
-        {clerkPubKey ? (
-          <ClerkProvider>
-            <header style={{ display: 'none' }}>
-              <Show when="signed-out">
-                <SignInButton />
-                <SignUpButton />
-              </Show>
-              <Show when="signed-in">
-                <UserButton />
-              </Show>
-            </header>
-            {children}
-          </ClerkProvider>
-        ) : (
-          children
-        )}
+      
+        
+         <body>
+  {clerkPubKey ? (
+    <ClerkWrapper>
+      {children}
+    </ClerkWrapper>
+  ) : (
+    children
+  )}
+
+  
 
         {/* Third-party scripts */}
         <Script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" strategy="beforeInteractive" />
