@@ -226,18 +226,18 @@ export default function ChatPage() {
                 document.getElementById('btnViewPlans')
                     ?.addEventListener('click', () => this.open());
                 document.getElementById('plansModalClose')
-                    .addEventListener('click', () => this.close());
-                this.overlay.addEventListener('click', e => {
+                    ?.addEventListener('click', () => this.close());
+                this.overlay?.addEventListener('click', e => {
                     if (e.target === this.overlay) this.close();
                 });
             },
 
             open() {
-                this.overlay.classList.remove('hidden');
+                this.overlay?.classList.remove('hidden');
             },
 
             close() {
-                this.overlay.classList.add('hidden');
+                this.overlay?.classList.add('hidden');
             }
         };
 
