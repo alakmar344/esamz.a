@@ -1718,9 +1718,7 @@ if (required.some(el => !el)) {
 }
 
 waitForDOM();
-Deploy or run this, open the browser console, and look for whichever entry shows null. That's the element whose addEventListener is crashing. Once you tell me which one is null, I can point you to the exact line in your source to fix.
 
-waitForDOM();
 
         // Sync immediately if user is already signed in on page load
         syncTierFromServer();
