@@ -338,18 +338,7 @@ export default function ChatPage() {
                 const r = localStorage.getItem(this.storageKey);
                 return r ? JSON.parse(r) : [];
             }
-const required = [
-  this.dom.input,
-  this.dom.sendBtn,
-  this.dom.chatList,
-  this.dom.chatContainer,
-  this.dom.sidebar
-];
 
-if (required.some(el => !el)) {
-  console.error('Missing DOM elements during setup:', this.dom);
-  return;
-}
             setupEventListeners() {
               const required = [
   this.dom.input,
