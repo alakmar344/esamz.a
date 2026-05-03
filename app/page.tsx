@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 declare global {
@@ -24,43 +24,10 @@ declare global {
 const hasClerk = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 const DEBUG_CHAT_STREAM_LOGS = process.env.NEXT_PUBLIC_DEBUG_CHAT_STREAM === 'true'
 
-import { useAuth, useClerk, UserButton } from "@clerk/nextjs";
-
-function ClerkBridge() {
-  const { isSignedIn, getToken } = useAuth()
-  const { openSignIn } = useClerk()
-
-  const isSignedInRef = useRef<boolean>(false)
-  const getTokenRef = useRef<() => Promise<string | null>>(() => Promise.resolve(null))
-  const openSignInRef = useRef<() => void>(() => {})
-
-  useEffect(() => {
-    isSignedInRef.current = !!isSignedIn
-    // Sync tier from server whenever the user becomes signed in
-    if (isSignedIn) {
-      window.__syncTierFromServer?.()
-    }
-  }, [isSignedIn])
-  useEffect(() => { openSignInRef.current = () => openSignIn() }, [openSignIn])
-  useEffect(() => { getTokenRef.current = getToken }, [getToken])
-
-  useEffect(() => {
-    window.__clerk = {
-      get isSignedIn() { return isSignedInRef.current },
-      openSignIn: () => openSignInRef.current(),
-      getToken: () => getTokenRef.current(),
-    }
-  }, [])
-
-  return null
-}
+import { UserButton } from "@clerk/nextjs";
 
 export default function ChatPage() {
   const appInitialized = useRef(false)
-  const [mounted, setMounted] = useState(false)
-
-  // Only render Clerk hooks after mount to avoid prerender errors
-  useEffect(() => { setMounted(true) }, [])
 
   // Set up a default (unauthenticated) Clerk bridge when Clerk is not available
   useEffect(() => {
@@ -1686,6 +1653,28 @@ if (required.some(el => !el)) {
         })();
 
         // ====================================================================
+        //  TIER SYNC — fetch real tier from MongoDB via /api/user/tier
+        // ====================================================================
+        async function syncTierFromServer() {
+            if (!window.__clerk?.isSignedIn) return;
+            try {
+                const res = await fetch('/api/user/tier');
+                if (!res.ok) return;
+                const data = await res.json();
+                const VALID_PLANS = ['Plus', 'Pro', 'Max'];
+                if (data.tier && VALID_PLANS.includes(data.tier)) {
+                    localStorage.setItem(LS_PLAN, data.tier);
+                } else {
+                    localStorage.removeItem(LS_PLAN);
+                }
+                checkPermissions();
+            } catch (_) { /* server offline — keep existing localStorage value */ }
+        }
+
+        // Expose so ClerkBridge can trigger sync on sign-in
+        window.__syncTierFromServer = syncTierFromServer;
+
+        // ====================================================================
         //  BOOT
         // ====================================================================
         // Clean up stale PeerJS localStorage keys from previous versions
@@ -1713,28 +1702,6 @@ if (required.some(el => !el)) {
 
 waitForDOM();
 
-        // ====================================================================
-        //  TIER SYNC — fetch real tier from MongoDB via /api/user/tier
-        // ====================================================================
-        async function syncTierFromServer() {
-            if (!window.__clerk?.isSignedIn) return;
-            try {
-                const res = await fetch('/api/user/tier');
-                if (!res.ok) return;
-                const data = await res.json();
-                const VALID_PLANS = ['Plus', 'Pro', 'Max'];
-                if (data.tier && VALID_PLANS.includes(data.tier)) {
-                    localStorage.setItem(LS_PLAN, data.tier);
-                } else {
-                    localStorage.removeItem(LS_PLAN);
-                }
-                checkPermissions();
-            } catch (_) { /* server offline — keep existing localStorage value */ }
-        }
-
-        // Expose so ClerkBridge can trigger sync on sign-in
-        window.__syncTierFromServer = syncTierFromServer;
-
         // Sync immediately if user is already signed in on page load
         syncTierFromServer();
 
@@ -1743,8 +1710,6 @@ waitForDOM();
 
   return (
     <>
-    {hasClerk && mounted && <ClerkBridge />}
-    
     
     <div className="plans-modal-overlay hidden" id="plansModal" role="dialog" aria-modal="true" aria-labelledby="plansModalTitle">
         <div className="plans-modal">
