@@ -127,7 +127,7 @@ export default function ChatPage() {
                 msgSpan.textContent = message;
                 t.appendChild(iconSpan);
                 t.appendChild(msgSpan);
-                this.toastContainer.appendChild(t);
+                this.toastContainer?.appendChild(t);
                 const duration = type === 'error' ? 5500 : 3000;
                 setTimeout(() => {
                     t.style.opacity = '0';
@@ -139,10 +139,13 @@ export default function ChatPage() {
                 let _cancel = null;
                 const promise = new Promise(resolve => {
                     const dlg = document.getElementById('confirmDialog');
-                    document.getElementById('confirmTitle').textContent    = title;
-                    document.getElementById('confirmMessage').textContent  = message;
+                    const titleEl = document.getElementById('confirmTitle');
+                    const msgEl   = document.getElementById('confirmMessage');
+                    if (titleEl) titleEl.textContent = title;
+                    if (msgEl)   msgEl.textContent   = message;
                     const ok  = document.getElementById('confirmOk');
                     const cancel = document.getElementById('confirmCancel');
+                    if (!dlg || !ok || !cancel) { resolve(false); return; }
                     const close = () => {
                         _cancel = null; dlg.close();
                         ok.removeEventListener('click', onOk);
@@ -184,11 +187,10 @@ export default function ChatPage() {
             const badgeEl    = document.getElementById('planBadgeContainer');
 
             function resetPlanUI() {
-                ragWrapper.classList.remove('visible');
-                spe.classList.remove('visible');
-                ragToggle.disabled = false;
-                ragToggle.checked  = true;
-                badgeEl.innerHTML  = '';
+                ragWrapper?.classList.remove('visible');
+                spe?.classList.remove('visible');
+                if (ragToggle) { ragToggle.disabled = false; ragToggle.checked = true; }
+                if (badgeEl) badgeEl.innerHTML  = '';
             }
 
             function applyPlan(plan) {
@@ -200,12 +202,11 @@ export default function ChatPage() {
                 badge.innerHTML = `<span>${ICONS[plan] || '✦'}</span><span>${plan} Plan Active</span>`;
                 badgeEl.appendChild(badge);
                 if (plan === 'Plus') {
-                    ragWrapper.classList.add('visible');
-                    ragToggle.checked = true;
-                    ragToggle.disabled = true;
+                    ragWrapper?.classList.add('visible');
+                    if (ragToggle) { ragToggle.checked = true; ragToggle.disabled = true; }
                 }
-                if (plan === 'Pro')  { ragWrapper.classList.add('visible'); ragToggle.disabled = false; }
-                if (plan === 'Max')  { ragWrapper.classList.add('visible'); ragToggle.disabled = false; spe.classList.add('visible'); }
+                if (plan === 'Pro')  { ragWrapper?.classList.add('visible'); if (ragToggle) ragToggle.disabled = false; }
+                if (plan === 'Max')  { ragWrapper?.classList.add('visible'); if (ragToggle) ragToggle.disabled = false; spe?.classList.add('visible'); }
             }
 
             const VALID_PLANS = ['Plus', 'Pro', 'Max'];
@@ -252,6 +253,7 @@ export default function ChatPage() {
             if (!toggleBtn) return;
 
             toggleBtn.addEventListener('click', () => {
+                if (!textarea || !hint) return;
                 const isOpen = textarea.classList.contains('open');
                 if (isOpen) {
                     textarea.classList.remove('open');
@@ -436,7 +438,7 @@ export default function ChatPage() {
                 };
                 if (this.dom.openSidebarMobileBtn) this.dom.openSidebarMobileBtn.addEventListener('click', openMobileSidebar);
                 if (this.dom.openSidebarBottomBtn) this.dom.openSidebarBottomBtn.addEventListener('click', openMobileSidebar);
-                this.dom.overlay.addEventListener('click', closeMobileSidebar);
+                this.dom.overlay?.addEventListener('click', closeMobileSidebar);
                 if (this.dom.mobileNewChatBtn) {
                     this.dom.mobileNewChatBtn.addEventListener('click', () => {
                         this.newChat();
@@ -506,14 +508,14 @@ export default function ChatPage() {
                 }
 
                 // Desktop sidebar collapse/expand
-                this.dom.closeSidebarBtn.addEventListener('click', () => {
+                this.dom.closeSidebarBtn?.addEventListener('click', () => {
                     if (window.matchMedia('(max-width: 768px)').matches) {
                         closeMobileSidebar();
                         return;
                     }
                     this.dom.sidebar.classList.add('collapsed');
                 });
-                this.dom.openSidebarDesktopBtn.addEventListener('click', () => {
+                this.dom.openSidebarDesktopBtn?.addEventListener('click', () => {
                     this.dom.sidebar.classList.remove('collapsed');
                 });
 
@@ -547,7 +549,7 @@ export default function ChatPage() {
                     document.addEventListener('touchend', endEdgeDrag);
                 }
 
-                this.dom.themeToggle.addEventListener('click', () => this.toggleTheme());
+                this.dom.themeToggle?.addEventListener('click', () => this.toggleTheme());
                 document.querySelectorAll('.welcome-suggestion-card').forEach(card => {
                     card.addEventListener('click', () => {
                         this.fillInput(card.getAttribute('data-prompt') || '');
@@ -1015,14 +1017,14 @@ export default function ChatPage() {
             setProcessingState(on) {
                 this.state.isProcessing = on;
                 if (on) {
-                    this.dom.sendBtn.classList.add('stop-mode');
-                    this.dom.sendBtn.disabled = false;
-                    this.dom.sendIcon.classList.add('hidden');
-                    this.dom.stopIcon.classList.remove('hidden');
+                    this.dom.sendBtn?.classList.add('stop-mode');
+                    if (this.dom.sendBtn) this.dom.sendBtn.disabled = false;
+                    this.dom.sendIcon?.classList.add('hidden');
+                    this.dom.stopIcon?.classList.remove('hidden');
                 } else {
-                    this.dom.sendBtn.classList.remove('stop-mode');
-                    this.dom.sendIcon.classList.remove('hidden');
-                    this.dom.stopIcon.classList.add('hidden');
+                    this.dom.sendBtn?.classList.remove('stop-mode');
+                    this.dom.sendIcon?.classList.remove('hidden');
+                    this.dom.stopIcon?.classList.add('hidden');
                     this.state.abortController = null;
                     this.updateButtonState();
                 }
@@ -1119,7 +1121,7 @@ export default function ChatPage() {
                         navigator.clipboard.writeText(bubble.innerText || bubble.textContent).then(() => {
                             copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
                             setTimeout(() => { copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="1"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`; }, 2000);
-                        });
+                        }).catch(() => {});
                     });
                 }
                 const editBtn = document.createElement('button');
@@ -1264,7 +1266,7 @@ export default function ChatPage() {
                     btns.className = 'code-header-btns';
                     const copyBtn = document.createElement('button');
                     copyBtn.title = 'Copy'; copyBtn.setAttribute('aria-label','Copy code'); copyBtn.innerHTML = COPY_ICON;
-                    copyBtn.onclick = () => { const t = code ? code.textContent : pre.textContent; navigator.clipboard.writeText(t).then(() => { copyBtn.innerHTML = CHECK_ICON; setTimeout(() => { copyBtn.innerHTML = COPY_ICON; }, 2000); }); };
+                    copyBtn.onclick = () => { const t = code ? code.textContent : pre.textContent; navigator.clipboard.writeText(t).then(() => { copyBtn.innerHTML = CHECK_ICON; setTimeout(() => { copyBtn.innerHTML = COPY_ICON; }, 2000); }).catch(() => {}); };
                     const dlBtn = document.createElement('button');
                     dlBtn.title = 'Download'; dlBtn.setAttribute('aria-label','Download code'); dlBtn.innerHTML = DL_ICON;
                     dlBtn.onclick = () => { const t = code ? code.textContent : pre.textContent; const ext = EXT[lang] || 'txt'; const blob = new Blob([t],{type:'text/plain'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `code.${ext}`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 200); };
