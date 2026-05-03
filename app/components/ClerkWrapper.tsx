@@ -1,7 +1,13 @@
 "use client"
 
 import { ClerkProvider } from "@clerk/nextjs"
+import ClerkBridge from "./ClerkBridge"
 
 export default function ClerkWrapper({ children }: { children: React.ReactNode }) {
-  return <ClerkProvider>{children}</ClerkProvider>
+  return (
+    <ClerkProvider>
+      <ClerkBridge />
+      {children}
+    </ClerkProvider>
+  )
 }
