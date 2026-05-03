@@ -1742,6 +1742,7 @@ export default function ChatPage() {
                                 <li>2 active devices simultaneously</li>
                                 <li>Delivered to your inbox instantly after payment</li>
                             </ul>
+                            <a href="https://payments.cashfree.com/forms/esamz-ai" className="plans-upgrade-btn" target="_blank" rel="noopener">Get Started →</a>
                         </div>
                     </div>
                     <div className="plan-card">
@@ -1758,6 +1759,7 @@ export default function ChatPage() {
                                 <li>Zero-retention encryption</li>
                                 <li>2 active devices simultaneously</li>
                             </ul>
+                            <a href="https://payments.cashfree.com/forms/esamz-ai" className="plans-upgrade-btn" target="_blank" rel="noopener">Get Started →</a>
                         </div>
                     </div>
                     <div className="plan-card">
@@ -1776,6 +1778,7 @@ export default function ChatPage() {
                                 <li>2 active devices simultaneously</li>
                                 <li>Direct feedback channel — your feature requests go to the front of the queue for v11</li>
                             </ul>
+                            <a href="https://payments.cashfree.com/forms/esamz-ai" className="plans-upgrade-btn" target="_blank" rel="noopener">Get Started →</a>
                         </div>
                     </div>
                     <div className="plan-card">
