@@ -109,7 +109,7 @@ export default function ChatPage() {
         //  UTILITIES
         // ====================================================================
         const Utils = {
-            toastContainer: document.getElementById('toast-container'),
+            get toastContainer() { return document.getElementById('toast-container'); },
             showToast(message, type = 'info') {
                 const t = document.createElement('div');
                 t.className = 'toast';
@@ -215,9 +215,10 @@ export default function ChatPage() {
         //  PLANS PAGE MODAL UI
         // ====================================================================
         const PlansModal = {
-            overlay: document.getElementById('plansModal'),
+            overlay: null,
 
             init() {
+                this.overlay = document.getElementById('plansModal');
                 document.getElementById('btnViewPlans')
                     ?.addEventListener('click', () => this.open());
                 document.getElementById('plansModalClose')
@@ -267,6 +268,16 @@ export default function ChatPage() {
         // ====================================================================
         class App {
             constructor() {
+                this.state = {
+                    chatId: null, files: [],
+                    isProcessing: false, abortController: null
+                };
+                this.storageKey  = LS_STORAGE;
+                this.LAST_CHAT_KEY = LS_LAST_CHAT;
+                this.init();
+            }
+
+            init() {
                 this.dom = {
                     chatList:    document.getElementById('chatList'),
                     input:       document.getElementById('userInput'),
@@ -299,16 +310,6 @@ export default function ChatPage() {
                     menuExportAllMdBtn:     document.getElementById('menuExportAllMdBtn'),
                     menuClearChatBtn:       document.getElementById('menuClearChatBtn'),
                 };
-                this.state = {
-                    chatId: null, files: [],
-                    isProcessing: false, abortController: null
-                };
-                this.storageKey  = LS_STORAGE;
-                this.LAST_CHAT_KEY = LS_LAST_CHAT;
-                this.init();
-            }
-
-            init() {
                 this.initTheme();
 
                 checkPermissions();
@@ -354,22 +355,22 @@ if (required.some(el => !el)) {
 }
                 const SIDEBAR_VISIBLE_PEEK_HEIGHT = 72;
                 const DRAG_CLOSE_THRESHOLD = 0.5;
-                this.dom.input.addEventListener('focus', () => {
+                this.dom.input?.addEventListener('focus', () => {
                     if (!requireSignIn()) {
-                        this.dom.input.blur();
+                        this.dom.input?.blur();
                     }
                 });
-                this.dom.input.addEventListener('input', () => this.handleInput());
-                this.dom.input.addEventListener('keydown', e => {
+                this.dom.input?.addEventListener('input', () => this.handleInput());
+                this.dom.input?.addEventListener('keydown', e => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
                         this.state.isProcessing ? this.abortGeneration() : this.handleSend();
                     }
                 });
-                this.dom.sendBtn.addEventListener('click', () => {
+                this.dom.sendBtn?.addEventListener('click', () => {
                     this.state.isProcessing ? this.abortGeneration() : this.handleSend();
                 });
-                this.dom.newChatBtn.addEventListener('click',  () => this.newChat());
+                this.dom.newChatBtn?.addEventListener('click',  () => this.newChat());
 
                 // FIX P6: Clear Chat also calls DELETE /api/session to wipe server-side memory
                 const clearChatAction = async () => {
@@ -383,10 +384,12 @@ if (required.some(el => !el)) {
                         this.newChat();
                     }
                 };
-                this.dom.clearChatBtn.addEventListener('click', clearChatAction);
+                this.dom.clearChatBtn?.addEventListener('click', clearChatAction);
 
-                this.dom.uploadBtn.addEventListener('click', () => this.dom.fileInput.click());
-                this.dom.fileInput.addEventListener('change', e => this.handleFiles(e.target.files));
+                if (this.dom.uploadBtn && this.dom.fileInput) {
+                    this.dom.uploadBtn.addEventListener('click', () => this.dom.fileInput?.click());
+                    this.dom.fileInput.addEventListener('change', e => this.handleFiles(e.target.files));
+                }
 
                 if (this.dom.menuNewChatBtn) this.dom.menuNewChatBtn.addEventListener('click', () => {
                     this.newChat();
@@ -670,9 +673,20 @@ if (required.some(el => !el)) {
                     chip.id        = chipId;
                     const isImage  = file.type.startsWith('image/');
                     let objectUrl  = null;
-                    let iconHtml   = '<span>📄</span>';
-                    if (isImage) { objectUrl = URL.createObjectURL(file); iconHtml = `<img src="${objectUrl}" alt="preview">`; }
-                    chip.innerHTML = `${iconHtml}<span>${file.name}</span>`;
+                    if (isImage) {
+                        objectUrl = URL.createObjectURL(file);
+                        const img = document.createElement('img');
+                        img.src = objectUrl;
+                        img.alt = 'preview';
+                        chip.appendChild(img);
+                    } else {
+                        const icon = document.createElement('span');
+                        icon.textContent = '📄';
+                        chip.appendChild(icon);
+                    }
+                    const nameSpan = document.createElement('span');
+                    nameSpan.textContent = file.name;
+                    chip.appendChild(nameSpan);
                     const removeBtn = document.createElement('button');
                     removeBtn.innerHTML = '✕';
                     removeBtn.onclick = () => {
@@ -694,7 +708,7 @@ if (required.some(el => !el)) {
                         this.updateButtonState();
                     } catch (e) { console.error(e); Utils.showToast(`Failed to process ${file.name}`, 'error'); chip.remove(); if (objectUrl) URL.revokeObjectURL(objectUrl); }
                 }
-                this.dom.fileInput.value = '';
+                if (this.dom.fileInput) this.dom.fileInput.value = '';
             }
 
             async runOCR(file) {
@@ -1042,7 +1056,7 @@ if (required.some(el => !el)) {
                 if (saved && saved.trim()) { this.dom.input.value = saved; this.handleInput(); }
                 let timer;
                 const indicator = document.getElementById('draftIndicator');
-                this.dom.input.addEventListener('input', () => {
+                this.dom.input?.addEventListener('input', () => {
                     clearTimeout(timer);
                     timer = setTimeout(() => {
                         const v = this.dom.input.value;
@@ -1057,7 +1071,7 @@ if (required.some(el => !el)) {
             }
 
             initPasteSupport() {
-                this.dom.input.addEventListener('paste', e => {
+                this.dom.input?.addEventListener('paste', e => {
                     const items = e.clipboardData?.items;
                     if (!items) return;
                     for (const item of items) {
@@ -1693,7 +1707,8 @@ if (required.some(el => !el)) {
     return;
   }
 
-  window.app = new App();
+  // Slight delay to ensure all React-rendered elements and styles are settled (important in prod)
+  setTimeout(() => { window.app = new App(); }, 80);
 }
 
 waitForDOM();
