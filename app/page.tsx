@@ -224,7 +224,7 @@ export default function ChatPage() {
 
             init() {
                 document.getElementById('btnViewPlans')
-                    .addEventListener('click', () => this.open());
+                    ?.addEventListener('click', () => this.open());
                 document.getElementById('plansModalClose')
                     .addEventListener('click', () => this.close());
                 this.overlay.addEventListener('click', e => {
