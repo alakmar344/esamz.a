@@ -1697,8 +1697,28 @@ if (required.some(el => !el)) {
   }
 
   // Slight delay to ensure all React-rendered elements and styles are settled (important in prod)
-  setTimeout(() => { window.app = new App(); }, 80);
+ etTimeout(() => {
+    // ↓ ADD THIS BLOCK
+    console.log('DOM check before App init:', {
+      btnThemeToggle:        document.getElementById('btnThemeToggle'),
+      btnNewChat:            document.getElementById('btnNewChat'),
+      openSidebar:           document.getElementById('openSidebar'),
+      openSidebarBottom:     document.getElementById('openSidebarBottom'),
+      btnCloseSidebar:       document.getElementById('btnCloseSidebar'),
+      btnOpenSidebarDesktop: document.getElementById('btnOpenSidebarDesktop'),
+      btnClearChat:          document.getElementById('btnClearChat'),
+      historyList:           document.getElementById('historyList'),
+      overlay:               document.getElementById('overlay'),
+      headerActionsToggle:   document.getElementById('headerActionsToggle'),
+    });
+    // ↑ END BLOCK
+
+    window.app = new App();
+  }, 80);
 }
+
+waitForDOM();
+Deploy or run this, open the browser console, and look for whichever entry shows null. That's the element whose addEventListener is crashing. Once you tell me which one is null, I can point you to the exact line in your source to fix.
 
 waitForDOM();
 
