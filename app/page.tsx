@@ -21,10 +21,10 @@ declare global {
   }
 }
 
+import { UserButton } from "@clerk/nextjs";
+
 const hasClerk = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 const DEBUG_CHAT_STREAM_LOGS = process.env.NEXT_PUBLIC_DEBUG_CHAT_STREAM === 'true'
-
-import { UserButton } from "@clerk/nextjs";
 
 export default function ChatPage() {
   const appInitialized = useRef(false)
@@ -396,20 +396,20 @@ if (required.some(el => !el)) {
                 // Mobile sidebar
                 const openMobileSidebar = () => {
                     this.dom.sidebar.classList.add('active');
-                    this.dom.overlay.classList.add('active');
+                    this.dom.overlay?.classList.add('active');
                     this.dom.openSidebarBottomBtn?.classList.add('is-hidden');
                     this.dom.sidebar.style.removeProperty('transform');
                     this.dom.sidebar.style.removeProperty('transition');
-                    this.dom.overlay.style.removeProperty('opacity');
+                    this.dom.overlay?.style.removeProperty('opacity');
                     document.body.style.overflow = 'hidden';
                 };
                 const closeMobileSidebar = () => {
                     this.dom.sidebar.classList.remove('active');
-                    this.dom.overlay.classList.remove('active');
+                    this.dom.overlay?.classList.remove('active');
                     this.dom.openSidebarBottomBtn?.classList.remove('is-hidden');
                     this.dom.sidebar.style.removeProperty('transform');
                     this.dom.sidebar.style.removeProperty('transition');
-                    this.dom.overlay.style.removeProperty('opacity');
+                    this.dom.overlay?.style.removeProperty('opacity');
                     document.body.style.overflow = '';
                 };
                 if (this.dom.openSidebarMobileBtn) this.dom.openSidebarMobileBtn.addEventListener('click', openMobileSidebar);
@@ -617,6 +617,7 @@ if (required.some(el => !el)) {
             }
 
             updateButtonState() {
+                if (!this.dom.sendBtn || !this.dom.input) return;
                 if (this.state.isProcessing) {
                     this.dom.sendBtn.disabled = false;
                     return;
@@ -1020,7 +1021,7 @@ if (required.some(el => !el)) {
             initDraft() {
                 const KEY = 'esamz_draft_v9';
                 const saved = localStorage.getItem(KEY);
-                if (saved && saved.trim()) { this.dom.input.value = saved; this.handleInput(); }
+                if (saved && saved.trim() && this.dom.input) { this.dom.input.value = saved; this.handleInput(); }
                 let timer;
                 const indicator = document.getElementById('draftIndicator');
                 this.dom.input?.addEventListener('input', () => {
@@ -1548,22 +1549,6 @@ if (required.some(el => !el)) {
         })();
 
         // ====================================================================
-        //  MESSAGE SEARCH
-        // ====================================================================
-        (function initMessageSearch() {
-            const input = document.getElementById('historySearch');
-            if (!input) return;
-            input.addEventListener('input', function () {
-                const q = this.value.trim().toLowerCase();
-                document.querySelectorAll('.nav-item-row[data-row-id]').forEach(row => {
-                    if (!q) { row.classList.remove('search-hidden'); return; }
-                    const text = row.querySelector('.nav-item')?.textContent?.toLowerCase() || '';
-                    row.classList.toggle('search-hidden', !text.includes(q));
-                });
-            });
-        })();
-
-        // ====================================================================
         //  SCROLL TO TOP
         // ====================================================================
         (function initScrollTop() {
@@ -1696,23 +1681,7 @@ if (required.some(el => !el)) {
     return;
   }
 
-  // Slight delay to ensure all React-rendered elements and styles are settled (important in prod)
- etTimeout(() => {
-    // ↓ ADD THIS BLOCK
-    console.log('DOM check before App init:', {
-      btnThemeToggle:        document.getElementById('btnThemeToggle'),
-      btnNewChat:            document.getElementById('btnNewChat'),
-      openSidebar:           document.getElementById('openSidebar'),
-      openSidebarBottom:     document.getElementById('openSidebarBottom'),
-      btnCloseSidebar:       document.getElementById('btnCloseSidebar'),
-      btnOpenSidebarDesktop: document.getElementById('btnOpenSidebarDesktop'),
-      btnClearChat:          document.getElementById('btnClearChat'),
-      historyList:           document.getElementById('historyList'),
-      overlay:               document.getElementById('overlay'),
-      headerActionsToggle:   document.getElementById('headerActionsToggle'),
-    });
-    // ↑ END BLOCK
-
+  setTimeout(() => {
     window.app = new App();
   }, 80);
 }
