@@ -331,7 +331,7 @@ export default function ChatPage() {
                     };
                     tryLoad();
                 }
-                this.dom.input.focus();
+                this.dom.input?.focus();
             }
 
             getHistory() {
