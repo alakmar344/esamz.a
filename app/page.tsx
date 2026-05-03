@@ -24,13 +24,7 @@ declare global {
 const hasClerk = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 const DEBUG_CHAT_STREAM_LOGS = process.env.NEXT_PUBLIC_DEBUG_CHAT_STREAM === 'true'
 
-let useAuth: any, useClerk: any, UserButton: any
-if (hasClerk) {
-  const clerk = require('@clerk/nextjs')
-  useAuth = clerk.useAuth
-  useClerk = clerk.useClerk
-  UserButton = clerk.UserButton
-}
+import { useAuth, useClerk, UserButton } from "@clerk/nextjs";
 
 function ClerkBridge() {
   const { isSignedIn, getToken } = useAuth()
@@ -344,7 +338,18 @@ export default function ChatPage() {
                 const r = localStorage.getItem(this.storageKey);
                 return r ? JSON.parse(r) : [];
             }
+const required = [
+  this.dom.input,
+  this.dom.sendBtn,
+  this.dom.chatList,
+  this.dom.chatContainer,
+  this.dom.sidebar
+];
 
+if (required.some(el => !el)) {
+  console.error('Missing DOM elements during setup:', this.dom);
+  return;
+}
             setupEventListeners() {
                 const SIDEBAR_VISIBLE_PEEK_HEIGHT = 72;
                 const DRAG_CLOSE_THRESHOLD = 0.5;
@@ -1671,7 +1676,26 @@ export default function ChatPage() {
         // Clean up stale PeerJS localStorage keys from previous versions
         ['esamz_peer_code', 'esamz_known_peers', 'esamz_blacklist'].forEach(k => localStorage.removeItem(k));
 
-        window.app = new App();
+        function waitForDOM() {
+  const requiredIds = [
+    'userInput',
+    'btnSend',
+    'chatList',
+    'chatContainer',
+    'sidebar'
+  ];
+
+  const missing = requiredIds.filter(id => !document.getElementById(id));
+
+  if (missing.length > 0) {
+    requestAnimationFrame(waitForDOM);
+    return;
+  }
+
+  window.app = new App();
+}
+
+waitForDOM();
 
         // ====================================================================
         //  TIER SYNC — fetch real tier from MongoDB via /api/user/tier
