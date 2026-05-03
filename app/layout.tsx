@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import Script from 'next/script'
 import { Analytics } from '@vercel/analytics/next'
 import PwaInit from './components/PwaInit'
+import DynamicClerkWrapper from './components/DynamicClerkWrapper'
 import './globals.css'
-import ClerkWrapper from "./components/ClerkWrapper"
 
 export const metadata: Metadata = {
   title: 'eSAMz AI — Strategic Artificial Mind',
@@ -47,9 +47,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         
          <body>
   {clerkPubKey ? (
-    <ClerkWrapper>
+    <DynamicClerkWrapper>
       {children}
-    </ClerkWrapper>
+    </DynamicClerkWrapper>
   ) : (
     children
   )}
@@ -57,8 +57,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   
 
         {/* Third-party scripts */}
-        <Script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" strategy="beforeInteractive" />
-        <Script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" strategy="beforeInteractive" />
+        <Script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" strategy="afterInteractive" />
+        <Script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" strategy="afterInteractive" />
         <Script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" strategy="afterInteractive" />
         <Script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js" strategy="afterInteractive" />
         <Script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js" strategy="afterInteractive" />
