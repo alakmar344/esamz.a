@@ -351,6 +351,18 @@ if (required.some(el => !el)) {
   return;
 }
             setupEventListeners() {
+              const required = [
+  this.dom.input,
+  this.dom.sendBtn,
+  this.dom.chatList,
+  this.dom.chatContainer,
+  this.dom.sidebar
+];
+
+if (required.some(el => !el)) {
+  console.error('Missing DOM elements during setup:', this.dom);
+  return;
+}
                 const SIDEBAR_VISIBLE_PEEK_HEIGHT = 72;
                 const DRAG_CLOSE_THRESHOLD = 0.5;
                 this.dom.input.addEventListener('focus', () => {
