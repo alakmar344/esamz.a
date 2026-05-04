@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 declare global {
@@ -21,13 +21,51 @@ declare global {
   }
 }
 
-import { UserButton } from "@clerk/nextjs";
-
 const hasClerk = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-const DEBUG_CHAT_STREAM_LOGS = process.env.NEXT_PUBLIC_DEBUG_CHAT_STREAM === 'true'
+
+let useAuth: any, useClerk: any, UserButton: any
+if (hasClerk) {
+  const clerk = require('@clerk/nextjs')
+  useAuth = clerk.useAuth
+  useClerk = clerk.useClerk
+  UserButton = clerk.UserButton
+}
+
+function ClerkBridge() {
+  const { isSignedIn, getToken } = useAuth()
+  const { openSignIn } = useClerk()
+
+  const isSignedInRef = useRef<boolean>(false)
+  const getTokenRef = useRef<() => Promise<string | null>>(() => Promise.resolve(null))
+  const openSignInRef = useRef<() => void>(() => {})
+
+  useEffect(() => {
+    isSignedInRef.current = !!isSignedIn
+    // Sync tier from server whenever the user becomes signed in
+    if (isSignedIn) {
+      window.__syncTierFromServer?.()
+    }
+  }, [isSignedIn])
+  useEffect(() => { openSignInRef.current = () => openSignIn() }, [openSignIn])
+  useEffect(() => { getTokenRef.current = getToken }, [getToken])
+
+  useEffect(() => {
+    window.__clerk = {
+      get isSignedIn() { return isSignedInRef.current },
+      openSignIn: () => openSignInRef.current(),
+      getToken: () => getTokenRef.current(),
+    }
+  }, [])
+
+  return null
+}
 
 export default function ChatPage() {
   const appInitialized = useRef(false)
+  const [mounted, setMounted] = useState(false)
+
+  // Only render Clerk hooks after mount to avoid prerender errors
+  useEffect(() => { setMounted(true) }, [])
 
   // Set up a default (unauthenticated) Clerk bridge when Clerk is not available
   useEffect(() => {
@@ -48,8 +86,8 @@ export default function ChatPage() {
     ;(function () {
         'use strict';
         const BACKEND_CHAT_URL    = '/api/chat/proxy';
-        const BACKEND_CHAT_URL_ANON = 'https://backend.esamz.site/api/chat';
-        const BACKEND_BASE_URL    = 'https://backend.esamz.site';
+        const BACKEND_CHAT_URL_ANON = 'https://backend-for-esamzai.onrender.com/api/chat';
+        const BACKEND_BASE_URL    = 'https://backend-for-esamzai.onrender.com';
 
         const LS_PLAN      = 'esamz_plan';
         const LS_STORAGE   = 'esamz_conversations_v9';
@@ -76,7 +114,7 @@ export default function ChatPage() {
         //  UTILITIES
         // ====================================================================
         const Utils = {
-            get toastContainer() { return document.getElementById('toast-container'); },
+            toastContainer: document.getElementById('toast-container'),
             showToast(message, type = 'info') {
                 const t = document.createElement('div');
                 t.className = 'toast';
@@ -88,7 +126,7 @@ export default function ChatPage() {
                 msgSpan.textContent = message;
                 t.appendChild(iconSpan);
                 t.appendChild(msgSpan);
-                this.toastContainer?.appendChild(t);
+                this.toastContainer.appendChild(t);
                 const duration = type === 'error' ? 5500 : 3000;
                 setTimeout(() => {
                     t.style.opacity = '0';
@@ -100,13 +138,10 @@ export default function ChatPage() {
                 let _cancel = null;
                 const promise = new Promise(resolve => {
                     const dlg = document.getElementById('confirmDialog');
-                    const titleEl = document.getElementById('confirmTitle');
-                    const msgEl   = document.getElementById('confirmMessage');
-                    if (titleEl) titleEl.textContent = title;
-                    if (msgEl)   msgEl.textContent   = message;
+                    document.getElementById('confirmTitle').textContent    = title;
+                    document.getElementById('confirmMessage').textContent  = message;
                     const ok  = document.getElementById('confirmOk');
                     const cancel = document.getElementById('confirmCancel');
-                    if (!dlg || !ok || !cancel) { resolve(false); return; }
                     const close = () => {
                         _cancel = null; dlg.close();
                         ok.removeEventListener('click', onOk);
@@ -148,10 +183,11 @@ export default function ChatPage() {
             const badgeEl    = document.getElementById('planBadgeContainer');
 
             function resetPlanUI() {
-                ragWrapper?.classList.remove('visible');
-                spe?.classList.remove('visible');
-                if (ragToggle) { ragToggle.disabled = false; ragToggle.checked = true; }
-                if (badgeEl) badgeEl.innerHTML  = '';
+                ragWrapper.classList.remove('visible');
+                spe.classList.remove('visible');
+                ragToggle.disabled = false;
+                ragToggle.checked  = true;
+                badgeEl.innerHTML  = '';
             }
 
             function applyPlan(plan) {
@@ -163,11 +199,12 @@ export default function ChatPage() {
                 badge.innerHTML = `<span>${ICONS[plan] || '✦'}</span><span>${plan} Plan Active</span>`;
                 badgeEl.appendChild(badge);
                 if (plan === 'Plus') {
-                    ragWrapper?.classList.add('visible');
-                    if (ragToggle) { ragToggle.checked = true; ragToggle.disabled = true; }
+                    ragWrapper.classList.add('visible');
+                    ragToggle.checked = true;
+                    ragToggle.disabled = true;
                 }
-                if (plan === 'Pro')  { ragWrapper?.classList.add('visible'); if (ragToggle) ragToggle.disabled = false; }
-                if (plan === 'Max')  { ragWrapper?.classList.add('visible'); if (ragToggle) ragToggle.disabled = false; spe?.classList.add('visible'); }
+                if (plan === 'Pro')  { ragWrapper.classList.add('visible'); ragToggle.disabled = false; }
+                if (plan === 'Max')  { ragWrapper.classList.add('visible'); ragToggle.disabled = false; spe.classList.add('visible'); }
             }
 
             const VALID_PLANS = ['Plus', 'Pro', 'Max'];
@@ -182,25 +219,24 @@ export default function ChatPage() {
         //  PLANS PAGE MODAL UI
         // ====================================================================
         const PlansModal = {
-            overlay: null,
+            overlay: document.getElementById('plansModal'),
 
             init() {
-                this.overlay = document.getElementById('plansModal');
                 document.getElementById('btnViewPlans')
-                    ?.addEventListener('click', () => this.open());
+                    .addEventListener('click', () => this.open());
                 document.getElementById('plansModalClose')
-                    ?.addEventListener('click', () => this.close());
-                this.overlay?.addEventListener('click', e => {
+                    .addEventListener('click', () => this.close());
+                this.overlay.addEventListener('click', e => {
                     if (e.target === this.overlay) this.close();
                 });
             },
 
             open() {
-                this.overlay?.classList.remove('hidden');
+                this.overlay.classList.remove('hidden');
             },
 
             close() {
-                this.overlay?.classList.add('hidden');
+                this.overlay.classList.add('hidden');
             }
         };
 
@@ -215,7 +251,6 @@ export default function ChatPage() {
             if (!toggleBtn) return;
 
             toggleBtn.addEventListener('click', () => {
-                if (!textarea || !hint) return;
                 const isOpen = textarea.classList.contains('open');
                 if (isOpen) {
                     textarea.classList.remove('open');
@@ -231,20 +266,44 @@ export default function ChatPage() {
         })();
 
         // ====================================================================
+        //  CIBO MODAL
+        // ====================================================================
+        const CiboModal = {
+            modal: document.getElementById('ciboModal'),
+            _bound: false,
+            _bind() {
+                if (this._bound) return;
+                this._bound = true;
+                document.getElementById('ciboModalClose').addEventListener('click',   () => this.dismiss());
+                document.getElementById('ciboModalDismiss').addEventListener('click', () => this.dismiss());
+                this.modal.addEventListener('click', e => { if (e.target === this.modal) this.dismiss(); });
+            },
+            init() {
+                if (localStorage.getItem('esamz_cibo_shown') === '1') return;
+                this._bind();
+                // Delay 800ms so the modal doesn't compete with page load
+                setTimeout(() => {
+                    if (localStorage.getItem('esamz_cibo_shown') !== '1') this.modal.classList.remove('hidden');
+                }, 800);
+            },
+            show() {
+                if (localStorage.getItem('esamz_cibo_shown') === '1') return;
+                this._bind();
+                setTimeout(() => {
+                    if (localStorage.getItem('esamz_cibo_shown') !== '1') this.modal.classList.remove('hidden');
+                }, 300);
+            },
+            dismiss() {
+                this.modal.classList.add('hidden');
+                localStorage.setItem('esamz_cibo_shown', '1');
+            }
+        };
+
+        // ====================================================================
         //  MAIN APP CLASS
         // ====================================================================
         class App {
             constructor() {
-                this.state = {
-                    chatId: null, files: [],
-                    isProcessing: false, abortController: null
-                };
-                this.storageKey  = LS_STORAGE;
-                this.LAST_CHAT_KEY = LS_LAST_CHAT;
-                this.init();
-            }
-
-            init() {
                 this.dom = {
                     chatList:    document.getElementById('chatList'),
                     input:       document.getElementById('userInput'),
@@ -260,14 +319,11 @@ export default function ChatPage() {
                     uploadBtn:   document.getElementById('btnUpload'),
                     fileInput:   document.getElementById('fileInput'),
                     newChatBtn:  document.getElementById('btnNewChat'),
-                    mobileNewChatBtn: document.getElementById('mobileNewChatBtn'),
-                    mobileUpgradeBtn: document.getElementById('mobileUpgradeBtn'),
                     clearChatBtn:document.getElementById('btnClearChat'),
                     themeToggle: document.getElementById('btnThemeToggle'),
                     closeSidebarBtn:        document.getElementById('btnCloseSidebar'),
                     openSidebarDesktopBtn:  document.getElementById('btnOpenSidebarDesktop'),
                     openSidebarMobileBtn:   document.getElementById('openSidebar'),
-                    openSidebarBottomBtn:   document.getElementById('openSidebarBottom'),
                     headerActionsToggle:    document.getElementById('headerActionsToggle'),
                     headerActionsMenu:      document.getElementById('headerActionsMenu'),
                     menuNewChatBtn:         document.getElementById('menuNewChatBtn'),
@@ -277,11 +333,22 @@ export default function ChatPage() {
                     menuExportAllMdBtn:     document.getElementById('menuExportAllMdBtn'),
                     menuClearChatBtn:       document.getElementById('menuClearChatBtn'),
                 };
+                this.state = {
+                    chatId: null, files: [],
+                    isProcessing: false, abortController: null
+                };
+                this.storageKey  = LS_STORAGE;
+                this.LAST_CHAT_KEY = LS_LAST_CHAT;
+                this.init();
+            }
+
+            init() {
                 this.initTheme();
 
                 checkPermissions();
                 PlansModal.init();
 
+                CiboModal.init();
                 this.loadHistory();
                 this.setupEventListeners();
                 this.updateButtonState();
@@ -299,7 +366,7 @@ export default function ChatPage() {
                     };
                     tryLoad();
                 }
-                this.dom.input?.focus();
+                this.dom.input.focus();
             }
 
             getHistory() {
@@ -308,36 +375,22 @@ export default function ChatPage() {
             }
 
             setupEventListeners() {
-              const required = [
-  this.dom.input,
-  this.dom.sendBtn,
-  this.dom.chatList,
-  this.dom.chatContainer,
-  this.dom.sidebar
-];
-
-if (required.some(el => !el)) {
-  console.error('Missing DOM elements during setup:', this.dom);
-  return;
-}
-                const SIDEBAR_VISIBLE_PEEK_HEIGHT = 72;
-                const DRAG_CLOSE_THRESHOLD = 0.5;
-                this.dom.input?.addEventListener('focus', () => {
+                this.dom.input.addEventListener('focus', () => {
                     if (!requireSignIn()) {
-                        this.dom.input?.blur();
+                        this.dom.input.blur();
                     }
                 });
-                this.dom.input?.addEventListener('input', () => this.handleInput());
-                this.dom.input?.addEventListener('keydown', e => {
+                this.dom.input.addEventListener('input', () => this.handleInput());
+                this.dom.input.addEventListener('keydown', e => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
                         this.state.isProcessing ? this.abortGeneration() : this.handleSend();
                     }
                 });
-                this.dom.sendBtn?.addEventListener('click', () => {
+                this.dom.sendBtn.addEventListener('click', () => {
                     this.state.isProcessing ? this.abortGeneration() : this.handleSend();
                 });
-                this.dom.newChatBtn?.addEventListener('click',  () => this.newChat());
+                this.dom.newChatBtn.addEventListener('click',  () => this.newChat());
 
                 // FIX P6: Clear Chat also calls DELETE /api/session to wipe server-side memory
                 const clearChatAction = async () => {
@@ -351,12 +404,10 @@ if (required.some(el => !el)) {
                         this.newChat();
                     }
                 };
-                this.dom.clearChatBtn?.addEventListener('click', clearChatAction);
+                this.dom.clearChatBtn.addEventListener('click', clearChatAction);
 
-                if (this.dom.uploadBtn && this.dom.fileInput) {
-                    this.dom.uploadBtn.addEventListener('click', () => this.dom.fileInput?.click());
-                    this.dom.fileInput.addEventListener('change', e => this.handleFiles(e.target.files));
-                }
+                this.dom.uploadBtn.addEventListener('click', () => this.dom.fileInput.click());
+                this.dom.fileInput.addEventListener('change', e => this.handleFiles(e.target.files));
 
                 if (this.dom.menuNewChatBtn) this.dom.menuNewChatBtn.addEventListener('click', () => {
                     this.newChat();
@@ -394,148 +445,28 @@ if (required.some(el => !el)) {
                     this.dom.headerActionsMenu.classList.remove('open');
                 });
                 // Mobile sidebar
-                const openMobileSidebar = () => {
+                this.dom.openSidebarMobileBtn.addEventListener('click', () => {
                     this.dom.sidebar.classList.add('active');
-                    this.dom.overlay?.classList.add('active');
-                    this.dom.openSidebarBottomBtn?.classList.add('is-hidden');
-                    this.dom.sidebar.style.removeProperty('transform');
-                    this.dom.sidebar.style.removeProperty('transition');
-                    this.dom.overlay?.style.removeProperty('opacity');
+                    this.dom.overlay.classList.add('active');
                     document.body.style.overflow = 'hidden';
-                };
-                const closeMobileSidebar = () => {
+                });
+                this.dom.overlay.addEventListener('click', () => {
                     this.dom.sidebar.classList.remove('active');
-                    this.dom.overlay?.classList.remove('active');
-                    this.dom.openSidebarBottomBtn?.classList.remove('is-hidden');
-                    this.dom.sidebar.style.removeProperty('transform');
-                    this.dom.sidebar.style.removeProperty('transition');
-                    this.dom.overlay?.style.removeProperty('opacity');
+                    this.dom.overlay.classList.remove('active');
                     document.body.style.overflow = '';
-                };
-                if (this.dom.openSidebarMobileBtn) this.dom.openSidebarMobileBtn.addEventListener('click', openMobileSidebar);
-                if (this.dom.openSidebarBottomBtn) this.dom.openSidebarBottomBtn.addEventListener('click', openMobileSidebar);
-                this.dom.overlay?.addEventListener('click', closeMobileSidebar);
-                if (this.dom.mobileNewChatBtn) {
-                    this.dom.mobileNewChatBtn.addEventListener('click', () => {
-                        this.newChat();
-                        closeMobileSidebar();
-                    });
-                }
-                if (this.dom.mobileUpgradeBtn) {
-                    this.dom.mobileUpgradeBtn.addEventListener('click', () => closeMobileSidebar());
-                }
-                const mobileBottomBar = this.dom.sidebar?.querySelector('.mobile-bottom-bar');
-                if (mobileBottomBar && window.matchMedia('(max-width: 640px)').matches) {
-                    let dragging = false;
-                    let pointerId = null;
-                    let startY = 0;
-                    let startOffset = 0;
-                    let currentOffset = 0;
-                    let hiddenOffset = 0;
-                    const applyOffset = offset => {
-                        this.dom.sidebar.style.transform = `translateY(${offset}px)`;
-                        if (hiddenOffset > 0) {
-                            const ratio = Math.max(0, Math.min(1, 1 - (offset / hiddenOffset)));
-                            this.dom.overlay.style.opacity = `${ratio}`;
-                        }
-                    };
-                    const onPointerMove = e => {
-                        if (!dragging || e.pointerId !== pointerId) return;
-                        const delta = e.clientY - startY;
-                        currentOffset = Math.max(0, Math.min(hiddenOffset, startOffset + delta));
-                        applyOffset(currentOffset);
-                    };
-                    const onPointerEnd = e => {
-                        if (!dragging || e.pointerId !== pointerId) return;
-                        dragging = false;
-                        pointerId = null;
-                        this.dom.sidebar.style.removeProperty('transition');
-                        this.dom.overlay.style.removeProperty('opacity');
-                        const moved = Math.abs(e.clientY - startY);
-                        if (moved < 8) {
-                            openMobileSidebar();
-                        } else if (currentOffset > hiddenOffset * DRAG_CLOSE_THRESHOLD) {
-                            closeMobileSidebar();
-                        } else {
-                            openMobileSidebar();
-                        }
-                    };
-                    this.dom.sidebar.addEventListener('pointerdown', e => {
-                        if (e.pointerType === 'mouse' && e.button !== 0) return;
-                        // When active, only allow drag-to-close via the bottom handle bar
-                        if (this.dom.sidebar.classList.contains('active') && !mobileBottomBar.contains(e.target)) return;
-                        hiddenOffset = Math.max(this.dom.sidebar.getBoundingClientRect().height - SIDEBAR_VISIBLE_PEEK_HEIGHT, 0);
-                        startOffset = this.dom.sidebar.classList.contains('active') ? 0 : hiddenOffset;
-                        currentOffset = startOffset;
-                        startY = e.clientY;
-                        pointerId = e.pointerId;
-                        dragging = true;
-                        this.dom.sidebar.classList.add('active');
-                        this.dom.overlay.classList.add('active');
-                        this.dom.sidebar.style.transition = 'none';
-                        applyOffset(startOffset);
-                        document.body.style.overflow = 'hidden';
-                        if (this.dom.sidebar.setPointerCapture) this.dom.sidebar.setPointerCapture(pointerId);
-                        e.preventDefault();
-                    });
-                    window.addEventListener('pointermove', onPointerMove);
-                    window.addEventListener('pointerup', onPointerEnd);
-                    window.addEventListener('pointercancel', onPointerEnd);
-                }
+                });
 
                 // Desktop sidebar collapse/expand
-                this.dom.closeSidebarBtn?.addEventListener('click', () => {
-                    if (window.matchMedia('(max-width: 768px)').matches) {
-                        closeMobileSidebar();
-                        return;
-                    }
+                this.dom.closeSidebarBtn.addEventListener('click', () => {
                     this.dom.sidebar.classList.add('collapsed');
                 });
-                this.dom.openSidebarDesktopBtn?.addEventListener('click', () => {
+                this.dom.openSidebarDesktopBtn.addEventListener('click', () => {
                     this.dom.sidebar.classList.remove('collapsed');
                 });
 
-                // Desktop: drag from left edge to open collapsed sidebar
-                {
-                    const DRAG_THRESHOLD = 40; // px right to trigger open
-                    let edgeDragActive = false;
-                    let edgeDragStartX = 0;
-                    const dragStrip = document.querySelector('.sidebar-drag-strip');
-                    const startEdgeDrag = (clientX) => {
-                        if (window.matchMedia('(max-width: 768px)').matches) return;
-                        if (!this.dom.sidebar.classList.contains('collapsed')) return;
-                        edgeDragActive = true;
-                        edgeDragStartX = clientX;
-                    };
-                    const moveEdgeDrag = (clientX) => {
-                        if (!edgeDragActive) return;
-                        if (clientX - edgeDragStartX >= DRAG_THRESHOLD) {
-                            this.dom.sidebar.classList.remove('collapsed');
-                            edgeDragActive = false;
-                        }
-                    };
-                    const endEdgeDrag = () => { edgeDragActive = false; };
-                    if (dragStrip) {
-                        dragStrip.addEventListener('mousedown', e => startEdgeDrag(e.clientX));
-                        dragStrip.addEventListener('touchstart', e => { if (e.touches[0]) startEdgeDrag(e.touches[0].clientX); }, { passive: true });
-                    }
-                    document.addEventListener('mousemove', e => moveEdgeDrag(e.clientX));
-                    document.addEventListener('touchmove', e => { if (e.touches[0]) moveEdgeDrag(e.touches[0].clientX); }, { passive: true });
-                    document.addEventListener('mouseup', endEdgeDrag);
-                    document.addEventListener('touchend', endEdgeDrag);
-                }
-
-                this.dom.themeToggle?.addEventListener('click', () => this.toggleTheme());
+                this.dom.themeToggle.addEventListener('click', () => this.toggleTheme());
                 document.querySelectorAll('.welcome-suggestion-card').forEach(card => {
-                    card.addEventListener('click', () => {
-                        this.fillInput(card.getAttribute('data-prompt') || '');
-                        const mode = card.getAttribute('data-mode');
-                        if (mode) {
-                            const MODES = ['mode-analyst','mode-thinker','mode-planner','mode-strategist','mode-builder','mode-writer'];
-                            document.body.classList.remove(...MODES);
-                            document.body.classList.add(mode);
-                        }
-                    });
+                    card.addEventListener('click', () => this.fillInput(card.getAttribute('data-prompt') || ''));
                 });
                 const suggestions = document.getElementById('welcomeSuggestions');
                 if (suggestions) {
@@ -549,20 +480,6 @@ if (required.some(el => !el)) {
                     if (shortcutHint) shortcutHint.style.display = 'none';
                 }
 
-                // Slash command menu click handlers
-                document.querySelectorAll('.slash-cmd-item').forEach(item => {
-                    item.addEventListener('click', () => {
-                        const cmd = item.getAttribute('data-cmd');
-                        if (cmd) {
-                            this.dom.input.value = cmd;
-                            this.dom.input.dispatchEvent(new Event('input'));
-                            this.dom.input.focus();
-                            const menu = document.getElementById('slashCmdMenu');
-                            if (menu) menu.classList.add('hidden');
-                        }
-                    });
-                });
-
             }
 
             handleInput() {
@@ -570,28 +487,6 @@ if (required.some(el => !el)) {
                 this.dom.input.style.height = Math.min(this.dom.input.scrollHeight, 200) + 'px';
                 this.updateButtonState();
                 this.updateCharCount();
-                this.updateSlashMenu();
-            }
-
-            updateSlashMenu() {
-                const menu = document.getElementById('slashCmdMenu');
-                if (!menu) return;
-                const val = this.dom.input.value;
-                // Show menu while typing a potential slash command (longest is "/search" = 7 chars)
-                if (val.startsWith('/') && !val.includes(' ') && val.length < 10) {
-                    const q = val.toLowerCase();
-                    const items = menu.querySelectorAll('.slash-cmd-item');
-                    let anyVisible = false;
-                    items.forEach(item => {
-                        const cmd = item.getAttribute('data-cmd') || '';
-                        const match = cmd.startsWith(q);
-                        item.style.display = match ? '' : 'none';
-                        if (match) anyVisible = true;
-                    });
-                    menu.classList.toggle('hidden', !anyVisible);
-                } else {
-                    menu.classList.add('hidden');
-                }
             }
 
             updateCharCount() {
@@ -617,7 +512,6 @@ if (required.some(el => !el)) {
             }
 
             updateButtonState() {
-                if (!this.dom.sendBtn || !this.dom.input) return;
                 if (this.state.isProcessing) {
                     this.dom.sendBtn.disabled = false;
                     return;
@@ -641,20 +535,9 @@ if (required.some(el => !el)) {
                     chip.id        = chipId;
                     const isImage  = file.type.startsWith('image/');
                     let objectUrl  = null;
-                    if (isImage) {
-                        objectUrl = URL.createObjectURL(file);
-                        const img = document.createElement('img');
-                        img.src = objectUrl;
-                        img.alt = 'preview';
-                        chip.appendChild(img);
-                    } else {
-                        const icon = document.createElement('span');
-                        icon.textContent = '📄';
-                        chip.appendChild(icon);
-                    }
-                    const nameSpan = document.createElement('span');
-                    nameSpan.textContent = file.name;
-                    chip.appendChild(nameSpan);
+                    let iconHtml   = '<span>📄</span>';
+                    if (isImage) { objectUrl = URL.createObjectURL(file); iconHtml = `<img src="${objectUrl}" alt="preview">`; }
+                    chip.innerHTML = `${iconHtml}<span>${file.name}</span>`;
                     const removeBtn = document.createElement('button');
                     removeBtn.innerHTML = '✕';
                     removeBtn.onclick = () => {
@@ -676,7 +559,7 @@ if (required.some(el => !el)) {
                         this.updateButtonState();
                     } catch (e) { console.error(e); Utils.showToast(`Failed to process ${file.name}`, 'error'); chip.remove(); if (objectUrl) URL.revokeObjectURL(objectUrl); }
                 }
-                if (this.dom.fileInput) this.dom.fileInput.value = '';
+                this.dom.fileInput.value = '';
             }
 
             async runOCR(file) {
@@ -694,10 +577,6 @@ if (required.some(el => !el)) {
                 if (!requireSignIn()) return;
                 const text = this.dom.input.value.trim();
                 if ((!text && this.state.files.length === 0) || this.state.isProcessing) return;
-
-                // Hide slash command menu
-                const slashMenu = document.getElementById('slashCmdMenu');
-                if (slashMenu) slashMenu.classList.add('hidden');
 
                 this.dom.input.value = '';
                 this.dom.input.style.height = 'auto';
@@ -754,7 +633,6 @@ if (required.some(el => !el)) {
                     ? speTextarea.value.trim()
                     : undefined;
 
-                let typingTimer = null;
                 try {
                     const reqBody = {
                         message:         finalPayload,
@@ -781,35 +659,14 @@ if (required.some(el => !el)) {
 
                     // Retry up to 2 times on 504 Gateway Timeout (transient AI service errors).
                     let response;
-                    // Signed-in users hit the same-origin proxy (/api/chat/proxy) — cookies
-                    // are sent automatically with 'same-origin'. Anonymous users call the
-                    // cross-origin Render backend directly and need 'include' so the
-                    // backend's esamz_sid HTTP-only session cookie is sent/received.
-                    const fetchOpts = {
-                        method:  'POST',
-                        headers: reqHeaders,
-                        body:    JSON.stringify(reqBody),
-                        signal:  this.state.abortController.signal,
-                        credentials: window.__clerk?.isSignedIn ? 'same-origin' : 'include',
-                    };
                     for (let attempt = 0; attempt <= 2; attempt++) {
                         if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt));
-                        if (DEBUG_CHAT_STREAM_LOGS) {
-                            console.debug('[ChatStream] Sending request', {
-                                attempt: attempt + 1,
-                                chatUrl,
-                                sessionId: this.state.chatId,
-                                messageLength: finalPayload.length,
-                            });
-                        }
-                        response = await fetch(chatUrl, fetchOpts);
-                        if (DEBUG_CHAT_STREAM_LOGS) {
-                            console.debug('[ChatStream] Response received', {
-                                status: response.status,
-                                statusText: response.statusText,
-                                contentType: response.headers.get('content-type'),
-                            });
-                        }
+                        response = await fetch(chatUrl, {
+                            method:  'POST',
+                            headers: reqHeaders,
+                            body:    JSON.stringify(reqBody),
+                            signal:  this.state.abortController.signal,
+                        });
                         if (response.ok || response.status !== 504) break;
                     }
                     if (!response.ok) {
@@ -825,6 +682,7 @@ if (required.some(el => !el)) {
                     let fullText     = '';
                     let displayedText = '';
                     let incomingHistory = null;
+                    let typingTimer = null;
                     let streamDone = false;
 
                     const renderDisplayed = (showCursor = true) => {
@@ -860,113 +718,43 @@ if (required.some(el => !el)) {
                         step();
                     };
 
-                    const appendTextChunk = text => {
-                        if (!text) return;
-                        fullText += text.replace(/\\n/g, '\n');
-                        startTypewriter();
-                    };
-
-                    const tryProcessJsonLine = raw => {
-                        if (!raw || (raw[0] !== '{' && raw[0] !== '[')) return false;
-                        try {
-                            const parsed = JSON.parse(raw);
-                            const maybeText =
-                                typeof parsed === 'string' ? parsed :
-                                typeof parsed?.content === 'string' ? parsed.content :
-                                typeof parsed?.text === 'string' ? parsed.text :
-                                typeof parsed?.response === 'string' ? parsed.response :
-                                typeof parsed?.answer === 'string' ? parsed.answer :
-                                typeof parsed?.message === 'string' ? parsed.message :
-                                typeof parsed?.data?.text === 'string' ? parsed.data.text :
-                                '';
-                            if (maybeText) {
-                                appendTextChunk(maybeText);
-                                return true;
-                            }
-                        } catch (e) {
-                            if (DEBUG_CHAT_STREAM_LOGS) console.warn('[ChatStream] Failed to parse JSON line:', e, raw);
-                        }
-                        return false;
-                    };
-
                     const processLine = line => {
                         if (!line.trim()) return;
-                        if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] Raw line from backend:', line);
-
-                        let normalizedLine = line.trim();
-                        if (normalizedLine.startsWith('data:')) normalizedLine = normalizedLine.slice(5).trimStart();
-                        if (!normalizedLine) return;
-                        if (normalizedLine === '[DONE]') {
-                            streamDone = true;
-                            return;
-                        }
-                        if (normalizedLine.startsWith('event:') || normalizedLine.startsWith('id:') || normalizedLine.startsWith('retry:')) {
-                            return;
-                        }
-
-                        const sep  = normalizedLine.indexOf('|');
-
-                        if (sep === -1) {
-                            if (tryProcessJsonLine(normalizedLine)) return;
-                            appendTextChunk(normalizedLine);
-                            return;
-                        }
-
-                        const type = normalizedLine.substring(0, sep);
-                        const data = normalizedLine.substring(sep + 1);
+                        const sep  = line.indexOf('|');
+                        if (sep === -1) return;
+                        const type = line.substring(0, sep);
+                        const data = line.substring(sep + 1);
                         if (type === 'STATUS') {
-                            if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] STATUS:', data);
                             const loader = contentDiv.querySelector('.thinking-loader');
                             if (!loader) return;
                             if (data === 'SEARCHING') loader.textContent = 'Thinking…';
                             if (data === 'TYPING')    loader.textContent = 'Writing…';
                         } else if (type === 'CHUNK') {
-                            if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] CHUNK length:', data.length);
                             fullText += data.replace(/\\n/g, '\n');
                             startTypewriter();
                         } else if (type === 'HISTORY_UPDATE') {
-                            if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] HISTORY_UPDATE received');
                             try { incomingHistory = JSON.parse(data); } catch (_) {}
-                        } else if (type === 'DONE') {
-                            // Stream complete signal from backend; data = session_id
-                            if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] DONE received:', data);
-                            streamDone = true;
                         } else if (type === 'ERROR') {
-                            if (DEBUG_CHAT_STREAM_LOGS) console.error('[ChatStream] ERROR received:', data);
                             const errMsg = /504|gateway timeout|timed out/i.test(data)
                                 ? 'AI service timed out. Please try again in a moment.'
                                 : /sarvam/i.test(data)
                                     ? 'Something went wrong with the AI service. Please try again.'
                                     : data;
                             throw new Error(errMsg);
-                        } else {
-                            if (DEBUG_CHAT_STREAM_LOGS) {
-                                console.warn('[ChatStream] Unknown event type from backend:', {
-                                    type,
-                                    dataLength: data.length,
-                                    dataPreview: data.slice(0, 120),
-                                });
-                            }
                         }
                     };
 
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
-                        const chunkText = decoder.decode(value, { stream: true });
-                        if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] Raw chunk:', chunkText);
-                        buffer += chunkText;
+                        buffer += decoder.decode(value, { stream: true });
                         const lines = buffer.split('\n');
                         buffer = lines.pop() ?? '';
                         for (const l of lines) processLine(l);
                     }
-                    if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] Stream ended by backend');
                     if (buffer.trim()) for (const l of buffer.split('\n')) processLine(l);
 
                     streamDone = true;
-                    if (!fullText.trim()) {
-                        throw new Error('AI returned no content (possible timeout or backend failure). Please try again.');
-                    }
                     if (!typingTimer) renderDisplayed(false);
 
                     if (incomingHistory) {
@@ -1005,14 +793,14 @@ if (required.some(el => !el)) {
             setProcessingState(on) {
                 this.state.isProcessing = on;
                 if (on) {
-                    this.dom.sendBtn?.classList.add('stop-mode');
-                    if (this.dom.sendBtn) this.dom.sendBtn.disabled = false;
-                    this.dom.sendIcon?.classList.add('hidden');
-                    this.dom.stopIcon?.classList.remove('hidden');
+                    this.dom.sendBtn.classList.add('stop-mode');
+                    this.dom.sendBtn.disabled = false;
+                    this.dom.sendIcon.classList.add('hidden');
+                    this.dom.stopIcon.classList.remove('hidden');
                 } else {
-                    this.dom.sendBtn?.classList.remove('stop-mode');
-                    this.dom.sendIcon?.classList.remove('hidden');
-                    this.dom.stopIcon?.classList.add('hidden');
+                    this.dom.sendBtn.classList.remove('stop-mode');
+                    this.dom.sendIcon.classList.remove('hidden');
+                    this.dom.stopIcon.classList.add('hidden');
                     this.state.abortController = null;
                     this.updateButtonState();
                 }
@@ -1021,10 +809,10 @@ if (required.some(el => !el)) {
             initDraft() {
                 const KEY = 'esamz_draft_v9';
                 const saved = localStorage.getItem(KEY);
-                if (saved && saved.trim() && this.dom.input) { this.dom.input.value = saved; this.handleInput(); }
+                if (saved && saved.trim()) { this.dom.input.value = saved; this.handleInput(); }
                 let timer;
                 const indicator = document.getElementById('draftIndicator');
-                this.dom.input?.addEventListener('input', () => {
+                this.dom.input.addEventListener('input', () => {
                     clearTimeout(timer);
                     timer = setTimeout(() => {
                         const v = this.dom.input.value;
@@ -1039,7 +827,7 @@ if (required.some(el => !el)) {
             }
 
             initPasteSupport() {
-                this.dom.input?.addEventListener('paste', e => {
+                this.dom.input.addEventListener('paste', e => {
                     const items = e.clipboardData?.items;
                     if (!items) return;
                     for (const item of items) {
@@ -1109,7 +897,7 @@ if (required.some(el => !el)) {
                         navigator.clipboard.writeText(bubble.innerText || bubble.textContent).then(() => {
                             copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
                             setTimeout(() => { copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="1"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`; }, 2000);
-                        }).catch(() => {});
+                        });
                     });
                 }
                 const editBtn = document.createElement('button');
@@ -1254,7 +1042,7 @@ if (required.some(el => !el)) {
                     btns.className = 'code-header-btns';
                     const copyBtn = document.createElement('button');
                     copyBtn.title = 'Copy'; copyBtn.setAttribute('aria-label','Copy code'); copyBtn.innerHTML = COPY_ICON;
-                    copyBtn.onclick = () => { const t = code ? code.textContent : pre.textContent; navigator.clipboard.writeText(t).then(() => { copyBtn.innerHTML = CHECK_ICON; setTimeout(() => { copyBtn.innerHTML = COPY_ICON; }, 2000); }).catch(() => {}); };
+                    copyBtn.onclick = () => { const t = code ? code.textContent : pre.textContent; navigator.clipboard.writeText(t).then(() => { copyBtn.innerHTML = CHECK_ICON; setTimeout(() => { copyBtn.innerHTML = COPY_ICON; }, 2000); }); };
                     const dlBtn = document.createElement('button');
                     dlBtn.title = 'Download'; dlBtn.setAttribute('aria-label','Download code'); dlBtn.innerHTML = DL_ICON;
                     dlBtn.onclick = () => { const t = code ? code.textContent : pre.textContent; const ext = EXT[lang] || 'txt'; const blob = new Blob([t],{type:'text/plain'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `code.${ext}`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 200); };
@@ -1314,7 +1102,7 @@ if (required.some(el => !el)) {
                 const existing = document.querySelector(`[data-row-id="${id}"]`);
                 if (existing) {
                     const nb = existing.querySelector('.nav-item');
-                    if (nb) { nb.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>${title}</span>`; nb.onclick = () => this.loadChat(id); }
+                    if (nb) { nb.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>${title}`; nb.onclick = () => this.loadChat(id); }
                     return;
                 }
                 const row = document.createElement('div');
@@ -1323,7 +1111,7 @@ if (required.some(el => !el)) {
                 const btn = document.createElement('button');
                 btn.className = 'nav-item';
                 btn.setAttribute('data-id', id);
-                btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>${title}</span>`;
+                btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>${title}`;
                 btn.onclick = () => this.loadChat(id);
                 const actions = document.createElement('div');
                 actions.className = 'nav-item-actions';
@@ -1381,30 +1169,18 @@ if (required.some(el => !el)) {
             }
 
             newChat() {
-                const doReset = () => {
-                    localStorage.removeItem(this.LAST_CHAT_KEY);
-                    this.state.chatId = null;
-                    this.state.files.forEach(f => { if (f.url) URL.revokeObjectURL(f.url); });
-                    this.state.files = [];
-                    this.dom.filePreview.innerHTML = '';
-                    this.dom.chatList.innerHTML    = '';
-                    this.dom.welcome.classList.remove('hidden');
-                    this.dom.input.focus();
-                    this.setActiveHistoryItem(null);
-                    const speTa = document.getElementById('spe-textarea');
-                    if (speTa) speTa.value = '';
-                    this.updateButtonState();
-                };
-                const mainEl = document.querySelector('.main-content');
-                if (mainEl && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-                    mainEl.classList.add('new-chat-exit');
-                    setTimeout(() => {
-                        mainEl.classList.remove('new-chat-exit');
-                        doReset();
-                    }, 260);
-                } else {
-                    doReset();
-                }
+                localStorage.removeItem(this.LAST_CHAT_KEY);
+                this.state.chatId = null;
+                this.state.files.forEach(f => { if (f.url) URL.revokeObjectURL(f.url); });
+                this.state.files = [];
+                this.dom.filePreview.innerHTML = '';
+                this.dom.chatList.innerHTML    = '';
+                this.dom.welcome.classList.remove('hidden');
+                this.dom.input.focus();
+                this.setActiveHistoryItem(null);
+                const speTa = document.getElementById('spe-textarea');
+                if (speTa) speTa.value = '';
+                this.updateButtonState();
             }
 
             exportSingleChat(chatId, title) {
@@ -1503,18 +1279,15 @@ if (required.some(el => !el)) {
                 const saved       = localStorage.getItem('esamz_theme');
                 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
                 const theme       = saved || (prefersDark ? 'dark' : 'light');
-                document.documentElement.setAttribute('data-theme', theme);
                 document.body.classList.remove('theme-light', 'theme-dark');
                 document.body.classList.add(`theme-${theme}`);
             }
 
             toggleTheme() {
                 const isDark = document.body.classList.contains('theme-dark');
-                const nextTheme = isDark ? 'light' : 'dark';
-                document.documentElement.setAttribute('data-theme', nextTheme);
                 document.body.classList.remove('theme-dark', 'theme-light');
-                document.body.classList.add(`theme-${nextTheme}`);
-                localStorage.setItem('esamz_theme', nextTheme);
+                document.body.classList.add(isDark ? 'theme-light' : 'theme-dark');
+                localStorage.setItem('esamz_theme', isDark ? 'light' : 'dark');
             }
         }
 
@@ -1549,26 +1322,33 @@ if (required.some(el => !el)) {
         })();
 
         // ====================================================================
+        //  MESSAGE SEARCH
+        // ====================================================================
+        (function initMessageSearch() {
+            const input = document.getElementById('historySearch');
+            if (!input) return;
+            input.addEventListener('input', function () {
+                const q = this.value.trim().toLowerCase();
+                document.querySelectorAll('.nav-item-row[data-row-id]').forEach(row => {
+                    if (!q) { row.classList.remove('search-hidden'); return; }
+                    const text = row.querySelector('.nav-item')?.textContent?.toLowerCase() || '';
+                    row.classList.toggle('search-hidden', !text.includes(q));
+                });
+            });
+        })();
+
+        // ====================================================================
         //  SCROLL TO TOP
         // ====================================================================
         (function initScrollTop() {
             const btn       = document.getElementById('scrollTopBtn');
             const container = document.getElementById('chatContainer');
             const progress = document.getElementById('chatScrollProgressBar');
-            const iconPath = btn?.querySelector('polyline');
-            const MIN_SCROLL_HEIGHT_FOR_BUTTON = 320;
-            const SCROLL_BOTTOM_THRESHOLD = 220;
             if (!btn || !container) return;
             const update = () => {
                 const max = container.scrollHeight - container.clientHeight;
                 const ratio = max > 0 ? (container.scrollTop / max) * 100 : 0;
-                const show = max > MIN_SCROLL_HEIGHT_FOR_BUTTON;
-                const goDown = max - container.scrollTop > SCROLL_BOTTOM_THRESHOLD;
-                btn.classList.toggle('visible', show);
-                btn.dataset.direction = goDown ? 'down' : 'up';
-                btn.title = goDown ? 'Scroll to latest' : 'Scroll to top';
-                btn.setAttribute('aria-label', goDown ? 'Scroll to latest' : 'Scroll to top');
-                if (iconPath) iconPath.setAttribute('points', goDown ? '6 9 12 15 18 9' : '18 15 12 9 6 15');
+                btn.classList.toggle('visible', container.scrollTop > 300);
                 if (progress) {
                     progress.style.width = `${ratio}%`;
                     progress.parentElement?.classList.toggle('visible', max > 300);
@@ -1577,10 +1357,7 @@ if (required.some(el => !el)) {
             container.addEventListener('scroll', update);
             window.addEventListener('resize', update);
             update();
-            btn.addEventListener('click', () => {
-                const direction = btn.dataset.direction || 'up';
-                container.scrollTo({ top: direction === 'down' ? container.scrollHeight : 0, behavior: 'smooth' });
-            });
+            btn.addEventListener('click', () => container.scrollTo({ top: 0, behavior: 'smooth' }));
         })();
 
         // ====================================================================
@@ -1638,6 +1415,14 @@ if (required.some(el => !el)) {
         })();
 
         // ====================================================================
+        //  BOOT
+        // ====================================================================
+        // Clean up stale PeerJS localStorage keys from previous versions
+        ['esamz_peer_code', 'esamz_known_peers', 'esamz_blacklist'].forEach(k => localStorage.removeItem(k));
+
+        window.app = new App();
+
+        // ====================================================================
         //  TIER SYNC — fetch real tier from MongoDB via /api/user/tier
         // ====================================================================
         async function syncTierFromServer() {
@@ -1659,36 +1444,6 @@ if (required.some(el => !el)) {
         // Expose so ClerkBridge can trigger sync on sign-in
         window.__syncTierFromServer = syncTierFromServer;
 
-        // ====================================================================
-        //  BOOT
-        // ====================================================================
-        // Clean up stale PeerJS localStorage keys from previous versions
-        ['esamz_peer_code', 'esamz_known_peers', 'esamz_blacklist'].forEach(k => localStorage.removeItem(k));
-
-        function waitForDOM() {
-  const requiredIds = [
-    'userInput',
-    'btnSend',
-    'chatList',
-    'chatContainer',
-    'sidebar'
-  ];
-
-  const missing = requiredIds.filter(id => !document.getElementById(id));
-
-  if (missing.length > 0) {
-    requestAnimationFrame(waitForDOM);
-    return;
-  }
-
-  setTimeout(() => {
-    window.app = new App();
-  }, 80);
-}
-
-waitForDOM();
-
-
         // Sync immediately if user is already signed in on page load
         syncTierFromServer();
 
@@ -1697,6 +1452,22 @@ waitForDOM();
 
   return (
     <>
+    {hasClerk && mounted && <ClerkBridge />}
+    
+    
+    <div className="cibo-modal-overlay hidden" id="ciboModal">
+        <div className="cibo-modal">
+            <button className="cibo-modal-close" id="ciboModalClose" aria-label="Close">✕</button>
+            <div className="cibo-modal-emoji">🍳</div>
+            <h2>Try Cibo Cocinar</h2>
+            <p>Voice-powered AI cooking assistance — step-by-step guidance, recipes, and culinary wisdom, entirely hands-free.</p>
+            <div className="cibo-modal-actions">
+                <a href="https://cibo.esamz.site" target="_blank" rel="noopener" className="cibo-modal-btn cibo-modal-btn-primary">Try Cibo Now</a>
+                <button className="cibo-modal-btn cibo-modal-btn-secondary" id="ciboModalDismiss">Maybe Later</button>
+            </div>
+        </div>
+    </div>
+
     
     <div className="plans-modal-overlay hidden" id="plansModal" role="dialog" aria-modal="true" aria-labelledby="plansModalTitle">
         <div className="plans-modal">
@@ -1791,77 +1562,70 @@ waitForDOM();
     </div>
 
     <div id="toast-container"></div>
+    <div className="overlay" id="overlay"></div>
 
     <div className="app-container">
-        <div className="overlay" id="overlay"></div>
         
         <aside className="sidebar" id="sidebar">
-            <div className="mobile-bottom-bar">
-                <div className="mobile-bottom-handle" aria-hidden="true"></div>
-                <div className="mobile-bottom-actions">
-                    <button className="mobile-bottom-cta mobile-bottom-cta-new" id="mobileNewChatBtn">
-                        ✨ New Chat
-                    </button>
-                    <a
-                        className="mobile-bottom-cta mobile-bottom-cta-upgrade"
-                        id="mobileUpgradeBtn"
-                        href="https://payments.cashfree.com/forms/esamz-ai"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        🚀 Upgrade Now
-                    </a>
-                </div>
-            </div>
             <div className="sidebar-header">
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"16px"}}>
-                    <div className="sidebar-brand-heading">eSAMz <span className="brand-z">AI</span></div>
+                <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:"14px"}}>
+                    <div className="brand" style={{marginBottom:0}}>
+                        <div className="brand-eyebrow">Strategic Mind</div>
+                        <div className="brand-name">e<span>S</span>AMz</div>
+                        <div className="brand-tagline">Understands in 2 messages, not 2 years.</div>
+                    </div>
                     <button className="btn-sidebar-close" id="btnCloseSidebar" title="Close sidebar" aria-label="Close sidebar">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 18l-6-6 6-6"/></svg>
                     </button>
                 </div>
                 <button className="btn-new-chat" id="btnNewChat">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
-                    New Chat
+                    New Conversation
+                </button>
+                <button className="btn-view-plans" id="btnViewPlans">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    View Plans & Upgrade
                 </button>
             </div>
             <div className="sidebar-nav">
-                <div className="nav-section">
-                    <div className="nav-label">Tools</div>
-                    <a href="https://me.esamz.site" className="nav-item" target="_blank" rel="noopener">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                        <span>MindEase</span>
-                    </a>
-                    <a href="https://hisaab.esamz.site" className="nav-item" target="_blank" rel="noopener">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-                        <span>Hisaab</span>
-                    </a>
+                <div className="search-box">
+                    <input type="search" id="historySearch" className="search-input" placeholder="Search conversations…" aria-label="Search conversations" autoComplete="off" />
                 </div>
-                <div className="nav-section" style={{flex:1}}>
-                    <div className="nav-label">Chats</div>
+                <div className="nav-section">
+                    <div className="nav-label">Recent</div>
                     <div id="historyList"></div>
                 </div>
+                <div className="nav-section">
+                    <div className="nav-label">Tools</div>
+                    <a href="https://cibo.esamz.site" className="nav-item" target="_blank" rel="noopener">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2"/><path d="M7 2v20M21 15V2a5 5 0 00-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>
+                        Cibo Cocinar
+                    </a>
+                </div>
             </div>
+
+            
             <div className="sidebar-footer">
                 <div id="planBadgeContainer"></div>
+                <div className="sidebar-footer-text">© <a href="https://esamz.info" target="_blank" rel="noopener">eSAMz AI</a> 2026 All rights reserved</div>
             </div>
         </aside>
 
         
         <main className="main-content">
-            {/* Drag strip – left-edge drag to reopen collapsed sidebar on desktop */}
-            <div className="sidebar-drag-strip" aria-hidden="true"></div>
             <header className="header">
                 <div style={{display:"flex",alignItems:"center",gap:"14px"}}>
+                    
+                    <button className="icon-btn mobile-toggle" id="openSidebar" aria-label="Open menu">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                    </button>
+                    
                     <button className="icon-btn btn-open-sidebar-desktop" id="btnOpenSidebarDesktop" title="Open sidebar" aria-label="Open sidebar">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                     </button>
-                    <button className="icon-btn mobile-toggle" id="openSidebar" title="Open menu" aria-label="Open menu">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-                    </button>
                     <div className="header-context">
                         <span className="header-context-dot"></span>
-                        <span>Sarvam 105B · Web Search On.</span>
+                        <span>eSAMz Chat</span>
                     </div>
                 </div>
                 <div className="header-right">
@@ -1897,43 +1661,29 @@ waitForDOM();
                 <div className="chat-scroll-progress" id="chatScrollProgress"><span id="chatScrollProgressBar"></span></div>
                 <div className="chat-wrapper">
                     <div className="welcome" id="welcomeScreen">
-                        <div className="welcome-dateline" aria-label="eSAMz AI branding">✦ eSAMz AI</div>
+                        <div className="welcome-dateline" aria-label="eSAMz AI branding">eSAMz AI</div>
                         <h1 className="welcome-headline" id="welcomeHeadline">Ask anything.<br />Think <em>deeper</em>.</h1>
                         <p className="welcome-deck">Deep reasoning with emotional clarity — for complex problems that demand more than a quick answer.</p>
                         <div className="welcome-suggestions-wrap">
                             <div className="welcome-suggestions" id="welcomeSuggestions" tabIndex={0} aria-label="Suggested prompts">
-                                <button className="welcome-suggestion-card" data-prompt="Build me a practical Python data analysis workflow for messy CSV data." data-mode="mode-analyst">
-                                    <span className="welcome-suggestion-icon">🐍</span>
+                                <button className="welcome-suggestion-card" data-prompt="Build me a practical Python data analysis workflow for messy CSV data.">
                                     <span className="welcome-suggestion-title">Python Data Analysis</span>
                                     <span className="welcome-suggestion-copy">Practical workflow for real data</span>
                                 </button>
-                                <button className="welcome-suggestion-card" data-prompt="Give me a deep explanation of transformers with simple analogies and examples." data-mode="mode-thinker">
-                                    <span className="welcome-suggestion-icon">🧠</span>
+                                <button className="welcome-suggestion-card" data-prompt="Give me a deep explanation of transformers with simple analogies and examples.">
                                     <span className="welcome-suggestion-title">Deep Explanations</span>
-                                    <span className="welcome-suggestion-copy">Complex topics made crystal clear</span>
+                                    <span className="welcome-suggestion-copy">Complex topics made clear</span>
                                 </button>
-                                <button className="welcome-suggestion-card" data-prompt="Help me design a 30-day learning plan for mastering system design interviews." data-mode="mode-planner">
-                                    <span className="welcome-suggestion-icon">🗓️</span>
+                                <button className="welcome-suggestion-card" data-prompt="Help me design a 30-day learning plan for mastering system design interviews.">
                                     <span className="welcome-suggestion-title">30-Day Learning Plan</span>
                                     <span className="welcome-suggestion-copy">Step-by-step with milestones</span>
                                 </button>
-                                <button className="welcome-suggestion-card" data-prompt="Review this startup idea and give risks, opportunities, and a go-to-market strategy." data-mode="mode-strategist">
-                                    <span className="welcome-suggestion-icon">🚀</span>
+                                <button className="welcome-suggestion-card" data-prompt="Review this startup idea and give risks, opportunities, and a go-to-market strategy.">
                                     <span className="welcome-suggestion-title">Startup Strategy Review</span>
                                     <span className="welcome-suggestion-copy">Risks, opportunities, execution</span>
                                 </button>
-                                <button className="welcome-suggestion-card" data-prompt="Write a clean, production-ready REST API in Node.js with authentication and error handling." data-mode="mode-builder">
-                                    <span className="welcome-suggestion-icon">⚡</span>
-                                    <span className="welcome-suggestion-title">REST API Blueprint</span>
-                                    <span className="welcome-suggestion-copy">Auth, errors, production-ready</span>
-                                </button>
-                                <button className="welcome-suggestion-card" data-prompt="Help me write a compelling cold email sequence to land my first 10 clients as a freelancer." data-mode="mode-writer">
-                                    <span className="welcome-suggestion-icon">✉️</span>
-                                    <span className="welcome-suggestion-title">Cold Email Sequence</span>
-                                    <span className="welcome-suggestion-copy">Land your first 10 clients</span>
-                                </button>
                             </div>
-                            <div className="welcome-suggestions-hint">✨ Swipe for more ideas <span className="floating-arrow">→</span></div>
+                            <div className="welcome-suggestions-hint">Swipe for more ideas →</div>
                         </div>
                     </div>
                     <div id="chatList"></div>
@@ -1950,26 +1700,10 @@ waitForDOM();
                             <button className="icon-btn" id="btnUpload" title="Attach file" aria-label="Attach file">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
                             </button>
-                            <textarea id="userInput" rows="1" placeholder="Ask anything — I love a challenge…"></textarea>
+                            <textarea id="userInput" rows="1" placeholder="Ask eSAMz anything…"></textarea>
                             <button className="send-btn" id="btnSend" disabled aria-label="Send message">
                                 <svg className="send-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                                 <svg className="stop-icon hidden" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
-                            </button>
-                        </div>
-
-                        {/* Slash command autocomplete menu */}
-                        <div className="slash-cmd-menu hidden" id="slashCmdMenu">
-                            <button className="slash-cmd-item" data-cmd="/help">
-                                <span className="slash-cmd-name">/help</span>
-                                <span className="slash-cmd-desc">Show available commands</span>
-                            </button>
-                            <button className="slash-cmd-item" data-cmd="/clear">
-                                <span className="slash-cmd-name">/clear</span>
-                                <span className="slash-cmd-desc">Clear session memory</span>
-                            </button>
-                            <button className="slash-cmd-item" data-cmd="/search">
-                                <span className="slash-cmd-name">/search</span>
-                                <span className="slash-cmd-desc">Search the web</span>
                             </button>
                         </div>
 
@@ -2026,9 +1760,6 @@ waitForDOM();
     <button className="scroll-top-btn" id="scrollTopBtn" title="Scroll to top" aria-label="Scroll to top">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15"/></svg>
     </button>
-    <button className="mobile-bottom-open-btn" id="openSidebarBottom" title="Open menu" aria-label="Open menu">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15"/></svg>
-    </button>
 
     
     <div className="shortcuts-modal-overlay hidden" id="shortcutsModal">
@@ -2056,7 +1787,7 @@ waitForDOM();
             <span id="confirmTitle">Confirm</span>
         </div>
         <div className="dialog-body">
-            <p id="confirmMessage" style={{marginBottom:0,fontStyle:"italic",fontSize:"14px"}}></p>
+            <p id="confirmMessage" style={{color:"var(--ink-faint)",marginBottom:0,fontStyle:"italic",fontSize:"14px"}}></p>
             <div className="dialog-actions">
                 <button className="btn-secondary" id="confirmCancel">Cancel</button>
                 <button className="btn-primary" id="confirmOk">Confirm</button>

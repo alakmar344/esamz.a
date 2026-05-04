@@ -3,8 +3,7 @@ import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 
-const RUST_BACKEND_URL = 'https://backend.esamz.site/api/chat';
-const ENABLE_VERBOSE_BACKEND_LOGS = process.env.ESAMZ_DEBUG_BACKEND_STREAM === 'true';
+const RUST_BACKEND_URL = 'https://backend-for-esamzai.onrender.com/api/chat';
 
 // Database connection helper (shared connection pool)
 const connectDB = async () => {
@@ -61,14 +60,6 @@ export async function POST(req: Request) {
   // 5. Forward to Rust Backend
   try {
     const body = await req.json();
-    if (ENABLE_VERBOSE_BACKEND_LOGS) {
-      console.log('[Proxy] Forwarding chat request to backend', {
-        sessionId: body.sessionId,
-        ragEnabled: body.ragEnabled,
-        hasCustomSystemPrompt: Boolean(body.customSystemPrompt),
-        hasClientHistory: Array.isArray(body.clientHistory),
-      });
-    }
     const rustResponse = await fetch(RUST_BACKEND_URL, {
       method: "POST",
       headers: {
@@ -85,54 +76,11 @@ export async function POST(req: Request) {
       }),
     });
 
-    if (!rustResponse.ok) {
-      const errorText = await rustResponse.text();
-      console.error('[Proxy] Backend returned error response', {
-        status: rustResponse.status,
-        statusText: rustResponse.statusText,
-        body: ENABLE_VERBOSE_BACKEND_LOGS ? errorText : undefined,
-      });
-      return NextResponse.json(
-        { error: errorText || `AI backend request failed with status ${rustResponse.status}` },
-        { status: rustResponse.status }
-      );
-    }
-
-    if (!rustResponse.body) {
-      return NextResponse.json({ error: "Empty response from AI backend" }, { status: 502 });
-    }
-
-    let responseBody: ReadableStream = rustResponse.body;
-    if (ENABLE_VERBOSE_BACKEND_LOGS) {
-      const decoder = new TextDecoder('utf-8');
-      responseBody = rustResponse.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
-        transform(chunk, controller) {
-          const chunkText = decoder.decode(chunk, { stream: true });
-          console.log('[Proxy] Backend stream chunk:', chunkText);
-          controller.enqueue(chunk);
-        },
-        flush() {
-          const finalChunk = decoder.decode();
-          if (finalChunk) console.log('[Proxy] Backend stream chunk:', finalChunk);
-          console.log('[Proxy] Backend stream completed', {
-            status: rustResponse.status,
-            statusText: rustResponse.statusText,
-            contentType: rustResponse.headers.get('Content-Type'),
-          });
-        },
-      }));
-    }
-
-    // Stream the Rust response back to the frontend with original status
-    return new Response(responseBody, {
-      status: rustResponse.status,
-      statusText: rustResponse.statusText,
-      headers: {
-        "Content-Type": rustResponse.headers.get("Content-Type") ?? "text/plain; charset=utf-8",
-      },
+    // Stream the Rust response back to the frontend
+    return new Response(rustResponse.body, {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   } catch (error) {
-    console.error('[Proxy] Backend request failed', error);
     return NextResponse.json({ error: "Backend unreachable" }, { status: 500 });
   }
 }

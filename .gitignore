@@ -17,3 +17,4 @@ npm-debug.log*
 # Cloudflare / OpenNext build artifacts
 .open-next/
 .wrangler/
+*.tsbuildinfo

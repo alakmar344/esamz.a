@@ -1,10 +1,11 @@
 import { clerkMiddleware } from '@clerk/nextjs/server'
+import { NextResponse, type NextRequest } from 'next/server'
 
-if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || !process.env.CLERK_SECRET_KEY) {
-  throw new Error('One or more required Clerk environment variables are missing: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY')
-}
+const hasClerk = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 
-export default clerkMiddleware()
+export default hasClerk
+  ? clerkMiddleware()
+  : (_req: NextRequest) => NextResponse.next()
 
 export const config = {
   matcher: [
