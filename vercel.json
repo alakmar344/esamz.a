@@ -1,10 +1,6 @@
 {
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://backend.esamz.site/:path*"
-    },
-    {
       "source": "/success",
       "destination": "https://success-navy.vercel.app/"
     },

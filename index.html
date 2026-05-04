@@ -684,23 +684,39 @@
         <div class="plans-modal">
             <button class="plans-modal-close" id="plansModalClose" aria-label="Close">✕</button>
             <div class="plans-modal-header">
-                <div class="plans-modal-eyebrow">eSAMz AI — Plans &amp; Pricing</div>
-                <div class="plans-modal-title" id="plansModalTitle">Choose your plan</div>
-                <div class="plans-modal-sub">Unlock advanced features with a premium subscription.</div>
+                <div class="plans-modal-eyebrow">💎 eSAMz AI Membership Plans</div>
+                <div class="plans-modal-title" id="plansModalTitle">Your conversations never leave the room.</div>
+                <div class="plans-modal-sub">Every major AI trains its next model on chats. eSAMz doesn't. Not a single message is stored. Not a single word trains a future model. Just you and the AI.</div>
             </div>
             <div class="plans-modal-body">
                 <div class="plans-grid">
                     <div class="plan-card">
+                        <div class="plan-card-icon">🆓</div>
+                        <div class="plan-card-content">
+                            <div class="plan-card-header">
+                                <div class="plan-card-name">Free — Try It Yourself</div>
+                                <div class="plan-card-price">₹0 forever</div>
+                            </div>
+                            <ul class="plan-card-features">
+                                <li>20 messages per day</li>
+                                <li>No card required</li>
+                                <li>See the difference privacy makes</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="plan-card">
                         <div class="plan-card-icon">⚡</div>
                         <div class="plan-card-content">
                             <div class="plan-card-header">
-                                <div class="plan-card-name">Plus</div>
-                                <div class="plan-card-price">₹99/mo</div>
+                                <div class="plan-card-name">Plus — The Research Student</div>
+                                <div class="plan-card-price">₹99 / month</div>
                             </div>
                             <ul class="plan-card-features">
-                                <li>RAG always on</li>
-                                <li>Wikipedia + web search</li>
-                                <li>50 messages/day</li>
+                                <li>50 chats per day</li>
+                                <li>Always-On Web Verification (RAG) — cannot be disabled, by design</li>
+                                <li>Zero-retention encryption — your data is never stored</li>
+                                <li>2 active devices simultaneously</li>
+                                <li>Delivered to your inbox instantly after payment</li>
                             </ul>
                         </div>
                     </div>
@@ -708,13 +724,15 @@
                         <div class="plan-card-icon">🚀</div>
                         <div class="plan-card-content">
                             <div class="plan-card-header">
-                                <div class="plan-card-name">Pro</div>
-                                <div class="plan-card-price">₹199/mo</div>
+                                <div class="plan-card-name">Pro — The Power Creator</div>
+                                <div class="plan-card-price">₹199 / month</div>
                             </div>
                             <ul class="plan-card-features">
-                                <li>Everything in Plus</li>
+                                <li>100 chats per day</li>
                                 <li>RAG on/off toggle</li>
-                                <li>100 messages/day</li>
+                                <li>Priority speed routing</li>
+                                <li>Zero-retention encryption</li>
+                                <li>2 active devices simultaneously</li>
                             </ul>
                         </div>
                     </div>
@@ -722,13 +740,28 @@
                         <div class="plan-card-icon">♾️</div>
                         <div class="plan-card-content">
                             <div class="plan-card-header">
-                                <div class="plan-card-name">Max</div>
-                                <div class="plan-card-price">₹499/mo</div>
+                                <div class="plan-card-name">Max — The Developer &amp; Founder</div>
+                                <div class="plan-card-price">₹499 / month</div>
                             </div>
                             <ul class="plan-card-features">
-                                <li>Everything in Pro</li>
-                                <li>Custom system prompt editor</li>
-                                <li>1000 messages/day</li>
+                                <li>1000 chats per day</li>
+                                <li>Custom System Prompt — define exactly how the AI behaves</li>
+                                <li>Full RAG toggle</li>
+                                <li>Priority speed routing</li>
+                                <li>Zero-retention encryption</li>
+                                <li>2 active devices simultaneously</li>
+                                <li>Direct feedback channel — your feature requests go to the front of the queue for v11</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="plan-card">
+                        <div class="plan-card-icon">🛡️</div>
+                        <div class="plan-card-content">
+                            <div class="plan-card-header">
+                                <div class="plan-card-name">Every Paid Plan Includes</div>
+                            </div>
+                            <ul class="plan-card-features">
+                                <li>Zero Training Guarantee — your conversations are never used to train any AI model, ever. Not ours. Not anyone's.</li>
                             </ul>
                         </div>
                     </div>
@@ -897,10 +930,9 @@
                     <div class="input-footer">
                         <span style="font-family:'DM Mono';font-size:9px;border:1px solid var(--rule-bold);padding:2px 5px;border-radius:5px;margin-right:8px;vertical-align:middle;color:var(--vermillion);background:var(--vermillion-soft);">SGI</span>
                         <span style="font-size:14px;margin-right:4px;vertical-align:middle;">🤖</span>
-                        <span style="vertical-align:middle;" id="disclaimerText">
-                            eSAMz AI generates synthetic content and may be inaccurate.
-                            By using this service, you agree to our
-                            <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" style="font-weight:600;">Privacy Policy</a> &amp;
+                        <span style="vertical-align:middle;" id="policyLinksText">
+                            AI output may be inaccurate. By using this service, you agree to our
+                            <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" style="font-weight:600;">Privacy Policy</a> and
                             <a href="https://esamz.info/termsofservice" target="_blank" rel="noopener" style="font-weight:600;">Terms</a>.
                         </span>
                     </div>
@@ -971,8 +1003,8 @@
         'use strict';
 
         const CLERK_PUBLISHABLE_KEY = 'pk_test_Z2VudWluZS1tYXJtb3NldC0yMS5jbGVyay5hY2NvdW50cy5kZXYk';
-        const BACKEND_CHAT_URL    = 'https://backend-for-esamzai.onrender.com/api/chat';
-        const BACKEND_BASE_URL    = 'https://backend-for-esamzai.onrender.com';
+        const BACKEND_CHAT_URL    = 'https://backend.esamz.site/api/chat';
+        const BACKEND_BASE_URL    = 'https://backend.esamz.site';
 
         const LS_PLAN      = 'esamz_plan';
         const LS_STORAGE   = 'esamz_conversations_v9';
@@ -2146,27 +2178,6 @@
         ['esamz_peer_code', 'esamz_known_peers', 'esamz_blacklist'].forEach(k => localStorage.removeItem(k));
 
         window.app = new App();
-
-        // ====================================================================
-        //  FIX P8: Privacy status — fetch /api/privacy-status and show badge
-        // ====================================================================
-        (async function syncPrivacyStatus() {
-            try {
-                const res  = await fetch(`${BACKEND_BASE_URL}/api/privacy-status`, { credentials: 'include' });
-                if (!res.ok) return;
-                const data = await res.json();
-                const disclaimerSpan = document.getElementById('disclaimerText');
-                if (!disclaimerSpan) return;
-                const ragLabel = data.rag        ? ` · RAG: ${data.rag}` : '';
-                const retLabel = data.dataRetentionMinutes
-                    ? ` · Session cleared after ${data.dataRetentionMinutes}m idle`
-                    : '';
-                const badge = document.createElement('span');
-                badge.style.cssText = 'margin-left:10px;font-family:"DM Mono",monospace;font-size:9px;color:var(--ink-ghost);letter-spacing:0.06em;opacity:0.8;';
-                badge.textContent   = `${data.privacyMode ? '🔒 Zero-storage' : '🗄 Session memory'}${ragLabel}${retLabel}`;
-                disclaimerSpan.parentNode.appendChild(badge);
-            } catch (_) { /* backend offline — no badge shown */ }
-        })();
 
     })();
     </script>
