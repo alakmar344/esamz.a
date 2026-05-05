@@ -528,14 +528,27 @@
 
         /* View Plans sidebar button */
         .btn-view-plans{
-            width:100%;height:36px;background:transparent;
-            border:1px solid var(--crescent-border);color:var(--crescent);
-            font-family:'Inter',system-ui,sans-serif;font-size:12px;font-weight:500;
-            cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
-            transition:all 180ms ease;border-radius:8px;margin-top:6px;
-            box-shadow:inset 0 0 0 1px transparent;
+            width:100%;height:38px;
+            background:linear-gradient(135deg,rgba(37,99,235,0.12),rgba(96,165,250,0.08));
+            border:1px solid rgba(37,99,235,0.38);color:var(--crescent);
+            font-family:'Inter',system-ui,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.02em;
+            cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;
+            transition:all 200ms ease;border-radius:8px;margin-top:8px;
+            text-decoration:none;
+            box-shadow:0 0 0 0 rgba(37,99,235,0.0),0 2px 8px rgba(37,99,235,0.12);
+            animation:viewPlansPulse 3s ease-in-out infinite;
         }
-        .btn-view-plans:hover{background:var(--grad-primary);border-color:transparent;color:#fff;box-shadow:0 4px 14px rgba(240,82,52,0.28);}
+        .btn-view-plans:hover{
+            background:var(--grad-premium,linear-gradient(135deg,#2563eb,#60a5fa));
+            border-color:transparent;color:#fff;
+            box-shadow:0 4px 16px rgba(37,99,235,0.42);
+            transform:translateY(-1px);
+            animation:none;
+        }
+        @keyframes viewPlansPulse{
+            0%,100%{box-shadow:0 2px 8px rgba(37,99,235,0.12),0 0 0 0 rgba(37,99,235,0.0);}
+            50%{box-shadow:0 2px 12px rgba(37,99,235,0.22),0 0 0 4px rgba(37,99,235,0.06);}
+        }
 
         /* ----- MOBILE RESPONSIVE ----- */
         .mobile-toggle{display:none;}
@@ -2009,6 +2022,7 @@ body.mode-writer .header::after,body.mode-writer .chat-scroll-progress span{
 /* ---- Elite: reduced motion compliance ---- */
 @media(prefers-reduced-motion:reduce){
   .btn-new-chat::before,.mobile-bottom-cta-new::before,.mobile-bottom-cta-upgrade::before,.plans-upgrade-btn::before{animation:none!important;}
+  .btn-view-plans{animation:none!important;}
   .floating-arrow{animation:none!important;}
   .header-context-dot{animation:none!important;}
   .welcome-suggestion-card:active,.plan-card:active{transform:none!important;}

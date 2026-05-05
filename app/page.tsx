@@ -1824,6 +1824,9 @@ waitForDOM();
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
                     New Chat
                 </button>
+                <a className="btn-view-plans" href="https://payments.cashfree.com/forms/esamz-ai" target="_blank" rel="noopener noreferrer" aria-label="View eSAMz AI plans and upgrade (opens in new tab)">
+                    ⚡ View Plans &amp; Upgrade
+                </a>
             </div>
             <div className="sidebar-nav">
                 <div className="nav-section">
