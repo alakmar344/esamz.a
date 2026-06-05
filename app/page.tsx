@@ -17,6 +17,9 @@ declare global {
     DOMPurify: any
     Prism: any
     Tesseract: any
+    Paddle: any
+    ort: any
+    cv: any
     dataLayer: any[]
   }
 }
@@ -680,8 +683,91 @@ if (required.some(el => !el)) {
             }
 
             async runOCR(file) {
+                try {
+                    // Attempt PaddleOCR first
+                    return await this.runPaddleOCR(file);
+                } catch (e) {
+                    console.warn('PaddleOCR failed, falling back to Tesseract:', e);
+                    return await this.runTesseractOCR(file);
+                }
+            }
+
+            async runPaddleOCR(file) {
+                if (typeof window.Paddle === 'undefined') {
+                    // Load dependencies for PaddleOCR
+                    const scripts = [
+                        'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js',
+                        'https://docs.opencv.org/4.8.0/opencv.js'
+                    ];
+                    
+                    for (const src of scripts) {
+                        if (src.includes('ort') && typeof window.ort !== 'undefined') continue;
+                        if (src.includes('opencv') && typeof window.cv !== 'undefined') continue;
+                        await new Promise((res, rej) => {
+                            const s = document.createElement('script');
+                            s.src = src;
+                            s.async = true;
+                            s.onload = res;
+                            s.onerror = rej;
+                            document.head.appendChild(s);
+                        });
+                    }
+
+                    // Load PaddleOCR library
+                    await new Promise((res, rej) => {
+                        const s = document.createElement('script');
+                        s.type = 'module';
+                        s.text = `
+                            import * as Paddle from "https://cdn.jsdelivr.net/npm/esearch-ocr@5.1.5/dist/esearch-ocr.js";
+                            window.Paddle = Paddle;
+                            window.dispatchEvent(new CustomEvent('paddle-loaded'));
+                        `;
+                        s.onerror = rej;
+                        document.head.appendChild(s);
+                        window.addEventListener('paddle-loaded', res, { once: true });
+                    });
+                }
+
+                // Initialize PaddleOCR if not already done
+                if (!this.paddleInitialized) {
+                    const assetsPath = "https://cdn.jsdelivr.net/npm/paddleocr-browser/dist/";
+                    const res = await fetch(assetsPath + "ppocr_keys_v1.txt");
+                    const dic = await res.text();
+                    
+                    await window.Paddle.init({
+                        detPath: assetsPath + "ppocr_det.onnx",
+                        recPath: assetsPath + "ppocr_rec.onnx",
+                        dic: dic,
+                        ort: window.ort,
+                        node: false,
+                        cv: window.cv
+                    });
+                    this.paddleInitialized = true;
+                }
+
+                // Convert file to dataURL for PaddleOCR
+                const dataURL = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.readAsDataURL(file);
+                });
+
+                const result = await window.Paddle.ocr(dataURL);
+                const text = result.map(r => r.text).join('\n');
+                
+                if (!text || text.trim() === '') throw new Error('No text found by PaddleOCR');
+                return text;
+            }
+
+            async runTesseractOCR(file) {
                 if (typeof Tesseract === 'undefined') {
-                    await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@v5/dist/tesseract.min.js'; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+                    await new Promise((res, rej) => {
+                        const s = document.createElement('script');
+                        s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@v5/dist/tesseract.min.js';
+                        s.onload = res;
+                        s.onerror = rej;
+                        document.head.appendChild(s);
+                    });
                 }
                 const worker = await Tesseract.createWorker('eng');
                 const { data: { text } } = await worker.recognize(file);
