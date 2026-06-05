@@ -21,3 +21,4 @@ const nextConfig: NextConfig = {
 }
 
 export default nextConfig
+// Deployment trigger: Added PaddleOCR with fallback
