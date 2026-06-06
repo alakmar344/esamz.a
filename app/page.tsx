@@ -318,7 +318,9 @@ export default function ChatPage() {
 
                 const isSignedIn = !!window.__clerk?.isSignedIn;
                 const acceptedAt = localStorage.getItem(LS_PRIVACY_POLICY_ACCEPTED_AT);
-                wrapper.classList.toggle('visible', isSignedIn);
+                // Only show the box while a signed-in user still needs to agree.
+                // Once accepted (ticked), hide the whole box.
+                wrapper.classList.toggle('visible', isSignedIn && !acceptedAt);
 
                 if (!isSignedIn) {
                     checkbox.checked = false;
@@ -371,6 +373,8 @@ export default function ChatPage() {
                     localStorage.setItem(LS_PRIVACY_POLICY_ACCEPTED_AT, acceptedAt);
                     status && (status.textContent = `Accepted ${new Date(acceptedAt).toLocaleString()}`);
                     Utils.showToast('Privacy policy agreement saved', 'success');
+                    // Hide the whole agreement box now that it has been accepted.
+                    this.updatePrivacyAgreementVisibility();
                 } catch (_) {
                     checkbox.checked = false;
                     checkbox.disabled = false;
