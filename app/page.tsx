@@ -57,6 +57,8 @@ export default function ChatPage() {
         const LS_PLAN      = 'esamz_plan';
         const LS_STORAGE   = 'esamz_conversations_v9';
         const LS_LAST_CHAT = 'esamz_last_chat_id';
+        const LS_PRIVACY_POLICY_ACCEPTED_AT = 'esamz_privacy_policy_accepted_at';
+        const PRIVACY_POLICY_URL = 'https://esamz.info/privacypolicy';
         const CHAR_COUNT_DISPLAY_THRESHOLD = 3200;
         const TYPEWRITER_INTERVAL_MS = 18;
         const TYPEWRITER_SPEED_STEPS = {
@@ -258,6 +260,9 @@ export default function ChatPage() {
                     overlay:     document.getElementById('overlay'),
                     sendBtn:     document.getElementById('btnSend'),
                     sendIcon:    document.querySelector('.send-icon'),
+                    privacyAgreement: document.getElementById('privacyAgreement'),
+                    privacyAgreementCheckbox: document.getElementById('privacyAgreementCheckbox'),
+                    privacyAgreementStatus: document.getElementById('privacyAgreementStatus'),
                     stopIcon:    document.querySelector('.stop-icon'),
                     chatContainer: document.getElementById('chatContainer'),
                     uploadBtn:   document.getElementById('btnUpload'),
@@ -303,6 +308,75 @@ export default function ChatPage() {
                     tryLoad();
                 }
                 this.dom.input?.focus();
+            }
+
+            updatePrivacyAgreementVisibility() {
+                const wrapper = this.dom.privacyAgreement;
+                const checkbox = this.dom.privacyAgreementCheckbox;
+                const status = this.dom.privacyAgreementStatus;
+                if (!wrapper || !checkbox) return;
+
+                const isSignedIn = !!window.__clerk?.isSignedIn;
+                const acceptedAt = localStorage.getItem(LS_PRIVACY_POLICY_ACCEPTED_AT);
+                wrapper.classList.toggle('visible', isSignedIn);
+
+                if (!isSignedIn) {
+                    checkbox.checked = false;
+                    checkbox.disabled = false;
+                    if (status) status.textContent = '';
+                    return;
+                }
+
+                if (acceptedAt) {
+                    checkbox.checked = true;
+                    checkbox.disabled = true;
+                    if (status) status.textContent = `Accepted ${new Date(acceptedAt).toLocaleString()}`;
+                } else {
+                    checkbox.checked = false;
+                    checkbox.disabled = false;
+                    if (status) status.textContent = 'Required before continuing with signed-in use.';
+                }
+            }
+
+            async handlePrivacyAgreementChange() {
+                const checkbox = this.dom.privacyAgreementCheckbox;
+                const status = this.dom.privacyAgreementStatus;
+                if (!checkbox || !checkbox.checked) return;
+
+                if (!window.__clerk?.isSignedIn) {
+                    checkbox.checked = false;
+                    status && (status.textContent = 'Please sign in first.');
+                    window.__clerk?.openSignIn();
+                    return;
+                }
+
+                checkbox.disabled = true;
+                status && (status.textContent = 'Saving your privacy policy agreement...');
+
+                try {
+                    const res = await fetch('/api/user/privacy-policy-acceptance', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({
+                            accepted: true,
+                            policyUrl: PRIVACY_POLICY_URL,
+                            source: 'post-sign-in-checkbox',
+                        }),
+                    });
+
+                    if (!res.ok) throw new Error('Acceptance log failed');
+                    const data = await res.json();
+                    const acceptedAt = data.acceptedAt || new Date().toISOString();
+                    localStorage.setItem(LS_PRIVACY_POLICY_ACCEPTED_AT, acceptedAt);
+                    status && (status.textContent = `Accepted ${new Date(acceptedAt).toLocaleString()}`);
+                    Utils.showToast('Privacy policy agreement saved', 'success');
+                } catch (_) {
+                    checkbox.checked = false;
+                    checkbox.disabled = false;
+                    status && (status.textContent = 'Could not save agreement. Please try again.');
+                    Utils.showToast('Could not save privacy policy agreement', 'error');
+                }
             }
 
             getHistory() {
@@ -355,6 +429,9 @@ if (required.some(el => !el)) {
                     }
                 };
                 this.dom.clearChatBtn?.addEventListener('click', clearChatAction);
+
+                this.dom.privacyAgreementCheckbox?.addEventListener('change', () => this.handlePrivacyAgreementChange());
+                this.updatePrivacyAgreementVisibility();
 
                 if (this.dom.uploadBtn && this.dom.fileInput) {
                     this.dom.uploadBtn.addEventListener('click', () => this.dom.fileInput?.click());
@@ -1739,7 +1816,11 @@ if (required.some(el => !el)) {
                     localStorage.removeItem(LS_PLAN);
                 }
                 checkPermissions();
-            } catch (_) { /* server offline — keep existing localStorage value */ }
+                window.app?.updatePrivacyAgreementVisibility?.();
+            } catch (_) {
+                window.app?.updatePrivacyAgreementVisibility?.();
+                /* server offline — keep existing localStorage value */
+            }
         }
 
         // Expose so ClerkBridge can trigger sync on sign-in
@@ -2090,6 +2171,16 @@ waitForDOM();
                             ></textarea>
                             <div className="spe-hint" id="speHint" style={{display:"none"}}>Changes apply from your next message. Cleared when you start a new chat.</div>
                         </div>
+                    </div>
+                    <div className="privacy-agreement" id="privacyAgreement" role="region" aria-label="Privacy policy agreement">
+                        <label className="privacy-agreement-label" htmlFor="privacyAgreementCheckbox">
+                            <input type="checkbox" id="privacyAgreementCheckbox" />
+                            <span className="privacy-agreement-copy">
+                                <strong>Do you agree with this Privacy Policy?</strong>
+                                <span>We use your account details and app activity only to provide, secure, improve, and support eSAMz AI as described in our <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener">Privacy Policy</a>. Your agreement is saved as a timestamped log when you check this box.</span>
+                            </span>
+                        </label>
+                        <span className="privacy-agreement-status" id="privacyAgreementStatus"></span>
                     </div>
                     <div className="input-footer">
                         <span className="footer-sgi-badge" title="SGI: Strategic Guidance Intelligence" aria-label="SGI: Strategic Guidance Intelligence">SGI</span>
