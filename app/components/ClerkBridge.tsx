@@ -28,6 +28,7 @@ export default function ClerkBridge() {
     if (isSignedIn) {
       window.__syncTierFromServer?.()
     }
+    ;(window as any).app?.updatePrivacyAgreementVisibility?.()
   }, [isSignedIn])
   useEffect(() => { openSignInRef.current = () => openSignIn() }, [openSignIn])
   useEffect(() => { getTokenRef.current = getToken }, [getToken])
