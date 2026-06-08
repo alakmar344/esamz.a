@@ -22,4 +22,4 @@ Set these in Vercel Project Settings:
 - `CLERK_SECRET_KEY`
 - `MONGODB_URI`
 - `CASHFREE_SECRET_KEY`
-- `ESAMZ_MASTER_SECRET`
+- `ESAMZ_MASTER_SECREt`
