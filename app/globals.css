@@ -274,6 +274,40 @@
 
         /* ----- INPUT AREA ----- */
         .input-wrapper{padding:16px 36px 22px;border-top:1px solid var(--rule);background:var(--paper);position:relative;flex-shrink:0;}
+        .pre-login-banner {
+            background: var(--crescent-soft);
+            border: 1px solid var(--crescent-border);
+            border-radius: var(--r);
+            padding: 8px 16px;
+            margin-bottom: 12px;
+            font-size: 12px;
+            color: var(--ink-light);
+            text-align: center;
+            animation: fadeIn 0.4s ease-out;
+            max-width: 780px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .pre-login-banner a {
+            color: var(--crescent);
+            font-weight: 600;
+        }
+        .anonymous-notice {
+            background: var(--paper-warm);
+            border: 1px solid var(--rule-bold);
+            border-radius: var(--r);
+            padding: 10px 16px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: var(--ink-faint);
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            animation: fadeIn 0.4s ease-out;
+            max-width: 780px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         .input-wrapper::before{content:none;}
         .input-container{max-width:780px;margin:0 auto;}
         .input-box{background:var(--paper-warm);border:1px solid var(--rule-bold);border-radius:12px;padding:12px 14px;transition:border-color 180ms,box-shadow 180ms;position:relative;}
@@ -732,8 +766,10 @@
         .welcome-suggestions{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 6px;margin-bottom:6px;}
         .welcome-suggestions::-webkit-scrollbar{height:4px;}
         .welcome-suggestions::-webkit-scrollbar-thumb{background:var(--rule-bold);}
-        .welcome-suggestion-card{scroll-snap-align:start;min-width:196px;max-width:240px;text-align:left;padding:11px 12px;border:1px solid var(--rule-bold);border-radius:10px;background:var(--paper-warm);color:var(--ink);cursor:pointer;transition:border-color 140ms,background 140ms,transform 140ms;}
-        .welcome-suggestion-card:hover{border-color:var(--crescent-border);background:var(--crescent-soft);transform:translateY(-1px);}
+        .welcome-suggestion-card{scroll-snap-align:start;min-width:196px;max-width:240px;text-align:left;padding:11px 12px;border:1px solid var(--rule-bold);border-radius:10px;background:var(--paper-warm);color:var(--ink);cursor:pointer;transition:all 200ms cubic-bezier(0.4, 0, 0.2, 1);position:relative;overflow:hidden;}
+        .welcome-suggestion-card:hover{border-color:var(--crescent);background:var(--paper);transform:translateY(-3px);box-shadow:0 8px 24px rgba(37,99,235,0.08);}
+        .welcome-suggestion-card::after{content:'';position:absolute;top:0;left:0;width:100%;height:3px;background:var(--crescent);opacity:0;transition:opacity 200ms;}
+        .welcome-suggestion-card:hover::after{opacity:1;}
         body.theme-dark .welcome-suggestion-card{background:rgba(255,255,255,0.03);}
         .welcome-suggestion-title{display:block;font-family:'Inter',system-ui,sans-serif;font-size:13px;font-weight:600;line-height:1.35;margin-bottom:2px;}
         .welcome-suggestion-copy{display:block;font-size:11px;color:var(--ink-faint);line-height:1.35;}

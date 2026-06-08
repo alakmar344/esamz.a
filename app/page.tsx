@@ -59,6 +59,7 @@ export default function ChatPage() {
         const LS_LAST_CHAT = 'esamz_last_chat_id';
         const LS_PRIVACY_POLICY_ACCEPTED_AT = 'esamz_privacy_policy_accepted_at';
         const PRIVACY_POLICY_URL = 'https://esamz.info/privacypolicy';
+        const TERMS_OF_SERVICE_URL = 'https://esamz.info/termsofservice';
         const CHAR_COUNT_DISPLAY_THRESHOLD = 3200;
         const TYPEWRITER_INTERVAL_MS = 18;
         const TYPEWRITER_SPEED_STEPS = {
@@ -279,6 +280,12 @@ export default function ChatPage() {
                     headerActionsToggle:    document.getElementById('headerActionsToggle'),
                     headerActionsMenu:      document.getElementById('headerActionsMenu'),
                     menuNewChatBtn:         document.getElementById('menuNewChatBtn'),
+                    btnRevokeConsent:       document.getElementById('btnRevokeConsent'),
+                    consentModal:           document.getElementById('consentModal'),
+                    consentModalCheckbox:   document.getElementById('consentModalCheckbox'),
+                    consentModalContinue:   document.getElementById('consentModalContinue'),
+                    anonymousNotice:        document.getElementById('anonymousNotice'),
+                    preLoginBanner:         document.getElementById('preLoginBanner'),
                     menuExportCurrentJsonBtn: document.getElementById('menuExportCurrentJsonBtn'),
                     menuExportCurrentMdBtn: document.getElementById('menuExportCurrentMdBtn'),
                     menuExportAllJsonBtn:   document.getElementById('menuExportAllJsonBtn'),
@@ -311,32 +318,91 @@ export default function ChatPage() {
             }
 
             updatePrivacyAgreementVisibility() {
-                const wrapper = this.dom.privacyAgreement;
-                const checkbox = this.dom.privacyAgreementCheckbox;
-                const status = this.dom.privacyAgreementStatus;
-                if (!wrapper || !checkbox) return;
-
                 const isSignedIn = !!window.__clerk?.isSignedIn;
                 const acceptedAt = localStorage.getItem(LS_PRIVACY_POLICY_ACCEPTED_AT);
-                // Only show the box while a signed-in user still needs to agree.
-                // Once accepted (ticked), hide the whole box.
-                wrapper.classList.toggle('visible', isSignedIn && !acceptedAt);
 
-                if (!isSignedIn) {
+                // 1. Pre-login banner (only for guest users)
+                if (this.dom.preLoginBanner) {
+                    this.dom.preLoginBanner.style.display = !isSignedIn ? 'block' : 'none';
+                }
+
+                // 2. Anonymous notice (only for guest users)
+                if (this.dom.anonymousNotice) {
+                    this.dom.anonymousNotice.style.display = !isSignedIn ? 'block' : 'none';
+                }
+
+                // 3. Consent Modal (for signed-in users who haven't accepted)
+                if (isSignedIn && !acceptedAt) {
+                    this.dom.consentModal?.classList.remove('hidden');
+                } else {
+                    this.dom.consentModal?.classList.add('hidden');
+                }
+
+                // 4. Revoke Consent button visibility
+                if (this.dom.btnRevokeConsent) {
+                    this.dom.btnRevokeConsent.style.display = (isSignedIn && acceptedAt) ? 'block' : 'none';
+                }
+
+                this.updateButtonState();
+            }
+
+            async handleRevokeConsent() {
+                if (!await Utils.confirm('This will revoke your data processing consent and sign you out. Continue?', 'Revoke Consent')) return;
+
+                try {
+                    const res = await fetch('/api/user/privacy-policy-acceptance/revoke', { method: 'POST' });
+                    if (!res.ok) throw new Error('Revocation failed');
+                    
+                    localStorage.removeItem(LS_PRIVACY_POLICY_ACCEPTED_AT);
+                    Utils.showToast('Consent revoked. Signing out...', 'info');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } catch (err) {
+                    console.error('Revocation error:', err);
+                    Utils.showToast('Failed to revoke consent', 'error');
+                }
+            }
+
+            async handlePrivacyAgreementChange(source = 'modal') {
+                const checkbox = source === 'modal' ? this.dom.consentModalCheckbox : this.dom.privacyAgreementCheckbox;
+                const btn = source === 'modal' ? this.dom.consentModalContinue : null;
+                
+                if (!checkbox || !checkbox.checked) return;
+
+                if (!window.__clerk?.isSignedIn) {
                     checkbox.checked = false;
-                    checkbox.disabled = false;
-                    if (status) status.textContent = '';
+                    window.__clerk?.openSignIn();
                     return;
                 }
 
-                if (acceptedAt) {
-                    checkbox.checked = true;
-                    checkbox.disabled = true;
-                    if (status) status.textContent = `Accepted ${new Date(acceptedAt).toLocaleString()}`;
-                } else {
+                if (btn) btn.disabled = true;
+                checkbox.disabled = true;
+
+                try {
+                    const res = await fetch('/api/user/privacy-policy-acceptance', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({
+                            accepted: true,
+                            policyUrl: PRIVACY_POLICY_URL,
+                            source: `consent-${source}`,
+                        }),
+                    });
+
+                    if (!res.ok) throw new Error('Acceptance log failed');
+                    const data = await res.json();
+                    const acceptedAt = data.acceptedAt || new Date().toISOString();
+                    localStorage.setItem(LS_PRIVACY_POLICY_ACCEPTED_AT, acceptedAt);
+                    
+                    Utils.showToast('Privacy policy agreement saved', 'success');
+                    this.updatePrivacyAgreementVisibility();
+                } catch (_) {
                     checkbox.checked = false;
                     checkbox.disabled = false;
-                    if (status) status.textContent = 'Required before continuing with signed-in use.';
+                    if (btn) btn.disabled = false;
+                    Utils.showToast('Could not save privacy policy agreement', 'error');
                 }
             }
 
@@ -434,7 +500,12 @@ if (required.some(el => !el)) {
                 };
                 this.dom.clearChatBtn?.addEventListener('click', clearChatAction);
 
-                this.dom.privacyAgreementCheckbox?.addEventListener('change', () => this.handlePrivacyAgreementChange());
+                this.dom.privacyAgreementCheckbox?.addEventListener('change', () => this.handlePrivacyAgreementChange('inline'));
+                this.dom.consentModalCheckbox?.addEventListener('change', (e) => {
+                    if (this.dom.consentModalContinue) this.dom.consentModalContinue.disabled = !e.target.checked;
+                });
+                this.dom.consentModalContinue?.addEventListener('click', () => this.handlePrivacyAgreementChange('modal'));
+                this.dom.btnRevokeConsent?.addEventListener('click', () => this.handleRevokeConsent());
                 this.updatePrivacyAgreementVisibility();
 
                 if (this.dom.uploadBtn && this.dom.fileInput) {
@@ -702,12 +773,24 @@ if (required.some(el => !el)) {
 
             updateButtonState() {
                 if (!this.dom.sendBtn || !this.dom.input) return;
+                
+                const isSignedIn = !!window.__clerk?.isSignedIn;
+                const acceptedAt = localStorage.getItem(LS_PRIVACY_POLICY_ACCEPTED_AT);
+                const consentRequired = isSignedIn && !acceptedAt;
+
                 if (this.state.isProcessing) {
                     this.dom.sendBtn.disabled = false;
                     return;
                 }
+
                 const hasContent = this.dom.input.value.trim().length > 0 || this.state.files.length > 0;
-                this.dom.sendBtn.disabled = !hasContent;
+                this.dom.sendBtn.disabled = !hasContent || consentRequired;
+
+                if (consentRequired) {
+                    this.dom.input.placeholder = "Please agree to the privacy policy to continue...";
+                } else {
+                    this.dom.input.placeholder = "Ask anything — I love a challenge…";
+                }
             }
 
             fillInput(text) {
@@ -1760,17 +1843,28 @@ if (required.some(el => !el)) {
             let repairing = false;
             let EXPECTED_TEXT = '';
             const normalized = text => (text || '').replace(/\s+/g, ' ').trim();
-            const CANONICAL_HTML = policyEl.innerHTML;
-            const CANONICAL_LINKS = Array.from(policyEl.querySelectorAll('a')).map(link => ({
-                href: link.href,
-                label: normalized(link.textContent),
-            }));
+            
+            // Updated canonical HTML for the footer
+            const CANONICAL_HTML = `
+                AI output may be inaccurate. 
+                <a href="${PRIVACY_POLICY_URL}" class="underline" target="_blank" rel="noopener">Privacy Policy</a> | 
+                <a href="${TERMS_OF_SERVICE_URL}" class="underline" target="_blank" rel="noopener">Terms</a><br>
+                Your explicit consent is required for data processing.
+            `;
+            
+            const CANONICAL_LINKS = [
+                { href: PRIVACY_POLICY_URL, label: 'Privacy Policy' },
+                { href: TERMS_OF_SERVICE_URL, label: 'Terms' }
+            ];
 
             const rebuild = () => {
                 if (repairing) return;
                 repairing = true;
                 try {
                     policyEl.innerHTML = CANONICAL_HTML;
+                    policyEl.className = "text-xs text-gray-500 text-center";
+                    policyEl.style.display = "block";
+                    policyEl.style.width = "100%";
                 } finally {
                     repairing = false;
                 }
@@ -1778,11 +1872,12 @@ if (required.some(el => !el)) {
 
             const hasExpectedStructure = () => {
                 const text = normalized(policyEl.textContent);
-                if (text !== EXPECTED_TEXT) return false;
+                // Check if key phrases are present instead of exact match to be more resilient
+                if (!text.includes("AI output may be inaccurate") || !text.includes("Your explicit consent is required")) return false;
                 const links = Array.from(policyEl.querySelectorAll('a'));
                 if (links.length !== CANONICAL_LINKS.length) return false;
                 return links.every((link, index) => (
-                    link.href === CANONICAL_LINKS[index].href &&
+                    link.href.includes(CANONICAL_LINKS[index].href) &&
                     normalized(link.textContent) === CANONICAL_LINKS[index].label
                 ));
             };
@@ -1797,9 +1892,7 @@ if (required.some(el => !el)) {
 
             observer.observe(policyEl, {
                 childList: true,
-                subtree: true,
-                characterData: true,
-                attributes: true,
+                subtree: true, characterData: true, attributes: true,
                 attributeFilter: ['href'],
             });
         })();
@@ -2039,6 +2132,7 @@ waitForDOM();
                     </div>
                 </div>
                 <div className="header-right">
+                    <button id="btnRevokeConsent" className="btn-clear" style={{display:"none",marginRight:"8px",borderColor:"var(--vermillion)",color:"var(--vermillion)"}}>Revoke Consent</button>
                     <div id="clerkUserButton" style={{display:"flex",alignItems:"center"}}>{hasClerk && UserButton && <UserButton />}</div>
                     <button className="theme-toggle" id="btnThemeToggle" title="Toggle theme" aria-label="Toggle theme">
                         <svg className="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
@@ -2072,8 +2166,8 @@ waitForDOM();
                 <div className="chat-wrapper">
                     <div className="welcome" id="welcomeScreen">
                         <div className="welcome-dateline" aria-label="eSAMz AI branding">✦ eSAMz AI</div>
-                        <h1 className="welcome-headline" id="welcomeHeadline">Ask anything.<br />Think <em>deeper</em>.</h1>
-                        <p className="welcome-deck">Deep reasoning with emotional clarity — for complex problems that demand more than a quick answer.</p>
+                        <h1 className="welcome-headline" id="welcomeHeadline">Empowering Intelligence.<br />Think <em>deeper</em>.</h1>
+                        <p className="welcome-deck">Advanced reasoning with strategic clarity. Designed for complex problems that demand more than just a quick response.</p>
                         <div className="welcome-suggestions-wrap">
                             <div className="welcome-suggestions" id="welcomeSuggestions" tabIndex={0} aria-label="Suggested prompts">
                                 <button className="welcome-suggestion-card" data-prompt="Build me a practical Python data analysis workflow for messy CSV data." data-mode="mode-analyst">
@@ -2116,7 +2210,13 @@ waitForDOM();
 
             
             <div className="input-wrapper">
+                <div id="preLoginBanner" className="pre-login-banner" style={{display:"none"}}>
+                    By starting a chat you consent to session-only processing. <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" className="underline">Review Policy</a>
+                </div>
                 <div className="input-container">
+                    <div id="anonymousNotice" className="anonymous-notice" style={{display:"none"}}>
+                        You are in an anonymous session. Sign in to save your chats and access advanced features.
+                    </div>
                     <div className="input-box">
                         <div className="file-preview" id="filePreview"></div>
                         <span className="draft-indicator" id="draftIndicator">Draft saved</span>
@@ -2189,11 +2289,12 @@ waitForDOM();
                     <div className="input-footer">
                         <span className="footer-sgi-badge" title="SGI: Strategic Guidance Intelligence" aria-label="SGI: Strategic Guidance Intelligence">SGI</span>
                         <span className="footer-robot-icon" title="AI assistant indicator" aria-label="AI assistant indicator">🤖</span>
-                        <span style={{verticalAlign:"middle"}} id="policyLinksText">
-                            AI output may be inaccurate. By using this service, you agree to our{" "}
-                            <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" style={{fontWeight:600}}>Privacy Policy</a> and{" "}
-                            <a href="https://esamz.info/termsofservice" target="_blank" rel="noopener" style={{fontWeight:600}}>Terms</a>.
-                        </span>
+                        <div id="policyLinksText" className="text-xs text-gray-500 text-center" style={{flex:1}}>
+                            AI output may be inaccurate. 
+                            <a href="https://esamz.info/privacypolicy" className="underline" target="_blank" rel="noopener">Privacy Policy</a> | 
+                            <a href="https://esamz.info/termsofservice" className="underline" target="_blank" rel="noopener">Terms</a><br />
+                            Your explicit consent is required for data processing.
+                        </div>
                         <span id="charCount" className="char-count"></span>
                         <span id="footerShortcuts">
                             <kbd style={{background:"var(--paper-aged)",border:"1.5px solid var(--rule-bold)",borderBottomWidth:"3px",padding:"1px 5px",borderRadius:"4px",fontFamily:"'DM Mono'",fontSize:"9px"}}>Ctrl</kbd>
@@ -2247,6 +2348,39 @@ waitForDOM();
             </div>
         </div>
     </dialog>
+
+    <div id="consentModal" className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hidden">
+      <div className="bg-zinc-900 p-6 rounded-xl max-w-md mx-4 border border-white/10 shadow-2xl">
+        <h3 className="text-lg font-semibold mb-4 text-white">Do you agree with this Privacy Policy?</h3>
+        <p className="text-sm text-gray-300 mb-4 leading-relaxed">
+          We use your account details and app activity only to provide, secure, improve, 
+          and support eSAMz AI as described in our <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" className="text-blue-400 underline">Privacy Policy</a>.
+          <br /><br />
+          Your agreement is saved as a timestamped log when you check this box.
+        </p>
+        
+        <label className="flex items-start gap-3 mb-6 cursor-pointer group">
+          <input
+            type="checkbox"
+            id="consentModalCheckbox"
+            className="mt-1 w-4 h-4 rounded border-gray-600 bg-zinc-800 text-blue-600 focus:ring-blue-500"
+          />
+          <span className="text-sm text-gray-200 group-hover:text-white transition-colors">I explicitly consent to the data processing described above.</span>
+        </label>
+
+        <button
+          id="consentModalContinue"
+          disabled
+          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-700 disabled:text-gray-500 py-3 rounded-lg font-medium text-white transition-all transform active:scale-[0.98]"
+        >
+          Continue
+        </button>
+        
+        <p className="text-[10px] text-gray-500 mt-4 text-center uppercase tracking-wider font-semibold">
+          Required before continuing with signed-in use
+        </p>
+      </div>
+    </div>
 
     </>
   )
