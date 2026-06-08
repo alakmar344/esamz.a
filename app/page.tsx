@@ -334,13 +334,11 @@ export default function ChatPage() {
                 // 3. Consent Modal (for signed-in users who haven't accepted)
                 if (isSignedIn && !acceptedAt) {
                     this.dom.consentModal?.classList.remove('hidden');
-                    // Trigger animation by removing translate-y-full after a frame
                     requestAnimationFrame(() => {
-                        this.dom.consentModal?.classList.remove('translate-y-full');
+                        this.dom.consentModal?.classList.add('consent-modal-visible');
                     });
                 } else {
-                    this.dom.consentModal?.classList.add('translate-y-full');
-                    // Hide after animation completes
+                    this.dom.consentModal?.classList.remove('consent-modal-visible');
                     setTimeout(() => {
                         this.dom.consentModal?.classList.add('hidden');
                     }, 300);
@@ -2315,37 +2313,45 @@ waitForDOM();
         </div>
     </dialog>
 
-    <div id="consentModal" className="fixed bottom-0 left-0 right-0 z-[120] hidden transform transition-transform duration-300 ease-out translate-y-full">
-      <div className="bg-gradient-to-r from-zinc-900 to-zinc-800 border-t border-white/10 shadow-2xl">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-5">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm sm:text-base font-semibold text-white mb-2">Privacy Policy Agreement Required</h3>
-              <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">
-                We use your account details and app activity only to provide, secure, improve, and support eSAMz AI as described in our <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" className="text-blue-400 underline hover:text-blue-300">Privacy Policy</a>.
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-3 flex-shrink-0 w-full sm:w-auto">
-              <label className="flex items-center gap-2 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  id="consentModalCheckbox"
-                  className="w-4 h-4 rounded border-gray-600 bg-zinc-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                />
-                <span className="text-xs sm:text-sm text-gray-200 group-hover:text-white transition-colors whitespace-nowrap">I consent</span>
-              </label>
+    <div id="consentModal" className="fixed inset-0 z-[120] hidden consent-modal-overlay">
+      <div className="consent-modal-card">
+        {/* Top accent bar */}
+        <div className="consent-modal-accent"></div>
 
-              <button
-                id="consentModalContinue"
-                disabled
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 disabled:text-gray-400 disabled:cursor-not-allowed rounded font-medium text-white text-sm transition-all whitespace-nowrap"
-              >
-                Continue
-              </button>
-            </div>
-          </div>
+        {/* Icon */}
+        <div className="consent-modal-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="M9 12l2 2 4-4"/>
+          </svg>
         </div>
+
+        <h3 className="consent-modal-title">Privacy Policy</h3>
+        <p className="consent-modal-eyebrow">Agreement Required</p>
+
+        <p className="consent-modal-body">
+          We use your account details and app activity only to provide, secure, improve, and support eSAMz AI as described in our{' '}
+          <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" className="consent-modal-link">Privacy Policy</a>.
+        </p>
+
+        <label className="consent-modal-checkbox-row">
+          <input
+            type="checkbox"
+            id="consentModalCheckbox"
+            className="consent-modal-checkbox"
+          />
+          <span className="consent-modal-checkbox-label">I agree to the Privacy Policy</span>
+        </label>
+
+        <button
+          id="consentModalContinue"
+          disabled
+          className="consent-modal-btn"
+        >
+          Continue
+        </button>
+
+        <p className="consent-modal-footer">You can revoke consent at any time from settings.</p>
       </div>
     </div>
 
