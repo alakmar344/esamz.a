@@ -1207,6 +1207,7 @@ dialog::backdrop{background:rgba(0,0,0,0.4);backdrop-filter:blur(8px);}
   .scroll-top-btn{bottom:96px;right:20px;}
   .mobile-bottom-open-btn{display:flex;}
   .welcome-headline{font-size:30px;}
+  #consentModal{bottom:72px;}
 }
 
 /* ===================================================================
