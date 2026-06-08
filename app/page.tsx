@@ -414,48 +414,6 @@ export default function ChatPage() {
                 }
             }
 
-            async handlePrivacyAgreementChange() {
-                const checkbox = this.dom.privacyAgreementCheckbox;
-                const status = this.dom.privacyAgreementStatus;
-                if (!checkbox || !checkbox.checked) return;
-
-                if (!window.__clerk?.isSignedIn) {
-                    checkbox.checked = false;
-                    status && (status.textContent = 'Please sign in first.');
-                    window.__clerk?.openSignIn();
-                    return;
-                }
-
-                checkbox.disabled = true;
-                status && (status.textContent = 'Saving your privacy policy agreement...');
-
-                try {
-                    const res = await fetch('/api/user/privacy-policy-acceptance', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'same-origin',
-                        body: JSON.stringify({
-                            accepted: true,
-                            policyUrl: PRIVACY_POLICY_URL,
-                            source: 'post-sign-in-checkbox',
-                        }),
-                    });
-
-                    if (!res.ok) throw new Error('Acceptance log failed');
-                    const data = await res.json();
-                    const acceptedAt = data.acceptedAt || new Date().toISOString();
-                    localStorage.setItem(LS_PRIVACY_POLICY_ACCEPTED_AT, acceptedAt);
-                    status && (status.textContent = `Accepted ${new Date(acceptedAt).toLocaleString()}`);
-                    Utils.showToast('Privacy policy agreement saved', 'success');
-                    // Hide the whole agreement box now that it has been accepted.
-                    this.updatePrivacyAgreementVisibility();
-                } catch (_) {
-                    checkbox.checked = false;
-                    checkbox.disabled = false;
-                    status && (status.textContent = 'Could not save agreement. Please try again.');
-                    Utils.showToast('Could not save privacy policy agreement', 'error');
-                }
-            }
 
             getHistory() {
                 const r = localStorage.getItem(this.storageKey);
@@ -2357,7 +2315,7 @@ waitForDOM();
         </div>
     </dialog>
 
-    <div id="consentModal" className="fixed bottom-0 left-0 right-0 z-50 hidden transform transition-transform duration-300 ease-out translate-y-full">
+    <div id="consentModal" className="fixed bottom-0 left-0 right-0 z-[120] hidden transform transition-transform duration-300 ease-out translate-y-full">
       <div className="bg-gradient-to-r from-zinc-900 to-zinc-800 border-t border-white/10 shadow-2xl">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-5">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
