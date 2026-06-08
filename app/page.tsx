@@ -334,8 +334,16 @@ export default function ChatPage() {
                 // 3. Consent Modal (for signed-in users who haven't accepted)
                 if (isSignedIn && !acceptedAt) {
                     this.dom.consentModal?.classList.remove('hidden');
+                    // Trigger animation by removing translate-y-full after a frame
+                    requestAnimationFrame(() => {
+                        this.dom.consentModal?.classList.remove('translate-y-full');
+                    });
                 } else {
-                    this.dom.consentModal?.classList.add('hidden');
+                    this.dom.consentModal?.classList.add('translate-y-full');
+                    // Hide after animation completes
+                    setTimeout(() => {
+                        this.dom.consentModal?.classList.add('hidden');
+                    }, 300);
                 }
 
                 // 4. Revoke Consent button visibility
@@ -2349,36 +2357,37 @@ waitForDOM();
         </div>
     </dialog>
 
-    <div id="consentModal" className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hidden">
-      <div className="bg-zinc-900 p-6 rounded-xl max-w-md mx-4 border border-white/10 shadow-2xl">
-        <h3 className="text-lg font-semibold mb-4 text-white">Do you agree with this Privacy Policy?</h3>
-        <p className="text-sm text-gray-300 mb-4 leading-relaxed">
-          We use your account details and app activity only to provide, secure, improve, 
-          and support eSAMz AI as described in our <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" className="text-blue-400 underline">Privacy Policy</a>.
-          <br /><br />
-          Your agreement is saved as a timestamped log when you check this box.
-        </p>
-        
-        <label className="flex items-start gap-3 mb-6 cursor-pointer group">
-          <input
-            type="checkbox"
-            id="consentModalCheckbox"
-            className="mt-1 w-4 h-4 rounded border-gray-600 bg-zinc-800 text-blue-600 focus:ring-blue-500"
-          />
-          <span className="text-sm text-gray-200 group-hover:text-white transition-colors">I explicitly consent to the data processing described above.</span>
-        </label>
+    <div id="consentModal" className="fixed bottom-0 left-0 right-0 z-50 hidden transform transition-transform duration-300 ease-out translate-y-full">
+      <div className="bg-gradient-to-r from-zinc-900 to-zinc-800 border-t border-white/10 shadow-2xl">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-5">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm sm:text-base font-semibold text-white mb-2">Privacy Policy Agreement Required</h3>
+              <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">
+                We use your account details and app activity only to provide, secure, improve, and support eSAMz AI as described in our <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" className="text-blue-400 underline hover:text-blue-300">Privacy Policy</a>.
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-3 flex-shrink-0 w-full sm:w-auto">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  id="consentModalCheckbox"
+                  className="w-4 h-4 rounded border-gray-600 bg-zinc-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                />
+                <span className="text-xs sm:text-sm text-gray-200 group-hover:text-white transition-colors whitespace-nowrap">I consent</span>
+              </label>
 
-        <button
-          id="consentModalContinue"
-          disabled
-          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-700 disabled:text-gray-500 py-3 rounded-lg font-medium text-white transition-all transform active:scale-[0.98]"
-        >
-          Continue
-        </button>
-        
-        <p className="text-[10px] text-gray-500 mt-4 text-center uppercase tracking-wider font-semibold">
-          Required before continuing with signed-in use
-        </p>
+              <button
+                id="consentModalContinue"
+                disabled
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 disabled:text-gray-400 disabled:cursor-not-allowed rounded font-medium text-white text-sm transition-all whitespace-nowrap"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
