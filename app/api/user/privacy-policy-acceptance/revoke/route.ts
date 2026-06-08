@@ -36,24 +36,19 @@ export async function POST(req: Request) {
 
     const email = user.emailAddresses[0]?.emailAddress;
 
-    await User.collection.updateOne(
-      { $or: [{ clerkId: userId }, { email }] },
-      {
-        $set: {
-          privacyPolicyAccepted: false,
-          privacyPolicyAcceptedAt: null,
-          privacyPolicyAcceptanceLog: null,
-        },
-      }
+    const { deletedCount } = await User.collection.deleteOne(
+      { $or: [{ clerkId: userId }, { email }] }
     );
 
-    console.log("[Privacy Policy] User revoked privacy policy consent", {
+    console.log("[Privacy Policy] User revoked privacy policy consent — user record hard-deleted", {
       userId,
       email,
+      deletedCount,
     });
 
     return NextResponse.json({
       revoked: true,
+      deleted: deletedCount > 0,
     });
   } catch (err) {
     console.error("[Privacy Policy] Revocation failed:", err);
