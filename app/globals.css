@@ -1139,6 +1139,169 @@ dialog::backdrop{background:rgba(0,0,0,0.4);backdrop-filter:blur(8px);}
 .dialog-header,.plans-modal-title{font-size:22px;line-height:1.4;font-weight:600;}
 .dialog-body{font-size:15px;color:var(--text-secondary);}
 
+/* ===================================================================
+   CONSENT MODAL — center-screen poster card (neobrutalist + minimal)
+   =================================================================== */
+.consent-modal-overlay{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,0,0,0.45);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  opacity:0;
+  transition:opacity var(--dur-slow,300ms) var(--ease-standard,cubic-bezier(0.4,0,0.2,1));
+}
+.consent-modal-overlay.consent-modal-visible{opacity:1;}
+
+.consent-modal-card{
+  position:relative;
+  max-width:420px;
+  width:100%;
+  background:var(--bg-elevated);
+  border:2px solid var(--border);
+  border-radius:16px;
+  padding:32px 28px 24px;
+  text-align:center;
+  box-shadow:8px 8px 0 0 var(--accent-primary);
+  transform:translateY(24px) scale(0.96);
+  opacity:0;
+  transition:transform var(--dur-slow,300ms) var(--ease-bounce,cubic-bezier(0.34,1.4,0.64,1)),
+             opacity var(--dur-slow,300ms) var(--ease-standard,cubic-bezier(0.4,0,0.2,1));
+}
+:root[data-theme="dark"] .consent-modal-card{box-shadow:6px 6px 0 0 var(--accent-primary);}
+.consent-modal-overlay.consent-modal-visible .consent-modal-card{
+  transform:translateY(0) scale(1);
+  opacity:1;
+}
+
+.consent-modal-accent{
+  position:absolute;
+  top:0;left:0;right:0;
+  height:4px;
+  border-radius:16px 16px 0 0;
+  background:var(--accent-primary);
+}
+
+.consent-modal-icon{
+  width:56px;height:56px;
+  border-radius:50%;
+  margin:0 auto 16px;
+  display:flex;align-items:center;justify-content:center;
+  background:color-mix(in srgb, var(--accent-primary) 12%, transparent);
+  border:2px solid color-mix(in srgb, var(--accent-primary) 28%, transparent);
+  color:var(--accent-primary);
+  transition:transform var(--dur-base,180ms) var(--ease-standard,cubic-bezier(0.4,0,0.2,1));
+}
+.consent-modal-icon:hover{transform:scale(1.06);}
+
+.consent-modal-title{
+  font-family:"DM Serif Display",serif;
+  font-size:24px;
+  font-weight:400;
+  line-height:1.2;
+  letter-spacing:-0.02em;
+  color:var(--text-primary);
+  margin-bottom:2px;
+}
+.consent-modal-eyebrow{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  color:var(--accent-secondary);
+  margin-bottom:16px;
+}
+
+.consent-modal-body{
+  font-size:14px;
+  line-height:1.7;
+  color:var(--text-secondary);
+  margin-bottom:20px;
+}
+.consent-modal-link{
+  color:var(--accent-primary);
+  text-decoration:underline;
+  text-underline-offset:3px;
+  text-decoration-thickness:1.5px;
+  transition:color var(--dur-fast,100ms);
+}
+.consent-modal-link:hover{color:var(--accent-secondary);}
+
+.consent-modal-checkbox-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  cursor:pointer;
+  margin:0 auto 20px;
+  width:fit-content;
+  padding:8px 14px;
+  border-radius:8px;
+  border:1.5px solid var(--border);
+  background:var(--bg-secondary);
+  transition:border-color var(--dur-fast,100ms) var(--ease-standard,cubic-bezier(0.4,0,0.2,1)),
+             background var(--dur-fast,100ms) var(--ease-standard,cubic-bezier(0.4,0,0.2,1));
+}
+.consent-modal-checkbox-row:hover{
+  border-color:color-mix(in srgb, var(--accent-primary) 40%, transparent);
+  background:color-mix(in srgb, var(--accent-primary) 5%, var(--bg-secondary));
+}
+
+.consent-modal-checkbox{
+  width:18px;height:18px;
+  border-radius:4px;
+  border:2px solid var(--border);
+  background:var(--bg-primary);
+  cursor:pointer;
+  accent-color:var(--accent-primary);
+  flex-shrink:0;
+  transition:border-color var(--dur-fast,100ms);
+}
+.consent-modal-checkbox:checked{border-color:var(--accent-primary);}
+.consent-modal-checkbox:focus-visible{outline:2px solid var(--accent-primary);outline-offset:2px;}
+
+.consent-modal-checkbox-label{
+  font-size:13px;
+  font-weight:500;
+  color:var(--text-primary);
+  user-select:none;
+}
+
+.consent-modal-btn{
+  width:100%;
+  height:44px;
+  border-radius:10px;
+  border:none;
+  background:var(--accent-primary);
+  color:#fff;
+  font:600 14px/1 "IBM Plex Sans",system-ui,sans-serif;
+  letter-spacing:0.02em;
+  cursor:pointer;
+  transition:filter var(--dur-fast,100ms) var(--ease-standard,cubic-bezier(0.4,0,0.2,1)),
+             transform var(--dur-fast,100ms) var(--ease-standard,cubic-bezier(0.4,0,0.2,1)),
+             box-shadow var(--dur-fast,100ms) var(--ease-standard,cubic-bezier(0.4,0,0.2,1)),
+             opacity var(--dur-fast,100ms);
+}
+.consent-modal-btn:hover:not(:disabled){
+  filter:brightness(1.08);
+  transform:translateY(-1px);
+  box-shadow:0 4px 16px color-mix(in srgb, var(--accent-primary) 35%, transparent);
+}
+.consent-modal-btn:active:not(:disabled){transform:translateY(0);}
+.consent-modal-btn:disabled{
+  opacity:0.35;
+  cursor:not-allowed;
+  filter:grayscale(0.4);
+}
+
+.consent-modal-footer{
+  margin-top:14px;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10px;
+  letter-spacing:0.04em;
+  color:var(--text-tertiary);
+}
+
 @media (max-width:1024px){
   :root{--sidebar-w:220px;}
 }
@@ -1207,7 +1370,8 @@ dialog::backdrop{background:rgba(0,0,0,0.4);backdrop-filter:blur(8px);}
   .scroll-top-btn{bottom:96px;right:20px;}
   .mobile-bottom-open-btn{display:flex;}
   .welcome-headline{font-size:30px;}
-  #consentModal{bottom:72px;}
+  #consentModal.consent-modal-overlay{align-items:center;padding:16px;}
+  .consent-modal-card{max-width:340px;width:100%;}
 }
 
 /* ===================================================================
