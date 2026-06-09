@@ -1819,7 +1819,7 @@ dialog::backdrop {
 
 /* ---- Ripple effect on main CTA buttons ---- */
 .btn-new-chat,.mobile-bottom-cta-new,
-.btn-new-chat::before,.mobile-bottom-cta-new::before::before{
+.btn-new-chat::before,.mobile-bottom-cta-new::before{
   content:"";
   position:absolute;
   width:300%;
@@ -2056,7 +2056,7 @@ body.mode-writer .header::after,body.mode-writer .chat-scroll-progress span{
 
 /* ---- Elite: reduced motion compliance ---- */
 @media(prefers-reduced-motion:reduce){
-  .btn-new-chat::before,.mobile-bottom-cta-new::before::before{animation:none!important;}
+  .btn-new-chat::before,.mobile-bottom-cta-new::before{animation:none!important;}
   
   .floating-arrow{animation:none!important;}
   .header-context-dot{animation:none!important;}
