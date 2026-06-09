@@ -353,20 +353,100 @@ export default function ChatPage() {
             }
 
             async handleRevokeConsent() {
-                if (!await Utils.confirm('This will revoke your data processing consent and sign you out. Continue?', 'Revoke Consent')) return;
+                if (!await Utils.confirm(
+                    'This will permanently delete your account, all your data (MongoDB logs, chat history), clear your browser cache, and remove you from our system. You will need to re-consent and sign in again to use eSAMz AI. This action cannot be undone.',
+                    'Delete Account & All Data'
+                )) return;
 
                 try {
+                    Utils.showToast('Deleting your account and all data...', 'info');
+
                     const res = await fetch('/api/user/privacy-policy-acceptance/revoke', { method: 'POST' });
-                    if (!res.ok) throw new Error('Revocation failed');
-                    
+                    if (!res.ok) throw new Error('Account deletion failed');
+
+                    const data = await res.json();
+
+                    // ─── Clear all localStorage ────────────────────────────────
+                    // Remove privacy policy acceptance
                     localStorage.removeItem(LS_PRIVACY_POLICY_ACCEPTED_AT);
-                    Utils.showToast('Consent revoked. Signing out...', 'info');
+                    // Remove all conversation history
+                    localStorage.removeItem(LS_STORAGE);
+                    localStorage.removeItem(LS_LAST_CHAT);
+                    // Remove plan/tier data
+                    localStorage.removeItem(LS_PLAN);
+                    // Remove draft
+                    localStorage.removeItem('esamz_draft_v9');
+                    // Remove theme preference
+                    localStorage.removeItem('esamz-theme');
+                    // Remove any other esamz-prefixed keys
+                    const keysToRemove = [];
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key && (key.startsWith('esamz_') || key.startsWith('esamz-') || key.startsWith('clerk'))) {
+                            keysToRemove.push(key);
+                        }
+                    }
+                    keysToRemove.forEach(k => localStorage.removeItem(k));
+
+                    // ─── Clear all sessionStorage ──────────────────────────────
+                    sessionStorage.clear();
+
+                    // ─── Clear all cookies (including httpOnly ones via server path) ──
+                    document.cookie.split(';').forEach(c => {
+                        const name = c.split('=')[0].trim();
+                        // Delete on current path and root path
+                        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+                        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${location.hostname}`;
+                        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=.${location.hostname}`;
+                    });
+
+                    // ─── Clear all caches (Cache API, Service Worker caches) ───
+                    if ('caches' in window) {
+                        try {
+                            const cacheNames = await caches.keys();
+                            await Promise.all(cacheNames.map(name => caches.delete(name)));
+                        } catch (cacheErr) {
+                            console.warn('Cache API clear failed:', cacheErr);
+                        }
+                    }
+
+                    // ─── Unregister all service workers ────────────────────────
+                    if ('serviceWorker' in navigator) {
+                        try {
+                            const registrations = await navigator.serviceWorker.getRegistrations();
+                            await Promise.all(registrations.map(reg => reg.unregister()));
+                        } catch (swErr) {
+                            console.warn('Service worker unregister failed:', swErr);
+                        }
+                    }
+
+                    // ─── Clear IndexedDB ──────────────────────────────────────
+                    try {
+                        const dbs = await indexedDB.databases?.() || [];
+                        await Promise.all(dbs.map(db => {
+                            if (db.name) indexedDB.deleteDatabase(db.name);
+                        }));
+                        // Fallback for browsers without indexedDB.databases()
+                        if (!indexedDB.databases) {
+                            // Try common Clerk/Next.js indexedDB names
+                            ['clerk-db', '__clerk_db', 'next-auth'].forEach(name => {
+                                try { indexedDB.deleteDatabase(name); } catch (_) {}
+                            });
+                        }
+                    } catch (idbErr) {
+                        console.warn('IndexedDB clear failed:', idbErr);
+                    }
+
+                    Utils.showToast('Account deleted. All data and cache cleared. Redirecting...', 'success');
+
+                    // ─── Force full page reload (bypass cache) ─────────────────
                     setTimeout(() => {
-                        window.location.reload();
-                    }, 1500);
+                        // Use replace to prevent back-navigation to deleted session
+                        window.location.replace(window.location.origin + window.location.pathname + '?cleared=' + Date.now());
+                    }, 2000);
                 } catch (err) {
-                    console.error('Revocation error:', err);
-                    Utils.showToast('Failed to revoke consent', 'error');
+                    console.error('Account deletion error:', err);
+                    Utils.showToast('Failed to delete account. Please try again.', 'error');
                 }
             }
 
@@ -2096,7 +2176,7 @@ waitForDOM();
                     </div>
                 </div>
                 <div className="header-right">
-                    <button id="btnRevokeConsent" className="btn-clear" style={{display:"none",marginRight:"8px",borderColor:"var(--vermillion)",color:"var(--vermillion)"}}>Revoke Consent</button>
+                    <button id="btnRevokeConsent" className="btn-clear" style={{display:"none",marginRight:"8px",borderColor:"var(--vermillion)",color:"var(--vermillion)"}}>Delete Account</button>
                     <div id="clerkUserButton" style={{display:"flex",alignItems:"center"}}>{hasClerk && UserButton && <UserButton />}</div>
                     <button className="theme-toggle" id="btnThemeToggle" title="Toggle theme" aria-label="Toggle theme">
                         <svg className="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
@@ -2351,7 +2431,7 @@ waitForDOM();
           Continue
         </button>
 
-        <p className="consent-modal-footer">You can revoke consent at any time from settings.</p>
+        <p className="consent-modal-footer">You can delete your account and all data at any time from the header menu.</p>
       </div>
     </div>
 
