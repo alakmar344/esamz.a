@@ -41,7 +41,8 @@ export async function POST(req: Request) {
 
     await connectDB();
 
-    const acceptedAt = new Date();
+    // Use the original acceptance timestamp if syncing from localStorage (non-signed-in user who accepted before login)
+    const acceptedAt = body.localAcceptedAt ? new Date(body.localAcceptedAt) : new Date();
     const email = user.emailAddresses[0]?.emailAddress;
     const userAgent = req.headers.get("user-agent") || "unknown";
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()

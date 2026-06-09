@@ -58,6 +58,7 @@ export default function ChatPage() {
         const LS_STORAGE   = 'esamz_conversations_v9';
         const LS_LAST_CHAT = 'esamz_last_chat_id';
         const LS_PRIVACY_POLICY_ACCEPTED_AT = 'esamz_privacy_policy_accepted_at';
+        const LS_PRIVACY_POLICY_SYNCED = 'esamz_privacy_policy_synced_to_db';
         const PRIVACY_POLICY_URL = 'https://esamz.info/privacypolicy';
         const TERMS_OF_SERVICE_URL = 'https://esamz.info/termsofservice';
         const CHAR_COUNT_DISPLAY_THRESHOLD = 3200;
@@ -353,7 +354,36 @@ export default function ChatPage() {
                     this.dom.btnRevokeConsent.style.display = (isSignedIn && acceptedAt) ? 'block' : 'none';
                 }
 
+                // 5. Sync local consent to DB if user signed in after accepting locally
+                if (isSignedIn && acceptedAt && !localStorage.getItem(LS_PRIVACY_POLICY_SYNCED)) {
+                    this.syncConsentToServer(acceptedAt);
+                }
+
                 this.updateButtonState();
+            }
+
+            async syncConsentToServer(localAcceptedAt) {
+                try {
+                    const res = await fetch('/api/user/privacy-policy-acceptance', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({
+                            accepted: true,
+                            policyUrl: PRIVACY_POLICY_URL,
+                            source: 'consent-sync-after-signin',
+                            localAcceptedAt,
+                        }),
+                    });
+                    if (res.ok) {
+                        localStorage.setItem(LS_PRIVACY_POLICY_SYNCED, 'true');
+                        console.log('[Privacy Policy] Local consent synced to DB after sign-in');
+                    } else {
+                        console.warn('[Privacy Policy] Sync to DB failed:', res.status);
+                    }
+                } catch (err) {
+                    console.warn('[Privacy Policy] Sync to DB error:', err);
+                }
             }
 
             async handleRevokeConsent() {
@@ -478,6 +508,7 @@ export default function ChatPage() {
                     const data = await res.json();
                     const acceptedAt = data.acceptedAt || new Date().toISOString();
                     localStorage.setItem(LS_PRIVACY_POLICY_ACCEPTED_AT, acceptedAt);
+                    localStorage.setItem(LS_PRIVACY_POLICY_SYNCED, 'true');
                     
                     Utils.showToast('Privacy policy agreement saved', 'success');
                     this.updatePrivacyAgreementVisibility();
