@@ -13,8 +13,14 @@ const connectDB = async () => {
 const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
   email: String,
   clerkId: String,
-  tier: { type: String, default: 'free' },
-  lastPaymentId: String,
+  privacyPolicyAccepted: { type: Boolean, default: false },
+  privacyPolicyAcceptedAt: Date,
+  privacyPolicyAcceptanceLog: {
+    acceptedAt: Date,
+    policyUrl: String,
+    userAgent: String,
+    ip: String,
+  },
 }));
 
 export async function GET() {
@@ -25,16 +31,6 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  try {
-    await connectDB();
-    const email = user.emailAddresses[0]?.emailAddress;
-    const dbUser = await User.findOne({ email }).lean() as { tier?: string } | null;
-    const rawTier = dbUser?.tier || 'free';
-    // Capitalize: 'plus' -> 'Plus', 'pro' -> 'Pro', 'max' -> 'Max', 'free' -> 'Free'
-    const tier = rawTier.charAt(0).toUpperCase() + rawTier.slice(1);
-    return NextResponse.json({ tier });
-  } catch (err) {
-    console.error('[User Tier] MongoDB error:', err);
-    return NextResponse.json({ tier: 'Free' });
-  }
+  // All signed-in users get Max tier — AI is free, no subscriptions
+  return NextResponse.json({ tier: 'Max' });
 }

@@ -11,7 +11,6 @@ declare global {
       openSignIn: () => void
       getToken: () => Promise<string | null>
     }
-    __syncTierFromServer?: () => void
     app: any
     marked: any
     DOMPurify: any
@@ -54,7 +53,6 @@ export default function ChatPage() {
         const BACKEND_CHAT_URL_ANON = 'https://backend.esamz.site/api/chat';
         const BACKEND_BASE_URL    = 'https://backend.esamz.site';
 
-        const LS_PLAN      = 'esamz_plan';
         const LS_STORAGE   = 'esamz_conversations_v9';
         const LS_LAST_CHAT = 'esamz_last_chat_id';
         const LS_PRIVACY_POLICY_ACCEPTED_AT = 'esamz_privacy_policy_accepted_at';
@@ -144,72 +142,16 @@ export default function ChatPage() {
         }
 
         // ====================================================================
-        //  SUBSCRIPTION CORE (plan UI only)
+        //  FEATURE INIT — all users are Max tier, always show RAG + SPE
         // ====================================================================
-        function checkPermissions() {
-            const storedPlan = localStorage.getItem(LS_PLAN);
-
+        function initFeatures() {
             const ragWrapper = document.getElementById('rag-toggle-wrapper');
             const ragToggle  = document.getElementById('rag-toggle');
             const spe        = document.getElementById('system-prompt-editor');
-            const badgeEl    = document.getElementById('planBadgeContainer');
-
-            function resetPlanUI() {
-                ragWrapper?.classList.remove('visible');
-                spe?.classList.remove('visible');
-                if (ragToggle) { ragToggle.disabled = false; ragToggle.checked = true; }
-                if (badgeEl) badgeEl.innerHTML  = '';
-            }
-
-            function applyPlan(plan) {
-                resetPlanUI();
-                if (!plan) return;
-                const ICONS = { Plus: '⚡', Pro: '🚀', Max: '♾️' };
-                const badge = document.createElement('div');
-                badge.className = `plan-badge ${plan.toLowerCase()}`;
-                badge.innerHTML = `<span>${ICONS[plan] || '✦'}</span><span>${plan} Plan Active</span>`;
-                badgeEl.appendChild(badge);
-                if (plan === 'Plus') {
-                    ragWrapper?.classList.add('visible');
-                    if (ragToggle) { ragToggle.checked = true; ragToggle.disabled = true; }
-                }
-                if (plan === 'Pro')  { ragWrapper?.classList.add('visible'); if (ragToggle) ragToggle.disabled = false; }
-                if (plan === 'Max')  { ragWrapper?.classList.add('visible'); if (ragToggle) ragToggle.disabled = false; spe?.classList.add('visible'); }
-            }
-
-            const VALID_PLANS = ['Plus', 'Pro', 'Max'];
-            if (storedPlan && VALID_PLANS.includes(storedPlan)) {
-                applyPlan(storedPlan);
-            } else {
-                resetPlanUI();
-            }
+            ragWrapper?.classList.add('visible');
+            if (ragToggle) ragToggle.disabled = false;
+            spe?.classList.add('visible');
         }
-
-        // ====================================================================
-        //  PLANS PAGE MODAL UI
-        // ====================================================================
-        const PlansModal = {
-            overlay: null,
-
-            init() {
-                this.overlay = document.getElementById('plansModal');
-                document.getElementById('btnViewPlans')
-                    ?.addEventListener('click', () => this.open());
-                document.getElementById('plansModalClose')
-                    ?.addEventListener('click', () => this.close());
-                this.overlay?.addEventListener('click', e => {
-                    if (e.target === this.overlay) this.close();
-                });
-            },
-
-            open() {
-                this.overlay?.classList.remove('hidden');
-            },
-
-            close() {
-                this.overlay?.classList.add('hidden');
-            }
-        };
 
         // ====================================================================
         //  SYSTEM PROMPT EDITOR
@@ -271,7 +213,6 @@ export default function ChatPage() {
                     fileInput:   document.getElementById('fileInput'),
                     newChatBtn:  document.getElementById('btnNewChat'),
                     mobileNewChatBtn: document.getElementById('mobileNewChatBtn'),
-                    mobileUpgradeBtn: document.getElementById('mobileUpgradeBtn'),
                     clearChatBtn:document.getElementById('btnClearChat'),
                     themeToggle: document.getElementById('btnThemeToggle'),
                     closeSidebarBtn:        document.getElementById('btnCloseSidebar'),
@@ -295,8 +236,7 @@ export default function ChatPage() {
                 };
                 this.initTheme();
 
-                checkPermissions();
-                PlansModal.init();
+                initFeatures();
 
                 this.loadHistory();
                 this.setupEventListeners();
@@ -647,9 +587,6 @@ if (required.some(el => !el)) {
                         this.newChat();
                         closeMobileSidebar();
                     });
-                }
-                if (this.dom.mobileUpgradeBtn) {
-                    this.dom.mobileUpgradeBtn.addEventListener('click', () => closeMobileSidebar());
                 }
                 const mobileBottomBar = this.dom.sidebar?.querySelector('.mobile-bottom-bar');
                 if (mobileBottomBar && window.matchMedia('(max-width: 640px)').matches) {
@@ -1061,18 +998,10 @@ if (required.some(el => !el)) {
 
                 const ragToggle      = document.getElementById('rag-toggle');
                 const speTextarea    = document.getElementById('spe-textarea');
-                const plan           = localStorage.getItem(LS_PLAN);
 
-                // Compute effective RAG flag — matches backend's effective_rag_enabled logic
-                // Free (no plan): omit field entirely so backend defaults to its own gating
-                // Plus: always true (backend enforces this but we align)
-                // Pro/Max: honour the toggle
-                const ragEnabled = plan === 'Plus' ? true
-                    : (plan === 'Pro' || plan === 'Max') ? ragToggle.checked
-                    : undefined;
-
-                // customSystemPrompt only sent for Max tier
-                const customSystemPrompt = (plan === 'Max' && speTextarea && speTextarea.value.trim())
+                // All users are Max tier — always honour the RAG toggle and custom system prompt
+                const ragEnabled = ragToggle?.checked ?? true;
+                const customSystemPrompt = (speTextarea && speTextarea.value.trim())
                     ? speTextarea.value.trim()
                     : undefined;
 
@@ -1865,7 +1794,6 @@ if (required.some(el => !el)) {
                     const sb = document.getElementById('sidebar');
                     if (sb) sb.classList.toggle('collapsed');
                 }
-                if (ctrl && e.key === 'u') { e.preventDefault(); document.getElementById('plansModal')?.classList.remove('hidden'); }
                 if (ctrl && e.key === '/') { e.preventDefault(); if (modal) modal.classList.toggle('hidden'); }
             });
         })();
@@ -1970,32 +1898,6 @@ if (required.some(el => !el)) {
         })();
 
         // ====================================================================
-        //  TIER SYNC — fetch real tier from MongoDB via /api/user/tier
-        // ====================================================================
-        async function syncTierFromServer() {
-            if (!window.__clerk?.isSignedIn) return;
-            try {
-                const res = await fetch('/api/user/tier');
-                if (!res.ok) return;
-                const data = await res.json();
-                const VALID_PLANS = ['Plus', 'Pro', 'Max'];
-                if (data.tier && VALID_PLANS.includes(data.tier)) {
-                    localStorage.setItem(LS_PLAN, data.tier);
-                } else {
-                    localStorage.removeItem(LS_PLAN);
-                }
-                checkPermissions();
-                window.app?.updatePrivacyAgreementVisibility?.();
-            } catch (_) {
-                window.app?.updatePrivacyAgreementVisibility?.();
-                /* server offline — keep existing localStorage value */
-            }
-        }
-
-        // Expose so ClerkBridge can trigger sync on sign-in
-        window.__syncTierFromServer = syncTierFromServer;
-
-        // ====================================================================
         //  BOOT
         // ====================================================================
         // Clean up stale PeerJS localStorage keys from previous versions
@@ -2025,108 +1927,12 @@ if (required.some(el => !el)) {
 waitForDOM();
 
 
-        // Sync immediately if user is already signed in on page load
-        syncTierFromServer();
-
     })()
   }, [])
 
   return (
     <>
     
-    <div className="plans-modal-overlay hidden" id="plansModal" role="dialog" aria-modal="true" aria-labelledby="plansModalTitle">
-        <div className="plans-modal">
-            <button className="plans-modal-close" id="plansModalClose" aria-label="Close">✕</button>
-            <div className="plans-modal-header">
-                <div className="plans-modal-eyebrow">💎 eSAMz AI Membership Plans</div>
-                <div className="plans-modal-title" id="plansModalTitle">Your conversations never leave the room.</div>
-                <div className="plans-modal-sub">Every major AI trains its next model on chats. eSAMz doesn&apos;t. Not a single message is stored. Not a single word trains a future model. Just you and the AI.</div>
-            </div>
-            <div className="plans-modal-body">
-                <div className="plans-grid">
-                    <div className="plan-card">
-                        <div className="plan-card-icon">🆓</div>
-                        <div className="plan-card-content">
-                            <div className="plan-card-header">
-                                <div className="plan-card-name">Free — Try It Yourself</div>
-                                <div className="plan-card-price">₹0 forever</div>
-                            </div>
-                            <ul className="plan-card-features">
-                                <li>20 messages per day</li>
-                                <li>No card required</li>
-                                <li>See the difference privacy makes</li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div className="plan-card">
-                        <div className="plan-card-icon">⚡</div>
-                        <div className="plan-card-content">
-                            <div className="plan-card-header">
-                                <div className="plan-card-name">Plus — The Research Student</div>
-                                <div className="plan-card-price">₹99 / month</div>
-                            </div>
-                            <ul className="plan-card-features">
-                                <li>50 chats per day</li>
-                                <li>Always-On Web Verification (RAG) — cannot be disabled, by design</li>
-                                <li>Zero-retention encryption — your data is never stored</li>
-                                <li>2 active devices simultaneously</li>
-                                <li>Delivered to your inbox instantly after payment</li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div className="plan-card">
-                        <div className="plan-card-icon">🚀</div>
-                        <div className="plan-card-content">
-                            <div className="plan-card-header">
-                                <div className="plan-card-name">Pro — The Power Creator</div>
-                                <div className="plan-card-price">₹199 / month</div>
-                            </div>
-                            <ul className="plan-card-features">
-                                <li>100 chats per day</li>
-                                <li>RAG on/off toggle</li>
-                                <li>Priority speed routing</li>
-                                <li>Zero-retention encryption</li>
-                                <li>2 active devices simultaneously</li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div className="plan-card">
-                        <div className="plan-card-icon">♾️</div>
-                        <div className="plan-card-content">
-                            <div className="plan-card-header">
-                                <div className="plan-card-name">Max — The Developer &amp; Founder</div>
-                                <div className="plan-card-price">₹499 / month</div>
-                            </div>
-                            <ul className="plan-card-features">
-                                <li>1000 chats per day</li>
-                                <li>Custom System Prompt — define exactly how the AI behaves</li>
-                                <li>Full RAG toggle</li>
-                                <li>Priority speed routing</li>
-                                <li>Zero-retention encryption</li>
-                                <li>2 active devices simultaneously</li>
-                                <li>Direct feedback channel — your feature requests go to the front of the queue for v11</li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div className="plan-card">
-                        <div className="plan-card-icon">🛡️</div>
-                        <div className="plan-card-content">
-                            <div className="plan-card-header">
-                                <div className="plan-card-name">Every Paid Plan Includes</div>
-                            </div>
-                            <ul className="plan-card-features">
-                                <li>Zero Training Guarantee — your conversations are never used to train any AI model, ever. Not ours. Not anyone&apos;s.</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-
-                <a href="https://payments.cashfree.com/forms/esamz-ai" className="plans-upgrade-btn" target="_blank" rel="noopener">Get a Plan →</a>
-            </div>
-        </div>
-    </div>
-
-    <div id="toast-container"></div>
 
     <div className="app-container">
         <div className="overlay" id="overlay"></div>
@@ -2138,15 +1944,6 @@ waitForDOM();
                     <button className="mobile-bottom-cta mobile-bottom-cta-new" id="mobileNewChatBtn">
                         ✨ New Chat
                     </button>
-                    <a
-                        className="mobile-bottom-cta mobile-bottom-cta-upgrade"
-                        id="mobileUpgradeBtn"
-                        href="https://payments.cashfree.com/forms/esamz-ai"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        🚀 Upgrade Now
-                    </a>
                 </div>
             </div>
             <div className="sidebar-header">
@@ -2160,9 +1957,6 @@ waitForDOM();
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
                     New Chat
                 </button>
-                <a className="btn-view-plans" href="https://payments.cashfree.com/forms/esamz-ai" target="_blank" rel="noopener noreferrer" aria-label="View eSAMz AI plans and upgrade (opens in new tab)">
-                    ⚡ View Plans &amp; Upgrade
-                </a>
             </div>
             <div className="sidebar-nav">
                 <div className="nav-section">
@@ -2182,7 +1976,6 @@ waitForDOM();
                 </div>
             </div>
             <div className="sidebar-footer">
-                <div id="planBadgeContainer"></div>
             </div>
         </aside>
 
@@ -2326,7 +2119,6 @@ waitForDOM();
                                 <span className="toggle-track"></span>
                                 Web search
                             </label>
-                            <span className="rag-pro-badge">PRO</span>
                         </div>
 
                         
@@ -2334,7 +2126,6 @@ waitForDOM();
                             <div className="spe-header">
                                 <div className="spe-label">
                                     <span>System Prompt</span>
-                                    <span className="spe-max-badge">MAX</span>
                                 </div>
                                 <button className="spe-toggle-btn" id="btnToggleSpe">Edit ↓</button>
                             </div>
@@ -2400,7 +2191,6 @@ waitForDOM();
                 <div className="shortcut-row"><span>Export chat</span><div className="shortcut-keys"><kbd>Ctrl</kbd><kbd>E</kbd></div></div>
                 <div className="shortcut-row"><span>Toggle theme</span><div className="shortcut-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>D</kbd></div></div>
                 <div className="shortcut-row"><span>Toggle sidebar</span><div className="shortcut-keys"><kbd>Ctrl</kbd><kbd>B</kbd></div></div>
-                <div className="shortcut-row"><span>Manage subscription</span><div className="shortcut-keys"><kbd>Ctrl</kbd><kbd>U</kbd></div></div>
                 <div className="shortcut-row"><span>Close modal</span><div className="shortcut-keys"><kbd>Esc</kbd></div></div>
                 <div className="shortcut-row"><span>Show shortcuts</span><div className="shortcut-keys"><kbd>Ctrl</kbd><kbd>/</kbd></div></div>
             </div>

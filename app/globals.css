@@ -469,12 +469,7 @@
         }
         #rag-toggle:checked + .toggle-track{background:var(--crescent);border-color:var(--crescent);}
         #rag-toggle:checked + .toggle-track::after{left:19px;}
-        .rag-pro-badge{
-            font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.1em;
-            text-transform:uppercase;color:var(--crescent);
-            border:1px solid var(--crescent-soft);padding:2px 6px;
-            border-radius:4px;background:var(--crescent-soft);
-        }
+        
 
         /* SYSTEM PROMPT EDITOR */
         #system-prompt-editor{
@@ -494,12 +489,7 @@
             text-transform:uppercase;color:var(--ink-faint);
             display:flex;align-items:center;gap:8px;
         }
-        .spe-max-badge{
-            font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.1em;
-            text-transform:uppercase;color:var(--vermillion);
-            border:1px solid var(--vermillion-soft);padding:2px 6px;
-            border-radius:4px;background:var(--vermillion-soft);
-        }
+        
         .spe-toggle-btn{
             font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;
             text-transform:uppercase;color:var(--ink-ghost);
@@ -519,32 +509,27 @@
         .spe-hint{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.06em;color:var(--ink-ghost);margin-top:4px;font-style:italic;}
 
         /* ----- UPGRADE SECTION ----- */
-        .upgrade-section{padding:12px 22px;flex-shrink:0;}
-        .upgrade-section-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--sidebar-label);margin-bottom:10px;}
-        .upgrade-card{background:var(--crescent-soft);border:1px solid rgba(74,118,154,0.22);border-radius:var(--r);padding:14px;margin-bottom:8px;}
-        body.theme-dark .upgrade-card{background:rgba(122,170,198,0.07);border-color:rgba(122,170,198,0.18);}
-        .upgrade-card-title{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--crescent);margin-bottom:6px;}
-        .upgrade-card-desc{font-size:11px;color:var(--ink-faint);font-style:italic;line-height:1.5;margin-bottom:10px;}
-        .upgrade-card-btn{display:block;width:100%;padding:8px 12px;background:var(--grad-primary);color:#fff;border:none;border-radius:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;text-align:center;text-decoration:none;transition:opacity 160ms;box-sizing:border-box;}
-        .upgrade-card-btn:hover{opacity:0.86;}
-        .upgrade-tiers{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;}
-        .upgrade-tier-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--rule);}
-        .upgrade-tier-row:last-child{border-bottom:none;}
-        .upgrade-tier-icon{font-size:13px;flex-shrink:0;}
-        .upgrade-tier-info{flex:1;min-width:0;}
-        .upgrade-tier-name{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink);}
+        
+        
+        
+        body.theme-dark 
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
         /* PLAN BADGE */
-        .plan-badge{
-            display:inline-flex;align-items:center;gap:6px;
-            font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.12em;
-            text-transform:uppercase;margin-bottom:8px;
-            padding:4px 10px;border:1px solid;border-radius:20px;
-        }
-        .plan-badge.plus{color:var(--crescent);border-color:var(--crescent-soft);background:var(--crescent-soft);}
-        .plan-badge.pro{color:var(--vermillion);border-color:var(--vermillion-soft);background:var(--vermillion-soft);}
-        .plan-badge.max{color:var(--crescent);border-color:var(--crescent-border);background:var(--crescent-soft);}
-        .plan-badge svg{flex-shrink:0;}
+        
+        
+        
+        
+        
 
         /* ----- TOAST & DIALOGS ----- */
         #toast-container{position:fixed;top:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;}
@@ -563,78 +548,35 @@
         .dialog-actions .btn-secondary:hover{background:var(--crescent-soft);color:var(--ink);border-color:var(--crescent-border);}
 
         /* PLANS PAGE MODAL */
-        .plans-modal-overlay{
-            position:fixed;inset:0;background:rgba(0,0,0,0.52);backdrop-filter:blur(6px);
-            display:flex;align-items:center;justify-content:center;z-index:10003;
-            opacity:1;visibility:visible;
-            transition:opacity 0.2s ease-out,visibility 0s 0s;will-change:opacity;
-        }
-        .plans-modal-overlay.hidden{opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.2s ease-out,visibility 0s 0.2s;}
-        .plans-modal-overlay.hidden .plans-modal{transform:translateY(24px) scale(0.97);opacity:0;}
-        .plans-modal{
-            background:var(--paper);border:1px solid var(--rule-bold);border-radius:14px;
-            box-shadow:0 12px 48px rgba(0,0,0,0.12);
-            max-width:560px;width:94%;max-height:90vh;overflow-y:auto;position:relative;
-            transform:translateY(0) scale(1);opacity:1;
-            transition:transform 0.20s ease,opacity 0.20s ease;will-change:transform,opacity;
-        }
-        .plans-modal-header{
-            background:var(--paper-warm);
-            border-bottom:1px solid var(--rule);
-            padding:24px 28px 18px;position:relative;border-radius:14px 14px 0 0;
-        }
-        .plans-modal-eyebrow{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--crescent);margin-bottom:7px;display:flex;align-items:center;gap:10px;}
-        .plans-modal-eyebrow::before{content:'';display:block;width:16px;height:1px;background:var(--crescent);opacity:0.6;}
-        .plans-modal-title{font-family:'Inter',system-ui,sans-serif;font-size:22px;font-weight:600;color:var(--ink);letter-spacing:-0.01em;line-height:1.2;margin-bottom:4px;}
-        .plans-modal-sub{font-size:12px;color:var(--ink-faint);line-height:1.5;}
-        .plans-modal-close{position:absolute;top:14px;right:14px;background:none;border:1px solid var(--rule-bold);border-radius:8px;color:var(--ink-ghost);width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;transition:all 160ms;}
-        .plans-modal-close:hover{background:var(--crescent-soft);color:var(--crescent);border-color:var(--crescent-border);}
-        .plans-modal-body{padding:22px 30px 26px;}
-        .plans-grid{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
-        .plan-card{
-            border:1px solid var(--rule);padding:16px 18px;border-radius:10px;
-            display:flex;align-items:flex-start;gap:14px;
-            transition:border-color 180ms,box-shadow 180ms;cursor:default;
-            position:relative;
-        }
-        .plan-card:hover{border-color:var(--crescent);box-shadow:0 4px 14px rgba(0,0,0,0.08);}
-        .plan-card-icon{font-size:20px;flex-shrink:0;line-height:1;margin-top:2px;}
-        .plan-card-content{flex:1;min-width:0;}
-        .plan-card-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;}
-        .plan-card-name{font-family:'Inter',system-ui,sans-serif;font-size:16px;font-weight:600;color:var(--ink);}
-        .plan-card-price{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.04em;color:var(--crescent);font-weight:500;}
-        .plan-card-features{font-size:12px;color:var(--ink-faint);line-height:1.6;}
-        .plan-card-features li{margin-bottom:3px;list-style:none;padding-left:16px;position:relative;}
-        .plan-card-features li::before{content:'✓';position:absolute;left:0;color:var(--crescent);font-size:11px;font-weight:700;}
-        .plans-upgrade-btn{
-            display:block;width:100%;padding:13px;
-            background:var(--grad-primary);
-            color:#fff;border:none;border-radius:10px;font-family:'Inter',system-ui,sans-serif;font-size:13px;font-weight:500;
-            cursor:pointer;text-align:center;text-decoration:none;
-            transition:opacity 180ms,transform 180ms,box-shadow 180ms;margin-bottom:18px;
-            box-shadow:0 6px 18px rgba(240,82,52,0.35);
-        }
-        .plans-upgrade-btn:hover{opacity:0.92;transform:translateY(-1px);box-shadow:0 10px 20px rgba(240,82,52,0.45);}
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
         /* View Plans sidebar button */
-        .btn-view-plans{
-            width:100%;height:38px;
-            background:linear-gradient(135deg,rgba(37,99,235,0.12),rgba(96,165,250,0.08));
-            border:1px solid rgba(37,99,235,0.38);color:var(--crescent);
-            font-family:'Inter',system-ui,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.02em;
-            cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;
-            transition:all 200ms ease;border-radius:8px;margin-top:8px;
-            text-decoration:none;
-            box-shadow:0 0 0 0 rgba(37,99,235,0.0),0 2px 8px rgba(37,99,235,0.12);
-            animation:viewPlansPulse 3s ease-in-out infinite;
-        }
-        .btn-view-plans:hover{
-            background:var(--grad-premium,linear-gradient(135deg,#2563eb,#60a5fa));
-            border-color:transparent;color:#fff;
-            box-shadow:0 4px 16px rgba(37,99,235,0.42);
-            transform:translateY(-1px);
-            animation:none;
-        }
+        
+        
         @keyframes viewPlansPulse{
             0%,100%{box-shadow:0 2px 8px rgba(37,99,235,0.12),0 0 0 0 rgba(37,99,235,0.0);}
             50%{box-shadow:0 2px 12px rgba(37,99,235,0.22),0 0 0 4px rgba(37,99,235,0.06);}
@@ -681,9 +623,9 @@
             .scroll-top-btn{bottom:108px;right:18px;}
             .activation-modal-top{padding:22px 20px 18px;}
             .activation-modal-body{padding:18px 20px 22px;}
-            .plans-modal{max-width:96%;width:96%;}
-            .plans-modal-header{padding:20px 20px 16px;}
-            .plans-modal-body{padding:18px 20px 22px;}
+            
+            
+            
         }
         @media(max-width:480px){
             .chat-wrapper{padding:24px 12px;}
@@ -746,7 +688,6 @@
         /* ----- STREAMING CURSOR ----- */
         .streaming-cursor{display:inline-block;width:2px;height:1em;background:var(--crescent);margin-left:2px;vertical-align:text-bottom;animation:cursorBlink 0.75s ease-in-out infinite;border-radius:1px;}
         @keyframes cursorBlink{0%,100%{opacity:1}50%{opacity:0}}
-
 
         /* ----- DRAFT INDICATOR ----- */
         .draft-indicator{position:absolute;bottom:2px;right:8px;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.1em;color:var(--ink-ghost);opacity:0;transition:opacity 0.3s;pointer-events:none;}
@@ -821,16 +762,11 @@
         .code-header button:hover{color:var(--crescent);background:var(--crescent-soft);}
 
         /* ----- PLAN BADGE ENHANCED ----- */
-        .plan-badge{
-            display:inline-flex;align-items:center;gap:6px;
-            font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.12em;
-            text-transform:uppercase;margin-bottom:8px;
-            padding:5px 12px;border:1.5px solid;border-radius:20px;
-        }
-        .plan-badge.plus{color:var(--crescent);border-color:var(--crescent-border);background:var(--crescent-soft);}
-        .plan-badge.pro{color:var(--vermillion);border-color:var(--vermillion-soft);background:var(--vermillion-soft);}
-        .plan-badge.max{color:var(--crescent);border-color:var(--crescent-border);background:var(--crescent-soft);}
-        .plan-badge svg{flex-shrink:0;}
+        
+        
+        
+        
+        
 
         /* ----- FOCUS RING GLOBAL ----- */
         :focus-visible{outline:2px solid var(--crescent);outline-offset:3px;}
@@ -927,7 +863,7 @@ body::after{
 .sidebar-header{padding:20px 16px 12px;}
 .brand{position:relative;}
 .brand::before,.brand::after{content:none;}
-.brand-eyebrow,.nav-label,.sidebar-footer-text,.header-context,.input-footer,.footer-sgi-badge,#footerShortcuts,kbd,.plan-badge,.rag-pro-badge,.spe-label,.spe-max-badge,.spe-toggle-btn,.char-count{
+.brand-eyebrow,.nav-label,.sidebar-footer-text,.header-context,.input-footer,.footer-sgi-badge,#footerShortcuts,kbd,.spe-label,.spe-toggle-btn,.char-count{
   font-family:"IBM Plex Mono",ui-monospace,monospace;
 }
 .brand-name{
@@ -950,15 +886,6 @@ body::after{
   transition:filter var(--dur-fast) var(--ease-standard), transform var(--dur-fast) var(--ease-standard), box-shadow var(--dur-fast) var(--ease-standard);
 }
 .btn-new-chat:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 4px 16px rgba(27,79,232,0.3);}
-.btn-view-plans{
-  height:40px;
-  border-radius:8px;
-  border:1.5px solid var(--accent-primary);
-  color:var(--accent-primary);
-  background:transparent;
-  font:500 14px/1 "IBM Plex Sans",system-ui,sans-serif;
-}
-.btn-view-plans:hover{background:rgba(27,79,232,0.06);box-shadow:none;color:var(--accent-primary);}
 
 .nav-item:hover{
   background:var(--bg-tertiary);
@@ -1136,7 +1063,7 @@ dialog{
 }
 dialog::backdrop{background:rgba(0,0,0,0.4);backdrop-filter:blur(8px);}
 
-.dialog-header,.plans-modal-title{font-size:22px;line-height:1.4;font-weight:600;}
+.dialog-header,
 .dialog-body{font-size:15px;color:var(--text-secondary);}
 
 /* ===================================================================
@@ -1354,12 +1281,8 @@ dialog::backdrop{background:rgba(0,0,0,0.4);backdrop-filter:blur(8px);}
   }
   .mobile-bottom-cta:active{transform:translateY(1px);}
   .mobile-bottom-cta-new{background:var(--accent-primary);color:#fff;}
-  .mobile-bottom-cta-upgrade{
-    background:linear-gradient(135deg,#ff7a45 0%, #ff4d67 100%);
-    color:#fff;
-    box-shadow:0 4px 14px rgba(255,77,103,0.35);
-  }
-  .sidebar-header,.search-box,.nav-label,.sidebar-footer,.upgrade-section{display:none;}
+  
+  .sidebar-header,.search-box,.nav-label,.sidebar-footer,
   .sidebar-nav{padding:8px 12px 14px;display:block;overflow-y:auto;overflow-x:hidden;}
   .nav-section{display:block;margin:0 0 10px;}
   .nav-item{justify-content:flex-start;padding:10px 12px;}
@@ -1692,12 +1615,6 @@ body.theme-dark .message.user .bubble {
 }
 
 /* ---- View Plans button — gradient on hover ---- */
-.btn-view-plans:hover {
-  background:var(--grad-magic)!important;
-  border-color:transparent!important;
-  color:#fff!important;
-  box-shadow:0 8px 22px rgba(37,99,235,0.35)!important;
-}
 
 /* ---- Input box glowing focus ---- */
 .input-box:focus-within {
@@ -1706,26 +1623,10 @@ body.theme-dark .message.user .bubble {
 }
 
 /* ---- Plan card hover lift ---- */
-.plan-card:hover {
-  border-color:#2563eb!important;
-  box-shadow:0 8px 24px rgba(37,99,235,0.14)!important;
-  transform:translateY(-2px);
-  transition:border-color 180ms,box-shadow 180ms,transform 180ms cubic-bezier(0.34,1.4,0.64,1);
-}
 
 /* ---- Primary dialog button gradient ---- */
 .dialog-actions .btn-primary,
 .msg-edit-save-btn,
-.plans-upgrade-btn {
-  background:var(--grad-magic)!important;
-}
-.plans-upgrade-btn {
-  box-shadow:0 6px 20px rgba(37,99,235,0.35)!important;
-}
-.plans-upgrade-btn:hover {
-  box-shadow:0 12px 28px rgba(37,99,235,0.48)!important;
-  transform:translateY(-2px)!important;
-}
 
 /* ---- Scroll to top — gradient ---- */
 .scroll-top-btn {
@@ -1782,23 +1683,6 @@ kbd {
   color:#2563eb!important;
 }
 
-/* ---- Plan badges colorful ---- */
-.plan-badge.plus,.plan-badge.max {
-  background:linear-gradient(135deg,rgba(37,99,235,0.12),rgba(29,78,216,0.08))!important;
-  border-color:rgba(37,99,235,0.3)!important;
-  color:#2563eb!important;
-}
-.plan-badge.pro {
-  background:linear-gradient(135deg,rgba(59,130,246,0.1),rgba(245,158,11,0.07))!important;
-  border-color:rgba(59,130,246,0.28)!important;
-  color:#3b82f6!important;
-}
-
-/* ---- Sidebar search focus ---- */
-.search-input:focus {
-  border-color:#2563eb!important;
-  box-shadow:0 0 0 3px rgba(37,99,235,0.14)!important;
-}
 
 /* ---- Focus ring global ---- */
 :focus-visible {
@@ -1806,10 +1690,6 @@ kbd {
 }
 
 /* ---- Upgrade card btn-primary ---- */
-.upgrade-card-btn {
-  background:var(--grad-magic)!important;
-  box-shadow:0 4px 14px rgba(37,99,235,0.3)!important;
-}
 
 /* ---- Icon button hover ---- */
 .icon-btn:hover {
@@ -1844,13 +1724,6 @@ dialog::backdrop {
   background:rgba(0,0,0,0.48)!important;
 }
 
-/* ---- Plans modal header gradient ---- */
-.plans-modal-header {
-  background:linear-gradient(135deg,rgba(37,99,235,0.06) 0%,rgba(29,78,216,0.04) 100%)!important;
-}
-.plans-modal-eyebrow {
-  color:#2563eb!important;
-}
 
 /* ---- Thinking loader text ---- */
 @keyframes thinkingDot {
@@ -1866,10 +1739,6 @@ dialog::backdrop {
 }
 
 /* ---- Upgrade card btn ---- */
-.upgrade-card {
-  background:linear-gradient(135deg,rgba(37,99,235,0.07),rgba(29,78,216,0.04))!important;
-  border-color:rgba(37,99,235,0.2)!important;
-}
 
 /* ---- Smooth theme toggle ---- */
 .theme-toggle {
@@ -1886,7 +1755,7 @@ dialog::backdrop {
 @media(prefers-reduced-motion:reduce){
   .welcome,.message,.btn-new-chat::after,.brand-z,.welcome-headline{animation:none!important;}
   .welcome-headline{color:var(--accent-primary)!important;background:none!important;-webkit-background-clip:unset!important;background-clip:unset!important;}
-  .welcome-suggestion-card:hover,.plan-card:hover,.btn-new-chat:hover,.send-btn:not(:disabled):hover,.scroll-top-btn:hover,.btn-view-plans:hover{transform:none!important;}
+  .welcome-suggestion-card:hover,.btn-new-chat:hover,.send-btn:not(:disabled):hover,.scroll-top-btn:hover,
   *{transition-duration:0.01ms!important;}
 }
 
@@ -1911,20 +1780,6 @@ dialog::backdrop {
 :root[data-theme="light"] .input-box,body.theme-light .input-box{
   background:rgba(255,255,255,0.92)!important;
   box-shadow:0 4px 16px rgba(37,99,235,0.05)!important;
-}
-:root[data-theme="light"] .plan-card,body.theme-light .plan-card{
-  background:#fff!important;
-  box-shadow:0 4px 16px rgba(0,0,0,0.06)!important;
-}
-
-/* ---- Welcome headline — light mode: softer gradient ---- */
-:root[data-theme="light"] .welcome-headline,body.theme-light .welcome-headline{
-  background:linear-gradient(90deg,#1d4ed8 0%,#2563eb 50%,#3b82f6 100%)!important;
-  background-size:200% 200%!important;
-  -webkit-background-clip:text!important;
-  background-clip:text!important;
-  color:transparent!important;
-  animation:headlineGradientLight 8s ease-in-out infinite!important;
 }
 @keyframes headlineGradientLight{
   0%,100%{background-position:0% 50%}
@@ -1953,58 +1808,18 @@ dialog::backdrop {
 .btn-new-chat::after{background:rgba(255,255,255,0.2)!important;}
 
 /* ---- View Plans button — glass secondary ---- */
-.btn-view-plans{
-  background:rgba(37,99,235,0.06)!important;
-  border:1.5px solid rgba(37,99,235,0.25)!important;
-  color:#2563eb!important;
-  box-shadow:none!important;
-}
-:root[data-theme="dark"] .btn-view-plans,body.theme-dark .btn-view-plans{
-  background:rgba(255,255,255,0.04)!important;
-  border-color:rgba(255,255,255,0.1)!important;
-  color:rgba(255,255,255,0.65)!important;
-}
-.btn-view-plans:hover{
-  background:rgba(37,99,235,0.12)!important;
-  border-color:rgba(37,99,235,0.4)!important;
-  color:#2563eb!important;
-  box-shadow:0 4px 16px rgba(37,99,235,0.2)!important;
-  transform:none!important;
-}
-:root[data-theme="dark"] .btn-view-plans:hover,body.theme-dark .btn-view-plans:hover{
-  background:rgba(37,99,235,0.14)!important;
-  border-color:rgba(37,99,235,0.35)!important;
-  color:#A78BFA!important;
-}
 
-/* ---- Suggestion cards — subtle glow border + active scale ---- */
-.welcome-suggestion-card{
-  border:1px solid rgba(37,99,235,0.1)!important;
-  transition:all 0.25s cubic-bezier(0.22,1,0.36,1)!important;
-}
+
 .welcome-suggestion-card:active{
   transform:scale(0.96)!important;
   transition:transform 0.1s ease!important;
 }
 
 /* ---- Plan cards — feel alive ---- */
-.plan-card{
-  border:1px solid rgba(37,99,235,0.1)!important;
-  transition:all 0.25s cubic-bezier(0.22,1,0.36,1)!important;
-}
-.plan-card:hover{
-  border-color:rgba(37,99,235,0.3)!important;
-  transform:translateY(-4px)!important;
-  box-shadow:0 10px 30px rgba(37,99,235,0.12)!important;
-}
-.plan-card:active{transform:scale(0.97)!important;}
 
 /* ---- Ripple effect on main CTA buttons ---- */
-.btn-new-chat,.mobile-bottom-cta-new,.mobile-bottom-cta-upgrade,.plans-upgrade-btn{
-  position:relative;
-  overflow:hidden;
-}
-.btn-new-chat::before,.mobile-bottom-cta-new::before,.mobile-bottom-cta-upgrade::before,.plans-upgrade-btn::before{
+.btn-new-chat,.mobile-bottom-cta-new,
+.btn-new-chat::before,.mobile-bottom-cta-new::before::before{
   content:"";
   position:absolute;
   width:300%;
@@ -2017,11 +1832,6 @@ dialog::backdrop {
   transition:transform 0.5s cubic-bezier(0.22,1,0.36,1),opacity 0.5s;
   pointer-events:none;
   z-index:0;
-}
-.btn-new-chat:active::before,.mobile-bottom-cta-new:active::before,.mobile-bottom-cta-upgrade:active::before,.plans-upgrade-btn:active::before{
-  transform:translate(-50%,-50%) scale(1);
-  opacity:0;
-  transition:transform 0.5s cubic-bezier(0.22,1,0.36,1),opacity 0.3s 0.2s;
 }
 
 /* ---- Floating arrow on suggestions hint ---- */
@@ -2092,10 +1902,7 @@ dialog::backdrop {
     background:var(--grad-premium)!important;
     box-shadow:0 6px 20px rgba(37,99,235,0.35)!important;
   }
-  .mobile-bottom-cta-upgrade{
-    background:linear-gradient(135deg,#ef4444 0%,#60a5fa 100%)!important;
-    box-shadow:0 4px 14px rgba(239,68,68,0.35)!important;
-  }
+  
   .overlay{
     backdrop-filter:blur(6px)!important;
     -webkit-backdrop-filter:blur(6px)!important;
@@ -2175,20 +1982,9 @@ dialog::backdrop {
   background:rgba(239,68,68,0.08)!important;
   border-color:rgba(239,68,68,0.22)!important;
 }
-.plans-upgrade-btn{
-  background:var(--grad-premium)!important;
-  box-shadow:0 6px 20px rgba(37,99,235,0.35)!important;
-}
-.plans-upgrade-btn:hover{box-shadow:0 12px 28px rgba(37,99,235,0.5)!important;}
+
 .dialog-actions .btn-primary,.msg-edit-save-btn{background:var(--grad-premium)!important;}
-.upgrade-card-btn{
-  background:var(--grad-premium)!important;
-  box-shadow:0 4px 14px rgba(37,99,235,0.3)!important;
-}
-.plans-modal-header{
-  background:linear-gradient(135deg,rgba(37,99,235,0.06),rgba(96,165,250,0.03))!important;
-}
-.plans-modal-eyebrow{color:#2563eb!important;}
+
 .header-actions-item:hover{background:rgba(37,99,235,0.08)!important;color:#2563eb!important;}
 .header-actions-item.danger:hover{background:rgba(239,68,68,0.1)!important;color:#ef4444!important;}
 .scroll-top-btn{
@@ -2214,24 +2010,6 @@ kbd{
   background:linear-gradient(180deg,rgba(37,99,235,0.07),rgba(37,99,235,0.03))!important;
   border-color:rgba(37,99,235,0.18) rgba(37,99,235,0.18) rgba(37,99,235,0.35)!important;
   color:#2563eb!important;
-}
-.plan-badge.plus,.plan-badge.max{
-  background:linear-gradient(135deg,rgba(37,99,235,0.1),rgba(108,140,255,0.07))!important;
-  border-color:rgba(37,99,235,0.28)!important;
-  color:#2563eb!important;
-}
-.plan-badge.pro{
-  background:linear-gradient(135deg,rgba(239,68,68,0.1),rgba(96,165,250,0.06))!important;
-  border-color:rgba(239,68,68,0.28)!important;
-  color:#ef4444!important;
-}
-.upgrade-card{
-  background:linear-gradient(135deg,rgba(37,99,235,0.07),rgba(96,165,250,0.03))!important;
-  border-color:rgba(37,99,235,0.18)!important;
-}
-.message.ai .bubble blockquote{
-  border-left-color:#2563eb!important;
-  background:rgba(37,99,235,0.04)!important;
 }
 .code-header{color:#2563eb!important;background:rgba(37,99,235,0.04)!important;}
 .code-header button:hover{color:#2563eb!important;background:rgba(37,99,235,0.1)!important;}
@@ -2278,11 +2056,11 @@ body.mode-writer .header::after,body.mode-writer .chat-scroll-progress span{
 
 /* ---- Elite: reduced motion compliance ---- */
 @media(prefers-reduced-motion:reduce){
-  .btn-new-chat::before,.mobile-bottom-cta-new::before,.mobile-bottom-cta-upgrade::before,.plans-upgrade-btn::before{animation:none!important;}
-  .btn-view-plans{animation:none!important;}
+  .btn-new-chat::before,.mobile-bottom-cta-new::before::before{animation:none!important;}
+  
   .floating-arrow{animation:none!important;}
   .header-context-dot{animation:none!important;}
-  .welcome-suggestion-card:active,.plan-card:active{transform:none!important;}
+  .welcome-suggestion-card:active{transform:none!important;}
   .new-chat-exit{animation:none!important;}
 }
 
@@ -2352,39 +2130,22 @@ body.theme-dark .dialog-header {
 body.theme-dark .dialog-body {
   color:#d1d5db!important;
 }
-:root[data-theme="dark"] .plans-modal,
-body.theme-dark .plans-modal,
 :root[data-theme="dark"] .shortcuts-modal,
 body.theme-dark .shortcuts-modal {
   background:#141824!important;
   color:#f3f4f6!important;
   border-color:rgba(255,255,255,0.1)!important;
 }
-:root[data-theme="dark"] .plans-modal-title,
-body.theme-dark .plans-modal-title,
 :root[data-theme="dark"] .shortcuts-modal-header,
 body.theme-dark .shortcuts-modal-header {
   color:#f3f4f6!important;
 }
-:root[data-theme="dark"] .plans-modal-sub,
-body.theme-dark .plans-modal-sub,
-:root[data-theme="dark"] .plan-card-features,
-body.theme-dark .plan-card-features,
 :root[data-theme="dark"] .shortcut-row,
 body.theme-dark .shortcut-row {
   color:#9ca3af!important;
 }
-:root[data-theme="dark"] .plan-card-name,
-body.theme-dark .plan-card-name,
-:root[data-theme="dark"] .plan-card-price,
-body.theme-dark .plan-card-price {
-  color:#e5e7eb!important;
-}
-:root[data-theme="dark"] .plan-card,
-body.theme-dark .plan-card {
-  background:#1e2535!important;
-  border-color:rgba(255,255,255,0.08)!important;
-}
+body.theme-dark 
+body.theme-dark 
 :root[data-theme="dark"] .header-actions-menu,
 body.theme-dark .header-actions-menu {
   background:#141824!important;
@@ -2397,11 +2158,7 @@ body.theme-dark .header-actions-item {
 }
 
 /* ---- Upgrade modal button stays readable ---- */
-:root[data-theme="dark"] .mobile-bottom-cta-upgrade,
-body.theme-dark .mobile-bottom-cta-upgrade {
-  background:linear-gradient(135deg,#ef4444 0%,#60a5fa 100%)!important;
-  box-shadow:0 4px 14px rgba(239,68,68,0.35)!important;
-}
+body.theme-dark 
 
 /* ---- Confirm dialog body text ---- */
 #confirmMessage { color:var(--ink-faint); }

@@ -11,8 +11,6 @@ const connectDB = async () => {
 const User = mongoose.models.User || mongoose.model("User", new mongoose.Schema({
   email: String,
   clerkId: String,
-  tier: { type: String, default: "free" },
-  lastPaymentId: String,
   privacyPolicyAccepted: { type: Boolean, default: false },
   privacyPolicyAcceptedAt: Date,
   privacyPolicyAcceptanceLog: {
@@ -36,7 +34,7 @@ export async function POST(req: Request) {
 
     const email = user.emailAddresses[0]?.emailAddress;
 
-    // ─── 1. Delete user from MongoDB ────────────────────────────────────
+    // ─── 1. Delete user from MongoDB ─────────────────────────────
     const { deletedCount } = await User.collection.deleteOne(
       { $or: [{ clerkId: userId }, { email }] }
     );
@@ -47,9 +45,7 @@ export async function POST(req: Request) {
       deletedCount,
     });
 
-    // ─── 2. Delete all MongoDB logs for this user ────────────────────────
-    // Remove any conversation logs, chat history, or other collections
-    // that may be associated with this user's clerkId or email.
+    // ─── 2. Delete all MongoDB logs for this user ────────────────
     const db = mongoose.connection.db;
     if (db) {
       const collectionsToClean = ["logs", "conversations", "sessions", "chatlogs"];
@@ -74,7 +70,7 @@ export async function POST(req: Request) {
       console.warn("[Account Deletion] MongoDB db instance unavailable — skipping log cleanup");
     }
 
-    // ─── 3. Delete user from Clerk via Backend API ───────────────────────
+    // ─── 3. Delete user from Clerk via Backend API ───────────────
     let clerkDeleted = false;
     if (process.env.CLERK_SECRET_KEY) {
       try {

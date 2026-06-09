@@ -10,7 +10,6 @@ declare global {
       openSignIn: () => void
       getToken: () => Promise<string | null>
     }
-    __syncTierFromServer?: () => void
   }
 }
 
@@ -24,10 +23,6 @@ export default function ClerkBridge() {
 
   useEffect(() => {
     isSignedInRef.current = !!isSignedIn
-    // Sync tier from server whenever the user becomes signed in
-    if (isSignedIn) {
-      window.__syncTierFromServer?.()
-    }
     ;(window as any).app?.updatePrivacyAgreementVisibility?.()
   }, [isSignedIn])
   useEffect(() => { openSignInRef.current = () => openSignIn() }, [openSignIn])

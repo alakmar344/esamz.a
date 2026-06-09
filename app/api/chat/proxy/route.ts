@@ -1,25 +1,9 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
-import mongoose from "mongoose";
 
 const RUST_BACKEND_URL = 'https://backend.esamz.site/api/chat';
 const ENABLE_VERBOSE_BACKEND_LOGS = process.env.ESAMZ_DEBUG_BACKEND_STREAM === 'true';
-
-// Database connection helper (shared connection pool)
-const connectDB = async () => {
-  if (mongoose.connections[0].readyState) return;
-  if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI environment variable is not set');
-  await mongoose.connect(process.env.MONGODB_URI);
-};
-
-// User model (matches webhook handler schema)
-const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
-  email: String,
-  clerkId: String,
-  tier: { type: String, default: 'free' },
-  lastPaymentId: String,
-}));
 
 export async function POST(req: Request) {
   // 1. Verify Clerk Auth
@@ -30,19 +14,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // 2. Get User Tier from MongoDB
-  let userTier = 'Free';
-  try {
-    await connectDB();
-    const email = user.emailAddresses[0]?.emailAddress;
-    const dbUser = await User.findOne({ email }).lean() as { tier?: string } | null;
-    if (dbUser?.tier) {
-      // Capitalize: 'plus' -> 'Plus', 'pro' -> 'Pro', etc.
-      userTier = dbUser.tier.charAt(0).toUpperCase() + dbUser.tier.slice(1);
-    }
-  } catch (dbErr) {
-    console.error('[Proxy] MongoDB lookup failed, defaulting to Free tier:', dbErr);
-  }
+  // 2. All signed-in users get Max tier — AI is free, no subscriptions
+  const userTier = 'Max';
 
   // 3. Create the Payload for Rust backend
   const payload = {
