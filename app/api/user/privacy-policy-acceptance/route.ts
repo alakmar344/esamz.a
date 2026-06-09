@@ -13,8 +13,6 @@ const connectDB = async () => {
 const User = mongoose.models.User || mongoose.model("User", new mongoose.Schema({
   email: String,
   clerkId: String,
-  tier: { type: String, default: "free" },
-  lastPaymentId: String,
   privacyPolicyAccepted: { type: Boolean, default: false },
   privacyPolicyAcceptedAt: Date,
   privacyPolicyAcceptanceLog: {
@@ -64,7 +62,6 @@ export async function POST(req: Request) {
             ip,
           },
         },
-        $setOnInsert: { tier: "free" },
       },
       { upsert: true }
     );
