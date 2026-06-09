@@ -51,22 +51,26 @@ export async function POST(req: Request) {
     // Remove any conversation logs, chat history, or other collections
     // that may be associated with this user's clerkId or email.
     const db = mongoose.connection.db;
-    const collectionsToClean = ["logs", "conversations", "sessions", "chatlogs"];
+    if (!db) {
+      console.warn("[Account Deletion] MongoDB db instance unavailable — skipping log cleanup");
+    } else {
+      const collectionsToClean = ["logs", "conversations", "sessions", "chatlogs"];
 
-    for (const colName of collectionsToClean) {
-      try {
-        const collection = db.collection(colName);
-        const exists = await db.listCollections({ name: colName }).toArray();
-        if (exists.length > 0) {
-          const logResult = await collection.deleteMany({
-            $or: [{ clerkId: userId }, { userId }, { email }]
-          });
-          if (logResult.deletedCount > 0) {
-            console.log(`[Account Deletion] Deleted ${logResult.deletedCount} documents from "${colName}"`, { userId, email });
+      for (const colName of collectionsToClean) {
+        try {
+          const collection = db.collection(colName);
+          const exists = await db.listCollections({ name: colName }).toArray();
+          if (exists.length > 0) {
+            const logResult = await collection.deleteMany({
+              $or: [{ clerkId: userId }, { userId }, { email }]
+            });
+            if (logResult.deletedCount > 0) {
+              console.log(`[Account Deletion] Deleted ${logResult.deletedCount} documents from "${colName}"`, { userId, email });
+            }
           }
+        } catch (colErr) {
+          console.warn(`[Account Deletion] Could not clean collection "${colName}":`, colErr);
         }
-      } catch (colErr) {
-        console.warn(`[Account Deletion] Could not clean collection "${colName}":`, colErr);
       }
     }
 
