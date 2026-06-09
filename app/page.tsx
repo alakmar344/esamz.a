@@ -331,9 +331,13 @@ export default function ChatPage() {
                     this.dom.anonymousNotice.style.display = !isSignedIn ? 'block' : 'none';
                 }
 
-                // 3. Consent Modal (for signed-in users who haven't accepted)
-                if (isSignedIn && !acceptedAt) {
+                // 3. Consent Modal (for ALL users who haven't accepted — shown BEFORE sign-in)
+                if (!acceptedAt) {
                     this.dom.consentModal?.classList.remove('hidden');
+                    // Update button text based on sign-in state
+                    if (this.dom.consentModalContinue) {
+                        this.dom.consentModalContinue.textContent = isSignedIn ? 'Agree & Continue' : 'Agree & Sign In';
+                    }
                     requestAnimationFrame(() => {
                         this.dom.consentModal?.classList.add('consent-modal-visible');
                     });
@@ -353,9 +357,16 @@ export default function ChatPage() {
             }
 
             async handleRevokeConsent() {
+                // Step 1: First warning
                 if (!await Utils.confirm(
-                    'This will permanently delete your account, all your data (MongoDB logs, chat history), clear your browser cache, and remove you from our system. You will need to re-consent and sign in again to use eSAMz AI. This action cannot be undone.',
-                    'Delete Account & All Data'
+                    '⚠ WARNING: This will permanently delete ALL your data — your account, chat history, MongoDB logs, browser cache, and Clerk user record. You will be completely removed from our system and must re-consent and sign up again to use eSAMz AI.',
+                    'Delete My Data'
+                )) return;
+
+                // Step 2: Final confirmation with "Confirm Anyway" button
+                if (!await Utils.confirm(
+                    'This is your LAST chance. Once you confirm, there is NO WAY to recover your data. Are you absolutely sure?',
+                    '⚠ This Cannot Be Undone'
                 )) return;
 
                 try {
@@ -366,27 +377,8 @@ export default function ChatPage() {
 
                     const data = await res.json();
 
-                    // ─── Clear all localStorage ────────────────────────────────
-                    // Remove privacy policy acceptance
-                    localStorage.removeItem(LS_PRIVACY_POLICY_ACCEPTED_AT);
-                    // Remove all conversation history
-                    localStorage.removeItem(LS_STORAGE);
-                    localStorage.removeItem(LS_LAST_CHAT);
-                    // Remove plan/tier data
-                    localStorage.removeItem(LS_PLAN);
-                    // Remove draft
-                    localStorage.removeItem('esamz_draft_v9');
-                    // Remove theme preference
-                    localStorage.removeItem('esamz-theme');
-                    // Remove any other esamz-prefixed keys
-                    const keysToRemove = [];
-                    for (let i = 0; i < localStorage.length; i++) {
-                        const key = localStorage.key(i);
-                        if (key && (key.startsWith('esamz_') || key.startsWith('esamz-') || key.startsWith('clerk'))) {
-                            keysToRemove.push(key);
-                        }
-                    }
-                    keysToRemove.forEach(k => localStorage.removeItem(k));
+                    // ─── Clear all localStorage ──────────────────────────────
+                    localStorage.clear();
 
                     // ─── Clear all sessionStorage ──────────────────────────────
                     sessionStorage.clear();
@@ -457,8 +449,13 @@ export default function ChatPage() {
                 if (!checkbox || !checkbox.checked) return;
 
                 if (!window.__clerk?.isSignedIn) {
-                    checkbox.checked = false;
-                    window.__clerk?.openSignIn();
+                    // Save consent locally first, then prompt sign-in
+                    const acceptedAt = new Date().toISOString();
+                    localStorage.setItem(LS_PRIVACY_POLICY_ACCEPTED_AT, acceptedAt);
+                    Utils.showToast('Consent saved. Please sign in to continue.', 'success');
+                    this.updatePrivacyAgreementVisibility();
+                    // Open sign-in after a brief delay so the user sees the toast
+                    setTimeout(() => { window.__clerk?.openSignIn(); }, 600);
                     return;
                 }
 
@@ -2176,7 +2173,7 @@ waitForDOM();
                     </div>
                 </div>
                 <div className="header-right">
-                    <button id="btnRevokeConsent" className="btn-clear" style={{display:"none",marginRight:"8px",borderColor:"var(--vermillion)",color:"var(--vermillion)"}}>Delete Account</button>
+                    <button id="btnRevokeConsent" className="btn-clear" style={{display:"none",marginRight:"8px",borderColor:"var(--vermillion)",color:"var(--vermillion)"}}>Delete My Data</button>
                     <div id="clerkUserButton" style={{display:"flex",alignItems:"center"}}>{hasClerk && UserButton && <UserButton />}</div>
                     <button className="theme-toggle" id="btnThemeToggle" title="Toggle theme" aria-label="Toggle theme">
                         <svg className="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
@@ -2428,7 +2425,7 @@ waitForDOM();
           disabled
           className="consent-modal-btn"
         >
-          Continue
+          Agree & Continue
         </button>
 
         <p className="consent-modal-footer">You can delete your account and all data at any time from the header menu.</p>
