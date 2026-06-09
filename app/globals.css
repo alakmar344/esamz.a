@@ -1815,10 +1815,12 @@ dialog::backdrop {
   transition:transform 0.1s ease!important;
 }
 
-/* ---- Plan cards — feel alive ---- */
 
 /* ---- Ripple effect on main CTA buttons ---- */
-.btn-new-chat,.mobile-bottom-cta-new,
+.btn-new-chat,.mobile-bottom-cta-new{
+  position:relative;
+  overflow:hidden;
+}
 .btn-new-chat::before,.mobile-bottom-cta-new::before{
   content:"";
   position:absolute;
@@ -1832,6 +1834,11 @@ dialog::backdrop {
   transition:transform 0.5s cubic-bezier(0.22,1,0.36,1),opacity 0.5s;
   pointer-events:none;
   z-index:0;
+}
+.btn-new-chat:active::before,.mobile-bottom-cta-new:active::before{
+  transform:translate(-50%,-50%) scale(1);
+  opacity:0;
+  transition:transform 0.5s cubic-bezier(0.22,1,0.36,1),opacity 0.3s 0.2s;
 }
 
 /* ---- Floating arrow on suggestions hint ---- */
