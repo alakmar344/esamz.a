@@ -20,7 +20,7 @@ export async function POST(req: Request) {
   // 3. Create the Payload for Rust backend
   const payload = {
     sub: userId,
-    email: user.emailAddresses[0].emailAddress,
+    email: user.emailAddresses?.[0]?.emailAddress || "",
     tier: userTier,
     exp: Math.floor(Date.now() / 1000) + (60 * 60), // 1 hour expiration
   };
@@ -33,7 +33,10 @@ export async function POST(req: Request) {
 
   // 5. Forward to Rust Backend
   try {
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
+    if (!body || !body.sessionId) {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
     if (ENABLE_VERBOSE_BACKEND_LOGS) {
       console.log('[Proxy] Forwarding chat request to backend', {
         sessionId: body.sessionId,
