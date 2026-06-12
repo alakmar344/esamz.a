@@ -289,9 +289,9 @@ export default function ChatPage() {
                     }, 300);
                 }
 
-                // 4. Revoke Consent button visibility
+                // 4. Revoke Consent button visibility (sidebar footer)
                 if (this.dom.btnRevokeConsent) {
-                    this.dom.btnRevokeConsent.style.display = (isSignedIn && acceptedAt) ? 'block' : 'none';
+                    this.dom.btnRevokeConsent.style.display = (isSignedIn && acceptedAt) ? 'inline-flex' : 'none';
                 }
 
                 // 5. Sync local consent to DB if user signed in after accepting locally
@@ -2005,6 +2005,25 @@ waitForDOM();
                 </div>
             </div>
             <div className="sidebar-footer">
+                <div className="sidebar-footer-actions">
+                    <div className="sidebar-account-area" id="sidebarAccountArea">
+                        <div id="clerkUserButton" style={{display:"flex",alignItems:"center"}}>{hasClerk && UserButton && <UserButton />}</div>
+                        <span className="sidebar-footer-text">Account</span>
+                    </div>
+                    <button className="sidebar-theme-toggle" id="btnThemeToggle" title="Toggle theme" aria-label="Toggle theme">
+                        <svg className="icon-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                        <svg className="icon-moon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                        <span>Theme</span>
+                    </button>
+                    <button className="sidebar-footer-btn danger" id="btnRevokeConsent">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                        Delete My Data
+                    </button>
+                </div>
+                <div className="sidebar-footer-divider"></div>
+                <div className="sidebar-footer-text">
+                    <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener">Privacy</a> · <a href="https://esamz.info/termsofservice" target="_blank" rel="noopener">Terms</a>
+                </div>
             </div>
         </aside>
 
@@ -2022,17 +2041,14 @@ waitForDOM();
                     </button>
                     <div className="header-context">
                         <span className="header-context-dot"></span>
-                        <span>Sarvam 105B · Web Search On.</span>
                     </div>
                 </div>
                 <div className="header-right">
-                    <button id="btnRevokeConsent" className="btn-clear" style={{display:"none",marginRight:"8px",borderColor:"var(--vermillion)",color:"var(--vermillion)"}}>Delete My Data</button>
-                    <div id="clerkUserButton" style={{display:"flex",alignItems:"center"}}>{hasClerk && UserButton && <UserButton />}</div>
-                    <button className="theme-toggle" id="btnThemeToggle" title="Toggle theme" aria-label="Toggle theme">
-                        <svg className="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-                        <svg className="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    <button className="btn-clear desktop-only-action" id="btnClearChat">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                        Clear Chat
+                        <span className="tooltip-text">Clear all messages in this chat</span>
                     </button>
-                    <button className="btn-clear desktop-only-action" id="btnClearChat">Clear Chat</button>
                     <div className="header-actions-wrap">
                         <button className="icon-btn header-actions-toggle" id="headerActionsToggle" aria-label="More actions" title="More actions">
                             <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -2042,8 +2058,8 @@ waitForDOM();
                             </svg>
                         </button>
                         <div className="header-actions-menu" id="headerActionsMenu">
-                            <button id="menuNewChatBtn" className="header-actions-item">New chat</button>
-                            <div className="header-actions-divider"></div>
+                            <button id="menuNewChatBtn" className="header-actions-item" style={{display:"none"}}>New chat</button>
+                            <div className="header-actions-divider" id="menuNewChatDivider" style={{display:"none"}}></div>
                             <button id="menuExportCurrentJsonBtn" className="header-actions-item">Export this chat (.json)</button>
                             <button id="menuExportCurrentMdBtn" className="header-actions-item">Export this chat (.md)</button>
                             <button id="menuExportAllJsonBtn" className="header-actions-item">Export all chats (.json)</button>
