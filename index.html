@@ -5,9 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>eSAMz AI - Intelligent Assistant</title>
     <meta name="description" content="Strategic Artificial Mind with deep reasoning and emotional clarity.">
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-WRJ3NWVP5B"></script>
-    <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-WRJ3NWVP5B');</script>
+    <!-- Google Analytics (loaded only after cookie consent) -->
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('consent', 'default', {
+            'analytics_storage': 'denied',
+            'ad_storage': 'denied',
+            'wait_for_update': 500
+        });
+        if (localStorage.getItem('esamz_cookie_consent') === 'accepted') {
+            gtag('consent', 'update', { 'analytics_storage': 'granted' });
+            var s = document.createElement('script');
+            s.async = true;
+            s.src = 'https://www.googletagmanager.com/gtag/js?id=G-WRJ3NWVP5B';
+            document.head.appendChild(s);
+        }
+    </script>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,12 +50,12 @@
                 "name": "eSAMz AI",
                 "alternateName": "Strategic Artificial Mind",
                 "url": "https://esamz.site",
-                "description": "A privacy-first, zero-storage AI chatbot built for deep reasoning and emotional clarity.",
+                "description": "A privacy-first AI chatbot built for deep reasoning and emotional clarity. Conversations are retained for up to 30 minutes for processing, then automatically purged. No data is used for AI training.",
                 "applicationCategory": "UtilitiesApplication, BusinessApplication",
                 "operatingSystem": "Windows, macOS, Android, iOS, Web",
                 "softwareVersion": "v9.4",
                 "inLanguage": ["en", "hi"],
-                "contentRating": "Everyone",
+                "contentRating": "AdultsOnly",
                 "isAccessibleForFree": "True",
                 "author": { "@id": "https://esamz.site/#person" },
                 "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.9", "reviewCount": "3000" }
@@ -646,6 +661,18 @@
         /* ----- DRAFT INDICATOR ----- */
         .draft-indicator{position:absolute;bottom:2px;right:6px;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.1em;color:var(--ink-ghost);opacity:0;transition:opacity 0.3s;pointer-events:none;}
         .draft-indicator.visible{opacity:1;}
+
+        /* ----- COOKIE CONSENT BANNER ----- */
+        .cookie-banner{position:fixed;bottom:0;left:0;right:0;z-index:99999;background:var(--paper-aged);border-top:2px solid var(--rule-bold);padding:14px 20px;display:flex;align-items:center;gap:16px;font-family:'Source Serif 4',Georgia,serif;font-size:13px;line-height:1.5;color:var(--ink);box-shadow:0 -4px 20px rgba(0,0,0,0.08);}
+        .cookie-banner.hidden{display:none;}
+        .cookie-banner-text{flex:1;}
+        .cookie-banner-text a{color:var(--crescent);font-weight:600;text-decoration:underline;}
+        .cookie-banner-actions{display:flex;gap:8px;flex-shrink:0;}
+        .cookie-btn{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.05em;padding:8px 16px;border-radius:var(--r);cursor:pointer;border:1px solid var(--rule-bold);transition:all 0.2s;}
+        .cookie-btn-accept{background:var(--crescent);color:#fff;border-color:var(--crescent);}
+        .cookie-btn-accept:hover{background:var(--ink);border-color:var(--ink);}
+        .cookie-btn-decline{background:transparent;color:var(--ink-faint);}
+        .cookie-btn-decline:hover{background:var(--rule-bold);}
     </style>
 </head>
 <body>
@@ -686,7 +713,7 @@
             <div class="plans-modal-header">
                 <div class="plans-modal-eyebrow">💎 eSAMz AI Membership Plans</div>
                 <div class="plans-modal-title" id="plansModalTitle">Your conversations never leave the room.</div>
-                <div class="plans-modal-sub">Every major AI trains its next model on chats. eSAMz doesn't. Not a single message is stored. Not a single word trains a future model. Just you and the AI.</div>
+                <div class="plans-modal-sub">Every major AI trains its next model on chats. eSAMz doesn't. Your conversations are retained only for up to 30 minutes for processing, then automatically purged. No conversation is ever used to train any AI model — ours or anyone's. Just you and the AI.</div>
             </div>
             <div class="plans-modal-body">
                 <div class="plans-grid">
@@ -714,7 +741,7 @@
                             <ul class="plan-card-features">
                                 <li>50 chats per day</li>
                                 <li>Always-On Web Verification (RAG) — cannot be disabled, by design</li>
-                                <li>Zero-retention encryption — your data is never stored</li>
+                                <li>Auto-purge encryption — sessions retained max 30 min, then permanently deleted</li>
                                 <li>2 active devices simultaneously</li>
                                 <li>Delivered to your inbox instantly after payment</li>
                             </ul>
@@ -731,7 +758,7 @@
                                 <li>100 chats per day</li>
                                 <li>RAG on/off toggle</li>
                                 <li>Priority speed routing</li>
-                                <li>Zero-retention encryption</li>
+                                <li>Auto-purge encryption — max 30 min retention</li>
                                 <li>2 active devices simultaneously</li>
                             </ul>
                         </div>
@@ -748,7 +775,7 @@
                                 <li>Custom System Prompt — define exactly how the AI behaves</li>
                                 <li>Full RAG toggle</li>
                                 <li>Priority speed routing</li>
-                                <li>Zero-retention encryption</li>
+                                <li>Auto-purge encryption — max 30 min retention</li>
                                 <li>2 active devices simultaneously</li>
                                 <li>Direct feedback channel — your feature requests go to the front of the queue for v11</li>
                             </ul>
@@ -761,7 +788,7 @@
                                 <div class="plan-card-name">Every Paid Plan Includes</div>
                             </div>
                             <ul class="plan-card-features">
-                                <li>Zero Training Guarantee — your conversations are never used to train any AI model, ever. Not ours. Not anyone's.</li>
+                                <li>No Training Guarantee — your conversations are never used to train any AI model, ever. Not ours. Not anyone's. Sessions are auto-purged after max 30 minutes.</li>
                             </ul>
                         </div>
                     </div>
@@ -931,9 +958,10 @@
                         <span style="font-family:'DM Mono';font-size:9px;border:1px solid var(--rule-bold);padding:2px 5px;border-radius:5px;margin-right:8px;vertical-align:middle;color:var(--vermillion);background:var(--vermillion-soft);">SGI</span>
                         <span style="font-size:14px;margin-right:4px;vertical-align:middle;">🤖</span>
                         <span style="vertical-align:middle;" id="policyLinksText">
-                            AI output may be inaccurate. By using this service, you agree to our
+                            You are interacting with an AI system. Outputs may be incorrect, incomplete, or biased — always verify critical information independently. By using this service, you agree to our
                             <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" style="font-weight:600;">Privacy Policy</a> and
-                            <a href="https://esamz.info/termsofservice" target="_blank" rel="noopener" style="font-weight:600;">Terms</a>.
+                            <a href="https://esamz.info/termsofservice" target="_blank" rel="noopener" style="font-weight:600;">Terms of Service</a>.
+                            This service is not intended for individuals under 18 years of age.
                         </span>
                     </div>
                 </div>
@@ -981,6 +1009,10 @@
             <button class="dialog-option" data-export-type="md">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                 Markdown (.md)
+            </button>
+            <button class="dialog-option" data-export-type="json">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                JSON (.json)
             </button>
         </div>
     </dialog>
@@ -2046,8 +2078,24 @@
             exportChat(type) {
                 const msgs = Array.from(document.querySelectorAll('.message'));
                 if (!msgs.length) return Utils.showToast('Nothing to export', 'error');
-                const content = msgs.map(m => `### ${m.classList.contains('user') ? 'User' : 'eSAMz AI'}\n${m.querySelector('.bubble').innerText}`).join('\n\n---\n\n');
-                const blob = new Blob([content], { type: 'text/plain' });
+                let content, mimeType;
+                if (type === 'json') {
+                    const exportData = {
+                        exportedAt: new Date().toISOString(),
+                        service: 'eSAMz AI',
+                        format: 'json',
+                        messages: msgs.map(m => ({
+                            role: m.classList.contains('user') ? 'user' : 'assistant',
+                            content: m.querySelector('.bubble').innerText
+                        }))
+                    };
+                    content = JSON.stringify(exportData, null, 2);
+                    mimeType = 'application/json';
+                } else {
+                    content = msgs.map(m => `### ${m.classList.contains('user') ? 'User' : 'eSAMz AI'}\n${m.querySelector('.bubble').innerText}`).join('\n\n---\n\n');
+                    mimeType = 'text/plain';
+                }
+                const blob = new Blob([content], { type: mimeType });
                 const url  = URL.createObjectURL(blob);
                 const a    = document.createElement('a');
                 a.href = url; a.download = `esamz-chat-${Date.now()}.${type}`; a.click();
@@ -2179,7 +2227,51 @@
 
         window.app = new App();
 
+        // ====================================================================
+        //  COOKIE CONSENT BANNER
+        // ====================================================================
+        (function initCookieBanner() {
+            const banner = document.getElementById('cookieConsentBanner');
+            if (!banner) return;
+            const consent = localStorage.getItem('esamz_cookie_consent');
+            if (consent === 'accepted' || consent === 'declined') {
+                banner.classList.add('hidden');
+                if (consent === 'accepted') {
+                    gtag('consent', 'update', { 'analytics_storage': 'granted' });
+                    var s = document.createElement('script');
+                    s.async = true;
+                    s.src = 'https://www.googletagmanager.com/gtag/js?id=G-WRJ3NWVP5B';
+                    document.head.appendChild(s);
+                }
+                return;
+            }
+            document.getElementById('cookieAccept').addEventListener('click', function() {
+                localStorage.setItem('esamz_cookie_consent', 'accepted');
+                banner.classList.add('hidden');
+                gtag('consent', 'update', { 'analytics_storage': 'granted' });
+                var s = document.createElement('script');
+                s.async = true;
+                s.src = 'https://www.googletagmanager.com/gtag/js?id=G-WRJ3NWVP5B';
+                document.head.appendChild(s);
+            });
+            document.getElementById('cookieDecline').addEventListener('click', function() {
+                localStorage.setItem('esamz_cookie_consent', 'declined');
+                banner.classList.add('hidden');
+            });
+        })();
+
     })();
     </script>
+
+    <!-- Cookie Consent Banner (EU GDPR / DPDP Act 2023 compliance) -->
+    <div class="cookie-banner" id="cookieConsentBanner">
+        <div class="cookie-banner-text">
+            We use cookies for analytics to improve your experience. No advertising cookies are used. Your conversations are never used for ad targeting. See our <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener">Privacy Policy</a> for details.
+        </div>
+        <div class="cookie-banner-actions">
+            <button class="cookie-btn cookie-btn-decline" id="cookieDecline">Decline</button>
+            <button class="cookie-btn cookie-btn-accept" id="cookieAccept">Accept</button>
+        </div>
+    </div>
 </body>
 </html>
