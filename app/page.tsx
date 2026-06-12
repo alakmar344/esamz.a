@@ -1846,15 +1846,14 @@ if (required.some(el => !el)) {
             
             // Updated canonical HTML for the footer
             const CANONICAL_HTML = `
-                AI output may be inaccurate. 
-                <a href="${PRIVACY_POLICY_URL}" class="underline" target="_blank" rel="noopener">Privacy Policy</a> | 
-                <a href="${TERMS_OF_SERVICE_URL}" class="underline" target="_blank" rel="noopener">Terms</a><br>
-                Your explicit consent is required for data processing.
+                You are interacting with an AI system. Outputs may be incorrect, incomplete, or biased — always verify critical information independently. By using this service, you agree to our 
+                <a href="${PRIVACY_POLICY_URL}" class="underline" target="_blank" rel="noopener">Privacy Policy</a> and 
+                <a href="${TERMS_OF_SERVICE_URL}" class="underline" target="_blank" rel="noopener">Terms of Service</a>. This service is not intended for individuals under 18 years of age.
             `;
             
             const CANONICAL_LINKS = [
                 { href: PRIVACY_POLICY_URL, label: 'Privacy Policy' },
-                { href: TERMS_OF_SERVICE_URL, label: 'Terms' }
+                { href: TERMS_OF_SERVICE_URL, label: 'Terms of Service' }
             ];
 
             const rebuild = () => {
@@ -1873,7 +1872,7 @@ if (required.some(el => !el)) {
             const hasExpectedStructure = () => {
                 const text = normalized(policyEl.textContent);
                 // Check if key phrases are present instead of exact match to be more resilient
-                if (!text.includes("AI output may be inaccurate") || !text.includes("Your explicit consent is required")) return false;
+                if (!text.includes("interacting with an AI system") || !text.includes("Terms of Service")) return false;
                 const links = Array.from(policyEl.querySelectorAll('a'));
                 if (links.length !== CANONICAL_LINKS.length) return false;
                 return links.every((link, index) => (
@@ -1929,6 +1928,36 @@ waitForDOM();
 
     })()
   }, [])
+
+  // Cookie consent banner logic (GDPR / DPDP Act 2023 — per Privacy Policy §4)
+  useEffect(() => {
+    const banner = document.getElementById('cookieConsentBanner');
+    if (!banner) return;
+    const consent = localStorage.getItem('esamz_cookie_consent');
+    if (consent === 'accepted' || consent === 'declined') {
+      banner.style.display = 'none';
+    } else {
+      banner.style.display = 'flex';
+    }
+    const acceptBtn = document.getElementById('cookieConsentAccept');
+    const declineBtn = document.getElementById('cookieConsentDecline');
+    if (acceptBtn) {
+      acceptBtn.onclick = () => {
+        localStorage.setItem('esamz_cookie_consent', 'accepted');
+        banner.style.display = 'none';
+        // Grant consent for Google Analytics
+        if (typeof gtag === 'function') {
+          gtag('consent', 'update', { 'analytics_storage': 'granted' });
+        }
+      };
+    }
+    if (declineBtn) {
+      declineBtn.onclick = () => {
+        localStorage.setItem('esamz_cookie_consent', 'declined');
+        banner.style.display = 'none';
+      };
+    }
+  }, []);
 
   return (
     <>
@@ -2153,10 +2182,10 @@ waitForDOM();
                         <span className="footer-sgi-badge" title="SGI: Strategic Guidance Intelligence" aria-label="SGI: Strategic Guidance Intelligence">SGI</span>
                         <span className="footer-robot-icon" title="AI assistant indicator" aria-label="AI assistant indicator">🤖</span>
                         <div id="policyLinksText" className="text-xs text-gray-500 text-center" style={{flex:1}}>
-                            AI output may be inaccurate. 
-                            <a href="https://esamz.info/privacypolicy" className="underline" target="_blank" rel="noopener">Privacy Policy</a> | 
-                            <a href="https://esamz.info/termsofservice" className="underline" target="_blank" rel="noopener">Terms</a><br />
-                            Your explicit consent is required for data processing.
+                            You are interacting with an AI system. Outputs may be incorrect, incomplete, or biased — always verify critical information independently. By using this service, you agree to our{' '}
+                            <a href="https://esamz.info/privacypolicy" className="underline" target="_blank" rel="noopener">Privacy Policy</a> and{' '}
+                            <a href="https://esamz.info/termsofservice" className="underline" target="_blank" rel="noopener">Terms of Service</a>.{' '}
+                            This service is not intended for individuals under 18 years of age.
                         </div>
                         <span id="charCount" className="char-count"></span>
                         <span id="footerShortcuts">
@@ -2227,10 +2256,25 @@ waitForDOM();
         <h3 className="consent-modal-title">Privacy Policy</h3>
         <p className="consent-modal-eyebrow">Agreement Required</p>
 
-        <p className="consent-modal-body">
-          We use your account details and app activity only to provide, secure, improve, and support eSAMz AI as described in our{' '}
-          <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" className="consent-modal-link">Privacy Policy</a>.
-        </p>
+        <div className="consent-modal-body">
+          <p>
+            We process the following categories of personal data: account identifiers (name, email), chat content, device metadata, and usage analytics.
+          </p>
+          <p>
+            Processing purposes: to provide, secure, improve, and support eSAMz AI as described in our{' '}
+            <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener" className="consent-modal-link">Privacy Policy</a>.
+          </p>
+          <p>
+            Your rights: Under the DPDP Act 2023 and GDPR, you may access, correct, erase, port, or withdraw consent for your data at any time via Settings → Privacy or by contacting us.
+          </p>
+          <p>
+            Grievance redressal: Contact our Data Protection Officer at{' '}
+            <a href="mailto:esamzai365@gmail.com" className="consent-modal-link">esamzai365@gmail.com</a>. We will respond within 30 days.
+          </p>
+          <p>
+            This service is not intended for individuals under 18 years of age.
+          </p>
+        </div>
 
         <label className="consent-modal-checkbox-row">
           <input
@@ -2250,6 +2294,18 @@ waitForDOM();
         </button>
 
         <p className="consent-modal-footer">You can delete your account and all data at any time from the header menu.</p>
+      </div>
+    </div>
+
+    {/* Cookie Consent Banner (GDPR / DPDP Act 2023 — per Privacy Policy §4) */}
+    <div id="cookieConsentBanner" className="cookie-consent-banner" style={{display:'none'}}>
+      <div className="cookie-consent-banner-text">
+        We use cookies for analytics to improve your experience. No advertising cookies are used. Your conversations are never used for ad targeting. See our{' '}
+        <a href="https://esamz.info/privacypolicy" target="_blank" rel="noopener">Privacy Policy</a> for details.
+      </div>
+      <div className="cookie-consent-banner-actions">
+        <button id="cookieConsentDecline" className="cookie-consent-btn cookie-consent-btn-decline">Decline</button>
+        <button id="cookieConsentAccept" className="cookie-consent-btn cookie-consent-btn-accept">Accept</button>
       </div>
     </div>
 
