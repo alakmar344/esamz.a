@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import Script from 'next/script'
-import { Analytics } from '@vercel/analytics/next'
 import PwaInit from './components/PwaInit'
 import DynamicClerkWrapper from './components/DynamicClerkWrapper'
 import './globals.css'
@@ -66,17 +65,29 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js" strategy="afterInteractive" />
         <Script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js" strategy="afterInteractive" />
 
-        {/* Google Analytics */}
-        <Script src="https://www.googletagmanager.com/gtag/js?id=G-WRJ3NWVP5B" strategy="afterInteractive" />
-        <Script id="ga-init" strategy="afterInteractive">{`
+        {/* Google Analytics (consent-gated per Privacy Policy §4) */}
+        <Script id="ga-consent-default" strategy="beforeInteractive">{`
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
-          gtag('config', 'G-WRJ3NWVP5B');
+          gtag('consent', 'default', {
+            'analytics_storage': 'denied',
+            'ad_storage': 'denied',
+            'wait_for_update': 500
+          });
+          if (localStorage.getItem('esamz_cookie_consent') === 'accepted') {
+            gtag('consent', 'update', { 'analytics_storage': 'granted' });
+            var s = document.createElement('script');
+            s.async = true;
+            s.src = 'https://www.googletagmanager.com/gtag/js?id=G-WRJ3NWVP5B';
+            document.head.appendChild(s);
+          }
         `}</Script>
-
-        {/* Vercel Web Analytics */}
-        <Analytics />
+        <Script id="ga-config" strategy="afterInteractive">{`
+          if (localStorage.getItem('esamz_cookie_consent') === 'accepted') {
+            gtag('config', 'G-WRJ3NWVP5B');
+          }
+        `}</Script>
 
         {/* PWA service worker registration */}
         <PwaInit />

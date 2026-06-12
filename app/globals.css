@@ -2210,3 +2210,79 @@ body.theme-dark .dialog-actions button { color:#d1d5db!important; }
   .input-wrapper{padding:8px 16px 14px!important;}
   .scroll-top-btn{bottom:20px!important;right:20px!important;}
 }
+
+/* Cookie Consent Banner (GDPR / DPDP Act 2023 compliance) */
+.cookie-consent-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: var(--paper-aged, #faf8f3);
+  border-top: 2px solid var(--rule-bold, #2c2c2c);
+  font-size: 13px;
+  color: var(--text-primary, #2c2c2c);
+  z-index: 99999;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.15);
+}
+:root[data-theme="dark"] .cookie-consent-banner {
+  background: var(--paper-aged, #1a1a2e);
+  color: var(--text-primary, #e0e0e0);
+}
+.cookie-consent-banner-text {
+  text-align: center;
+  max-width: 600px;
+  line-height: 1.5;
+}
+.cookie-consent-banner-text a {
+  text-decoration: underline;
+  color: var(--accent-primary, #2563eb);
+}
+.cookie-consent-banner-actions {
+  display: flex;
+  gap: 10px;
+}
+.cookie-consent-btn {
+  padding: 6px 18px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1.5px solid var(--rule-bold, #2c2c2c);
+  transition: all 0.15s ease;
+}
+.cookie-consent-btn-decline {
+  background: transparent;
+  color: var(--text-primary, #2c2c2c);
+}
+.cookie-consent-btn-decline:hover {
+  background: var(--rule-light, #e5e5e5);
+}
+.cookie-consent-btn-accept {
+  background: var(--accent-primary, #2563eb);
+  color: #fff;
+  border-color: var(--accent-primary, #2563eb);
+}
+.cookie-consent-btn-accept:hover {
+  opacity: 0.9;
+}
+:root[data-theme="dark"] .cookie-consent-btn-decline {
+  color: var(--text-primary, #e0e0e0);
+}
+:root[data-theme="dark"] .cookie-consent-btn-decline:hover {
+  background: var(--rule-light, #333);
+}
+@media (max-width: 600px) {
+  .cookie-consent-banner {
+    flex-direction: column;
+    padding: 10px 14px;
+    gap: 6px;
+  }
+  .cookie-consent-banner-text {
+    font-size: 12px;
+  }
+}
