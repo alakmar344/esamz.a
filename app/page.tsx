@@ -1457,10 +1457,7 @@ if (required.some(el => !el)) {
             appendMessage(role, text, isLoading = false) {
                 const div     = document.createElement('div');
                 div.className = `message ${role}`;
-                const avatar  = document.createElement('div');
-                avatar.className  = 'avatar';
-                avatar.textContent = role === 'user' ? 'U' : 'eS';
-                avatar.setAttribute('aria-label', role === 'user' ? 'User avatar' : 'AI assistant avatar');
+
                 const content = document.createElement('div');
                 content.className = 'message-content';
                 const bubble  = document.createElement('div');
@@ -1476,7 +1473,7 @@ if (required.some(el => !el)) {
                     if (role === 'user' && bubble.querySelector('pre')) bubble.classList.add('has-code');
                 }
                 content.appendChild(bubble);
-                div.appendChild(avatar);
+
                 div.appendChild(content);
                 this.dom.chatList.appendChild(div);
                 if (role === 'ai'   && !isLoading) this.addCopyButton(div);
@@ -1967,14 +1964,7 @@ waitForDOM();
         <div className="overlay" id="overlay"></div>
         
         <aside className="sidebar" id="sidebar">
-            <div className="mobile-bottom-bar">
-                <div className="mobile-bottom-handle" aria-hidden="true"></div>
-                <div className="mobile-bottom-actions">
-                    <button className="mobile-bottom-cta mobile-bottom-cta-new" id="mobileNewChatBtn">
-                        ✨ New Chat
-                    </button>
-                </div>
-            </div>
+
             <div className="sidebar-header">
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"16px"}}>
                     <div className="sidebar-brand-heading">eSAMz <span className="brand-z">AI</span></div>
