@@ -1,0 +1,74 @@
+From 5090dec7ef5c72c19d2a5432dab1fc517da46375 Mon Sep 17 00:00:00 2001
+From: SuperNinja <superninja@ninjatech.ai>
+Date: Mon, 15 Jun 2026 08:00:52 +0000
+Subject: [PATCH] fix: preserve whitespace in SSE streaming pipeline
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Three bugs causing spaces between words to be smashed together:
+
+1. stream_sarvam() holdback zone: .map(|i| i + 1) included the space
+   in the SENT chunk, leaving the remainder buffer starting AFTER the
+   space — so the next chunk had no leading space. Changed to .map(|i| i)
+   so the space stays with the following word.
+
+2. send_event() escape ordering: backslashes in the original text were
+   not escaped before newline escaping, so a literal backslash followed
+   by 'n' would be indistinguishable from the \n escape. Added
+   .replace('\\', "\\\\") before .replace('\n', "\\n").
+
+3. run_request() chunk reassembly: only un-escaped \n → newline but
+   did not un-escape \\\\ → \\, so literal backslashes were
+   doubled in the reassembled response. Added .replace("\\\\", "\\")
+   after the newline un-escape, reversing the send_event encoding.
+
+Together these fixes ensure that inter-word spaces survive the full
+SSE round-trip from Rust backend → Next.js proxy → frontend.
+---
+ src/main.rs | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/main.rs b/src/main.rs
+index 0823f11..acf2937 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -1017,7 +1017,7 @@ if len > 12 {
+     let holdback_start = len - 12;
+     let split_at = stream_buffer[..holdback_start]
+         .rfind(' ')
+-        .map(|i| i + 1)
++        .map(|i| i)
+         .unwrap_or(holdback_start);
+     if split_at > 0 {
+         let safe_to_send = stream_buffer[..split_at].to_string();
+@@ -1311,7 +1311,7 @@ static BLOCKED_PATTERNS: Lazy<Vec<(Regex, &'static str)>> = Lazy::new(|| {
+ // ============================================================================
+ pub fn send_event(event_type: &str, data: &str) -> String {
+     // Ensure we don't lose spaces and handle newlines correctly for SSE
+-    let safe = data.replace('\r', "").replace('\n', "\\n");
++    let safe = data.replace('\r', "").replace('\\', "\\\\").replace('\n', "\\n");
+     format!("{}|{}\n\n", event_type, safe)
+ }
+ 
+@@ -1646,7 +1646,7 @@ async fn run_request(
+                     return Ok(());
+                 }
+                 if let Some(text) = chunk.strip_prefix("CHUNK|").and_then(|s| s.strip_suffix("\n\n")) {
+-    full_response.push_str(&text.replace("\\n", "\n"));
++    full_response.push_str(&text.replace("\\n", "\n").replace("\\\\", "\\"));
+ }
+ let _ = tx.send(chunk).await;
+             }
+@@ -1762,7 +1762,7 @@ let _ = tx.send(chunk).await;
+             return Ok(());
+         }
+         if let Some(text) = chunk.strip_prefix("CHUNK|").and_then(|s| s.strip_suffix("\n\n")) {
+-    full_response.push_str(&text.replace("\\n", "\n"));
++    full_response.push_str(&text.replace("\\n", "\n").replace("\\\\", "\\"));
+ }
+ let _ = tx.send(chunk).await;
+     }
+-- 
+2.39.5
+

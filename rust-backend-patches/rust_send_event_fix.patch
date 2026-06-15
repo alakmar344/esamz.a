@@ -1,0 +1,20 @@
+// ============================================================================
+//  FIX 2: send_event() — proper backslash escaping
+//  File: main.rs
+// ============================================================================
+
+// ---------- BEFORE (BUGGY) ----------
+// pub fn send_event(event_type: &str, data: &str) -> String {
+//     // Ensure we don't lose spaces and handle newlines correctly for SSE
+//     let safe = data.replace('\r', "").replace('\n', "\\n");
+//     format!("{}|{}\n\n", event_type, safe)
+// }
+
+// ---------- AFTER (FIXED) ----------
+pub fn send_event(event_type: &str, data: &str) -> String {
+    // Escape backslashes first so a literal \n in the AI output doesn't
+    // collide with the newline escape below, then strip CR, then escape
+    // real newlines.  Spaces are never trimmed or collapsed.
+    let safe = data.replace('\\', "\\\\").replace('\r', "").replace('\n', "\\n");
+    format!("{}|{}\n\n", event_type, safe)
+}

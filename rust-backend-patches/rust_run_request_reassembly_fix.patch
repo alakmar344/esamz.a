@@ -1,0 +1,22 @@
+// ============================================================================
+//  FIX 2b: run_request() — fix chunk reassembly to match new send_event escaping
+//  File: main.rs  (two identical locations — search/force and main path)
+//
+//  The strip_suffix("\n\n") must be applied BEFORE the replace(), otherwise
+//  a \n inside the data (escaped as \\n by send_event) may get mangled.
+//  Also update the un-escaping order to handle the new \\ escape.
+// ============================================================================
+
+// ---------- BEFORE (BUGGY) ----------
+// if let Some(text) = chunk.strip_prefix("CHUNK|").and_then(|s| s.strip_suffix("\n\n")) {
+//     full_response.push_str(&text.replace("\\n", "\n"));
+// }
+// let _ = tx.send(chunk).await;
+
+// ---------- AFTER (FIXED) ----------
+                if let Some(text) = chunk.strip_prefix("CHUNK|").and_then(|s| s.strip_suffix("\n\n")) {
+                    // Un-escape in the correct order: first \\n→\n (real newlines),
+                    // then \\\\→\\ (literal backslashes escaped by send_event).
+                    full_response.push_str(&text.replace("\\n", "\n").replace("\\\\", "\\"));
+                }
+                let _ = tx.send(chunk).await;

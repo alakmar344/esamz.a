@@ -1,0 +1,55 @@
+// ============================================================================
+//  FIX 1: stream_sarvam() — holdback zone split logic
+//  File: main.rs  (the uploaded Rust source)
+//  Location: inside stream_sarvam(), the "else" branch of the thought-tag loop
+//
+//  PROBLEM:  .map(|i| i + 1) puts the space in the SENT chunk, leaving the
+//            next chunk starting at the first letter of the next word.
+//            The frontend typewriter may display the space as a dangling
+//            trailing space which marked.parse() collapses.
+//
+//  FIX:      Use .map(|i| i) so the space stays with the NEXT word.
+//            Sent chunks never end with a trailing space.
+// ============================================================================
+
+// ---------- BEFORE (BUGGY) ----------
+//  } else {
+//      // Send safe part of buffer
+//      let len = stream_buffer.len();
+//      if len > 12 {
+//          // Split at last space before the holdback zone, so we never cut mid-word
+//          let holdback_start = len - 12;
+//          let split_at = stream_buffer[..holdback_start]
+//              .rfind(' ')
+//              .map(|i| i + 1)              // ← BUG: space goes into the SENT part
+//              .unwrap_or(holdback_start);
+//          if split_at > 0 {
+//              let safe_to_send = stream_buffer[..split_at].to_string();
+//              stream_buffer = stream_buffer[split_at..].to_string();
+//              let _ = tx.send(send_event("CHUNK", &safe_to_send)).await;
+//          }
+//      }
+//      break;
+//  }
+
+// ---------- AFTER (FIXED) ----------
+                                } else {
+                                    // Send safe part of buffer — keep the space with
+                                    // the NEXT word so the frontend typewriter never
+                                    // receives a chunk ending in a dangling space that
+                                    // marked.parse() would swallow.
+                                    let len = stream_buffer.len();
+                                    if len > 12 {
+                                        let holdback_start = len - 12;
+                                        let split_at = stream_buffer[..holdback_start]
+                                            .rfind(' ')
+                                            .map(|i| i)              // ← FIX: split AT the space
+                                            .unwrap_or(holdback_start);
+                                        if split_at > 0 {
+                                            let safe_to_send = stream_buffer[..split_at].to_string();
+                                            stream_buffer = stream_buffer[split_at..].to_string();
+                                            let _ = tx.send(send_event("CHUNK", &safe_to_send)).await;
+                                        }
+                                    }
+                                    break;
+                                }
