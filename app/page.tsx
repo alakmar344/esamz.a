@@ -1078,17 +1078,62 @@ if (required.some(el => !el)) {
                     let incomingHistory = null;
                     let streamDone = false;
 
+                    // Helper: snap a character index to the nearest word boundary
+                    // so the typewriter never slices mid-word.  A word boundary
+                    // is a space character, or the position right after a space.
+                    const wordBoundaryIndex = (text, target) => {
+                        if (target <= 0 || target >= text.length) return target;
+                        if (text[target] === ' ') return target;
+                        if (target > 0 && text[target - 1] === ' ') return target;
+                        const nextSpace = text.indexOf(' ', target);
+                        if (nextSpace !== -1 && nextSpace < target + 20) return nextSpace;
+                        return target;
+                    };
+
                     const renderDisplayed = (showCursor = true) => {
                         if (window.marked && window.DOMPurify) {
                             try {
-                                contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(displayedText));
+                                // KEY FIX: always feed the FULL accumulated text to
+                                // marked.parse() so the Markdown parser sees every
+                                // space attached to its neighboring word.  The
+                                // "displayed" portion is controlled by a sentinel
+                                // marker, NOT by slicing the Markdown input.
                                 if (showCursor && displayedText.length < fullText.length) {
+                                    const SNT = '\x00CURSOR\x00';
+                                    const sliced = fullText.slice(0, displayedText.length)
+                                                  + SNT
+                                                  + fullText.slice(displayedText.length);
+                                    let html = DOMPurify.sanitize(marked.parse(sliced));
+                                    contentDiv.innerHTML = html;
                                     const cursor = document.createElement('span');
                                     cursor.className = 'streaming-cursor';
-                                    contentDiv.appendChild(cursor);
+                                    // Find the sentinel text node and replace it
+                                    // with the cursor element
+                                    const walker = document.createTreeWalker(
+                                        contentDiv, NodeFilter.SHOW_TEXT, null, false
+                                    );
+                                    let node;
+                                    while ((node = walker.nextNode())) {
+                                        const idx = node.textContent.indexOf(SNT);
+                                        if (idx !== -1) {
+                                            const before = document.createTextNode(
+                                                node.textContent.slice(0, idx)
+                                            );
+                                            const after = document.createTextNode(
+                                                node.textContent.slice(idx + SNT.length)
+                                            );
+                                            node.parentNode.insertBefore(before, node);
+                                            node.parentNode.insertBefore(cursor, node);
+                                            node.parentNode.insertBefore(after, node);
+                                            node.remove();
+                                            break;
+                                        }
+                                    }
+                                } else {
+                                    contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(displayedText));
                                 }
                                 if (window.Prism) Prism.highlightAllUnder(contentDiv);
-                                this.injectCodeButtons(contentDiv);
+                                if (showCursor) this.injectCodeButtons(contentDiv);
                             } catch (_) { contentDiv.textContent = displayedText; }
                         } else { contentDiv.textContent = displayedText; }
                         this.scrollToBottom();
@@ -1100,7 +1145,12 @@ if (required.some(el => !el)) {
                             if (displayedText.length < fullText.length) {
                                 const remaining = fullText.length - displayedText.length;
                                 const add = getTypewriterChunkSize(remaining);
-                                displayedText = fullText.slice(0, displayedText.length + add);
+                                const target = displayedText.length + add;
+                                // KEY FIX: snap to a word boundary so
+                                // displayedText always ends at a clean break.
+                                displayedText = fullText.slice(
+                                    0, wordBoundaryIndex(fullText, target)
+                                );
                                 renderDisplayed(true);
                                 typingTimer = setTimeout(step, TYPEWRITER_INTERVAL_MS);
                                 return;
@@ -1113,7 +1163,10 @@ if (required.some(el => !el)) {
 
                     const appendTextChunk = text => {
                         if (!text) return;
-                        fullText += text.replace(/\\n/g, '\n');
+                        // Un-escape in the correct order: first \n -> real newline,
+                        // then \\\ -> literal backslash (escaped by send_event).
+                        fullText += text.replace(/\n/g, '
+').replace(/\\/g, '\');
                         startTypewriter();
                     };
 
@@ -1182,8 +1235,10 @@ if (required.some(el => !el)) {
         if (dataTrimmed === 'TYPING')    loader.textContent = 'Writing…';
     } else if (type === 'CHUNK') {
         if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] CHUNK length:', data.length);
-        // Safely map escaped server newlines while leaving word spacing alone
-        fullText += data.replace(/\\n/g, '\n');
+        // Un-escape in the correct order: first \n -> real newline,
+        // then \\\ -> literal backslash (escaped by send_event).
+        fullText += data.replace(/\n/g, '
+').replace(/\\/g, '\');
         startTypewriter();
     } else if (type === 'HISTORY_UPDATE') {
         if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] HISTORY_UPDATE received');
@@ -1223,7 +1278,7 @@ if (required.some(el => !el)) {
                         for (const l of lines) processLine(l);
                     }
                     if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] Stream ended by backend');
-                    if (buffer.trim()) for (const l of buffer.split('\n')) processLine(l);
+                    if (buffer.length > 0) for (const l of buffer.split('\n')) processLine(l);
 
                     streamDone = true;
                     if (!fullText.trim()) {
