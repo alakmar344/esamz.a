@@ -2,7 +2,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 
-const RUST_BACKEND_URL = 'https://backend.esamz.site/api/chat';
+const RUST_BACKEND_URL = 'https://backend.esamz.site/chat';
 const ENABLE_VERBOSE_BACKEND_LOGS = process.env.ESAMZ_DEBUG_BACKEND_STREAM === 'true';
 
 export async function POST(req: Request) {
