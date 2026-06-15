@@ -1165,8 +1165,7 @@ if (required.some(el => !el)) {
                         if (!text) return;
                         // Un-escape in the correct order: first \n -> real newline,
                         // then \\\ -> literal backslash (escaped by send_event).
-                        fullText += text.replace(/\n/g, '
-').replace(/\\/g, '\');
+                        fullText += text.replace(/\n/g, '\n').replace(/\\/g, '\\');
                         startTypewriter();
                     };
 
@@ -1237,8 +1236,7 @@ if (required.some(el => !el)) {
         if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] CHUNK length:', data.length);
         // Un-escape in the correct order: first \n -> real newline,
         // then \\\ -> literal backslash (escaped by send_event).
-        fullText += data.replace(/\n/g, '
-').replace(/\\/g, '\');
+        fullText += data.replace(/\n/g, '\n').replace(/\\/g, '\\');
         startTypewriter();
     } else if (type === 'HISTORY_UPDATE') {
         if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] HISTORY_UPDATE received');
