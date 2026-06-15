@@ -1141,65 +1141,76 @@ if (required.some(el => !el)) {
                     };
 
                     const processLine = line => {
-                        if (!line.trim()) return;
-                        if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] Raw line from backend:', line);
+    if (!line) return;
+    if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] Raw line from backend:', line);
 
-                        let normalizedLine = line.trim();
-                        if (normalizedLine.startsWith('data:')) normalizedLine = normalizedLine.slice(5).trimStart();
-                        if (!normalizedLine) return;
-                        if (normalizedLine === '[DONE]') {
-                            streamDone = true;
-                            return;
-                        }
-                        if (normalizedLine.startsWith('event:') || normalizedLine.startsWith('id:') || normalizedLine.startsWith('retry:')) {
-                            return;
-                        }
+    // 1. DO NOT do a global .trim() here anymore! Only check prefixes.
+    let currentLine = line;
+    if (currentLine.startsWith('data: ')) currentLine = currentLine.slice(6);
+    else if (currentLine.startsWith('data:')) currentLine = currentLine.slice(5);
+    
+    // Clean trailing carriage returns safely
+    if (currentLine.endsWith('\r')) currentLine = currentLine.slice(0, -1);
+    
+    const checkTrimmed = currentLine.trim();
+    if (!checkTrimmed) return;
+    if (checkTrimmed === '[DONE]') {
+        streamDone = true;
+        return;
+    }
+    if (checkTrimmed.startsWith('event:') || checkTrimmed.startsWith('id:') || checkTrimmed.startsWith('retry:')) {
+        return;
+    }
 
-                        const sep  = normalizedLine.indexOf('|');
+    const sep = currentLine.indexOf('|');
 
-                        if (sep === -1) {
-                            if (tryProcessJsonLine(normalizedLine)) return;
-                            appendTextChunk(normalizedLine);
-                            return;
-                        }
+    if (sep === -1) {
+        if (tryProcessJsonLine(checkTrimmed)) return;
+        appendTextChunk(currentLine);
+        return;
+    }
 
-                        const type = normalizedLine.substring(0, sep);
-                        const data = normalizedLine.substring(sep + 1);
-                        if (type === 'STATUS') {
-                            if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] STATUS:', data);
-                            const loader = contentDiv.querySelector('.thinking-loader');
-                            if (!loader) return;
-                            if (data === 'SEARCHING') loader.textContent = 'Thinking…';
-                            if (data === 'TYPING')    loader.textContent = 'Writing…';
-                        } else if (type === 'CHUNK') {
-                            if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] CHUNK length:', data.length);
-                            fullText += data.replace(/\\n/g, '\n');
-                            startTypewriter();
-                        } else if (type === 'HISTORY_UPDATE') {
-                            if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] HISTORY_UPDATE received');
-                            try { incomingHistory = JSON.parse(data); } catch (_) {}
-                        } else if (type === 'DONE') {
-                            // Stream complete signal from backend; data = session_id
-                            if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] DONE received:', data);
-                            streamDone = true;
-                        } else if (type === 'ERROR') {
-                            if (DEBUG_CHAT_STREAM_LOGS) console.error('[ChatStream] ERROR received:', data);
-                            const errMsg = /504|gateway timeout|timed out/i.test(data)
-                                ? 'AI service timed out. Please try again in a moment.'
-                                : /sarvam/i.test(data)
-                                    ? 'Something went wrong with the AI service. Please try again.'
-                                    : data;
-                            throw new Error(errMsg);
-                        } else {
-                            if (DEBUG_CHAT_STREAM_LOGS) {
-                                console.warn('[ChatStream] Unknown event type from backend:', {
-                                    type,
-                                    dataLength: data.length,
-                                    dataPreview: data.slice(0, 120),
-                                });
-                            }
-                        }
-                    };
+    const type = currentLine.substring(0, sep).trim(); // Trim structural type safely
+    const data = currentLine.substring(sep + 1);       // Leaves raw spacing in data completely pristine!
+
+    if (type === 'STATUS') {
+        const dataTrimmed = data.trim();
+        if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] STATUS:', dataTrimmed);
+        const loader = contentDiv.querySelector('.thinking-loader');
+        if (!loader) return;
+        if (dataTrimmed === 'SEARCHING') loader.textContent = 'Thinking…';
+        if (dataTrimmed === 'TYPING')    loader.textContent = 'Writing…';
+    } else if (type === 'CHUNK') {
+        if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] CHUNK length:', data.length);
+        // Safely map escaped server newlines while leaving word spacing alone
+        fullText += data.replace(/\\n/g, '\n');
+        startTypewriter();
+    } else if (type === 'HISTORY_UPDATE') {
+        if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] HISTORY_UPDATE received');
+        try { incomingHistory = JSON.parse(data.trim()); } catch (_) {}
+    } else if (type === 'DONE') {
+        if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] DONE received:', data.trim());
+        streamDone = true;
+    } else if (type === 'ERROR') {
+        const dataTrimmed = data.trim();
+        if (DEBUG_CHAT_STREAM_LOGS) console.error('[ChatStream] ERROR received:', dataTrimmed);
+        const errMsg = /504|gateway timeout|timed out/i.test(dataTrimmed)
+            ? 'AI service timed out. Please try again in a moment.'
+            : /sarvam/i.test(dataTrimmed)
+                ? 'Something went wrong with the AI service. Please try again.'
+                : dataTrimmed;
+        throw new Error(errMsg);
+    } else {
+        if (DEBUG_CHAT_STREAM_LOGS) {
+            console.warn('[ChatStream] Unknown event type from backend:', {
+                type,
+                dataLength: data.length,
+                dataPreview: data.slice(0, 120),
+            });
+        }
+    }
+};
+
 
                     while (true) {
                         const { done, value } = await reader.read();
