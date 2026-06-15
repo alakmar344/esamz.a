@@ -1,4 +1,4 @@
-# esamz.a
+# esamz.a - India's own AI platform
 
 ## Vercel deployment
 
