@@ -701,6 +701,14 @@ if (required.some(el => !el)) {
                         }
                     });
                 });
+
+                // Quick prompt chip handlers
+                document.querySelectorAll('.quick-prompt-chip').forEach(chip => {
+                    chip.addEventListener('click', () => {
+                        const prompt = chip.getAttribute('data-prompt') || '';
+                        if (prompt) this.fillInput(prompt);
+                    });
+                });
                 const suggestions = document.getElementById('welcomeSuggestions');
                 if (suggestions) {
                     suggestions.addEventListener('keydown', e => {
@@ -798,7 +806,7 @@ if (required.some(el => !el)) {
                 if (consentRequired) {
                     this.dom.input.placeholder = "Please agree to the privacy policy to continue...";
                 } else {
-                    this.dom.input.placeholder = "Ask anything — I love a challenge…";
+                    this.dom.input.placeholder = "Ask anything — reasoning, code, analysis…";
                 }
             }
 
@@ -1544,6 +1552,15 @@ if (required.some(el => !el)) {
                 }
                 content.appendChild(bubble);
 
+                // Add timestamp
+                if (!isLoading) {
+                    const ts = document.createElement('div');
+                    ts.className = 'msg-timestamp';
+                    const now = new Date();
+                    ts.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    content.appendChild(ts);
+                }
+
                 div.appendChild(content);
                 this.dom.chatList.appendChild(div);
                 if (role === 'ai'   && !isLoading) this.addCopyButton(div);
@@ -2090,9 +2107,14 @@ waitForDOM();
                     </button>
                     <div className="header-context">
                         <span className="header-context-dot"></span>
+                        <span>Ready</span>
                     </div>
                 </div>
                 <div className="header-right">
+                    <div className="header-model-badge" title="eSAMz AI Model">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        SAMz-1
+                    </div>
                     <button className="btn-clear desktop-only-action" id="btnClearChat">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                         Clear Chat
@@ -2124,29 +2146,32 @@ waitForDOM();
                 <div className="chat-scroll-progress" id="chatScrollProgress"><span id="chatScrollProgressBar"></span></div>
                 <div className="chat-wrapper">
                     <div className="welcome" id="welcomeScreen">
-                        <div className="welcome-dateline" aria-label="eSAMz AI branding">✦ eSAMz AI</div>
+                        <div className="welcome-dateline" aria-label="eSAMz AI branding">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{opacity:0.7}}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            eSAMz AI
+                        </div>
                         <h1 className="welcome-headline" id="welcomeHeadline">Empowering Intelligence.<br />Think <em>deeper</em>.</h1>
-                        <p className="welcome-deck">Advanced reasoning with strategic clarity. Designed for complex problems that demand more than just a quick response.</p>
+                        <p className="welcome-deck">Advanced reasoning with strategic clarity. Built for complex problems that demand more than a quick answer.</p>
                         <div className="welcome-suggestions-wrap">
                             <div className="welcome-suggestions" id="welcomeSuggestions" tabIndex={0} aria-label="Suggested prompts">
                                 <button className="welcome-suggestion-card" data-prompt="Build me a practical Python data analysis workflow for messy CSV data." data-mode="mode-analyst">
                                     <span className="welcome-suggestion-icon">🐍</span>
                                     <span className="welcome-suggestion-title">Python Data Analysis</span>
-                                    <span className="welcome-suggestion-copy">Practical workflow for real data</span>
+                                    <span className="welcome-suggestion-copy">Workflow for messy real-world data</span>
                                 </button>
                                 <button className="welcome-suggestion-card" data-prompt="Give me a deep explanation of transformers with simple analogies and examples." data-mode="mode-thinker">
                                     <span className="welcome-suggestion-icon">🧠</span>
                                     <span className="welcome-suggestion-title">Deep Explanations</span>
-                                    <span className="welcome-suggestion-copy">Complex topics made crystal clear</span>
+                                    <span className="welcome-suggestion-copy">Complex topics, crystal clear</span>
                                 </button>
                                 <button className="welcome-suggestion-card" data-prompt="Help me design a 30-day learning plan for mastering system design interviews." data-mode="mode-planner">
                                     <span className="welcome-suggestion-icon">🗓️</span>
                                     <span className="welcome-suggestion-title">30-Day Learning Plan</span>
-                                    <span className="welcome-suggestion-copy">Step-by-step with milestones</span>
+                                    <span className="welcome-suggestion-copy">Structured milestones & progress</span>
                                 </button>
                                 <button className="welcome-suggestion-card" data-prompt="Review this startup idea and give risks, opportunities, and a go-to-market strategy." data-mode="mode-strategist">
                                     <span className="welcome-suggestion-icon">🚀</span>
-                                    <span className="welcome-suggestion-title">Startup Strategy Review</span>
+                                    <span className="welcome-suggestion-title">Startup Strategy</span>
                                     <span className="welcome-suggestion-copy">Risks, opportunities, execution</span>
                                 </button>
                                 <button className="welcome-suggestion-card" data-prompt="Write a clean, production-ready REST API in Node.js with authentication and error handling." data-mode="mode-builder">
@@ -2160,7 +2185,7 @@ waitForDOM();
                                     <span className="welcome-suggestion-copy">Land your first 10 clients</span>
                                 </button>
                             </div>
-                            <div className="welcome-suggestions-hint">✨ Swipe for more ideas <span className="floating-arrow">→</span></div>
+                            <div className="welcome-suggestions-hint">Swipe for more inspiration <span className="floating-arrow">→</span></div>
                         </div>
                     </div>
                     <div id="chatList"></div>
@@ -2183,10 +2208,34 @@ waitForDOM();
                             <button className="icon-btn" id="btnUpload" title="Attach file" aria-label="Attach file">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
                             </button>
-                            <textarea id="userInput" rows="1" placeholder="Ask anything — I love a challenge…"></textarea>
+                            <textarea id="userInput" rows="1" placeholder="Ask anything — reasoning, code, analysis…"></textarea>
                             <button className="send-btn" id="btnSend" disabled aria-label="Send message">
                                 <svg className="send-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                                 <svg className="stop-icon hidden" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                            </button>
+                        </div>
+
+                        {/* Quick prompt shortcuts */}
+                        <div className="quick-prompt-bar">
+                            <button className="quick-prompt-chip" data-prompt="Explain this step by step" title="Step-by-step explanation">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                                Explain
+                            </button>
+                            <button className="quick-prompt-chip" data-prompt="Write clean, production-ready code for this" title="Production code">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                                Code
+                            </button>
+                            <button className="quick-prompt-chip" data-prompt="Summarize this concisely" title="Quick summary">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                                Summarize
+                            </button>
+                            <button className="quick-prompt-chip" data-prompt="What are the pros and cons of this?" title="Pros and cons">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+                                Pros & Cons
+                            </button>
+                            <button className="quick-prompt-chip" data-prompt="Debug this and find the issue" title="Debug and fix">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22c-4.97 0-9-2.69-9-6v-4"/><path d="M21 12v4c0 3.31-4.03 6-9 6"/><circle cx="12" cy="5" r="3"/><path d="M12 8v4"/></svg>
+                                Debug
                             </button>
                         </div>
 
