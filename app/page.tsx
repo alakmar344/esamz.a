@@ -806,7 +806,7 @@ if (required.some(el => !el)) {
                 if (consentRequired) {
                     this.dom.input.placeholder = "Please agree to the privacy policy to continue...";
                 } else {
-                    this.dom.input.placeholder = "Ask anything — reasoning, code, analysis…";
+                    this.dom.input.placeholder = "Ask anything...";
                 }
             }
 
@@ -2151,42 +2151,42 @@ waitForDOM();
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{opacity:0.7}}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                             eSAMz AI
                         </div>
-                        <h1 className="welcome-headline" id="welcomeHeadline">Empowering Intelligence.<br />Think <em>deeper</em>.</h1>
-                        <p className="welcome-deck">Advanced reasoning with strategic clarity. Built for complex problems that demand more than a quick answer.</p>
+                        <h1 className="welcome-headline" id="welcomeHeadline">Think <em>deeper</em>.<br />Build smarter.</h1>
+                        <p className="welcome-deck">Strategic reasoning for complex problems. Ask anything — code, analysis, planning, ideas.</p>
                         <div className="welcome-suggestions-wrap">
                             <div className="welcome-suggestions" id="welcomeSuggestions" tabIndex={0} aria-label="Suggested prompts">
                                 <button className="welcome-suggestion-card" data-prompt="Build me a practical Python data analysis workflow for messy CSV data." data-mode="mode-analyst">
-                                    <span className="welcome-suggestion-icon">🐍</span>
-                                    <span className="welcome-suggestion-title">Python Data Analysis</span>
-                                    <span className="welcome-suggestion-copy">Workflow for messy real-world data</span>
+                                    <span className="welcome-suggestion-icon">📊</span>
+                                    <span className="welcome-suggestion-title">Data Analysis</span>
+                                    <span className="welcome-suggestion-copy">Clean, analyze, visualize messy data</span>
                                 </button>
                                 <button className="welcome-suggestion-card" data-prompt="Give me a deep explanation of transformers with simple analogies and examples." data-mode="mode-thinker">
-                                    <span className="welcome-suggestion-icon">🧠</span>
-                                    <span className="welcome-suggestion-title">Deep Explanations</span>
-                                    <span className="welcome-suggestion-copy">Complex topics, crystal clear</span>
+                                    <span className="welcome-suggestion-icon">💡</span>
+                                    <span className="welcome-suggestion-title">Deep Dive</span>
+                                    <span className="welcome-suggestion-copy">Complex ideas, simple explanations</span>
                                 </button>
                                 <button className="welcome-suggestion-card" data-prompt="Help me design a 30-day learning plan for mastering system design interviews." data-mode="mode-planner">
-                                    <span className="welcome-suggestion-icon">🗓️</span>
-                                    <span className="welcome-suggestion-title">30-Day Learning Plan</span>
-                                    <span className="welcome-suggestion-copy">Structured milestones & progress</span>
+                                    <span className="welcome-suggestion-icon">🗺️</span>
+                                    <span className="welcome-suggestion-title">Learning Plan</span>
+                                    <span className="welcome-suggestion-copy">Structured path to mastery</span>
                                 </button>
                                 <button className="welcome-suggestion-card" data-prompt="Review this startup idea and give risks, opportunities, and a go-to-market strategy." data-mode="mode-strategist">
-                                    <span className="welcome-suggestion-icon">🚀</span>
-                                    <span className="welcome-suggestion-title">Startup Strategy</span>
-                                    <span className="welcome-suggestion-copy">Risks, opportunities, execution</span>
+                                    <span className="welcome-suggestion-icon">🎯</span>
+                                    <span className="welcome-suggestion-title">Strategy</span>
+                                    <span className="welcome-suggestion-copy">Risks, opportunities, GTM</span>
                                 </button>
                                 <button className="welcome-suggestion-card" data-prompt="Write a clean, production-ready REST API in Node.js with authentication and error handling." data-mode="mode-builder">
-                                    <span className="welcome-suggestion-icon">⚡</span>
-                                    <span className="welcome-suggestion-title">REST API Blueprint</span>
-                                    <span className="welcome-suggestion-copy">Auth, errors, production-ready</span>
+                                    <span className="welcome-suggestion-icon">🔧</span>
+                                    <span className="welcome-suggestion-title">Build API</span>
+                                    <span className="welcome-suggestion-copy">Production-ready code, fast</span>
                                 </button>
                                 <button className="welcome-suggestion-card" data-prompt="Help me write a compelling cold email sequence to land my first 10 clients as a freelancer." data-mode="mode-writer">
-                                    <span className="welcome-suggestion-icon">✉️</span>
-                                    <span className="welcome-suggestion-title">Cold Email Sequence</span>
-                                    <span className="welcome-suggestion-copy">Land your first 10 clients</span>
+                                    <span className="welcome-suggestion-icon">✍️</span>
+                                    <span className="welcome-suggestion-title">Copywriting</span>
+                                    <span className="welcome-suggestion-copy">Persuasive emails that convert</span>
                                 </button>
                             </div>
-                            <div className="welcome-suggestions-hint">Swipe for more inspiration <span className="floating-arrow">→</span></div>
+                            <div className="welcome-suggestions-hint">Explore ideas <span className="floating-arrow">→</span></div>
                         </div>
                     </div>
                     <div id="chatList"></div>
@@ -2209,7 +2209,7 @@ waitForDOM();
                             <button className="icon-btn" id="btnUpload" title="Attach file" aria-label="Attach file">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
                             </button>
-                            <textarea id="userInput" rows="1" placeholder="Ask anything — reasoning, code, analysis…"></textarea>
+                            <textarea id="userInput" rows="1" placeholder="Ask anything..."></textarea>
                             <button className="send-btn" id="btnSend" disabled aria-label="Send message">
                                 <svg className="send-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                                 <svg className="stop-icon hidden" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
