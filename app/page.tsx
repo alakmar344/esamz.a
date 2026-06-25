@@ -1174,7 +1174,7 @@ if (required.some(el => !el)) {
                         if (!text) return;
                         // Un-escape in the correct order: first \n -> real newline,
                         // then \\\ -> literal backslash (escaped by send_event).
-                        fullText += text.replace(/\n/g, '\n').replace(/\\/g, '\\');
+                        fullText += text.replace(/\\n/g, '\n').replace(/\\\\/g, '\\');
                         startTypewriter();
                     };
 
@@ -1245,7 +1245,7 @@ if (required.some(el => !el)) {
         if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] CHUNK length:', data.length);
         // Un-escape in the correct order: first \n -> real newline,
         // then \\\ -> literal backslash (escaped by send_event).
-        let chunkData = data.replace(/\n/g, '\n').replace(/\\/g, '\\');
+        let chunkData = data.replace(/\\n/g, '\n').replace(/\\\\/g, '\\');
         if (isFirstChunk) {
             chunkData = chunkData.replace(/^[\s\n]+/, '');
             isFirstChunk = false;
