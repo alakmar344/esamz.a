@@ -1077,6 +1077,7 @@ if (required.some(el => !el)) {
                     let displayedText = '';
                     let incomingHistory = null;
                     let streamDone = false;
+                    let isFirstChunk = true;
 
                     // Helper: snap a character index to the nearest word boundary
                     // so the typewriter never slices mid-word.  A word boundary
@@ -1236,7 +1237,12 @@ if (required.some(el => !el)) {
         if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] CHUNK length:', data.length);
         // Un-escape in the correct order: first \n -> real newline,
         // then \\\ -> literal backslash (escaped by send_event).
-        fullText += data.replace(/\n/g, '\n').replace(/\\/g, '\\');
+        let chunkData = data.replace(/\n/g, '\n').replace(/\\/g, '\\');
+        if (isFirstChunk) {
+            chunkData = chunkData.replace(/^[\s\n]+/, '');
+            isFirstChunk = false;
+        }
+        fullText += chunkData;
         startTypewriter();
     } else if (type === 'HISTORY_UPDATE') {
         if (DEBUG_CHAT_STREAM_LOGS) console.debug('[ChatStream] HISTORY_UPDATE received');
