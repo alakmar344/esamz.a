@@ -1299,6 +1299,7 @@ if (required.some(el => !el)) {
                     if (!typingTimer) renderDisplayed(false);
 
                     if (incomingHistory) {
+                        incomingHistory.forEach(m => { m.content = m.content.replace(/\\n/g, '\n').replace(/\\\\/g, '\\'); });
                         this.overwriteHistory(this.state.chatId, incomingHistory);
                     } else {
                         const msgs = Array.from(this.dom.chatList.querySelectorAll('.message')).map(m => ({
@@ -1697,7 +1698,7 @@ if (required.some(el => !el)) {
                 this.setActiveHistoryItem(id);
                 const h = this.getHistory();
                 const c = h.find(x => x.id === id);
-                if (c && c.messages) c.messages.forEach(m => this.appendMessage(m.role, m.content));
+                if (c && c.messages) c.messages.forEach(m => this.appendMessage(m.role, m.content.replace(/\\n/g, '\n').replace(/\\\\/g, '\\')));
                 this.scrollToBottom();
                 if (window.innerWidth <= 768) {
                     this.dom.sidebar.classList.remove('active');
