@@ -1159,3 +1159,116 @@ body.theme-dark::after{
         background:var(--border-bold);border-radius:2px;
     }
 }
+
+/* ===== UI refresh (visual-only) ===== */
+:root{
+  --ui-glow:0 10px 40px color-mix(in srgb,var(--accent-primary) 14%,transparent);
+  --ui-card:0 16px 32px rgba(15,23,42,0.06);
+}
+:root[data-theme="dark"]{
+  --ui-glow:0 14px 42px color-mix(in srgb,var(--accent-primary) 20%,transparent);
+  --ui-card:0 20px 42px rgba(0,0,0,0.38);
+}
+
+.main-content{
+  background:
+    radial-gradient(1200px 420px at 80% -30%, color-mix(in srgb,var(--accent-primary) 12%,transparent), transparent 58%),
+    radial-gradient(900px 360px at 8% -20%, color-mix(in srgb,var(--accent-teal) 10%,transparent), transparent 58%),
+    var(--bg-primary);
+}
+
+.sidebar{
+  backdrop-filter:saturate(120%) blur(8px);
+}
+
+.btn-new-chat,
+.plans-upgrade-btn,
+.send-btn{
+  box-shadow:var(--ui-glow);
+}
+
+.btn-new-chat{
+  font-weight:600;
+  letter-spacing:0.01em;
+}
+
+.btn-view-plans{
+  margin-top:10px;
+  min-height:38px;
+  border-radius:10px;
+  border:1px solid color-mix(in srgb,var(--accent-primary) 32%, var(--border));
+  background:color-mix(in srgb,var(--accent-primary) 9%, transparent);
+  color:var(--text-primary);
+}
+.btn-view-plans:hover{
+  background:color-mix(in srgb,var(--accent-primary) 16%, transparent);
+}
+
+.welcome{
+  min-height:50vh;
+}
+.welcome-suggestion-card{
+  border-radius:14px;
+  border:1px solid color-mix(in srgb,var(--accent-primary) 18%, var(--border));
+  background:linear-gradient(165deg, color-mix(in srgb,var(--bg-secondary) 92%, #fff), var(--bg-secondary));
+  box-shadow:var(--ui-card);
+  transition:transform 140ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+.welcome-suggestion-card:hover{
+  transform:translateY(-2px);
+  border-color:color-mix(in srgb,var(--accent-primary) 44%, var(--border));
+  box-shadow:0 18px 32px rgba(15,23,42,0.12);
+}
+:root[data-theme="dark"] .welcome-suggestion-card{
+  background:linear-gradient(165deg,#0f141c,#0b1017);
+}
+
+.message .avatar{
+  box-shadow:0 8px 20px rgba(2,6,23,0.12);
+}
+.message.ai .bubble{
+  background:color-mix(in srgb,var(--bg-secondary) 72%, transparent);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:16px 18px;
+}
+.message.user .bubble{
+  border-radius:14px;
+}
+
+.msg-action-bar button{
+  border:1px solid var(--border);
+  background:var(--bg-secondary);
+  border-radius:9px;
+}
+.msg-action-bar button:hover{
+  border-color:color-mix(in srgb,var(--accent-primary) 38%, var(--border));
+}
+
+.input-box{
+  box-shadow:var(--ui-card);
+}
+#userInput{
+  font-size:15.5px;
+}
+
+.search-input{
+  border-radius:10px;
+}
+
+.chat-scroll-progress{
+  background:color-mix(in srgb,var(--bg-elevated) 75%, transparent);
+  backdrop-filter:blur(5px);
+}
+
+@media (max-width:640px){
+  .main-content{
+    background:var(--bg-primary);
+  }
+  .welcome-suggestion-card{
+    min-width:72%;
+  }
+  .input-wrapper{
+    background:linear-gradient(to top,var(--bg-primary) 76%,transparent);
+  }
+}
