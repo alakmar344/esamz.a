@@ -17,3 +17,7 @@ npm-debug.log*
 # Cloudflare / OpenNext build artifacts
 .open-next/
 .wrangler/
+
+# Hygiene: never track env files or dev logs (added by fix)
+.env.production
+dev_output.log
